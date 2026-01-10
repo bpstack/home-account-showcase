@@ -1,0 +1,55 @@
+### Variables
+@baseUrl = http://localhost:3001/api
+# Pega aquí el token del login:
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQwOWQwMTJiLWI1MjAtNGVhZC1hYzg4LWY3NDA3YTk4Njg5NSIsImVtYWlsIjoibnVldm9AdGVzdC5jb20iLCJpYXQiOjE3NjgwNTg1NjMsImV4cCI6MTc2ODY2MzM2M30.4AGVhWvA6snyZk-y-pZUMy2xqiLKPSX2Zb8Ic48TFkY
+
+### ========================================
+### ACCOUNTS ENDPOINTS
+### ========================================
+
+### ----------------------------------------
+### GET ALL - Obtener accounts del usuario
+### ----------------------------------------
+GET {{baseUrl}}/accounts
+Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### GET BY ID - Obtener account por ID
+### ----------------------------------------
+@accountId = 3cbd0812-4634-492c-824b-23fcabea1045
+GET {{baseUrl}}/accounts/{{accountId}}
+Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### CREATE - Crear nueva account
+### ----------------------------------------
+POST {{baseUrl}}/accounts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Cuenta Familiar"
+}
+
+### ----------------------------------------
+### UPDATE - Actualizar account
+### ----------------------------------------
+PUT {{baseUrl}}/accounts/{{accountId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Cuenta Familiar Actualizada"
+}
+
+### ----------------------------------------
+### DELETE - Eliminar account
+### ----------------------------------------
+DELETE {{baseUrl}}/accounts/{{accountId}}
+Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### GET MEMBERS - Obtener miembros del account
+### ----------------------------------------
+GET {{baseUrl}}/accounts/{{accountId}}/members
+Authorization: Bearer {{token}}

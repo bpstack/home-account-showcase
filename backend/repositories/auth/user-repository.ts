@@ -13,31 +13,58 @@ import type {
 
 export class UserRepository {
   /**
-   * Crear nuevo usuario
+   * Crear nuevo usuario + account automática
    */
   static async create({ email, password, name }: RegisterDTO): Promise<User> {
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
-    const uuid = crypto.randomUUID()
+    const connection = await db.getConnection()
 
     try {
-      await db.query(
+      await connection.beginTransaction()
+
+      const userId = crypto.randomUUID()
+      const accountId = crypto.randomUUID()
+      const accountUserId = crypto.randomUUID()
+      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
+
+      // 1. Crear usuario
+      await connection.query(
         `INSERT INTO users (id, email, password_hash, name)
          VALUES (?, ?, ?, ?)`,
-        [uuid, email, hashedPassword, name]
+        [userId, email, hashedPassword, name]
       )
 
+      // 2. Crear account personal
+      await connection.query(
+        `INSERT INTO accounts (id, name)
+         VALUES (?, ?)`,
+        [accountId, `Cuenta de ${name}`]
+      )
+
+      // 3. Asignar usuario como owner
+      await connection.query(
+        `INSERT INTO account_users (id, account_id, user_id, role)
+         VALUES (?, ?, ?, 'owner')`,
+        [accountUserId, accountId, userId]
+      )
+
+      await connection.commit()
+
       return {
-        id: uuid,
+        id: userId,
         email,
         name,
         created_at: new Date(),
       }
     } catch (error: any) {
+      await connection.rollback()
+
       if (error.code === 'ER_DUP_ENTRY') {
         throw new Error('El email ya está registrado')
       }
       console.error('Error creating user:', error)
       throw new Error('Error interno al crear usuario')
+    } finally {
+      connection.release()
     }
   }
 

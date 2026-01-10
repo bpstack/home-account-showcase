@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import db from './config/db.js'
 import { PORT } from './config/config.js'
 import authRoutes from './routes/auth/auth-routes.js'
+import accountRoutes from './routes/accounts/account-routes.js'
 
 dotenv.config()
 
@@ -14,6 +15,7 @@ app.use(express.json())
 
 // Routes
 app.use('/api/auth', authRoutes)
+app.use('/api/accounts', accountRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
