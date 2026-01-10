@@ -1,12 +1,13 @@
 # Home Account - Roadmap
 
 ## Fase 1: MVP Base
-- [ ] Diseño de tablas MySQL
-- [ ] Crear tablas en Aiven
-- [ ] Configuración conexión BD
-- [ ] Auth: JWT en localStorage
-- [ ] CRUD Usuarios (registro, login)
-- [ ] CRUD Categorías
+- [x] Diseño de tablas MySQL
+- [x] Crear tablas en Aiven
+- [x] Configuración conexión BD
+- [x] Auth: JWT en localStorage
+- [x] CRUD Usuarios (registro, login)
+- [x] CRUD Accounts (auto-creación al registrar)
+- [x] CRUD Categorías
 - [ ] CRUD Subcategorías
 - [ ] CRUD Transacciones
 - [ ] Frontend: Páginas básicas (login, registro, dashboard)

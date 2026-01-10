@@ -1,0 +1,92 @@
+### Variables
+@baseUrl = http://localhost:3001/api
+# Pega aquí el token del login:
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQwOWQwMTJiLWI1MjAtNGVhZC1hYzg4LWY3NDA3YTk4Njg5NSIsImVtYWlsIjoibnVldm9AdGVzdC5jb20iLCJpYXQiOjE3NjgwNTg1NjMsImV4cCI6MTc2ODY2MzM2M30.4AGVhWvA6snyZk-y-pZUMy2xqiLKPSX2Zb8Ic48TFkY
+@accountId = 3cbd0812-4634-492c-824b-23fcabea1045
+
+### ========================================
+### CATEGORIES ENDPOINTS
+### ========================================
+
+### ----------------------------------------
+### GET ALL - Obtener categorías del account
+### ----------------------------------------
+GET {{baseUrl}}/categories?account_id={{accountId}}
+Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### CREATE - Crear categoría
+### ----------------------------------------
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Alimentación",
+  "color": "#22C55E",
+  "icon": "utensils"
+}
+
+### ----------------------------------------
+### CREATE - Más categorías de ejemplo
+### ----------------------------------------
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Transporte",
+  "color": "#3B82F6",
+  "icon": "car"
+}
+
+###
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Entretenimiento",
+  "color": "#A855F7",
+  "icon": "gamepad-2"
+}
+
+###
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Hogar",
+  "color": "#F59E0B",
+  "icon": "home"
+}
+
+### ----------------------------------------
+### GET BY ID - Obtener categoría por ID
+### ----------------------------------------
+@categoryId =
+GET {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### UPDATE - Actualizar categoría
+### ----------------------------------------
+PUT {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Alimentación y Bebidas",
+  "color": "#16A34A"
+}
+
+### ----------------------------------------
+### DELETE - Eliminar categoría
+### ----------------------------------------
+DELETE {{baseUrl}}/categories/{{categoryId}}
+Authorization: Bearer {{token}}
