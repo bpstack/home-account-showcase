@@ -5,19 +5,9 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Menu, X, ChevronRight } from 'lucide-react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { Sidebar, ProfileDropdown } from '@/components/layout'
 import { ThemeToggle } from '@/components/ui'
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000,
-      retry: 1,
-    },
-  },
-})
 
 export default function PrivateLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -60,8 +50,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background">
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div
@@ -130,7 +119,6 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
             <div className="max-w-[1400px]">{children}</div>
           </main>
         </div>
-      </div>
-    </QueryClientProvider>
+    </div>
   )
 }

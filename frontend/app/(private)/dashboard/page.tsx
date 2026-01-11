@@ -52,6 +52,13 @@ export default function DashboardPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
 
+  // Usar nuevo endpoint /stats para cálculos en servidor
+  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['transactions', 'stats', account?.id, startOfMonth, endOfMonth],
+    queryFn: () => transactions.getStats(account!.id, startOfMonth, endOfMonth),
+    enabled: !!account,
+  })
+
   const { data: txData, isLoading: isLoadingTx } = useTransactions({
     account_id: account?.id || '',
     start_date: startOfMonth,
@@ -67,18 +74,10 @@ export default function DashboardPage() {
   const transactionList = txData?.transactions || []
   const summary = summaryData?.summary || []
 
-  const stats: Stats = {
-    income: transactionList
-      .filter((t) => Number(t.amount) > 0)
-      .reduce((sum, t) => sum + Number(t.amount), 0),
-    expenses: transactionList
-      .filter((t) => Number(t.amount) < 0)
-      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0),
-    balance: 0,
-  }
-  stats.balance = stats.income - stats.expenses
+  // Stats calculados en el servidor
+  const stats: Stats = statsData?.stats || { income: 0, expenses: 0, balance: 0 }
 
-  const isLoading = isLoadingTx
+  const isLoading = isLoadingStats || isLoadingTx
 
   if (isLoading) {
     return (
@@ -248,80 +247,25 @@ function MonthlyTab() {
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear)
 
-  const { data: yearlySummary, isLoading } = useQuery({
-    queryKey: ['transactions', 'yearly', account?.id, selectedYear],
-    queryFn: async () => {
-      if (!account) return null
-
-      const results = []
-      for (let month = 0; month < 12; month++) {
-        const startDate = new Date(selectedYear, month, 1).toISOString().split('T')[0]
-        const endDate = new Date(selectedYear, month + 1, 0).toISOString().split('T')[0]
-        const res = await transactions.getSummary(account.id, startDate, endDate)
-        results.push({ month, summary: res.summary })
-      }
-      return results as { month: number; summary: CategorySummary[] }[]
-    },
+  // Usar nuevo endpoint /monthly-summary - 1 llamada en vez de 12
+  const { data: monthlySummaryData, isLoading } = useQuery({
+    queryKey: ['transactions', 'monthly-summary', account?.id, selectedYear],
+    queryFn: () => transactions.getMonthlySummary(account!.id, selectedYear),
     enabled: !!account,
     staleTime: 5 * 60 * 1000,
   })
 
-  const { data: balanceData, isLoading: isLoadingBalance } = useQuery({
+  // Usar nuevo endpoint /balance-history - cálculos en servidor
+  const { data: balanceHistoryData, isLoading: isLoadingBalance } = useQuery({
     queryKey: ['transactions', 'balance-history', account?.id, selectedYear],
-    queryFn: async () => {
-      if (!account) return null
-
-      const startDate = new Date(selectedYear, 0, 1).toISOString().split('T')[0]
-      const endDate = new Date(selectedYear, 11, 31).toISOString().split('T')[0]
-
-      const res = await transactions.getAll({
-        account_id: account.id,
-        start_date: startDate,
-        end_date: endDate,
-      })
-
-      const transactionsByDate = res.transactions.reduce(
-        (acc, tx) => {
-          const date = tx.date.split('T')[0]
-          if (!acc[date]) {
-            acc[date] = 0
-          }
-          acc[date] += Number(tx.amount)
-          return acc
-        },
-        {} as Record<string, number>
-      )
-
-      const dates = Object.keys(transactionsByDate).sort()
-      let cumulative = 0
-      const result = dates.map((date) => {
-        cumulative += transactionsByDate[date]
-        return {
-          date: date.substring(5),
-          balance: cumulative,
-        }
-      })
-
-      return result
-    },
+    queryFn: () => transactions.getBalanceHistory(account!.id, selectedYear),
     enabled: !!account,
     staleTime: 5 * 60 * 1000,
   })
 
-  const chartData =
-    yearlySummary?.map(({ month, summary }) => {
-      const income = summary
-        .filter((item: any) => Number(item.total_amount) > 0)
-        .reduce((sum: number, item: any) => sum + Number(item.total_amount), 0)
-      const expenses = summary
-        .filter((item: any) => Number(item.total_amount) < 0)
-        .reduce((sum: number, item: any) => sum + Math.abs(Number(item.total_amount)), 0)
-      return {
-        month: months[month].substring(0, 3),
-        income,
-        expenses,
-      }
-    }) || []
+  // Datos ya calculados en el servidor
+  const chartData = monthlySummaryData?.monthlySummary || []
+  const balanceData = balanceHistoryData?.balanceHistory || []
 
   return (
     <div className="space-y-6">
@@ -395,7 +339,7 @@ function MonthlyTab() {
               <Loader2 className="h-5 w-5 animate-spin" />
               Cargando datos...
             </div>
-          ) : yearlySummary ? (
+          ) : chartData.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -411,37 +355,28 @@ function MonthlyTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {yearlySummary.map(({ month, summary }) => {
-                    const income = summary
-                      .filter((item: any) => Number(item.total_amount) > 0)
-                      .reduce((sum: number, item: any) => sum + Number(item.total_amount), 0)
-                    const expenses = summary
-                      .filter((item: any) => Number(item.total_amount) < 0)
-                      .reduce(
-                        (sum: number, item: any) => sum + Math.abs(Number(item.total_amount)),
-                        0
-                      )
-                    const balance = income - expenses
-                    const hasData = income > 0 || expenses > 0
+                  {chartData.map((item, index) => {
+                    const balance = item.income - item.expenses
+                    const hasData = item.income > 0 || item.expenses > 0
                     const isCurrentMonth =
-                      month === new Date().getMonth() && selectedYear === currentYear
+                      index === new Date().getMonth() && selectedYear === currentYear
 
                     return (
                       <tr
-                        key={months[month]}
+                        key={item.month}
                         className={`border-b border-layer-2 hover:bg-layer-1 ${isCurrentMonth ? 'bg-accent/5' : ''}`}
                       >
                         <td className="py-3 px-4 text-text-primary font-medium">
-                          {months[month]}
+                          {months[index]}
                           {isCurrentMonth && (
                             <span className="ml-2 text-xs text-accent">(Actual)</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-right text-success">
-                          {hasData ? `+${income.toFixed(2)} €` : '-'}
+                          {hasData ? `+${item.income.toFixed(2)} €` : '-'}
                         </td>
                         <td className="py-3 px-4 text-right text-danger">
-                          {hasData ? `-${expenses.toFixed(2)} €` : '-'}
+                          {hasData ? `-${item.expenses.toFixed(2)} €` : '-'}
                         </td>
                         <td
                           className={`py-3 px-4 text-right font-medium ${balance >= 0 ? 'text-success' : 'text-danger'}`}

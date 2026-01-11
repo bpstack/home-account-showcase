@@ -4,7 +4,7 @@ import { Poppins } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { Providers } from '@/components/providers/Providers'
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <AuthProvider>{children}</AuthProvider>
+          <Providers>{children}</Providers>
         </ThemeProvider>
       </body>
     </html>

@@ -65,14 +65,14 @@
 > Violaciones detectadas contra los principios documentados en `docs/ARQUITECTURA/ARQUITECTURA.md`
 
 ### Críticas
-- [ ] **AuthContext → React Query**: Mover `user` y `account` de useState a React Query
-  - Archivo: `frontend/contexts/AuthContext.tsx:32-60`
-  - Violación: "Si el dato viene del backend → React Query"
+- [x] **AuthContext → React Query**: Mover `user` y `account` de useState a React Query
+  - Archivo: `frontend/contexts/AuthContext.tsx`
+  - QueryClientProvider movido al layout raíz via `components/providers/Providers.tsx`
 
-- [~] **Cálculos Dashboard → Backend**: Mover agregaciones al servidor
+- [x] **Cálculos Dashboard → Backend**: Mover agregaciones al servidor
   - [x] Backend: Endpoints creados (`/stats`, `/balance-history`, `/monthly-summary`)
   - [x] Frontend: apiClient actualizado con nuevos endpoints
-  - [ ] Frontend: Refactorizar dashboard para usar nuevos endpoints
+  - [x] Frontend: Dashboard refactorizado para usar nuevos endpoints
 
 ### Altas
 - [x] **Validación Zod en Transacciones**: Añadir schemas de validación
@@ -83,7 +83,7 @@
 
 ### Media
 - [ ] **Migrar AuthContext a Zustand**: Según ARQUITECTURA.md línea 133
-  - Solo después de mover datos a React Query
+  - Opcional: Context funciona bien con React Query para datos remotos
 
 ---
 

@@ -1,13 +1,15 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { auth, accounts, Account, ApiError } from '@/lib/apiClient'
 import {
   setAccessToken,
   setRefreshToken,
   getRefreshToken,
   clearAllTokens,
+  getAccessToken,
 } from '@/lib/tokenService'
 
 interface User {
@@ -28,93 +30,119 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Query keys
+const AUTH_USER_KEY = ['auth', 'user']
+const AUTH_ACCOUNT_KEY = ['auth', 'account']
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [account, setAccount] = useState<Account | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
-    checkAuth()
+    setIsMounted(true)
   }, [])
 
-  async function checkAuth() {
-    const refreshToken = getRefreshToken()
-    if (!refreshToken) {
-      setIsLoading(false)
-      return
-    }
+  // React Query para el usuario - datos remotos gestionados por React Query
+  const {
+    data: userData,
+    isLoading: isLoadingUser,
+  } = useQuery({
+    queryKey: AUTH_USER_KEY,
+    queryFn: async () => {
+      const refreshToken = getRefreshToken()
+      if (!refreshToken) {
+        return null
+      }
 
-    try {
-      // Primero intentar refresh token para asegurar access token válido
-      const { accessToken } = await auth.refresh(refreshToken)
-      setAccessToken(accessToken)
+      try {
+        // Si no hay access token, intentar refresh
+        if (!getAccessToken()) {
+          const { accessToken } = await auth.refresh(refreshToken)
+          setAccessToken(accessToken)
+        }
 
-      // Ahora con access token válido, obtener usuario
-      const { user } = await auth.me()
-      setUser(user)
+        const { user } = await auth.me()
+        return user
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          clearAllTokens()
+        }
+        return null
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos
+    retry: false,
+    enabled: isMounted, // Solo ejecutar en cliente
+  })
 
+  // React Query para la cuenta - datos remotos gestionados por React Query
+  const { data: accountData, isLoading: isLoadingAccount } = useQuery({
+    queryKey: AUTH_ACCOUNT_KEY,
+    queryFn: async () => {
       const { accounts: userAccounts } = await accounts.getAll()
-      if (userAccounts.length > 0) {
-        setAccount(userAccounts[0])
-      }
-    } catch (error) {
-      // Si falla refresh o /me, limpiar tokens y redirigir a login
-      if (error instanceof ApiError && error.status === 401) {
-        clearAllTokens()
-        setUser(null)
-        setAccount(null)
-        router.push('/login')
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      return userAccounts.length > 0 ? userAccounts[0] : null
+    },
+    enabled: isMounted && !!userData, // Solo ejecutar si hay usuario y está montado
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: false,
+  })
+
+  const user = userData || null
+  const account = accountData || null
+  const isLoading = !isMounted || isLoadingUser || (!!userData && isLoadingAccount)
+  const isAuthenticated = !!user
 
   async function login(email: string, password: string) {
-    const { accessToken, refreshToken, user } = await auth.login(email, password)
+    const { accessToken, refreshToken, user: loggedUser } = await auth.login(email, password)
 
-    // Guardar tokens: access en memoria, refresh en localStorage
+    // Guardar tokens
     setAccessToken(accessToken)
     setRefreshToken(refreshToken)
 
-    setUser(user)
+    // Actualizar cache de React Query directamente
+    queryClient.setQueryData(AUTH_USER_KEY, loggedUser)
 
-    const { accounts: userAccounts } = await accounts.getAll()
-    if (userAccounts.length > 0) {
-      setAccount(userAccounts[0])
-    }
+    // Invalidar y refetch account
+    await queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNT_KEY })
 
     router.push('/dashboard')
   }
 
   async function register(email: string, password: string, name: string) {
-    const { accessToken, refreshToken, user } = await auth.register(email, password, name)
+    const { accessToken, refreshToken, user: newUser } = await auth.register(email, password, name)
 
-    // Guardar tokens: access en memoria, refresh en localStorage
+    // Guardar tokens
     setAccessToken(accessToken)
     setRefreshToken(refreshToken)
 
-    setUser(user)
+    // Actualizar cache de React Query directamente
+    queryClient.setQueryData(AUTH_USER_KEY, newUser)
 
-    const { accounts: userAccounts } = await accounts.getAll()
-    if (userAccounts.length > 0) {
-      setAccount(userAccounts[0])
-    }
+    // Invalidar y refetch account
+    await queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNT_KEY })
 
     router.push('/dashboard')
   }
 
   async function logout() {
     try {
-      // Notificar al servidor (opcional, para logging)
       await auth.logout()
     } catch {
       // Si falla el servidor, igual limpiamos localmente
     } finally {
       clearAllTokens()
-      setUser(null)
-      setAccount(null)
+
+      // Limpiar cache de React Query
+      queryClient.setQueryData(AUTH_USER_KEY, null)
+      queryClient.setQueryData(AUTH_ACCOUNT_KEY, null)
+
+      // Invalidar todas las queries relacionadas con datos del usuario
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+
       router.push('/login')
     }
   }
@@ -125,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         account,
         isLoading,
-        isAuthenticated: !!user,
+        isAuthenticated,
         login,
         register,
         logout,
