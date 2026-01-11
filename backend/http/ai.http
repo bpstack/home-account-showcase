@@ -1,0 +1,129 @@
+### Variables
+@baseUrl = http://localhost:3001/api
+# Pega aquí el token del login:
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImY1OGYyYzVkLTEzMjEtNGVlNC05ZjBmLTQyZDQ5YTY4MTU1MyIsImVtYWlsIjoiYWRtaW5AYWRtaW4uY29tIiwiaWF0IjoxNzY4MTQyNjcyLCJleHAiOjE3Njg3NDc0NzJ9.xBGvpuPKczRndQySKkoZTGH5pFHR2yrI9MGLeoiNknM
+
+### ========================================
+### AI ENDPOINTS
+### ========================================
+
+### ----------------------------------------
+### STATUS - Verificar estado del servicio AI (pública)
+### ----------------------------------------
+GET {{baseUrl}}/ai/status
+
+### ----------------------------------------
+### TEST CONNECTION - Probar conexión con proveedor AI
+### ----------------------------------------
+POST {{baseUrl}}/ai/test
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "provider": "groq",
+  "model": "llama-3.3-70b-versatile",
+  "message": "Hello, this is a test message"
+}
+
+### ----------------------------------------
+### TEST CONNECTION - Ollama
+### ----------------------------------------
+POST {{baseUrl}}/ai/test
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "provider": "ollama",
+  "model": "llama3.2",
+  "message": "Hello, this is a test message"
+}
+
+### ----------------------------------------
+### TEST CONNECTION - Claude
+### ----------------------------------------
+POST {{baseUrl}}/ai/test
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "provider": "claude",
+  "model": "claude-sonnet-4-20250514",
+  "message": "Hello, this is a test message"
+}
+
+### ----------------------------------------
+### TEST CONNECTION - Gemini
+### ----------------------------------------
+POST {{baseUrl}}/ai/test
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "provider": "gemini",
+  "model": "gemini-2.0-flash-exp",
+  "message": "Hello, this is a test message"
+}
+
+### ----------------------------------------
+### PARSE TRANSACTIONS - Parsear transacciones con AI
+### ----------------------------------------
+POST {{baseUrl}}/ai/parse
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "provider": "groq",
+  "model": "llama-3.3-70b-versatile",
+  "transactions": [
+    {
+      "date": "2025-01-15",
+      "description": "SUPERMERCADO MERCADONA 1234",
+      "amount": -125.50,
+      "bank_category": "COMPRAS",
+      "bank_subcategory": "ALIMENTACION"
+    },
+    {
+      "date": "2025-01-16",
+      "description": "RESTAURANTE LA CASA 5678",
+      "amount": -45.00,
+      "bank_category": "COMIDAS",
+      "bank_subcategory": "RESTAURANTES"
+    },
+    {
+      "date": "2025-01-17",
+      "description": "NETFLIX.COM",
+      "amount": -15.99,
+      "bank_category": "OCIO",
+      "bank_subcategory": "STREAMING"
+    }
+  ]
+}
+
+### ----------------------------------------
+### PARSE TRANSACTIONS - Con categoría personalizada
+### ----------------------------------------
+POST {{baseUrl}}/ai/parse
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "provider": "groq",
+  "model": "llama-3.3-70b-versatile",
+  "transactions": [
+    {
+      "date": "2025-01-18",
+      "description": "GASOLINERA REPSOL A-1234",
+      "amount": -50.00,
+      "bank_category": "TRANSPORTE",
+      "bank_subcategory": "GASOLINA"
+    }
+  ],
+  "customCategories": [
+    {
+      "name": "Gasolina",
+      "keywords": ["gasolina", "repsol", "cepsa", "bp", "shell"],
+      "icon": "fuel-pump",
+      "color": "#EF4444"
+    }
+  ]
+}

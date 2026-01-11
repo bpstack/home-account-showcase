@@ -1,0 +1,162 @@
+### Variables
+@baseUrl = http://localhost:3001/api
+# Pega aquí el token del login:
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjlkOTQwNTYwLTU5ZWEtNDNkYi1hMTg3LTAzZTM0Y2M4ZjRmZCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTc2ODA5ODQ0OCwiZXhwIjoxNzY4NzAzMjQ4fQ.4fBmCSAcInKARNqE04Zr58qZiB7w_9O1cobDtb7BMU8
+@accountId = 50470968-34a7-4a97-bc4b-869b6aa1ec84
+
+### ========================================
+### IMPORT ENDPOINTS
+### ========================================
+
+### ----------------------------------------
+### GET EXISTING CATEGORIES - Obtener categorías existentes para mapping
+### ----------------------------------------
+GET {{baseUrl}}/import/categories?account_id={{accountId}}
+Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### PARSE FILE - Parsear archivo Excel (preview)
+### ----------------------------------------
+POST {{baseUrl}}/import/parse
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="transactions.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+[Archivo Excel aquí]
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ----------------------------------------
+### PARSE FILE - Ejemplo con resultado simulado
+### ----------------------------------------
+POST {{baseUrl}}/import/parse
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "preview": true,
+  "transactions": [
+    {
+      "row": 1,
+      "date": "2025-01-15",
+      "description": "Supermercado Mercadona",
+      "amount": 125.50,
+      "bank_category": "COMPRAS",
+      "bank_subcategory": "ALIMENTACION",
+      "suggested_category_id": "59357601-8ab9-43ef-9bcb-25bd6834e072",
+      "confidence": 0.95
+    },
+    {
+      "row": 2,
+      "date": "2025-01-16",
+      "description": "Restaurante La Casa",
+      "amount": 45.00,
+      "bank_category": "COMIDAS",
+      "bank_subcategory": "RESTAURANTES",
+      "suggested_category_id": null,
+      "confidence": 0.85
+    },
+    {
+      "row": 3,
+      "date": "2025-01-17",
+      "description": "Netflix",
+      "amount": 15.99,
+      "bank_category": "OCIO",
+      "bank_subcategory": "STREAMING",
+      "suggested_category_id": null,
+      "confidence": 0.90
+    }
+  ],
+  "headers": ["date", "description", "amount", "bank_category", "bank_subcategory"],
+  "totalRows": 3
+}
+
+### ----------------------------------------
+### CONFIRM IMPORT - Confirmar importación con mappings
+### ----------------------------------------
+POST {{baseUrl}}/import/confirm
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "account_id": "{{accountId}}",
+  "mappings": {
+    "COMPRAS-ALIMENTACION": "59357601-8ab9-43ef-9bcb-25bd6834e072",
+    "COMIDAS-RESTAURANTES": null,
+    "OCIO-STREAMING": null
+  },
+  "options": {
+    "default_category_id": null,
+    "default_subcategory_id": null,
+    "create_missing_categories": true
+  },
+  "transactions": [
+    {
+      "row": 1,
+      "date": "2025-01-15",
+      "description": "Supermercado Mercadona",
+      "amount": 125.50,
+      "category_id": "59357601-8ab9-43ef-9bcb-25bd6834e072",
+      "subcategory_id": null
+    },
+    {
+      "row": 2,
+      "date": "2025-01-16",
+      "description": "Restaurante La Casa",
+      "amount": 45.00,
+      "category_id": "59357601-8ab9-43ef-9bcb-25bd6834e072",
+      "subcategory_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    {
+      "row": 3,
+      "date": "2025-01-17",
+      "description": "Netflix",
+      "amount": 15.99,
+      "category_id": null,
+      "subcategory_id": null
+    }
+  ]
+}
+
+### ----------------------------------------
+### CONFIRM IMPORT - Con categorías faltantes
+### ----------------------------------------
+POST {{baseUrl}}/import/confirm
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "account_id": "{{accountId}}",
+  "mappings": {},
+  "options": {
+    "default_category_id": null,
+    "default_subcategory_id": null,
+    "create_missing_categories": true
+  },
+  "transactions": [
+    {
+      "row": 1,
+      "date": "2025-01-15",
+      "description": "Supermercado Mercadona",
+      "amount": 125.50,
+      "category_id": null,
+      "subcategory_id": null
+    }
+  ]
+}
+
+### ----------------------------------------
+### ERROR - Archivo no válido
+### ----------------------------------------
+POST {{baseUrl}}/import/parse
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="documento.pdf"
+Content-Type: application/pdf
+
+[Archivo PDF aquí]
+------WebKitFormBoundary7MA4YWxkTrZu0gW--

@@ -340,4 +340,66 @@ export const importApi = {
     request<{ success: boolean; categories: Category[] }>(`/import/categories?account_id=${accountId}`),
 }
 
+// AI Types
+export interface AIProviderInfo {
+  configured: boolean
+  enabled: boolean
+  model: string
+  baseUrl?: string
+}
+
+export interface AIStatus {
+  success: boolean
+  enabled: boolean
+  activeProvider: string
+  providers: Record<string, AIProviderInfo>
+}
+
+export interface AITestResult {
+  success: boolean
+  provider?: string
+  model?: string
+  responseTime?: number
+  error?: string
+}
+
+export interface ParsedTransactionAI {
+  date: string | null
+  description: string
+  amount: number
+  category?: string
+  subcategory?: string
+}
+
+export interface AIParseResult {
+  success: boolean
+  transactions: ParsedTransactionAI[]
+  provider: string
+  responseTime: number
+  error?: string
+}
+
+// AI API
+export const ai = {
+  getStatus: () => request<AIStatus>('/ai/status'),
+
+  setProvider: (provider: string) =>
+    request<{ success: boolean; activeProvider: string }>('/ai/provider', {
+      method: 'PUT',
+      body: JSON.stringify({ provider }),
+    }),
+
+  testConnection: (provider: string) =>
+    request<AITestResult>('/ai/test', {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    }),
+
+  parseTransactions: (text: string, provider?: string) =>
+    request<AIParseResult>('/ai/parse', {
+      method: 'POST',
+      body: JSON.stringify({ text, provider }),
+    }),
+}
+
 export { ApiError }

@@ -90,3 +90,20 @@ Content-Type: application/json
 ### ----------------------------------------
 DELETE {{baseUrl}}/categories/{{categoryId}}
 Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### GET ORPHANED COUNT - Contar transacciones huérfanas
+### ----------------------------------------
+GET {{baseUrl}}/categories/{{categoryId}}/orphaned-count
+Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### REASSIGN TRANSACTIONS - Reasignar transacciones a otra categoría
+### ----------------------------------------
+POST {{baseUrl}}/categories/{{categoryId}}/reassign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "new_category_id": "nueva-categoria-id"
+}

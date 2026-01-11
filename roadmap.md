@@ -13,11 +13,11 @@
 - [x] Frontend: Páginas básicas (login, registro, dashboard)
 
 ## Fase 2: Funcionalidad Core
-- [ ] Importar XLS del banco (parsear extractos)
-- [ ] Mapeo categorías banco → categorías usuario
-- [ ] Dashboard con resumen mensual
-- [ ] Filtros por fecha, categoría, tipo
-- [ ] Gráficos básicos (gastos por categoría)
+- [x] Importar XLS del banco (parsear extractos)
+- [x] Mapeo categorías banco → categorías usuario
+- [x] Dashboard con resumen mensual
+- [~] Filtros por fecha, categoría, tipo (falta filtro por tipo income/expense)
+- [~] Gráficos básicos (falta instalar recharts e implementar pie/bar/line charts)
 
 ## Fase 3: Seguridad
 - [ ] Migrar JWT localStorage → HttpOnly Cookie

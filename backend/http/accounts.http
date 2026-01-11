@@ -52,3 +52,9 @@ Authorization: Bearer {{token}}
 ### ----------------------------------------
 GET {{baseUrl}}/accounts/{{accountId}}/members
 Authorization: Bearer {{token}}
+
+### ----------------------------------------
+### ADD DEFAULT CATEGORIES - Añadir categorías por defecto al account
+### ----------------------------------------
+POST {{baseUrl}}/accounts/{{accountId}}/categories/default
+Authorization: Bearer {{token}}
