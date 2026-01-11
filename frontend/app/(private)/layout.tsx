@@ -63,8 +63,10 @@ export default function PrivateLayout({
         />
       )}
 
-      <main className="lg:ml-64 min-h-screen p-4 lg:p-8 pt-16 lg:pt-8">
-        {children}
+      <main className="lg:ml-64 min-h-screen p-4 md:p-6 pt-16 lg:pt-6">
+        <div className="max-w-[1400px]">
+          {children}
+        </div>
       </main>
     </div>
   )
