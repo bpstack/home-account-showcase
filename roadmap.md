@@ -8,9 +8,9 @@
 - [x] CRUD Usuarios (registro, login)
 - [x] CRUD Accounts (auto-creación al registrar)
 - [x] CRUD Categorías
-- [ ] CRUD Subcategorías
-- [ ] CRUD Transacciones
-- [ ] Frontend: Páginas básicas (login, registro, dashboard)
+- [x] CRUD Subcategorías
+- [x] CRUD Transacciones
+- [x] Frontend: Páginas básicas (login, registro, dashboard)
 
 ## Fase 2: Funcionalidad Core
 - [ ] Importar XLS del banco (parsear extractos)
