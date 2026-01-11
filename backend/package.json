@@ -8,7 +8,9 @@
     "dev": "tsx watch index.ts",
     "build": "echo 'Using tsx - no build needed'",
     "start": "tsx index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write ."
   },
   "keywords": [],
   "author": "",
@@ -30,7 +32,13 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.5",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "cross-env": "^10.1.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }

@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 import { useEffect } from 'react'
@@ -43,10 +44,7 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div
@@ -80,7 +78,12 @@ interface ModalFooterProps {
 
 export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
-    <div className={cn('flex items-center justify-end gap-2 px-6 py-4 border-t border-layer-3', className)}>
+    <div
+      className={cn(
+        'flex items-center justify-end gap-2 px-6 py-4 border-t border-layer-3',
+        className
+      )}
+    >
       {children}
     </div>
   )

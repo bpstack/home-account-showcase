@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { auth, accounts, Account, ApiError } from '@/lib/apiClient'
+import { auth, accounts, Account } from '@/lib/apiClient'
 
 interface User {
   id: string
@@ -15,8 +15,8 @@ interface AuthContextType {
   account: Account | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, name: string) => Promise<void>
+  login: (_email: string, _password: string) => Promise<void>
+  register: (_email: string, _password: string, _name: string) => Promise<void>
   logout: () => void
 }
 

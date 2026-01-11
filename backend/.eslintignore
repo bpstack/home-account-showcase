@@ -1,0 +1,10 @@
+# Archivos de backup y deshabilitados
+**/_backup_*/
+**/*.disabled*.ts
+_archive/
+
+# Archivos generados automaticamente
+node_modules/
+
+# Logs
+*.log

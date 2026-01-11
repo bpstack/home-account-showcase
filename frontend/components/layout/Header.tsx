@@ -39,13 +39,9 @@ export function Header({ title, description }: HeaderProps) {
         <nav className="hidden md:flex items-center gap-1 text-sm">
           {breadcrumbs.map((crumb, index) => (
             <div key={crumb.href} className="flex items-center gap-1">
-              {index > 0 && (
-                <ChevronRight className="h-3 w-3 text-text-secondary" />
-              )}
+              {index > 0 && <ChevronRight className="h-3 w-3 text-text-secondary" />}
               {crumb.isLast ? (
-                <span className="text-text-primary font-medium">
-                  {crumb.label}
-                </span>
+                <span className="text-text-primary font-medium">{crumb.label}</span>
               ) : (
                 <Link
                   href={crumb.href}
@@ -59,12 +55,8 @@ export function Header({ title, description }: HeaderProps) {
         </nav>
 
         {/* Title */}
-        <h1 className="text-xl md:text-2xl font-semibold text-text-primary">
-          {pageTitle}
-        </h1>
-        {description && (
-          <p className="text-sm text-text-secondary">{description}</p>
-        )}
+        <h1 className="text-xl md:text-2xl font-semibold text-text-primary">{pageTitle}</h1>
+        {description && <p className="text-sm text-text-secondary">{description}</p>}
       </div>
 
       {/* Right: Actions */}

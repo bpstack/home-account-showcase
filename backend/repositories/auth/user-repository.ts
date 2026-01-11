@@ -4,12 +4,7 @@ import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { SALT_ROUNDS } from '../../config/config.js'
 import db from '../../config/db.js'
-import type {
-  User,
-  UserRow,
-  RegisterDTO,
-  LoginDTO,
-} from '../../models/auth/index.js'
+import type { User, UserRow, RegisterDTO, LoginDTO } from '../../models/auth/index.js'
 
 export class UserRepository {
   /**

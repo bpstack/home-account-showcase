@@ -3,14 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  Receipt,
-  Tags,
-  Upload,
-  Settings,
-  Wallet,
-} from 'lucide-react'
+import { LayoutDashboard, Receipt, Tags, Upload, Settings, Wallet } from 'lucide-react'
 
 const mainLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -27,7 +20,7 @@ const secondaryLinks = [
 export function Sidebar() {
   const pathname = usePathname()
 
-  const renderLink = (item: typeof mainLinks[0]) => {
+  const renderLink = (item: (typeof mainLinks)[0]) => {
     const isActive = pathname === item.href
 
     return (
@@ -41,7 +34,12 @@ export function Sidebar() {
             : 'text-text-secondary hover:bg-layer-2 hover:text-text-primary border-l-4 border-transparent'
         )}
       >
-        <item.icon className={cn('h-5 w-5', isActive ? 'text-accent dark:text-white' : 'text-text-secondary')} />
+        <item.icon
+          className={cn(
+            'h-5 w-5',
+            isActive ? 'text-accent dark:text-white' : 'text-text-secondary'
+          )}
+        />
         <span>{item.name}</span>
       </Link>
     )
@@ -58,17 +56,13 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {/* Main Links */}
-        <div className="flex flex-col gap-1">
-          {mainLinks.map((item) => renderLink(item))}
-        </div>
+        <div className="flex flex-col gap-1">{mainLinks.map((item) => renderLink(item))}</div>
 
         {/* Separator */}
         <div className="border-t border-layer-3 my-3" />
 
         {/* Secondary Links */}
-        <div className="flex flex-col gap-1">
-          {secondaryLinks.map((item) => renderLink(item))}
-        </div>
+        <div className="flex flex-col gap-1">{secondaryLinks.map((item) => renderLink(item))}</div>
       </nav>
     </div>
   )

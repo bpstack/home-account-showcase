@@ -1,10 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
-import { transactions, categories, Transaction, Category, CategorySummary } from '@/lib/apiClient'
-import { TrendingDown, TrendingUp, Wallet, PieChart, Calendar, BarChart3, Loader2 } from 'lucide-react'
+import { transactions, CategorySummary, Transaction } from '@/lib/apiClient'
+import { useTransactions } from '@/lib/queries/transactions'
+import {
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  PieChart,
+  Calendar,
+  BarChart3,
+  Loader2,
+} from 'lucide-react'
 
 const tabs = [
   { id: 'overview', label: 'Resumen' },
@@ -13,8 +23,18 @@ const tabs = [
 ]
 
 const months = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ]
 
 interface Stats {
@@ -26,51 +46,38 @@ interface Stats {
 export default function DashboardPage() {
   const activeTab = useActiveTab('tab', 'overview')
   const { account } = useAuth()
-  const [isLoading, setIsLoading] = useState(true)
-  const [transactionList, setTransactionList] = useState<Transaction[]>([])
-  const [categoryList, setCategoryList] = useState<Category[]>([])
-  const [summary, setSummary] = useState<CategorySummary[]>([])
-  const [stats, setStats] = useState<Stats>({ income: 0, expenses: 0, balance: 0 })
 
-  useEffect(() => {
-    if (account) {
-      loadData()
-    }
-  }, [account])
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
 
-  async function loadData() {
-    if (!account) return
-    setIsLoading(true)
+  const { data: txData, isLoading: isLoadingTx } = useTransactions({
+    account_id: account?.id || '',
+    start_date: startOfMonth,
+    end_date: endOfMonth,
+  })
 
-    try {
-      const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+  const { data: summaryData } = useQuery({
+    queryKey: ['transactions', 'summary', account?.id, startOfMonth, endOfMonth],
+    queryFn: () => transactions.getSummary(account!.id, startOfMonth, endOfMonth),
+    enabled: !!account,
+  })
 
-      const [txRes, catRes, summaryRes] = await Promise.all([
-        transactions.getAll({ account_id: account.id, start_date: startOfMonth, end_date: endOfMonth }),
-        categories.getAll(account.id),
-        transactions.getSummary(account.id, startOfMonth, endOfMonth),
-      ])
+  const transactionList = txData?.transactions || []
+  const summary = summaryData?.summary || []
 
-      setTransactionList(txRes.transactions)
-      setCategoryList(catRes.categories)
-      setSummary(summaryRes.summary)
-
-      const income = txRes.transactions
-        .filter(t => t.amount > 0)
-        .reduce((sum, t) => sum + t.amount, 0)
-      const expenses = txRes.transactions
-        .filter(t => t.amount < 0)
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0)
-
-      setStats({ income, expenses, balance: income - expenses })
-    } catch (error) {
-      console.error('Error loading dashboard data:', error)
-    } finally {
-      setIsLoading(false)
-    }
+  const stats: Stats = {
+    income: transactionList
+      .filter((t) => Number(t.amount) > 0)
+      .reduce((sum, t) => sum + Number(t.amount), 0),
+    expenses: transactionList
+      .filter((t) => Number(t.amount) < 0)
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0),
+    balance: 0,
   }
+  stats.balance = stats.income - stats.expenses
+
+  const isLoading = isLoadingTx
 
   if (isLoading) {
     return (
@@ -87,15 +94,10 @@ export default function DashboardPage() {
       <Tabs tabs={tabs} defaultTab="overview" className="mb-6" variant="pills" />
 
       {activeTab === 'overview' && (
-        <OverviewTab
-          stats={stats}
-          summary={summary}
-          transactions={transactionList}
-          categories={categoryList}
-        />
+        <OverviewTab stats={stats} summary={summary} transactions={transactionList} />
       )}
       {activeTab === 'monthly' && <MonthlyTab />}
-      {activeTab === 'stats' && <StatsTab summary={summary} categories={categoryList} />}
+      {activeTab === 'stats' && <StatsTab summary={summary} />}
     </div>
   )
 }
@@ -104,30 +106,33 @@ function OverviewTab({
   stats,
   summary,
   transactions: txList,
-  categories: catList,
 }: {
   stats: Stats
   summary: CategorySummary[]
   transactions: Transaction[]
-  categories: Category[]
 }) {
   const recentTransactions = txList.slice(0, 5)
   const totalExpenses = stats.expenses || 1
 
-  const expensesByCategory = summary.reduce((acc, item) => {
-    const catName = item.category_name || 'Sin categoría'
-    const existing = acc.find(e => e.name === catName)
-    if (existing) {
-      existing.amount += Math.abs(Number(item.total_amount))
-    } else {
-      acc.push({
-        name: catName,
-        color: item.category_color || '#6B7280',
-        amount: Math.abs(Number(item.total_amount)),
-      })
-    }
-    return acc
-  }, [] as { name: string; color: string; amount: number }[]).sort((a, b) => b.amount - a.amount)
+  const expensesByCategory = summary
+    .reduce(
+      (acc, item) => {
+        const catName = item.category_name || 'Sin categoría'
+        const existing = acc.find((e) => e.name === catName)
+        if (existing) {
+          existing.amount += Math.abs(Number(item.total_amount))
+        } else {
+          acc.push({
+            name: catName,
+            color: item.category_color || '#6B7280',
+            amount: Math.abs(Number(item.total_amount)),
+          })
+        }
+        return acc
+      },
+      [] as { name: string; color: string; amount: number }[]
+    )
+    .sort((a, b) => b.amount - a.amount)
 
   return (
     <div className="space-y-6">
@@ -165,8 +170,11 @@ function OverviewTab({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">Balance</p>
-                <p className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {stats.balance >= 0 ? '+' : ''}{stats.balance.toFixed(2)} €
+                <p
+                  className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}
+                >
+                  {stats.balance >= 0 ? '+' : ''}
+                  {stats.balance.toFixed(2)} €
                 </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
@@ -228,7 +236,10 @@ function OverviewTab({
             ) : (
               <div className="space-y-3">
                 {recentTransactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between py-2 border-b border-layer-2 last:border-0">
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between py-2 border-b border-layer-2 last:border-0"
+                  >
                     <div className="flex items-center gap-3">
                       <div
                         className="w-2 h-8 rounded-full"
@@ -239,8 +250,11 @@ function OverviewTab({
                         <p className="text-xs text-text-secondary">{tx.date}</p>
                       </div>
                     </div>
-                    <span className={`text-sm font-medium ${tx.amount >= 0 ? 'text-success' : 'text-danger'}`}>
-                      {tx.amount >= 0 ? '+' : ''}{tx.amount.toFixed(2)} €
+                    <span
+                      className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}
+                    >
+                      {Number(tx.amount) >= 0 ? '+' : ''}
+                      {Number(tx.amount).toFixed(2)} €
                     </span>
                   </div>
                 ))}
@@ -254,78 +268,144 @@ function OverviewTab({
 }
 
 function MonthlyTab() {
-  const monthlyData = months.map((month) => ({
-    month,
-    income: 0,
-    expenses: 0,
-  }))
+  const { account } = useAuth()
+  const currentYear = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState(currentYear)
+
+  const { data: yearlySummary, isLoading } = useQuery({
+    queryKey: ['transactions', 'yearly', account?.id, selectedYear],
+    queryFn: async () => {
+      if (!account) return null
+
+      const results = []
+      for (let month = 0; month < 12; month++) {
+        const startDate = new Date(selectedYear, month, 1).toISOString().split('T')[0]
+        const endDate = new Date(selectedYear, month + 1, 0).toISOString().split('T')[0]
+        const res = await transactions.getSummary(account.id, startDate, endDate)
+        results.push({ month, summary: res.summary })
+      }
+      return results as { month: number; summary: CategorySummary[] }[]
+    },
+    enabled: !!account,
+    staleTime: 5 * 60 * 1000,
+  })
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Resumen mensual {new Date().getFullYear()}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Resumen mensual {selectedYear}
+            </CardTitle>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-layer-2 border border-layer-3 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              {[currentYear - 1, currentYear].map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-layer-3">
-                  <th className="text-left py-3 px-4 text-text-secondary font-medium">Mes</th>
-                  <th className="text-right py-3 px-4 text-text-secondary font-medium">Ingresos</th>
-                  <th className="text-right py-3 px-4 text-text-secondary font-medium">Gastos</th>
-                  <th className="text-right py-3 px-4 text-text-secondary font-medium">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyData.map((data) => {
-                  const balance = data.income - data.expenses
-                  const hasData = data.income > 0 || data.expenses > 0
-                  return (
-                    <tr key={data.month} className="border-b border-layer-2 hover:bg-layer-1">
-                      <td className="py-3 px-4 text-text-primary font-medium">{data.month}</td>
-                      <td className="py-3 px-4 text-right text-success">
-                        {hasData ? `+${data.income.toFixed(2)} €` : '-'}
-                      </td>
-                      <td className="py-3 px-4 text-right text-danger">
-                        {hasData ? `-${data.expenses.toFixed(2)} €` : '-'}
-                      </td>
-                      <td className={`py-3 px-4 text-right font-medium ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)} €` : '-'}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-text-secondary mt-4 text-center">
-            Datos mensuales disponibles próximamente
-          </p>
+          {isLoading ? (
+            <div className="py-12 flex items-center justify-center gap-2 text-text-secondary">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Cargando datos...
+            </div>
+          ) : yearlySummary ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-layer-3">
+                    <th className="text-left py-3 px-4 text-text-secondary font-medium">Mes</th>
+                    <th className="text-right py-3 px-4 text-text-secondary font-medium">
+                      Ingresos
+                    </th>
+                    <th className="text-right py-3 px-4 text-text-secondary font-medium">Gastos</th>
+                    <th className="text-right py-3 px-4 text-text-secondary font-medium">
+                      Balance
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yearlySummary.map(({ month, summary }) => {
+                    const income = summary
+                      .filter((item: any) => Number(item.total_amount) > 0)
+                      .reduce((sum: number, item: any) => sum + Number(item.total_amount), 0)
+                    const expenses = summary
+                      .filter((item: any) => Number(item.total_amount) < 0)
+                      .reduce(
+                        (sum: number, item: any) => sum + Math.abs(Number(item.total_amount)),
+                        0
+                      )
+                    const balance = income - expenses
+                    const hasData = income > 0 || expenses > 0
+                    const isCurrentMonth =
+                      month === new Date().getMonth() && selectedYear === currentYear
+
+                    return (
+                      <tr
+                        key={months[month]}
+                        className={`border-b border-layer-2 hover:bg-layer-1 ${isCurrentMonth ? 'bg-accent/5' : ''}`}
+                      >
+                        <td className="py-3 px-4 text-text-primary font-medium">
+                          {months[month]}
+                          {isCurrentMonth && (
+                            <span className="ml-2 text-xs text-accent">(Actual)</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right text-success">
+                          {hasData ? `+${income.toFixed(2)} €` : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-right text-danger">
+                          {hasData ? `-${expenses.toFixed(2)} €` : '-'}
+                        </td>
+                        <td
+                          className={`py-3 px-4 text-right font-medium ${balance >= 0 ? 'text-success' : 'text-danger'}`}
+                        >
+                          {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)} €` : '-'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-text-secondary">No hay datos disponibles</div>
+          )}
         </CardContent>
       </Card>
     </div>
   )
 }
 
-function StatsTab({ summary, categories: catList }: { summary: CategorySummary[]; categories: Category[] }) {
-  const expensesByCategory = summary.reduce((acc, item) => {
-    const catName = item.category_name || 'Sin categoría'
-    const existing = acc.find(e => e.name === catName)
-    if (existing) {
-      existing.amount += Math.abs(Number(item.total_amount))
-    } else {
-      acc.push({
-        name: catName,
-        color: item.category_color || '#6B7280',
-        amount: Math.abs(Number(item.total_amount)),
-      })
-    }
-    return acc
-  }, [] as { name: string; color: string; amount: number }[]).sort((a, b) => b.amount - a.amount)
+function StatsTab({ summary }: { summary: CategorySummary[] }) {
+  const expensesByCategory = summary
+    .reduce(
+      (acc, item) => {
+        const catName = item.category_name || 'Sin categoría'
+        const existing = acc.find((e) => e.name === catName)
+        if (existing) {
+          existing.amount += Math.abs(Number(item.total_amount))
+        } else {
+          acc.push({
+            name: catName,
+            color: item.category_color || '#6B7280',
+            amount: Math.abs(Number(item.total_amount)),
+          })
+        }
+        return acc
+      },
+      [] as { name: string; color: string; amount: number }[]
+    )
+    .sort((a, b) => b.amount - a.amount)
 
   const totalExpenses = expensesByCategory.reduce((sum, item) => sum + item.amount, 0) || 1
 
@@ -375,10 +455,7 @@ function StatsTab({ summary, categories: catList }: { summary: CategorySummary[]
               <Card key={item.name} hover>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }} />
                     <span className="font-medium text-text-primary">{item.name}</span>
                   </div>
                   <p className="text-2xl font-bold text-text-primary">{item.amount.toFixed(2)} €</p>

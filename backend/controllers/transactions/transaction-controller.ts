@@ -5,7 +5,17 @@ import { TransactionRepository } from '../../repositories/transactions/transacti
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { account_id, start_date, end_date, subcategory_id, min_amount, max_amount, search, limit, offset } = req.query
+    const {
+      account_id,
+      start_date,
+      end_date,
+      subcategory_id,
+      min_amount,
+      max_amount,
+      search,
+      limit,
+      offset,
+    } = req.query
 
     if (!account_id || typeof account_id !== 'string') {
       res.status(400).json({
@@ -81,7 +91,15 @@ export const getTransactionById = async (req: Request, res: Response): Promise<v
 
 export const createTransaction = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { account_id, date, description, amount, subcategory_id, bank_category, bank_subcategory } = req.body
+    const {
+      account_id,
+      date,
+      description,
+      amount,
+      subcategory_id,
+      bank_category,
+      bank_subcategory,
+    } = req.body
 
     if (!account_id || !date || !description || amount === undefined) {
       res.status(400).json({

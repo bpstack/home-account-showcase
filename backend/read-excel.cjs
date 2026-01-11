@@ -11,7 +11,8 @@ wb.SheetNames.forEach((sheetName, index) => {
   const ws = wb.Sheets[sheetName]
   const data = XLSX.utils.sheet_to_json(ws, { header: 1 })
   data.forEach((row, rowIndex) => {
-    if (rowIndex < 20) { // Solo primeras 20 filas
+    if (rowIndex < 20) {
+      // Solo primeras 20 filas
       console.log(row.join(' | '))
     }
   })

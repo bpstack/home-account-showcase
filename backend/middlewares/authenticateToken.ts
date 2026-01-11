@@ -3,14 +3,11 @@
 import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '../services/auth/tokenService.js'
 
-// Extender Request para incluir user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string
-        email: string
-      }
+declare module 'express' {
+  interface Request {
+    user?: {
+      id: string
+      email: string
     }
   }
 }
@@ -22,9 +19,7 @@ declare global {
 export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
   try {
     const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.startsWith('Bearer ')
-      ? authHeader.substring(7)
-      : null
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null
 
     if (!token) {
       res.status(401).json({

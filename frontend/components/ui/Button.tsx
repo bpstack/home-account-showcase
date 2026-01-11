@@ -8,7 +8,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', isLoading, children, disabled, ...props }, ref) => {
+  (
+    { className, variant = 'default', size = 'default', isLoading, children, disabled, ...props },
+    ref
+  ) => {
     return (
       <button
         className={cn(
@@ -17,7 +20,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'bg-accent text-white hover:bg-accent-hover': variant === 'default',
             'bg-layer-2 text-text-primary hover:bg-layer-3': variant === 'secondary',
             'hover:bg-layer-2 text-text-primary': variant === 'ghost',
-            'border border-layer-3 bg-transparent hover:bg-layer-1 text-text-primary': variant === 'outline',
+            'border border-layer-3 bg-transparent hover:bg-layer-1 text-text-primary':
+              variant === 'outline',
             'bg-danger text-white hover:bg-danger/90': variant === 'danger',
           },
           {

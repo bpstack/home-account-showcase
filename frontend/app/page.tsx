@@ -1,6 +1,15 @@
 'use client'
 
-import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, ThemeToggle } from '@/components/ui'
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  Input,
+  ThemeToggle,
+} from '@/components/ui'
 
 export default function Home() {
   return (

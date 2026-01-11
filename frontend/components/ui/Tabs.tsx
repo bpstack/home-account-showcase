@@ -16,7 +16,13 @@ interface TabsProps {
   variant?: 'default' | 'pills'
 }
 
-export function Tabs({ tabs, defaultTab, paramName = 'tab', className, variant = 'default' }: TabsProps) {
+export function Tabs({
+  tabs,
+  defaultTab,
+  paramName = 'tab',
+  className,
+  variant = 'default',
+}: TabsProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

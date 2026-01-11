@@ -2,14 +2,17 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
-interface ApiResponse<T> {
-  success: boolean
-  error?: string
-  [key: string]: unknown
+type RequestOptions = {
+  method?: string
+  headers?: Record<string, string>
+  body?: string
 }
 
 class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    private _status: number,
+    message: string
+  ) {
     super(message)
     this.name = 'ApiError'
   }
@@ -20,10 +23,7 @@ function getToken(): string | null {
   return localStorage.getItem('token')
 }
 
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const token = getToken()
 
   const headers: Record<string, string> = {
@@ -54,16 +54,22 @@ async function request<T>(
 // Auth
 export const auth = {
   login: (email: string, password: string) =>
-    request<{ success: boolean; token: string; user: { id: string; email: string; name: string } }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    }),
+    request<{ success: boolean; token: string; user: { id: string; email: string; name: string } }>(
+      '/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      }
+    ),
 
   register: (email: string, password: string, name: string) =>
-    request<{ success: boolean; token: string; user: { id: string; email: string; name: string } }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, name }),
-    }),
+    request<{ success: boolean; token: string; user: { id: string; email: string; name: string } }>(
+      '/auth/register',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, password, name }),
+      }
+    ),
 
   me: () =>
     request<{ success: boolean; user: { id: string; email: string; name: string } }>('/auth/me'),
@@ -71,8 +77,7 @@ export const auth = {
 
 // Accounts
 export const accounts = {
-  getAll: () =>
-    request<{ success: boolean; accounts: Account[] }>('/accounts'),
+  getAll: () => request<{ success: boolean; accounts: Account[] }>('/accounts'),
 }
 
 // Categories
@@ -80,8 +85,7 @@ export const categories = {
   getAll: (accountId: string) =>
     request<{ success: boolean; categories: Category[] }>(`/categories?account_id=${accountId}`),
 
-  getById: (id: string) =>
-    request<{ success: boolean; category: Category }>(`/categories/${id}`),
+  getById: (id: string) => request<{ success: boolean; category: Category }>(`/categories/${id}`),
 
   create: (data: { account_id: string; name: string; color?: string; icon?: string }) =>
     request<{ success: boolean; category: Category }>('/categories', {
@@ -95,8 +99,7 @@ export const categories = {
       body: JSON.stringify(data),
     }),
 
-  delete: (id: string) =>
-    request<{ success: boolean }>(`/categories/${id}`, { method: 'DELETE' }),
+  delete: (id: string) => request<{ success: boolean }>(`/categories/${id}`, { method: 'DELETE' }),
 
   addDefaults: (accountId: string) =>
     request<{ success: boolean; categories: number; subcategories: number }>(
@@ -120,7 +123,9 @@ export const categories = {
 // Subcategories
 export const subcategories = {
   getAll: (categoryId: string) =>
-    request<{ success: boolean; subcategories: Subcategory[] }>(`/subcategories?category_id=${categoryId}`),
+    request<{ success: boolean; subcategories: Subcategory[] }>(
+      `/subcategories?category_id=${categoryId}`
+    ),
 
   create: (data: { category_id: string; name: string }) =>
     request<{ success: boolean; subcategory: Subcategory }>('/subcategories', {
@@ -146,13 +151,17 @@ export const transactions = {
     if (params.start_date) searchParams.set('start_date', params.start_date)
     if (params.end_date) searchParams.set('end_date', params.end_date)
     if (params.subcategory_id) searchParams.set('subcategory_id', params.subcategory_id)
-    if (params.min_amount !== undefined) searchParams.set('min_amount', params.min_amount.toString())
-    if (params.max_amount !== undefined) searchParams.set('max_amount', params.max_amount.toString())
+    if (params.min_amount !== undefined)
+      searchParams.set('min_amount', params.min_amount.toString())
+    if (params.max_amount !== undefined)
+      searchParams.set('max_amount', params.max_amount.toString())
     if (params.search) searchParams.set('search', params.search)
     if (params.limit) searchParams.set('limit', params.limit.toString())
     if (params.offset) searchParams.set('offset', params.offset.toString())
 
-    return request<{ success: boolean; transactions: Transaction[] }>(`/transactions?${searchParams}`)
+    return request<{ success: boolean; transactions: Transaction[] }>(
+      `/transactions?${searchParams}`
+    )
   },
 
   getById: (id: string) =>
@@ -177,7 +186,9 @@ export const transactions = {
     const params = new URLSearchParams({ account_id: accountId })
     if (startDate) params.set('start_date', startDate)
     if (endDate) params.set('end_date', endDate)
-    return request<{ success: boolean; summary: CategorySummary[]; total: number }>(`/transactions/summary?${params}`)
+    return request<{ success: boolean; summary: CategorySummary[]; total: number }>(
+      `/transactions/summary?${params}`
+    )
   },
 }
 

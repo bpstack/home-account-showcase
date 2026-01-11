@@ -14,7 +14,7 @@ type ThemeProviderProps = {
 
 type ThemeProviderState = {
   theme: Theme
-  setTheme: (theme: Theme) => void
+  setTheme: (_theme: Theme) => void
 }
 
 const initialState: ThemeProviderState = {
@@ -63,18 +63,13 @@ export function ThemeProvider({
     [theme, storageKey]
   )
 
-  return (
-    <ThemeProviderContext.Provider value={value}>
-      {children}
-    </ThemeProviderContext.Provider>
-  )
+  return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>
 }
 
 export const useTheme = () => {
   const context = React.useContext(ThemeProviderContext)
 
-  if (context === undefined)
-    throw new Error('useTheme must be used within a ThemeProvider')
+  if (context === undefined) throw new Error('useTheme must be used within a ThemeProvider')
 
   return context
 }

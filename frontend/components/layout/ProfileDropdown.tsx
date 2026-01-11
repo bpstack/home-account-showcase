@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, LogOut, ChevronDown, CreditCard, PieChart, Tags, Wallet } from 'lucide-react'
+import { LogOut, ChevronDown, CreditCard, PieChart, Tags, Wallet } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 export function ProfileDropdown() {
@@ -49,7 +49,9 @@ export function ProfileDropdown() {
         </div>
         <div className="hidden md:block text-left">
           <p className="text-sm font-medium text-text-primary leading-tight">{user.name}</p>
-          <p className="text-xs text-text-secondary leading-tight">{account?.name || 'Mi cuenta'}</p>
+          <p className="text-xs text-text-secondary leading-tight">
+            {account?.name || 'Mi cuenta'}
+          </p>
         </div>
         <ChevronDown
           className={`hidden md:block h-4 w-4 text-text-secondary transition-transform duration-200 ${

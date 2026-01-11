@@ -1,3 +1,4 @@
+import React from 'react'
 import { cn } from '@/lib/utils'
 
 interface CardProps {
@@ -11,7 +12,8 @@ export function Card({ children, className, hover = false }: CardProps) {
     <div
       className={cn(
         'bg-layer-1 border border-layer-3 rounded-lg p-6',
-        hover && 'transition-all duration-300 hover:border-accent hover:shadow-lg hover:shadow-accent/10',
+        hover &&
+          'transition-all duration-300 hover:border-accent hover:shadow-lg hover:shadow-accent/10',
         className
       )}
     >

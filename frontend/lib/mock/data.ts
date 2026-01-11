@@ -177,60 +177,218 @@ export const mockCategories: Category[] = [
 // Transacciones mock - Enero 2025 (basado en estructura real, datos ficticios)
 export const mockTransactions: Transaction[] = [
   // Gastos Fijos
-  { id: 'tx_001', subcategoryId: 'sub_010', date: '2025-01-02', description: 'COMUNIDAD', amount: -94.85 },
-  { id: 'tx_002', subcategoryId: 'sub_011', date: '2025-01-01', description: 'HIPOTECA', amount: -576.25 },
-  { id: 'tx_003', subcategoryId: 'sub_009', date: '2025-01-02', description: 'INTERNET FIBRA', amount: -64.90 },
+  {
+    id: 'tx_001',
+    subcategoryId: 'sub_010',
+    date: '2025-01-02',
+    description: 'COMUNIDAD',
+    amount: -94.85,
+  },
+  {
+    id: 'tx_002',
+    subcategoryId: 'sub_011',
+    date: '2025-01-01',
+    description: 'HIPOTECA',
+    amount: -576.25,
+  },
+  {
+    id: 'tx_003',
+    subcategoryId: 'sub_009',
+    date: '2025-01-02',
+    description: 'INTERNET FIBRA',
+    amount: -64.9,
+  },
 
   // Formación
-  { id: 'tx_004', subcategoryId: 'sub_015', date: '2025-01-02', description: 'Recibo Academia extraescolar', amount: -35.02 },
-  { id: 'tx_005', subcategoryId: 'sub_015', date: '2025-01-02', description: 'Material actividad', amount: -2.00 },
-  { id: 'tx_006', subcategoryId: 'sub_017', date: '2025-01-02', description: 'CLASES INGLÉS', amount: -73.00 },
-  { id: 'tx_007', subcategoryId: 'sub_012', date: '2025-01-08', description: 'Recibo comedor escolar', amount: -22.16 },
+  {
+    id: 'tx_004',
+    subcategoryId: 'sub_015',
+    date: '2025-01-02',
+    description: 'Recibo Academia extraescolar',
+    amount: -35.02,
+  },
+  {
+    id: 'tx_005',
+    subcategoryId: 'sub_015',
+    date: '2025-01-02',
+    description: 'Material actividad',
+    amount: -2.0,
+  },
+  {
+    id: 'tx_006',
+    subcategoryId: 'sub_017',
+    date: '2025-01-02',
+    description: 'CLASES INGLÉS',
+    amount: -73.0,
+  },
+  {
+    id: 'tx_007',
+    subcategoryId: 'sub_012',
+    date: '2025-01-08',
+    description: 'Recibo comedor escolar',
+    amount: -22.16,
+  },
 
   // Supermercado / Alimentación
-  { id: 'tx_008', subcategoryId: 'sub_005', date: '2025-01-02', description: 'Compra supermercado', amount: -5.50 },
-  { id: 'tx_009', subcategoryId: 'sub_005', date: '2025-01-02', description: 'Compra alimentación', amount: -25.34 },
-  { id: 'tx_010', subcategoryId: 'sub_005', date: '2025-01-04', description: 'Compra semanal', amount: -19.19 },
-  { id: 'tx_011', subcategoryId: 'sub_005', date: '2025-01-12', description: 'Compra supermercado', amount: -89.16 },
-  { id: 'tx_012', subcategoryId: 'sub_005', date: '2025-01-14', description: 'Compra supermercado', amount: -18.62 },
-  { id: 'tx_013', subcategoryId: 'sub_005', date: '2025-01-14', description: 'Compra supermercado', amount: -16.67 },
+  {
+    id: 'tx_008',
+    subcategoryId: 'sub_005',
+    date: '2025-01-02',
+    description: 'Compra supermercado',
+    amount: -5.5,
+  },
+  {
+    id: 'tx_009',
+    subcategoryId: 'sub_005',
+    date: '2025-01-02',
+    description: 'Compra alimentación',
+    amount: -25.34,
+  },
+  {
+    id: 'tx_010',
+    subcategoryId: 'sub_005',
+    date: '2025-01-04',
+    description: 'Compra semanal',
+    amount: -19.19,
+  },
+  {
+    id: 'tx_011',
+    subcategoryId: 'sub_005',
+    date: '2025-01-12',
+    description: 'Compra supermercado',
+    amount: -89.16,
+  },
+  {
+    id: 'tx_012',
+    subcategoryId: 'sub_005',
+    date: '2025-01-14',
+    description: 'Compra supermercado',
+    amount: -18.62,
+  },
+  {
+    id: 'tx_013',
+    subcategoryId: 'sub_005',
+    date: '2025-01-14',
+    description: 'Compra supermercado',
+    amount: -16.67,
+  },
 
   // Ropa
-  { id: 'tx_014', subcategoryId: 'sub_002', date: '2025-01-02', description: 'Tienda ropa', amount: -72.95 },
-  { id: 'tx_015', subcategoryId: 'sub_002', date: '2025-01-07', description: 'Compra ropa', amount: -133.03 },
+  {
+    id: 'tx_014',
+    subcategoryId: 'sub_002',
+    date: '2025-01-02',
+    description: 'Tienda ropa',
+    amount: -72.95,
+  },
+  {
+    id: 'tx_015',
+    subcategoryId: 'sub_002',
+    date: '2025-01-07',
+    description: 'Compra ropa',
+    amount: -133.03,
+  },
 
   // Ocio
-  { id: 'tx_016', subcategoryId: 'sub_019', date: '2025-01-01', description: 'REGALOS REYES', amount: -100.00 },
-  { id: 'tx_017', subcategoryId: 'sub_019', date: '2025-01-02', description: 'REGALOS', amount: -31.28 },
-  { id: 'tx_018', subcategoryId: 'sub_019', date: '2025-01-03', description: 'COMPRA ONLINE REGALOS', amount: -100.00 },
-  { id: 'tx_019', subcategoryId: 'sub_023', date: '2025-01-05', description: 'Cafetería', amount: -6.80 },
+  {
+    id: 'tx_016',
+    subcategoryId: 'sub_019',
+    date: '2025-01-01',
+    description: 'REGALOS REYES',
+    amount: -100.0,
+  },
+  {
+    id: 'tx_017',
+    subcategoryId: 'sub_019',
+    date: '2025-01-02',
+    description: 'REGALOS',
+    amount: -31.28,
+  },
+  {
+    id: 'tx_018',
+    subcategoryId: 'sub_019',
+    date: '2025-01-03',
+    description: 'COMPRA ONLINE REGALOS',
+    amount: -100.0,
+  },
+  {
+    id: 'tx_019',
+    subcategoryId: 'sub_023',
+    date: '2025-01-05',
+    description: 'Cafetería',
+    amount: -6.8,
+  },
 
   // Transporte
-  { id: 'tx_020', subcategoryId: 'sub_027', date: '2025-01-05', description: 'Billete tren', amount: -3.20 },
-  { id: 'tx_021', subcategoryId: 'sub_025', date: '2025-01-09', description: 'Gasolinera', amount: -58.88 },
-  { id: 'tx_022', subcategoryId: 'sub_025', date: '2025-01-14', description: 'Repostaje', amount: -37.74 },
+  {
+    id: 'tx_020',
+    subcategoryId: 'sub_027',
+    date: '2025-01-05',
+    description: 'Billete tren',
+    amount: -3.2,
+  },
+  {
+    id: 'tx_021',
+    subcategoryId: 'sub_025',
+    date: '2025-01-09',
+    description: 'Gasolinera',
+    amount: -58.88,
+  },
+  {
+    id: 'tx_022',
+    subcategoryId: 'sub_025',
+    date: '2025-01-14',
+    description: 'Repostaje',
+    amount: -37.74,
+  },
 
   // Efectivo
-  { id: 'tx_023', subcategoryId: 'sub_043', date: '2025-01-01', description: 'Bizum cena fin de año', amount: -50.00 },
+  {
+    id: 'tx_023',
+    subcategoryId: 'sub_043',
+    date: '2025-01-01',
+    description: 'Bizum cena fin de año',
+    amount: -50.0,
+  },
 
   // Seguros
-  { id: 'tx_024', subcategoryId: 'sub_038', date: '2025-01-05', description: 'SEGURO VIVIENDA', amount: -32.42 },
-  { id: 'tx_025', subcategoryId: 'sub_041', date: '2025-01-05', description: 'SEGURO VIDA', amount: -32.08 },
+  {
+    id: 'tx_024',
+    subcategoryId: 'sub_038',
+    date: '2025-01-05',
+    description: 'SEGURO VIVIENDA',
+    amount: -32.42,
+  },
+  {
+    id: 'tx_025',
+    subcategoryId: 'sub_041',
+    date: '2025-01-05',
+    description: 'SEGURO VIDA',
+    amount: -32.08,
+  },
 
   // Sin categorizar
-  { id: 'tx_026', subcategoryId: null, date: '2025-01-10', description: 'Pago pendiente revisar', amount: -15.00, bankCategory: 'Otros', bankSubcategory: 'Otros gastos' },
+  {
+    id: 'tx_026',
+    subcategoryId: null,
+    date: '2025-01-10',
+    description: 'Pago pendiente revisar',
+    amount: -15.0,
+    bankCategory: 'Otros',
+    bankSubcategory: 'Otros gastos',
+  },
 ]
 
 // Balance mensual (estructura similar al Excel)
 export const mockMonthlyBalance: MonthlyBalance[] = [
   {
     month: 'Enero',
-    nomina1: 2550.00,
+    nomina1: 2550.0,
     nomina2: 1521.51,
     gastosFijos: 825.62,
-    transferencias: 1800.00,
-    bizum: 15.00,
-    bonificaciones: 7.60,
+    transferencias: 1800.0,
+    bizum: 15.0,
+    bonificaciones: 7.6,
     otrosIngresos: 0,
     totalIngresos: 4169.73,
     ahorro: 961.92,
@@ -239,38 +397,38 @@ export const mockMonthlyBalance: MonthlyBalance[] = [
   },
   {
     month: 'Febrero',
-    nomina1: 1290.00,
+    nomina1: 1290.0,
     nomina2: 1509.55,
     gastosFijos: 825.62,
-    transferencias: 670.00,
-    bizum: 45.00,
+    transferencias: 670.0,
+    bizum: 45.0,
     bonificaciones: 7.66,
     otrosIngresos: 0,
     totalIngresos: 3057.83,
-    ahorro: 405.60,
+    ahorro: 405.6,
     totalGastos: 2652.23,
     saldoCC: 25296.41,
   },
   {
     month: 'Marzo',
-    nomina1: 1290.00,
+    nomina1: 1290.0,
     nomina2: 1511.03,
     gastosFijos: 825.62,
-    transferencias: 390.00,
+    transferencias: 390.0,
     bizum: 5.03,
     bonificaciones: 0,
     otrosIngresos: 0,
     totalIngresos: 2731.68,
-    ahorro: 145.70,
+    ahorro: 145.7,
     totalGastos: 2585.98,
-    saldoCC: 25442.10,
+    saldoCC: 25442.1,
   },
   {
     month: 'Abril',
-    nomina1: 1290.00,
+    nomina1: 1290.0,
     nomina2: 1512.34,
     gastosFijos: 825.62,
-    transferencias: 1137.00,
+    transferencias: 1137.0,
     bizum: 10.61,
     bonificaciones: 0,
     otrosIngresos: 0,
@@ -281,10 +439,10 @@ export const mockMonthlyBalance: MonthlyBalance[] = [
   },
   {
     month: 'Mayo',
-    nomina1: 1290.00,
+    nomina1: 1290.0,
     nomina2: 1720.79,
     gastosFijos: 825.62,
-    transferencias: 513.00,
+    transferencias: 513.0,
     bizum: 4.68,
     bonificaciones: 78.82,
     otrosIngresos: 0,
@@ -295,24 +453,24 @@ export const mockMonthlyBalance: MonthlyBalance[] = [
   },
   {
     month: 'Junio',
-    nomina1: 1290.00,
+    nomina1: 1290.0,
     nomina2: 1534.54,
     gastosFijos: 825.62,
-    transferencias: 440.00,
+    transferencias: 440.0,
     bizum: 5.71,
     bonificaciones: 1398.91,
     otrosIngresos: 0,
     totalIngresos: 4204.78,
-    ahorro: 788.60,
+    ahorro: 788.6,
     totalGastos: 3416.18,
     saldoCC: 26916.32,
   },
   {
     month: 'Julio',
-    nomina1: 2550.00,
+    nomina1: 2550.0,
     nomina2: 1521.08,
     gastosFijos: 825.62,
-    transferencias: 1450.00,
+    transferencias: 1450.0,
     bizum: 7.42,
     bonificaciones: 0,
     otrosIngresos: 0,
@@ -321,40 +479,101 @@ export const mockMonthlyBalance: MonthlyBalance[] = [
     totalGastos: 3395.91,
     saldoCC: 27324.53,
   },
-  { month: 'Agosto', nomina1: 0, nomina2: 0, gastosFijos: 825.62, transferencias: 0, bizum: 0, bonificaciones: 0, otrosIngresos: 0, totalIngresos: 825.62, ahorro: 575.62, totalGastos: 250.00, saldoCC: 27900.14 },
-  { month: 'Septiembre', nomina1: 0, nomina2: 0, gastosFijos: 825.62, transferencias: 0, bizum: 0, bonificaciones: 0, otrosIngresos: 0, totalIngresos: 825.62, ahorro: 825.62, totalGastos: 0, saldoCC: 28725.76 },
-  { month: 'Octubre', nomina1: 0, nomina2: 0, gastosFijos: 0, transferencias: 0, bizum: 0, bonificaciones: 0, otrosIngresos: 0, totalIngresos: 0, ahorro: 0, totalGastos: 0, saldoCC: 0 },
-  { month: 'Noviembre', nomina1: 0, nomina2: 0, gastosFijos: 0, transferencias: 0, bizum: 0, bonificaciones: 0, otrosIngresos: 0, totalIngresos: 0, ahorro: 0, totalGastos: 0, saldoCC: 0 },
-  { month: 'Diciembre', nomina1: 0, nomina2: 0, gastosFijos: 0, transferencias: 0, bizum: 0, bonificaciones: 0, otrosIngresos: 0, totalIngresos: 0, ahorro: 0, totalGastos: 0, saldoCC: 0 },
+  {
+    month: 'Agosto',
+    nomina1: 0,
+    nomina2: 0,
+    gastosFijos: 825.62,
+    transferencias: 0,
+    bizum: 0,
+    bonificaciones: 0,
+    otrosIngresos: 0,
+    totalIngresos: 825.62,
+    ahorro: 575.62,
+    totalGastos: 250.0,
+    saldoCC: 27900.14,
+  },
+  {
+    month: 'Septiembre',
+    nomina1: 0,
+    nomina2: 0,
+    gastosFijos: 825.62,
+    transferencias: 0,
+    bizum: 0,
+    bonificaciones: 0,
+    otrosIngresos: 0,
+    totalIngresos: 825.62,
+    ahorro: 825.62,
+    totalGastos: 0,
+    saldoCC: 28725.76,
+  },
+  {
+    month: 'Octubre',
+    nomina1: 0,
+    nomina2: 0,
+    gastosFijos: 0,
+    transferencias: 0,
+    bizum: 0,
+    bonificaciones: 0,
+    otrosIngresos: 0,
+    totalIngresos: 0,
+    ahorro: 0,
+    totalGastos: 0,
+    saldoCC: 0,
+  },
+  {
+    month: 'Noviembre',
+    nomina1: 0,
+    nomina2: 0,
+    gastosFijos: 0,
+    transferencias: 0,
+    bizum: 0,
+    bonificaciones: 0,
+    otrosIngresos: 0,
+    totalIngresos: 0,
+    ahorro: 0,
+    totalGastos: 0,
+    saldoCC: 0,
+  },
+  {
+    month: 'Diciembre',
+    nomina1: 0,
+    nomina2: 0,
+    gastosFijos: 0,
+    transferencias: 0,
+    bizum: 0,
+    bonificaciones: 0,
+    otrosIngresos: 0,
+    totalIngresos: 0,
+    ahorro: 0,
+    totalGastos: 0,
+    saldoCC: 0,
+  },
 ]
 
 // Helpers
 export function getCategory(categoryId: string): Category | undefined {
-  return mockCategories.find(c => c.id === categoryId)
+  return mockCategories.find((c) => c.id === categoryId)
 }
 
 export function getSubcategory(subcategoryId: string): Subcategory | undefined {
   for (const category of mockCategories) {
-    const sub = category.subcategories.find(s => s.id === subcategoryId)
+    const sub = category.subcategories.find((s) => s.id === subcategoryId)
     if (sub) return sub
   }
   return undefined
 }
 
 export function getCategoryBySubcategory(subcategoryId: string): Category | undefined {
-  return mockCategories.find(c =>
-    c.subcategories.some(s => s.id === subcategoryId)
-  )
+  return mockCategories.find((c) => c.subcategories.some((s) => s.id === subcategoryId))
 }
 
 // Estadísticas
 export function getMonthlyStats(transactions: Transaction[]) {
-  const income = transactions
-    .filter(t => t.amount > 0)
-    .reduce((sum, t) => sum + t.amount, 0)
+  const income = transactions.filter((t) => t.amount > 0).reduce((sum, t) => sum + t.amount, 0)
 
   const expenses = transactions
-    .filter(t => t.amount < 0)
+    .filter((t) => t.amount < 0)
     .reduce((sum, t) => sum + Math.abs(t.amount), 0)
 
   const balance = income - expenses
@@ -363,7 +582,7 @@ export function getMonthlyStats(transactions: Transaction[]) {
 }
 
 export function getExpensesByCategory(transactions: Transaction[]) {
-  const expenses = transactions.filter(t => t.amount < 0)
+  const expenses = transactions.filter((t) => t.amount < 0)
   const byCategory: Record<string, number> = {}
 
   for (const tx of expenses) {

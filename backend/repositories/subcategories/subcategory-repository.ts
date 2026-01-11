@@ -91,7 +91,11 @@ export class SubcategoryRepository {
   /**
    * Actualizar subcategoría
    */
-  static async update(subcategoryId: string, userId: string, data: UpdateSubcategoryDTO): Promise<Subcategory | null> {
+  static async update(
+    subcategoryId: string,
+    userId: string,
+    data: UpdateSubcategoryDTO
+  ): Promise<Subcategory | null> {
     const subcategory = await this.getById(subcategoryId, userId)
     if (!subcategory) {
       return null
@@ -102,10 +106,7 @@ export class SubcategoryRepository {
     }
 
     try {
-      await db.query(
-        `UPDATE subcategories SET name = ? WHERE id = ?`,
-        [data.name, subcategoryId]
-      )
+      await db.query(`UPDATE subcategories SET name = ? WHERE id = ?`, [data.name, subcategoryId])
 
       return this.getById(subcategoryId, userId)
     } catch (error: any) {
@@ -125,10 +126,7 @@ export class SubcategoryRepository {
       return false
     }
 
-    const [result] = await db.query<any>(
-      `DELETE FROM subcategories WHERE id = ?`,
-      [subcategoryId]
-    )
+    const [result] = await db.query<any>(`DELETE FROM subcategories WHERE id = ?`, [subcategoryId])
 
     return result.affectedRows > 0
   }

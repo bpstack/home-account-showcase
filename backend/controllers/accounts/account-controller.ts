@@ -1,7 +1,6 @@
 // controllers/accounts/account-controller.ts
 
 import { Request, Response } from 'express'
-import db from '../../config/db.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
 
 /**
@@ -55,85 +54,85 @@ export const getAccountById = async (req: Request, res: Response): Promise<void>
   }
 }
 
-  /**
-   * Crear nueva account con categorías por defecto
-   * POST /api/accounts
-   */
-  export const createAccount = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { name } = req.body
+/**
+ * Crear nueva account con categorías por defecto
+ * POST /api/accounts
+ */
+export const createAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name } = req.body
 
-      if (!name) {
-        res.status(400).json({
-          success: false,
-          error: 'El nombre es requerido',
-        })
-        return
-      }
-
-      const result = await AccountRepository.createWithDefaults({
-        name,
-        userId: req.user!.id,
-      })
-
-      res.status(201).json({
-        success: true,
-        account: result.account,
-        categoriesCopied: result.categoriesCopied,
-      })
-    } catch (error) {
-      console.error('Error en createAccount:', error)
-      res.status(500).json({
+    if (!name) {
+      res.status(400).json({
         success: false,
-        error: 'Error interno del servidor',
+        error: 'El nombre es requerido',
       })
+      return
     }
+
+    const result = await AccountRepository.createWithDefaults({
+      name,
+      userId: req.user!.id,
+    })
+
+    res.status(201).json({
+      success: true,
+      account: result.account,
+      categoriesCopied: result.categoriesCopied,
+    })
+  } catch (error) {
+    console.error('Error en createAccount:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
   }
+}
 
-  /**
-   * Agregar categorías por defecto a una cuenta existente
-   * POST /api/accounts/:id/categories/default
-   */
-  export const addDefaultCategories = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { id } = req.params
+/**
+ * Agregar categorías por defecto a una cuenta existente
+ * POST /api/accounts/:id/categories/default
+ */
+export const addDefaultCategories = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
 
-      // Verificar que es owner
-      const role = await AccountRepository.getUserRole(id, req.user!.id)
+    // Verificar que es owner
+    const role = await AccountRepository.getUserRole(id, req.user!.id)
 
-      if (role !== 'owner') {
-        res.status(403).json({
-          success: false,
-          error: 'Solo el owner puede agregar categorías por defecto',
-        })
-        return
-      }
-
-      const result = await AccountRepository.copyDefaultCategories(id)
-
-      res.status(201).json({
-        success: true,
-        message: `Categorías agregadas: ${result.categories} categorías, ${result.subcategories} subcategorías`,
-        ...result,
-      })
-    } catch (error) {
-      const err = error as Error
-
-      if (err.message === 'Solo el owner puede agregar categorías por defecto') {
-        res.status(403).json({
-          success: false,
-          error: err.message,
-        })
-        return
-      }
-
-      console.error('Error en addDefaultCategories:', error)
-      res.status(500).json({
+    if (role !== 'owner') {
+      res.status(403).json({
         success: false,
-        error: 'Error interno del servidor',
+        error: 'Solo el owner puede agregar categorías por defecto',
       })
+      return
     }
+
+    const result = await AccountRepository.copyDefaultCategories(id)
+
+    res.status(201).json({
+      success: true,
+      message: `Categorías agregadas: ${result.categories} categorías, ${result.subcategories} subcategorías`,
+      ...result,
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'Solo el owner puede agregar categorías por defecto') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en addDefaultCategories:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
   }
+}
 
 /**
  * Actualizar account

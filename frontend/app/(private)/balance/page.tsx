@@ -1,9 +1,27 @@
 'use client'
 
-import { Card, CardHeader, CardTitle, CardContent, Button, Tabs, useActiveTab } from '@/components/ui'
-import { mockMonthlyBalance, mockCategories, mockTransactions } from '@/lib/mock/data'
-import { ArrowLeft, ArrowRight, Download, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { transactions as transactionsApi } from '@/lib/apiClient'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Tabs,
+  useActiveTab,
+} from '@/components/ui'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Loader2,
+} from 'lucide-react'
+import type { Transaction } from '@/lib/apiClient'
 
 const tabs = [
   { id: 'balance', label: 'Balance Mensual' },
@@ -12,13 +30,108 @@ const tabs = [
 ]
 
 const months = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ]
 
 export default function BalancePage() {
+  const { account } = useAuth()
   const activeTab = useActiveTab('tab', 'balance')
-  const [currentMonth, setCurrentMonth] = useState(0)
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadTransactions = useCallback(async () => {
+    if (!account) return
+    setIsLoading(true)
+
+    try {
+      const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
+      const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
+
+      const response = await transactionsApi.getAll({
+        account_id: account.id,
+        start_date: startDate,
+        end_date: endDate,
+      })
+
+      setTransactions(response.transactions)
+    } catch (error) {
+      console.error('Error loading transactions:', error)
+      setTransactions([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [account, currentYear, currentMonth])
+
+  useEffect(() => {
+    if (account) {
+      loadTransactions()
+    }
+  }, [account, currentMonth, currentYear, loadTransactions])
+
+  const prevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(currentYear - 1)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
+
+  const nextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(currentYear + 1)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  // Calculate totals from real transactions
+  const totals = transactions.reduce(
+    (acc, tx) => {
+      const amount = Number(tx.amount)
+      if (amount >= 0) {
+        acc.income += amount
+      } else {
+        acc.expenses += Math.abs(amount)
+      }
+      return acc
+    },
+    { income: 0, expenses: 0 }
+  )
+
+  const savings = totals.income - totals.expenses
+
+  // Group income by description (simple categorization)
+  const incomeByType = transactions
+    .filter((tx) => Number(tx.amount) >= 0)
+    .reduce(
+      (acc, tx) => {
+        const desc = tx.description.toLowerCase()
+        let type = 'Otros Ingresos'
+        if (desc.includes('nómina') || desc.includes('nomina')) type = 'Nómina'
+        else if (desc.includes('transferencia') || desc.includes('transfer'))
+          type = 'Transferencias'
+        else if (desc.includes('bizum')) type = 'Bizum'
+        else if (desc.includes('bonus') || desc.includes('bonific')) type = 'Bonificaciones'
+        acc[type] = (acc[type] || 0) + Number(tx.amount)
+        return acc
+      },
+      {} as Record<string, number>
+    )
 
   return (
     <div>
@@ -26,44 +139,45 @@ export default function BalancePage() {
         <Tabs tabs={tabs} defaultTab="balance" />
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentMonth(Math.max(0, currentMonth - 1))}
-            disabled={currentMonth === 0}
-          >
+          <Button variant="ghost" size="icon" onClick={prevMonth}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-medium text-text-primary min-w-[100px] text-center">
-            {months[currentMonth]}
+          <span className="text-sm font-medium text-text-primary min-w-[140px] text-center">
+            {months[currentMonth]} {currentYear}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentMonth(Math.min(11, currentMonth + 1))}
-            disabled={currentMonth === 11}
-          >
+          <Button variant="ghost" size="icon" onClick={nextMonth}>
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {activeTab === 'balance' && <BalanceTab currentMonth={currentMonth} />}
-      {activeTab === 'income' && <IncomeTab currentMonth={currentMonth} />}
-      {activeTab === 'expenses' && <ExpensesTab currentMonth={currentMonth} />}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12 gap-2 text-text-secondary">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Cargando datos...
+        </div>
+      ) : (
+        <>
+          {activeTab === 'balance' && <BalanceTab totals={totals} savings={savings} />}
+          {activeTab === 'income' && (
+            <IncomeTab incomeByType={incomeByType} totalIncome={totals.income} />
+          )}
+          {activeTab === 'expenses' && <ExpensesTab totals={totals} savings={savings} />}
+        </>
+      )}
     </div>
   )
 }
 
-function BalanceTab({ currentMonth }: { currentMonth: number }) {
-  const data = mockMonthlyBalance[currentMonth]
-
+function BalanceTab({
+  totals,
+  savings,
+}: {
+  totals: { income: number; expenses: number }
+  savings: number
+}) {
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2
-    }).format(value)
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
   }
 
   return (
@@ -77,7 +191,7 @@ function BalanceTab({ currentMonth }: { currentMonth: number }) {
               </div>
               <div>
                 <p className="text-sm text-text-secondary">Total Ingresos</p>
-                <p className="text-xl font-bold text-success">{formatCurrency(data.totalIngresos)}</p>
+                <p className="text-xl font-bold text-success">+{formatCurrency(totals.income)}</p>
               </div>
             </div>
           </CardContent>
@@ -91,7 +205,7 @@ function BalanceTab({ currentMonth }: { currentMonth: number }) {
               </div>
               <div>
                 <p className="text-sm text-text-secondary">Total Gastos</p>
-                <p className="text-xl font-bold text-danger">-{formatCurrency(data.totalGastos)}</p>
+                <p className="text-xl font-bold text-danger">-{formatCurrency(totals.expenses)}</p>
               </div>
             </div>
           </CardContent>
@@ -105,8 +219,9 @@ function BalanceTab({ currentMonth }: { currentMonth: number }) {
               </div>
               <div>
                 <p className="text-sm text-text-secondary">Ahorro</p>
-                <p className={`text-xl font-bold ${data.ahorro >= 0 ? 'text-accent' : 'text-danger'}`}>
-                  {data.ahorro >= 0 ? '+' : ''}{formatCurrency(data.ahorro)}
+                <p className={`text-xl font-bold ${savings >= 0 ? 'text-accent' : 'text-danger'}`}>
+                  {savings >= 0 ? '+' : ''}
+                  {formatCurrency(savings)}
                 </p>
               </div>
             </div>
@@ -121,71 +236,7 @@ function BalanceTab({ currentMonth }: { currentMonth: number }) {
               </div>
               <div>
                 <p className="text-sm text-text-secondary">Saldo CC</p>
-                <p className="text-xl font-bold text-text-primary">{formatCurrency(data.saldoCC)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Ingresos del mes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-layer-2">
-                <span className="text-text-secondary">Nómina 1</span>
-                <span className="font-medium text-success">{formatCurrency(data.nomina1)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-layer-2">
-                <span className="text-text-secondary">Nómina 2</span>
-                <span className="font-medium text-success">{formatCurrency(data.nomina2)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-layer-2">
-                <span className="text-text-secondary">Transferencias</span>
-                <span className="font-medium text-success">{formatCurrency(data.transferencias)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-layer-2">
-                <span className="text-text-secondary">Bizum</span>
-                <span className="font-medium text-success">{formatCurrency(data.bizum)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-layer-2">
-                <span className="text-text-secondary">Bonificaciones</span>
-                <span className="font-medium text-success">{formatCurrency(data.bonificaciones)}</span>
-              </div>
-              <div className="flex justify-between py-2 font-medium">
-                <span className="text-text-primary">Total Ingresos</span>
-                <span className="text-success">{formatCurrency(data.totalIngresos)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Gastos del mes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-layer-2">
-                <span className="text-text-secondary">Gastos Fijos</span>
-                <span className="font-medium text-danger">-{formatCurrency(data.gastosFijos)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-layer-2">
-                <span className="text-text-secondary">Otros Gastos</span>
-                <span className="font-medium text-danger">-{formatCurrency(data.totalGastos - data.gastosFijos)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-layer-2 font-medium">
-                <span className="text-text-primary">Total Gastos</span>
-                <span className="text-danger">-{formatCurrency(data.totalGastos)}</span>
-              </div>
-              <div className="flex justify-between py-2 font-bold">
-                <span className="text-text-primary">Ahorro</span>
-                <span className={data.ahorro >= 0 ? 'text-success' : 'text-danger'}>
-                  {data.ahorro >= 0 ? '+' : ''}{formatCurrency(data.ahorro)}
-                </span>
+                <p className="text-xl font-bold text-text-primary">{formatCurrency(savings)}</p>
               </div>
             </div>
           </CardContent>
@@ -194,175 +245,118 @@ function BalanceTab({ currentMonth }: { currentMonth: number }) {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Resumen Anual</CardTitle>
+          <CardTitle>Transacciones del mes</CardTitle>
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-layer-3 bg-layer-1">
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Mes</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary">Nómina 1</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary">Nómina 2</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary">Gastos Fijos</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary hidden md:table-cell">Transferencias</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary hidden lg:table-cell">Bizum</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary">Ingresos</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary">Gastos</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary">Ahorro</th>
-                  <th className="text-right py-3 px-4 font-medium text-text-secondary hidden xl:table-cell">Saldo CC</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockMonthlyBalance.map((row) => {
-                  const hasData = row.totalIngresos > 0 || row.totalGastos > 0
-                  return (
-                    <tr
-                      key={row.month}
-                      className={`border-b border-layer-2 hover:bg-layer-1 ${
-                        row.month === months[currentMonth] ? 'bg-accent/5' : ''
-                      }`}
-                    >
-                      <td className="py-3 px-4 font-medium text-text-primary">{row.month}</td>
-                      <td className="py-3 px-4 text-right text-text-secondary">{formatCurrency(row.nomina1)}</td>
-                      <td className="py-3 px-4 text-right text-text-secondary">{formatCurrency(row.nomina2)}</td>
-                      <td className="py-3 px-4 text-right text-text-secondary">{formatCurrency(row.gastosFijos)}</td>
-                      <td className="py-3 px-4 text-right text-text-secondary hidden md:table-cell">{formatCurrency(row.transferencias)}</td>
-                      <td className="py-3 px-4 text-right text-text-secondary hidden lg:table-cell">{formatCurrency(row.bizum)}</td>
-                      <td className="py-3 px-4 text-right text-success font-medium">{formatCurrency(row.totalIngresos)}</td>
-                      <td className="py-3 px-4 text-right text-danger">-{formatCurrency(row.totalGastos)}</td>
-                      <td className={`py-3 px-4 text-right font-medium ${row.ahorro >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {row.ahorro >= 0 ? '+' : ''}{formatCurrency(row.ahorro)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-text-secondary hidden xl:table-cell">{formatCurrency(row.saldoCC)}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="bg-layer-1 font-bold">
-                  <td className="py-3 px-4 text-text-primary">Total</td>
-                  <td className="py-3 px-4 text-right text-text-primary">
-                    {formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.nomina1, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-text-primary">
-                    {formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.nomina2, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-text-primary">
-                    {formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.gastosFijos, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-text-primary hidden md:table-cell">
-                    {formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.transferencias, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-text-primary hidden lg:table-cell">
-                    {formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.bizum, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-success">
-                    {formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.totalIngresos, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-danger">
-                    -{formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.totalGastos, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-accent">
-                    +{formatCurrency(mockMonthlyBalance.reduce((sum, m) => sum + m.ahorro, 0))}
-                  </td>
-                  <td className="py-3 px-4 text-right text-text-primary hidden xl:table-cell">
-                    {formatCurrency(mockMonthlyBalance[mockMonthlyBalance.length - 1]?.saldoCC || 0)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <p className="text-sm text-text-secondary text-center py-8">
+            Consulta el detalle en la sección Transacciones
+          </p>
         </CardContent>
       </Card>
     </div>
   )
 }
 
-function IncomeTab({ currentMonth }: { currentMonth: number }) {
-  const data = mockMonthlyBalance[currentMonth]
+function IncomeTab({
+  incomeByType,
+  totalIncome,
+}: {
+  incomeByType: Record<string, number>
+  totalIncome: number
+}) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
   }
 
+  const incomeTypes = [
+    { key: 'Nómina', label: 'Nómina' },
+    { key: 'Transferencias', label: 'Transferencias' },
+    { key: 'Bizum', label: 'Bizum' },
+    { key: 'Bonificaciones', label: 'Bonificaciones' },
+    { key: 'Otros Ingresos', label: 'Otros Ingresos' },
+  ]
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Desglose de Ingresos - {months[currentMonth]}</CardTitle>
+        <CardTitle>Desglose de Ingresos</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="text-center p-4 bg-layer-2 rounded-lg">
-            <p className="text-sm text-text-secondary mb-1">Nómina 1</p>
-            <p className="text-lg font-bold text-success">{formatCurrency(data.nomina1)}</p>
+        {totalIncome === 0 ? (
+          <p className="text-sm text-text-secondary text-center py-8">
+            No hay ingresos registrados este mes
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {incomeTypes.map(({ key, label }) => {
+              const value = incomeByType[key] || 0
+              if (value === 0) return null
+              return (
+                <div key={key} className="text-center p-4 bg-layer-2 rounded-lg">
+                  <p className="text-sm text-text-secondary mb-1">{label}</p>
+                  <p className="text-lg font-bold text-success">{formatCurrency(value)}</p>
+                </div>
+              )
+            })}
+            <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/30">
+              <p className="text-sm text-text-secondary mb-1">Total</p>
+              <p className="text-xl font-bold text-accent">{formatCurrency(totalIncome)}</p>
+            </div>
           </div>
-          <div className="text-center p-4 bg-layer-2 rounded-lg">
-            <p className="text-sm text-text-secondary mb-1">Nómina 2</p>
-            <p className="text-lg font-bold text-success">{formatCurrency(data.nomina2)}</p>
-          </div>
-          <div className="text-center p-4 bg-layer-2 rounded-lg">
-            <p className="text-sm text-text-secondary mb-1">Transferencias</p>
-            <p className="text-lg font-bold text-success">{formatCurrency(data.transferencias)}</p>
-          </div>
-          <div className="text-center p-4 bg-layer-2 rounded-lg">
-            <p className="text-sm text-text-secondary mb-1">Bizum</p>
-            <p className="text-lg font-bold text-success">{formatCurrency(data.bizum)}</p>
-          </div>
-          <div className="text-center p-4 bg-layer-2 rounded-lg">
-            <p className="text-sm text-text-secondary mb-1">Bonificaciones</p>
-            <p className="text-lg font-bold text-success">{formatCurrency(data.bonificaciones)}</p>
-          </div>
-          <div className="text-center p-4 bg-accent/10 rounded-lg border border-accent/30">
-            <p className="text-sm text-text-secondary mb-1">Total</p>
-            <p className="text-xl font-bold text-accent">{formatCurrency(data.totalIngresos)}</p>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-function ExpensesTab({ currentMonth }: { currentMonth: number }) {
+function ExpensesTab({
+  totals,
+  savings,
+}: {
+  totals: { income: number; expenses: number }
+  savings: number
+}) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
   }
 
-  const data = mockMonthlyBalance[currentMonth]
+  const variableExpenses = Math.max(0, totals.expenses - 576.25) // Assuming fixed expenses ~576.25
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Resumen de Gastos - {months[currentMonth]}</CardTitle>
+          <CardTitle>Resumen de Gastos</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg">
               <p className="text-sm text-text-secondary mb-1">Gastos Fijos</p>
-              <p className="text-2xl font-bold text-danger">-{formatCurrency(data.gastosFijos)}</p>
+              <p className="text-2xl font-bold text-danger">-{formatCurrency(576.25)}</p>
             </div>
             <div className="p-4 bg-layer-2 rounded-lg">
               <p className="text-sm text-text-secondary mb-1">Gastos Variables</p>
               <p className="text-2xl font-bold text-text-primary">
-                -{formatCurrency(Math.max(0, data.totalGastos - data.gastosFijos))}
+                -{formatCurrency(variableExpenses)}
               </p>
             </div>
             <div className="p-4 bg-danger/10 border border-danger/30 rounded-lg">
               <p className="text-sm text-text-secondary mb-1">Total Gastos</p>
-              <p className="text-2xl font-bold text-danger">-{formatCurrency(data.totalGastos)}</p>
+              <p className="text-2xl font-bold text-danger">-{formatCurrency(totals.expenses)}</p>
             </div>
-            <div className={`p-4 rounded-lg border ${
-              data.ahorro >= 0
-                ? 'bg-accent/10 border-accent/30'
-                : 'bg-danger/10 border-danger/30'
-            }`}>
+            <div
+              className={`p-4 rounded-lg border ${
+                savings >= 0 ? 'bg-accent/10 border-accent/30' : 'bg-danger/10 border-danger/30'
+              }`}
+            >
               <p className="text-sm text-text-secondary mb-1">Ahorro</p>
-              <p className={`text-2xl font-bold ${data.ahorro >= 0 ? 'text-accent' : 'text-danger'}`}>
-                {data.ahorro >= 0 ? '+' : ''}{formatCurrency(data.ahorro)}
+              <p className={`text-2xl font-bold ${savings >= 0 ? 'text-accent' : 'text-danger'}`}>
+                {savings >= 0 ? '+' : ''}
+                {formatCurrency(savings)}
               </p>
             </div>
           </div>
@@ -374,44 +368,9 @@ function ExpensesTab({ currentMonth }: { currentMonth: number }) {
           <CardTitle>Gastos por Categoría</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {mockCategories.map((category) => {
-              const categoryTransactions = mockTransactions.filter(
-                tx => tx.subcategoryId && category.subcategories.some(s => s.id === tx.subcategoryId)
-              )
-              const total = categoryTransactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0)
-
-              if (total === 0) return null
-
-              const percentage = (total / data.totalGastos) * 100
-
-              return (
-                <div key={category.id}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="flex items-center gap-2 text-text-primary">
-                      <span
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      {category.name}
-                    </span>
-                    <span className="text-text-secondary">
-                      {formatCurrency(total)} ({percentage.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <div className="h-3 bg-layer-2 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${percentage}%`,
-                        backgroundColor: category.color
-                      }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <p className="text-sm text-text-secondary text-center py-8">
+            Consulta el desglose por categorías en la sección Transacciones
+          </p>
         </CardContent>
       </Card>
     </div>

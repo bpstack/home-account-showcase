@@ -27,10 +27,7 @@ export class AccountRepository {
       const accountUserId = crypto.randomUUID()
 
       // Crear account
-      await connection.query(
-        `INSERT INTO accounts (id, name) VALUES (?, ?)`,
-        [accountId, name]
-      )
+      await connection.query(`INSERT INTO accounts (id, name) VALUES (?, ?)`, [accountId, name])
 
       // Asignar usuario como owner
       await connection.query(
@@ -89,7 +86,11 @@ export class AccountRepository {
   /**
    * Actualizar nombre del account (solo owner)
    */
-  static async update(accountId: string, userId: string, { name }: UpdateAccountDTO): Promise<Account | null> {
+  static async update(
+    accountId: string,
+    userId: string,
+    { name }: UpdateAccountDTO
+  ): Promise<Account | null> {
     // Verificar que es owner
     const role = await this.getUserRole(accountId, userId)
 
@@ -97,10 +98,7 @@ export class AccountRepository {
       throw new Error('Solo el owner puede modificar la cuenta')
     }
 
-    await db.query(
-      `UPDATE accounts SET name = ? WHERE id = ?`,
-      [name, accountId]
-    )
+    await db.query(`UPDATE accounts SET name = ? WHERE id = ?`, [name, accountId])
 
     const [rows] = await db.query<AccountRow[]>(
       `SELECT id, name, created_at, updated_at FROM accounts WHERE id = ?`,
@@ -120,10 +118,7 @@ export class AccountRepository {
       throw new Error('Solo el owner puede eliminar la cuenta')
     }
 
-    const [result] = await db.query<any>(
-      `DELETE FROM accounts WHERE id = ?`,
-      [accountId]
-    )
+    const [result] = await db.query<any>(`DELETE FROM accounts WHERE id = ?`, [accountId])
 
     return result.affectedRows > 0
   }
@@ -177,7 +172,11 @@ export class AccountRepository {
   /**
    * Remover miembro del account (solo owner)
    */
-  static async removeMember(accountId: string, ownerId: string, memberId: string): Promise<boolean> {
+  static async removeMember(
+    accountId: string,
+    ownerId: string,
+    memberId: string
+  ): Promise<boolean> {
     const role = await this.getUserRole(accountId, ownerId)
 
     if (role !== 'owner') {
@@ -200,7 +199,9 @@ export class AccountRepository {
   /**
    * Copiar categorías por defecto a una cuenta
    */
-  static async copyDefaultCategories(accountId: string): Promise<{ categories: number; subcategories: number }> {
+  static async copyDefaultCategories(
+    accountId: string
+  ): Promise<{ categories: number; subcategories: number }> {
     const connection = await db.getConnection()
 
     try {
@@ -239,9 +240,8 @@ export class AccountRepository {
         }
 
         // Parsear subcategorías del JSON
-        const subcategories: string[] = typeof dc.subcategories === 'string'
-          ? JSON.parse(dc.subcategories)
-          : dc.subcategories
+        const subcategories: string[] =
+          typeof dc.subcategories === 'string' ? JSON.parse(dc.subcategories) : dc.subcategories
 
         // Crear subcategorías (solo si no existen)
         for (const subName of subcategories) {
@@ -276,7 +276,10 @@ export class AccountRepository {
   /**
    * Crear account con owner Y copiar categorías por defecto
    */
-  static async createWithDefaults({ name, userId }: CreateAccountDTO): Promise<{ account: Account; categoriesCopied: { categories: number; subcategories: number } }> {
+  static async createWithDefaults({ name, userId }: CreateAccountDTO): Promise<{
+    account: Account
+    categoriesCopied: { categories: number; subcategories: number }
+  }> {
     const connection = await db.getConnection()
 
     try {
@@ -286,10 +289,7 @@ export class AccountRepository {
       const accountUserId = crypto.randomUUID()
 
       // Crear account
-      await connection.query(
-        `INSERT INTO accounts (id, name) VALUES (?, ?)`,
-        [accountId, name]
-      )
+      await connection.query(`INSERT INTO accounts (id, name) VALUES (?, ?)`, [accountId, name])
 
       // Asignar usuario como owner
       await connection.query(
@@ -316,9 +316,8 @@ export class AccountRepository {
         )
         categoriesCount++
 
-        const subcategories: string[] = typeof dc.subcategories === 'string'
-          ? JSON.parse(dc.subcategories)
-          : dc.subcategories
+        const subcategories: string[] =
+          typeof dc.subcategories === 'string' ? JSON.parse(dc.subcategories) : dc.subcategories
 
         for (const subName of subcategories) {
           const subId = crypto.randomUUID()

@@ -111,7 +111,11 @@ export class CategoryRepository {
   /**
    * Actualizar categoría
    */
-  static async update(categoryId: string, userId: string, data: UpdateCategoryDTO): Promise<Category | null> {
+  static async update(
+    categoryId: string,
+    userId: string,
+    data: UpdateCategoryDTO
+  ): Promise<Category | null> {
     // Verificar acceso
     const category = await this.getById(categoryId, userId)
     if (!category) {
@@ -141,10 +145,7 @@ export class CategoryRepository {
     values.push(categoryId)
 
     try {
-      await db.query(
-        `UPDATE categories SET ${updates.join(', ')} WHERE id = ?`,
-        values
-      )
+      await db.query(`UPDATE categories SET ${updates.join(', ')} WHERE id = ?`, values)
 
       return this.getById(categoryId, userId)
     } catch (error: any) {
@@ -214,10 +215,7 @@ export class CategoryRepository {
       return false
     }
 
-    const [result] = await db.query<any>(
-      `DELETE FROM categories WHERE id = ?`,
-      [categoryId]
-    )
+    const [result] = await db.query<any>(`DELETE FROM categories WHERE id = ?`, [categoryId])
 
     return result.affectedRows > 0
   }

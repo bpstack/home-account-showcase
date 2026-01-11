@@ -5,7 +5,6 @@ import db from '../../config/db.js'
 import { AccountRepository } from '../accounts/account-repository.js'
 import type {
   Transaction,
-  TransactionRow,
   TransactionWithDetails,
   TransactionWithDetailsRow,
   CreateTransactionDTO,
@@ -56,7 +55,10 @@ export class TransactionRepository {
   /**
    * Obtener transacciones con filtros
    */
-  static async getByAccountId(filters: TransactionFilters, userId: string): Promise<TransactionWithDetails[]> {
+  static async getByAccountId(
+    filters: TransactionFilters,
+    userId: string
+  ): Promise<TransactionWithDetails[]> {
     const hasAccess = await AccountRepository.hasAccess(filters.account_id, userId)
     if (!hasAccess) {
       throw new Error('No tienes acceso a esta cuenta')
@@ -125,7 +127,10 @@ export class TransactionRepository {
   /**
    * Obtener transacción por ID
    */
-  static async getById(transactionId: string, userId: string): Promise<TransactionWithDetails | null> {
+  static async getById(
+    transactionId: string,
+    userId: string
+  ): Promise<TransactionWithDetails | null> {
     const [rows] = await db.query<TransactionWithDetailsRow[]>(
       `SELECT 
         t.id, t.account_id, t.subcategory_id, t.date, t.description, t.amount,
@@ -146,7 +151,11 @@ export class TransactionRepository {
   /**
    * Actualizar transacción
    */
-  static async update(transactionId: string, userId: string, data: UpdateTransactionDTO): Promise<TransactionWithDetails | null> {
+  static async update(
+    transactionId: string,
+    userId: string,
+    data: UpdateTransactionDTO
+  ): Promise<TransactionWithDetails | null> {
     const transaction = await this.getById(transactionId, userId)
     if (!transaction) {
       return null
@@ -203,7 +212,12 @@ export class TransactionRepository {
   /**
    * Resumen por categoría (para dashboard)
    */
-  static async getSummaryByCategory(accountId: string, userId: string, startDate?: string, endDate?: string): Promise<any[]> {
+  static async getSummaryByCategory(
+    accountId: string,
+    userId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<any[]> {
     const hasAccess = await AccountRepository.hasAccess(accountId, userId)
     if (!hasAccess) {
       throw new Error('No tienes acceso a esta cuenta')
@@ -243,7 +257,12 @@ export class TransactionRepository {
   /**
    * Total por periodo
    */
-  static async getTotalByPeriod(accountId: string, userId: string, startDate?: string, endDate?: string): Promise<number> {
+  static async getTotalByPeriod(
+    accountId: string,
+    userId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<number> {
     const hasAccess = await AccountRepository.hasAccess(accountId, userId)
     if (!hasAccess) {
       throw new Error('No tienes acceso a esta cuenta')

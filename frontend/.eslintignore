@@ -1,0 +1,12 @@
+# Archivos de backup y deshabilitados
+**/_backup_*/
+**/*.disabled*.ts
+_archive/
+
+# Archivos generados automaticamente
+.next/
+node_modules/
+next-env.d.ts
+
+# Configuracion (require necesario)
+tailwind.config.ts

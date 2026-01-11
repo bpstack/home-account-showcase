@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import React from 'react'
 import { Poppins } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
@@ -20,11 +21,7 @@ export const metadata: Metadata = {
   description: 'Control de gastos domésticos',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning className={poppins.variable}>
       <head>
@@ -45,9 +42,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
       </body>
     </html>

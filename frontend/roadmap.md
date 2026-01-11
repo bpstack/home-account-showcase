@@ -3,22 +3,23 @@
 ## Estrategia de Renderizado
 
 ### Decisión
+
 - **Páginas públicas**: Static/SSR (SEO, carga rápida)
 - **Páginas privadas**: Client Components (interactividad, datos dinámicos)
 
 ### Por página
 
-| Ruta | Componente | Renderizado | Razón |
-|------|------------|-------------|-------|
-| `/` | Landing | Static | SEO, marketing |
-| `/login` | Login | Static | No cambia |
-| `/register` | Register | Static | No cambia |
-| `/dashboard` | Dashboard | Client | Datos usuario, interactivo |
-| `/transactions` | Transactions | Client | CRUD, filtros, paginación |
-| `/categories` | Categories | Client | CRUD, edición |
-| `/import` | Import | Client | Upload, preview, mapeo |
-| `/reports` | Reports | Client | Gráficos, filtros |
-| `/settings` | Settings | Client | Configuración usuario |
+| Ruta            | Componente   | Renderizado | Razón                      |
+| --------------- | ------------ | ----------- | -------------------------- |
+| `/`             | Landing      | Static      | SEO, marketing             |
+| `/login`        | Login        | Static      | No cambia                  |
+| `/register`     | Register     | Static      | No cambia                  |
+| `/dashboard`    | Dashboard    | Client      | Datos usuario, interactivo |
+| `/transactions` | Transactions | Client      | CRUD, filtros, paginación  |
+| `/categories`   | Categories   | Client      | CRUD, edición              |
+| `/import`       | Import       | Client      | Upload, preview, mapeo     |
+| `/reports`      | Reports      | Client      | Gráficos, filtros          |
+| `/settings`     | Settings     | Client      | Configuración usuario      |
 
 ---
 
@@ -76,6 +77,7 @@ types/
 ## Patrón de Data Fetching
 
 ### Client Components con fetch
+
 ```tsx
 'use client'
 
@@ -85,7 +87,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetch('/api/dashboard')
-      .then(res => res.json())
+      .then((res) => res.json())
       .then(setData)
       .finally(() => setLoading(false))
   }, [])
@@ -96,6 +98,7 @@ export default function Dashboard() {
 ```
 
 ### Con custom hook (recomendado)
+
 ```tsx
 'use client'
 
@@ -141,6 +144,7 @@ export async function fetchAPI(endpoint: string, options?: RequestInit) {
 ## Fases de Desarrollo Frontend
 
 ### Fase 1: Estructura + Mock Data
+
 - [ ] Crear estructura de carpetas
 - [ ] Componentes UI base (Button, Input, Card, Modal)
 - [ ] Layout (Sidebar, Header)
@@ -148,24 +152,28 @@ export async function fetchAPI(endpoint: string, options?: RequestInit) {
 - [ ] Navegación funcional
 
 ### Fase 2: Autenticación
+
 - [ ] Páginas login/register
 - [ ] Hook useAuth
 - [ ] Protección de rutas
 - [ ] Persistencia en localStorage
 
 ### Fase 3: Conectar Backend
+
 - [ ] Configurar API_URL
 - [ ] Funciones fetch
 - [ ] Reemplazar mock data por API real
 - [ ] Manejo de errores
 
 ### Fase 4: Features Core
+
 - [ ] CRUD Transacciones
 - [ ] CRUD Categorías
 - [ ] Importación XLS
 - [ ] Dashboard con resumen
 
 ### Fase 5: Polish
+
 - [ ] Loading states
 - [ ] Error boundaries
 - [ ] Validación de formularios
@@ -175,13 +183,13 @@ export async function fetchAPI(endpoint: string, options?: RequestInit) {
 
 ## Librerías a considerar
 
-| Necesidad | Opción | Razón |
-|-----------|--------|-------|
-| Gráficos | recharts | Simple, bien documentado |
-| Formularios | react-hook-form | Performante, fácil validación |
-| Validación | zod | Mismo que backend |
-| Fechas | date-fns | Ligero, funcional |
-| Tablas | @tanstack/react-table | Flexible, headless |
-| Toast/Notif | react-hot-toast | Simple, bonito |
-| Icons | lucide-react | Consistente, tree-shakeable |
-| XLS parsing | xlsx | Ya instalado en el proyecto |
+| Necesidad   | Opción                | Razón                         |
+| ----------- | --------------------- | ----------------------------- |
+| Gráficos    | recharts              | Simple, bien documentado      |
+| Formularios | react-hook-form       | Performante, fácil validación |
+| Validación  | zod                   | Mismo que backend             |
+| Fechas      | date-fns              | Ligero, funcional             |
+| Tablas      | @tanstack/react-table | Flexible, headless            |
+| Toast/Notif | react-hot-toast       | Simple, bonito                |
+| Icons       | lucide-react          | Consistente, tree-shakeable   |
+| XLS parsing | xlsx                  | Ya instalado en el proyecto   |

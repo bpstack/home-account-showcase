@@ -32,13 +32,13 @@ app.get('/api/health', (req, res) => {
 app.get('/api/test-db', async (req, res) => {
   try {
     // Test connection
-    const [rows] = await db.query('SELECT 1 as test')
+    await db.query('SELECT 1 as test')
 
     // List tables
     const [tables] = await db.query('SHOW TABLES')
 
     // Count tables
-    const tableList = (tables as any[]).map(t => Object.values(t)[0])
+    const tableList = (tables as any[]).map((t) => Object.values(t)[0])
 
     res.json({
       status: 'ok',

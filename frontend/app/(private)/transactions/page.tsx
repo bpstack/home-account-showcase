@@ -1,22 +1,46 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   transactions as transactionsApi,
-  categories as categoriesApi,
   subcategories as subcategoriesApi,
-  Transaction,
-  Category,
   Subcategory,
-  CreateTransactionData,
+  Transaction,
 } from '@/lib/apiClient'
+import {
+  useTransactions,
+  useCreateTransaction,
+  useUpdateTransaction,
+  useDeleteTransaction,
+} from '@/lib/queries/transactions'
+import { useCategories } from '@/lib/queries/categories'
 import { Button, Card, CardContent, Input, Select, Modal, ModalFooter } from '@/components/ui'
-import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, Upload, Loader2 } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Loader2,
+} from 'lucide-react'
 
 const months = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ]
 
 interface TransactionForm {
@@ -39,33 +63,35 @@ const emptyForm: TransactionForm = {
 
 export default function TransactionsPage() {
   const { account } = useAuth()
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
-  const [transactionList, setTransactionList] = useState<Transaction[]>([])
-  const [categoryList, setCategoryList] = useState<Category[]>([])
-  const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
   const [importData, setImportData] = useState('')
-  const [isImporting, setIsImporting] = useState(false)
 
-  useEffect(() => {
-    if (account) {
-      loadCategories()
-    }
-  }, [account])
+  const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
+  const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
 
-  useEffect(() => {
-    if (account) {
-      loadTransactions()
-    }
-  }, [account, currentMonth, currentYear])
+  const { data: txData, isLoading: isLoadingTx } = useTransactions({
+    account_id: account?.id || '',
+    start_date: startDate,
+    end_date: endDate,
+    search: searchTerm || undefined,
+  })
+
+  const { data: catData } = useCategories(account?.id || '')
+
+  const createMutation = useCreateTransaction()
+  const updateMutation = useUpdateTransaction()
+  const deleteMutation = useDeleteTransaction()
+
+  const transactionList = txData?.transactions || []
+  const categoryList = catData?.categories || []
 
   useEffect(() => {
     if (form.category_id) {
@@ -74,23 +100,6 @@ export default function TransactionsPage() {
       setSubcategoryList([])
     }
   }, [form.category_id])
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (account) loadTransactions()
-    }, 300)
-    return () => clearTimeout(handler)
-  }, [searchTerm])
-
-  async function loadCategories() {
-    if (!account) return
-    try {
-      const res = await categoriesApi.getAll(account.id)
-      setCategoryList(res.categories)
-    } catch (error) {
-      console.error('Error loading categories:', error)
-    }
-  }
 
   async function loadSubcategories(categoryId: string) {
     try {
@@ -102,28 +111,7 @@ export default function TransactionsPage() {
     }
   }
 
-  async function loadTransactions() {
-    if (!account) return
-    setIsLoading(true)
-
-    try {
-      const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
-      const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
-
-      const res = await transactionsApi.getAll({
-        account_id: account.id,
-        start_date: startDate,
-        end_date: endDate,
-        search: searchTerm || undefined,
-      })
-
-      setTransactionList(res.transactions)
-    } catch (error) {
-      console.error('Error loading transactions:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
 
   const filteredTransactions = transactionList.filter((tx) => {
     const matchesCategory = !filterCategory || tx.category_name === filterCategory
@@ -187,101 +175,88 @@ export default function TransactionsPage() {
     setIsModalOpen(true)
   }
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!account || !form.description || !form.date || !form.amount) return
 
-    setIsSaving(true)
-    try {
-      const amount = form.type === 'expense'
+    const amount =
+      form.type === 'expense'
         ? -Math.abs(parseFloat(form.amount))
         : Math.abs(parseFloat(form.amount))
 
-      if (editingId) {
-        await transactionsApi.update(editingId, {
-          description: form.description,
-          date: form.date,
-          amount,
-          subcategory_id: form.subcategory_id || null,
+    const mutation = editingId
+      ? updateMutation.mutateAsync({
+          id: editingId,
+          data: {
+            description: form.description,
+            date: form.date,
+            amount,
+            subcategory_id: form.subcategory_id || null,
+          },
         })
-      } else {
-        await transactionsApi.create({
+      : createMutation.mutateAsync({
           account_id: account.id,
           description: form.description,
           date: form.date,
           amount,
           subcategory_id: form.subcategory_id || undefined,
         })
-      }
 
+    mutation.then(() => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
       setIsModalOpen(false)
       setForm(emptyForm)
-      loadTransactions()
-    } catch (error) {
-      console.error('Error saving transaction:', error)
-    } finally {
-      setIsSaving(false)
-    }
+    })
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!confirm('¿Estás seguro de eliminar esta transacción?')) return
-
-    try {
-      await transactionsApi.delete(id)
-      loadTransactions()
-    } catch (error) {
-      console.error('Error deleting transaction:', error)
-    }
+    deleteMutation.mutate(id, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+    })
   }
 
-  const handleImport = async () => {
+  const handleImport = () => {
     if (!account || !importData.trim()) return
 
-    setIsImporting(true)
-    try {
-      const lines = importData.trim().split('\n')
-      let successCount = 0
-      let errorCount = 0
+    const lines = importData.trim().split('\n')
+    let successCount = 0
+    let errorCount = 0
 
-      for (const line of lines) {
-        try {
-          // Format: date;description;amount (negative for expenses)
-          // Example: 2025-01-15;Compra supermercado;-45.50
-          const [date, description, amountStr] = line.split(';').map(s => s.trim())
+    const createPromises = lines.map(async (line) => {
+      try {
+        const [date, description, amountStr] = line.split(';').map((s) => s.trim())
 
-          if (!date || !description || !amountStr) {
-            errorCount++
-            continue
-          }
-
-          const amount = parseFloat(amountStr)
-          if (isNaN(amount)) {
-            errorCount++
-            continue
-          }
-
-          await transactionsApi.create({
-            account_id: account.id,
-            date,
-            description,
-            amount,
-          })
-          successCount++
-        } catch {
+        if (!date || !description || !amountStr) {
           errorCount++
+          return
         }
-      }
 
-      alert(`Importación completada: ${successCount} transacciones importadas, ${errorCount} errores`)
+        const amount = parseFloat(amountStr)
+        if (isNaN(amount)) {
+          errorCount++
+          return
+        }
+
+        await transactionsApi.create({
+          account_id: account.id,
+          date,
+          description,
+          amount,
+        })
+        successCount++
+      } catch {
+        errorCount++
+      }
+    })
+
+    Promise.all(createPromises).then(() => {
+      alert(
+        `Importación completada: ${successCount} transacciones importadas, ${errorCount} errores`
+      )
       setIsImportModalOpen(false)
       setImportData('')
-      loadTransactions()
-    } catch (error) {
-      console.error('Error importing:', error)
-      alert('Error al importar transacciones')
-    } finally {
-      setIsImporting(false)
-    }
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    })
   }
 
   const totals = filteredTransactions.reduce(
@@ -359,7 +334,9 @@ export default function TransactionsPage() {
         <Card>
           <CardContent className="py-4">
             <p className="text-xs text-text-secondary">Balance</p>
-            <p className={`text-lg font-semibold ${totals.income - totals.expenses >= 0 ? 'text-success' : 'text-danger'}`}>
+            <p
+              className={`text-lg font-semibold ${totals.income - totals.expenses >= 0 ? 'text-success' : 'text-danger'}`}
+            >
               {(totals.income - totals.expenses).toFixed(2)} €
             </p>
           </CardContent>
@@ -370,7 +347,7 @@ export default function TransactionsPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            {isLoading ? (
+            {isLoadingTx ? (
               <div className="py-12 flex items-center justify-center gap-2 text-text-secondary">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Cargando transacciones...
@@ -380,10 +357,18 @@ export default function TransactionsPage() {
                 <thead>
                   <tr className="border-b border-layer-3 bg-layer-1">
                     <th className="text-left py-3 px-4 text-text-secondary font-medium">Fecha</th>
-                    <th className="text-left py-3 px-4 text-text-secondary font-medium">Descripción</th>
-                    <th className="text-left py-3 px-4 text-text-secondary font-medium hidden md:table-cell">Categoría</th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium">Importe</th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium w-24">Acciones</th>
+                    <th className="text-left py-3 px-4 text-text-secondary font-medium">
+                      Descripción
+                    </th>
+                    <th className="text-left py-3 px-4 text-text-secondary font-medium hidden md:table-cell">
+                      Categoría
+                    </th>
+                    <th className="text-right py-3 px-4 text-text-secondary font-medium">
+                      Importe
+                    </th>
+                    <th className="text-right py-3 px-4 text-text-secondary font-medium w-24">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -417,8 +402,11 @@ export default function TransactionsPage() {
                           <span className="text-text-secondary text-xs">Sin categoría</span>
                         )}
                       </td>
-                      <td className={`py-3 px-4 text-right font-medium ${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {Number(tx.amount) >= 0 ? '+' : ''}{Number(tx.amount).toFixed(2)} €
+                      <td
+                        className={`py-3 px-4 text-right font-medium ${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}
+                      >
+                        {Number(tx.amount) >= 0 ? '+' : ''}
+                        {Number(tx.amount).toFixed(2)} €
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end gap-1">
@@ -447,7 +435,7 @@ export default function TransactionsPage() {
             )}
           </div>
 
-          {!isLoading && filteredTransactions.length === 0 && (
+          {!isLoadingTx && filteredTransactions.length === 0 && (
             <div className="py-12 text-center text-text-secondary">
               No se encontraron transacciones para {months[currentMonth]} {currentYear}
             </div>
@@ -462,7 +450,13 @@ export default function TransactionsPage() {
         title={editingId ? 'Editar transacción' : 'Nueva transacción'}
         size="md"
       >
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSave()
+          }}
+        >
           <Input
             label="Descripción"
             placeholder="Ej: Compra supermercado"
@@ -535,8 +529,13 @@ export default function TransactionsPage() {
           <Button variant="outline" onClick={() => setIsModalOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          <Button
+            onClick={handleSave}
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            {createMutation.isPending || updateMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : null}
             {editingId ? 'Guardar' : 'Crear'}
           </Button>
         </ModalFooter>
@@ -554,8 +553,10 @@ export default function TransactionsPage() {
             Pega las transacciones en formato CSV (una por línea):
           </p>
           <p className="text-xs text-text-secondary bg-layer-2 p-2 rounded font-mono">
-            fecha;descripción;importe<br />
-            2025-01-15;Compra supermercado;-45.50<br />
+            fecha;descripción;importe
+            <br />
+            2025-01-15;Compra supermercado;-45.50
+            <br />
             2025-01-16;Nómina;1500.00
           </p>
           <textarea
@@ -570,8 +571,8 @@ export default function TransactionsPage() {
           <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleImport} disabled={isImporting || !importData.trim()}>
-            {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          <Button onClick={handleImport} disabled={!importData.trim()}>
+            <Upload className="h-4 w-4" />
             <span className="ml-2">Importar</span>
           </Button>
         </ModalFooter>
