@@ -13,6 +13,7 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
       min_amount,
       max_amount,
       search,
+      type,
       limit,
       offset,
     } = req.query
@@ -34,6 +35,7 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
         minAmount: min_amount ? parseFloat(min_amount as string) : undefined,
         maxAmount: max_amount ? parseFloat(max_amount as string) : undefined,
         search: search as string,
+        type: type as 'income' | 'expense' | 'all' | undefined,
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       },

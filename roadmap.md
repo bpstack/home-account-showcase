@@ -20,10 +20,43 @@
 - [~] Gráficos básicos (falta instalar recharts e implementar pie/bar/line charts)
 
 ## Fase 3: Seguridad
-- [ ] Migrar JWT localStorage → HttpOnly Cookie
-- [ ] Protección CSRF
-- [ ] Rate limiting en endpoints
-- [ ] Validación de inputs (Zod en backend)
+
+### 3.1 Sistema de Tokens (Desarrollo Local)
+- [ ] Access Token: 5 min expiración, almacenado en memoria (variable JS)
+- [ ] Refresh Token: 8 horas expiración, almacenado en localStorage
+- [ ] Envío via header `Authorization: Bearer <token>` (evita problemas CORS/cookies en local)
+- [ ] Refresh automático silencioso mientras hay actividad
+- [ ] Logout automático si refresh token expira (8h → login obligatorio)
+
+### 3.2 Backend Agnóstico
+- [ ] Middleware unificado: extrae token de header Authorization O cookie
+- [ ] Misma lógica auth para ambos entornos (solo cambia el canal de transporte)
+- [ ] Endpoint POST /auth/refresh para renovar access token
+
+### 3.3 Protección Frontend
+- [ ] Interceptor para refresh automático (401 → refresh → retry request)
+- [ ] Si refresh falla → logout y redirige a /login
+- [ ] Access token en memoria (no persiste al cerrar pestaña)
+
+### 3.4 Rate Limiting & Brute Force
+- [ ] Rate limiting SOLO en /auth/login
+- [ ] Bloqueo tras 7 intentos fallidos de login
+- [ ] Desbloqueo automático tras X minutos o manual
+
+### 3.5 Validación
+- [ ] Zod en backend para validar inputs
+- [ ] Sanitización de datos antes de BD
+
+### 3.6 Sistema de Invitaciones (sin roles)
+- [ ] Usuario crea cuenta → puede invitar a familiares
+- [ ] Todos los miembros ven todos los datos (sin roles por ahora)
+- [ ] Tabla `account_members` para relación usuario-cuenta
+
+### 3.7 Migración Producción (futuro)
+- [ ] Access Token → HttpOnly Cookie + Secure + SameSite=Strict
+- [ ] Refresh Token → HttpOnly Cookie separada
+- [ ] CSRF protection
+- [ ] CORS restringido a dominio producción
 
 ## Fase 4: Mejoras UX
 - [ ] Tema oscuro/claro

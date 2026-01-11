@@ -156,6 +156,7 @@ export const transactions = {
     if (params.max_amount !== undefined)
       searchParams.set('max_amount', params.max_amount.toString())
     if (params.search) searchParams.set('search', params.search)
+    if (params.type) searchParams.set('type', params.type)
     if (params.limit) searchParams.set('limit', params.limit.toString())
     if (params.offset) searchParams.set('offset', params.offset.toString())
 
@@ -240,6 +241,7 @@ export interface TransactionParams {
   min_amount?: number
   max_amount?: number
   search?: string
+  type?: 'income' | 'expense' | 'all'
   limit?: number
   offset?: number
 }

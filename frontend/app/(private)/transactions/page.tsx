@@ -66,6 +66,7 @@ export default function TransactionsPage() {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
@@ -82,6 +83,7 @@ export default function TransactionsPage() {
     start_date: startDate,
     end_date: endDate,
     search: searchTerm || undefined,
+    type: filterType !== 'all' ? filterType : undefined,
   })
 
   const { data: catData } = useCategories(account?.id || '')
@@ -289,6 +291,42 @@ export default function TransactionsPage() {
           </Button>
         </div>
 
+        {/* Type Filter */}
+        <div className="inline-flex items-center bg-layer-2 rounded-lg p-0.5">
+          <button
+            onClick={() => setFilterType('all')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+              filterType === 'all'
+                ? 'text-text-primary'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Todos
+          </button>
+          <div className="w-px h-5 bg-layer-3 mx-0.5" />
+          <button
+            onClick={() => setFilterType('income')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+              filterType === 'income'
+                ? 'text-success'
+                : 'text-text-secondary hover:text-success'
+            }`}
+          >
+            Ingresos
+          </button>
+          <div className="w-px h-5 bg-layer-3 mx-0.5" />
+          <button
+            onClick={() => setFilterType('expense')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+              filterType === 'expense'
+                ? 'text-danger'
+                : 'text-text-secondary hover:text-danger'
+            }`}
+          >
+            Gastos
+          </button>
+        </div>
+
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
           <Input
@@ -304,7 +342,7 @@ export default function TransactionsPage() {
             options={categoryOptions}
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="w-48"
+            className="w-auto min-w-[180px]"
           />
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
             <Upload className="h-4 w-4" />

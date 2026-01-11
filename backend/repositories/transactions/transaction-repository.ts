@@ -107,6 +107,12 @@ export class TransactionRepository {
       params.push(`%${filters.search}%`)
     }
 
+    if (filters.type === 'income') {
+      query += ' AND t.amount > 0'
+    } else if (filters.type === 'expense') {
+      query += ' AND t.amount < 0'
+    }
+
     query += ' ORDER BY t.date DESC, t.created_at DESC'
 
     if (filters.limit) {

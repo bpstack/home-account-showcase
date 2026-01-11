@@ -63,6 +63,7 @@ export interface TransactionFilters {
   minAmount?: number
   maxAmount?: number
   search?: string
+  type?: 'income' | 'expense' | 'all'
   limit?: number
   offset?: number
 }

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab } from '@/
 import { useAuth } from '@/contexts/AuthContext'
 import { transactions, CategorySummary, Transaction } from '@/lib/apiClient'
 import { useTransactions } from '@/lib/queries/transactions'
+import { CategoryPieChart, MonthlyBarChart, BalanceLineChart } from '@/components/charts'
 import {
   TrendingDown,
   TrendingUp,
@@ -120,19 +121,19 @@ function OverviewTab({
         const catName = item.category_name || 'Sin categoría'
         const existing = acc.find((e) => e.name === catName)
         if (existing) {
-          existing.amount += Math.abs(Number(item.total_amount))
+          existing.value += Math.abs(Number(item.total_amount))
         } else {
           acc.push({
             name: catName,
             color: item.category_color || '#6B7280',
-            amount: Math.abs(Number(item.total_amount)),
+            value: Math.abs(Number(item.total_amount)),
           })
         }
         return acc
       },
-      [] as { name: string; color: string; amount: number }[]
+      [] as { name: string; color: string; value: number }[]
     )
-    .sort((a, b) => b.amount - a.amount)
+    .sort((a, b) => b.value - a.value)
 
   return (
     <div className="space-y-6">
@@ -197,31 +198,7 @@ function OverviewTab({
             {expensesByCategory.length === 0 ? (
               <p className="text-text-secondary text-center py-4">No hay gastos este mes</p>
             ) : (
-              <div className="space-y-3">
-                {expensesByCategory.slice(0, 5).map((item) => {
-                  const percentage = (item.amount / totalExpenses) * 100
-                  return (
-                    <div key={item.name} className="flex items-center gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <div className="flex-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-text-primary">{item.name}</span>
-                          <span className="text-text-secondary">{item.amount.toFixed(2)} €</span>
-                        </div>
-                        <div className="mt-1 h-2 bg-layer-2 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${percentage}%`, backgroundColor: item.color }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <CategoryPieChart data={expensesByCategory} />
             )}
           </CardContent>
         </Card>
@@ -290,14 +267,70 @@ function MonthlyTab() {
     staleTime: 5 * 60 * 1000,
   })
 
+  const { data: balanceData, isLoading: isLoadingBalance } = useQuery({
+    queryKey: ['transactions', 'balance-history', account?.id, selectedYear],
+    queryFn: async () => {
+      if (!account) return null
+
+      const startDate = new Date(selectedYear, 0, 1).toISOString().split('T')[0]
+      const endDate = new Date(selectedYear, 11, 31).toISOString().split('T')[0]
+
+      const res = await transactions.getAll({
+        account_id: account.id,
+        start_date: startDate,
+        end_date: endDate,
+      })
+
+      const transactionsByDate = res.transactions.reduce(
+        (acc, tx) => {
+          const date = tx.date.split('T')[0]
+          if (!acc[date]) {
+            acc[date] = 0
+          }
+          acc[date] += Number(tx.amount)
+          return acc
+        },
+        {} as Record<string, number>
+      )
+
+      const dates = Object.keys(transactionsByDate).sort()
+      let cumulative = 0
+      const result = dates.map((date) => {
+        cumulative += transactionsByDate[date]
+        return {
+          date: date.substring(5),
+          balance: cumulative,
+        }
+      })
+
+      return result
+    },
+    enabled: !!account,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const chartData = yearlySummary?.map(({ month, summary }) => {
+    const income = summary
+      .filter((item: any) => Number(item.total_amount) > 0)
+      .reduce((sum: number, item: any) => sum + Number(item.total_amount), 0)
+    const expenses = summary
+      .filter((item: any) => Number(item.total_amount) < 0)
+      .reduce((sum: number, item: any) => sum + Math.abs(Number(item.total_amount)), 0)
+    return {
+      month: months[month].substring(0, 3),
+      income,
+      expenses,
+    }
+  }) || []
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Resumen mensual {selectedYear}
+              <BarChart3 className="h-5 w-5" />
+              Ingresos vs Gastos - {selectedYear}
             </CardTitle>
             <select
               value={selectedYear}
@@ -310,6 +343,50 @@ function MonthlyTab() {
                 </option>
               ))}
             </select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="py-12 flex items-center justify-center gap-2 text-text-secondary">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Cargando datos...
+            </div>
+          ) : (
+            <MonthlyBarChart data={chartData} />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Evolución del balance - {selectedYear}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingBalance ? (
+            <div className="py-12 flex items-center justify-center gap-2 text-text-secondary">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Cargando datos...
+            </div>
+          ) : balanceData && balanceData.length > 0 ? (
+            <BalanceLineChart data={balanceData} />
+          ) : (
+            <div className="py-12 text-center text-text-secondary">
+              No hay transacciones suficientes para mostrar la evolución
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Resumen mensual {selectedYear}
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent>

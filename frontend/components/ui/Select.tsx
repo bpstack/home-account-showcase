@@ -19,7 +19,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           id={id}
           className={cn(
-            'w-full h-11 px-4 py-2 text-sm rounded-md border bg-layer-1 text-text-primary',
+            'w-full h-11 px-4 pr-14 py-2 text-sm rounded-md border bg-layer-1 text-text-primary',
             'focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             error ? 'border-danger' : 'border-layer-3',
