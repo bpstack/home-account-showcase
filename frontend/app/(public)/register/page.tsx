@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input } from '@/components/ui'
+import { ApiError } from '@/lib/api'
 
 export default function RegisterPage() {
-  const router = useRouter()
+  const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -23,14 +24,24 @@ export default function RegisterPage() {
       return
     }
 
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+
     setIsLoading(true)
 
-    // Mock register - simula delay
-    setTimeout(() => {
-      // En producción: crear usuario en backend
-      localStorage.setItem('token', 'mock_jwt_token')
-      router.push('/dashboard')
-    }, 1000)
+    try {
+      await register(email, password, name)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else {
+        setError('Error al conectar con el servidor')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -42,6 +53,11 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg">
+                {error}
+              </div>
+            )}
             <Input
               id="name"
               type="text"
@@ -76,7 +92,6 @@ export default function RegisterPage() {
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              error={error}
               required
             />
             <Button type="submit" className="w-full" isLoading={isLoading}>

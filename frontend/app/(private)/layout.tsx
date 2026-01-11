@@ -1,15 +1,37 @@
 'use client'
 
 import { Sidebar } from '@/components/layout'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function PrivateLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login')
+    }
+  }, [isLoading, isAuthenticated, router])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-background">

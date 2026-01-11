@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -44,7 +45,9 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

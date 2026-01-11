@@ -2,25 +2,33 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input } from '@/components/ui'
+import { ApiError } from '@/lib/api'
 
 export default function LoginPage() {
-  const router = useRouter()
+  const { login } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError('')
 
-    // Mock login - simula delay
-    setTimeout(() => {
-      // En producción: validar con backend y guardar JWT
-      localStorage.setItem('token', 'mock_jwt_token')
-      router.push('/dashboard')
-    }, 1000)
+    try {
+      await login(email, password)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else {
+        setError('Error al conectar con el servidor')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -32,6 +40,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg">
+                {error}
+              </div>
+            )}
             <Input
               id="email"
               type="email"

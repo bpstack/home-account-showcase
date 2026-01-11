@@ -1,9 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Header } from '@/components/layout'
 import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab } from '@/components/ui'
-import { mockTransactions, mockCategories, getMonthlyStats, getExpensesByCategory, getCategoryBySubcategory } from '@/lib/mock/data'
-import { TrendingDown, TrendingUp, Wallet, PieChart, Calendar, BarChart3 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { transactions, categories, Transaction, Category, CategorySummary } from '@/lib/api'
+import { TrendingDown, TrendingUp, Wallet, PieChart, Calendar, BarChart3, Loader2 } from 'lucide-react'
 
 const tabs = [
   { id: 'overview', label: 'Resumen' },
@@ -16,10 +18,71 @@ const months = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
 
+interface Stats {
+  income: number
+  expenses: number
+  balance: number
+}
+
 export default function DashboardPage() {
   const activeTab = useActiveTab('tab', 'overview')
-  const stats = getMonthlyStats(mockTransactions)
-  const expensesByCategory = getExpensesByCategory(mockTransactions)
+  const { account } = useAuth()
+  const [isLoading, setIsLoading] = useState(true)
+  const [transactionList, setTransactionList] = useState<Transaction[]>([])
+  const [categoryList, setCategoryList] = useState<Category[]>([])
+  const [summary, setSummary] = useState<CategorySummary[]>([])
+  const [stats, setStats] = useState<Stats>({ income: 0, expenses: 0, balance: 0 })
+
+  useEffect(() => {
+    if (account) {
+      loadData()
+    }
+  }, [account])
+
+  async function loadData() {
+    if (!account) return
+    setIsLoading(true)
+
+    try {
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+
+      const [txRes, catRes, summaryRes] = await Promise.all([
+        transactions.getAll({ account_id: account.id, start_date: startOfMonth, end_date: endOfMonth }),
+        categories.getAll(account.id),
+        transactions.getSummary(account.id, startOfMonth, endOfMonth),
+      ])
+
+      setTransactionList(txRes.transactions)
+      setCategoryList(catRes.categories)
+      setSummary(summaryRes.summary)
+
+      const income = txRes.transactions
+        .filter(t => t.amount > 0)
+        .reduce((sum, t) => sum + t.amount, 0)
+      const expenses = txRes.transactions
+        .filter(t => t.amount < 0)
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+
+      setStats({ income, expenses, balance: income - expenses })
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div>
+        <Header title="Dashboard" description="Resumen de tus finanzas" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -27,20 +90,51 @@ export default function DashboardPage() {
 
       <Tabs tabs={tabs} defaultTab="overview" className="mb-6" variant="pills" />
 
-      {activeTab === 'overview' && <OverviewTab stats={stats} expensesByCategory={expensesByCategory} />}
+      {activeTab === 'overview' && (
+        <OverviewTab
+          stats={stats}
+          summary={summary}
+          transactions={transactionList}
+          categories={categoryList}
+        />
+      )}
       {activeTab === 'monthly' && <MonthlyTab />}
-      {activeTab === 'stats' && <StatsTab expensesByCategory={expensesByCategory} />}
+      {activeTab === 'stats' && <StatsTab summary={summary} categories={categoryList} />}
     </div>
   )
 }
 
-// Tab: Resumen
-function OverviewTab({ stats, expensesByCategory }: { stats: ReturnType<typeof getMonthlyStats>, expensesByCategory: ReturnType<typeof getExpensesByCategory> }) {
-  const recentTransactions = mockTransactions.slice(0, 5)
+function OverviewTab({
+  stats,
+  summary,
+  transactions: txList,
+  categories: catList,
+}: {
+  stats: Stats
+  summary: CategorySummary[]
+  transactions: Transaction[]
+  categories: Category[]
+}) {
+  const recentTransactions = txList.slice(0, 5)
+  const totalExpenses = stats.expenses || 1
+
+  const expensesByCategory = summary.reduce((acc, item) => {
+    const catName = item.category_name || 'Sin categoría'
+    const existing = acc.find(e => e.name === catName)
+    if (existing) {
+      existing.amount += Math.abs(Number(item.total_amount))
+    } else {
+      acc.push({
+        name: catName,
+        color: item.category_color || '#6B7280',
+        amount: Math.abs(Number(item.total_amount)),
+      })
+    }
+    return acc
+  }, [] as { name: string; color: string; amount: number }[]).sort((a, b) => b.amount - a.amount)
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -88,7 +182,6 @@ function OverviewTab({ stats, expensesByCategory }: { stats: ReturnType<typeof g
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gastos por categoría */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -97,53 +190,53 @@ function OverviewTab({ stats, expensesByCategory }: { stats: ReturnType<typeof g
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {expensesByCategory.slice(0, 5).map((item) => {
-                const category = mockCategories.find(c => c.name === item.name)
-                const percentage = (item.amount / stats.expenses) * 100
-                return (
-                  <div key={item.name} className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: category?.color || '#6B7280' }}
-                    />
-                    <div className="flex-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-text-primary">{item.name}</span>
-                        <span className="text-text-secondary">{item.amount.toFixed(2)} €</span>
-                      </div>
-                      <div className="mt-1 h-2 bg-layer-2 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${percentage}%`,
-                            backgroundColor: category?.color || '#6B7280'
-                          }}
-                        />
+            {expensesByCategory.length === 0 ? (
+              <p className="text-text-secondary text-center py-4">No hay gastos este mes</p>
+            ) : (
+              <div className="space-y-3">
+                {expensesByCategory.slice(0, 5).map((item) => {
+                  const percentage = (item.amount / totalExpenses) * 100
+                  return (
+                    <div key={item.name} className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <div className="flex-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-text-primary">{item.name}</span>
+                          <span className="text-text-secondary">{item.amount.toFixed(2)} €</span>
+                        </div>
+                        <div className="mt-1 h-2 bg-layer-2 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${percentage}%`, backgroundColor: item.color }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Últimas transacciones */}
         <Card>
           <CardHeader>
             <CardTitle>Últimas transacciones</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recentTransactions.map((tx) => {
-                const category = tx.subcategoryId ? getCategoryBySubcategory(tx.subcategoryId) : null
-                return (
+            {recentTransactions.length === 0 ? (
+              <p className="text-text-secondary text-center py-4">No hay transacciones este mes</p>
+            ) : (
+              <div className="space-y-3">
+                {recentTransactions.map((tx) => (
                   <div key={tx.id} className="flex items-center justify-between py-2 border-b border-layer-2 last:border-0">
                     <div className="flex items-center gap-3">
                       <div
                         className="w-2 h-8 rounded-full"
-                        style={{ backgroundColor: category?.color || '#6B7280' }}
+                        style={{ backgroundColor: tx.category_color || '#6B7280' }}
                       />
                       <div>
                         <p className="text-sm text-text-primary">{tx.description}</p>
@@ -154,9 +247,9 @@ function OverviewTab({ stats, expensesByCategory }: { stats: ReturnType<typeof g
                       {tx.amount >= 0 ? '+' : ''}{tx.amount.toFixed(2)} €
                     </span>
                   </div>
-                )
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -164,13 +257,11 @@ function OverviewTab({ stats, expensesByCategory }: { stats: ReturnType<typeof g
   )
 }
 
-// Tab: Por meses
 function MonthlyTab() {
-  // Mock data por mes
-  const monthlyData = months.map((month, index) => ({
+  const monthlyData = months.map((month) => ({
     month,
-    income: index < 1 ? 2300 : 0,
-    expenses: index < 1 ? 1650.32 : 0,
+    income: 0,
+    expenses: 0,
   }))
 
   return (
@@ -179,7 +270,7 @@ function MonthlyTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Resumen mensual 2025
+            Resumen mensual {new Date().getFullYear()}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -213,25 +304,34 @@ function MonthlyTab() {
                   )
                 })}
               </tbody>
-              <tfoot>
-                <tr className="bg-layer-1 font-medium">
-                  <td className="py-3 px-4 text-text-primary">Total</td>
-                  <td className="py-3 px-4 text-right text-success">+2,300.00 €</td>
-                  <td className="py-3 px-4 text-right text-danger">-1,650.32 €</td>
-                  <td className="py-3 px-4 text-right text-success">+649.68 €</td>
-                </tr>
-              </tfoot>
             </table>
           </div>
+          <p className="text-xs text-text-secondary mt-4 text-center">
+            Datos mensuales disponibles próximamente
+          </p>
         </CardContent>
       </Card>
     </div>
   )
 }
 
-// Tab: Estadísticas
-function StatsTab({ expensesByCategory }: { expensesByCategory: ReturnType<typeof getExpensesByCategory> }) {
-  const totalExpenses = expensesByCategory.reduce((sum, item) => sum + item.amount, 0)
+function StatsTab({ summary, categories: catList }: { summary: CategorySummary[]; categories: Category[] }) {
+  const expensesByCategory = summary.reduce((acc, item) => {
+    const catName = item.category_name || 'Sin categoría'
+    const existing = acc.find(e => e.name === catName)
+    if (existing) {
+      existing.amount += Math.abs(Number(item.total_amount))
+    } else {
+      acc.push({
+        name: catName,
+        color: item.category_color || '#6B7280',
+        amount: Math.abs(Number(item.total_amount)),
+      })
+    }
+    return acc
+  }, [] as { name: string; color: string; amount: number }[]).sort((a, b) => b.amount - a.amount)
+
+  const totalExpenses = expensesByCategory.reduce((sum, item) => sum + item.amount, 0) || 1
 
   return (
     <div className="space-y-6">
@@ -243,56 +343,56 @@ function StatsTab({ expensesByCategory }: { expensesByCategory: ReturnType<typeo
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {expensesByCategory.map((item) => {
-              const category = mockCategories.find(c => c.name === item.name)
-              const percentage = (item.amount / totalExpenses) * 100
-              return (
-                <div key={item.name}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-text-primary font-medium">{item.name}</span>
-                    <span className="text-text-secondary">
-                      {item.amount.toFixed(2)} € ({percentage.toFixed(1)}%)
-                    </span>
+          {expensesByCategory.length === 0 ? (
+            <p className="text-text-secondary text-center py-4">No hay gastos para mostrar</p>
+          ) : (
+            <div className="space-y-4">
+              {expensesByCategory.map((item) => {
+                const percentage = (item.amount / totalExpenses) * 100
+                return (
+                  <div key={item.name}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-text-primary font-medium">{item.name}</span>
+                      <span className="text-text-secondary">
+                        {item.amount.toFixed(2)} € ({percentage.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="h-4 bg-layer-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${percentage}%`, backgroundColor: item.color }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-4 bg-layer-2 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${percentage}%`,
-                        backgroundColor: category?.color || '#6B7280'
-                      }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Resumen por categorías */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {expensesByCategory.map((item) => {
-          const category = mockCategories.find(c => c.name === item.name)
-          const percentage = (item.amount / totalExpenses) * 100
-          return (
-            <Card key={item.name} hover>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: category?.color || '#6B7280' }}
-                  />
-                  <span className="font-medium text-text-primary">{item.name}</span>
-                </div>
-                <p className="text-2xl font-bold text-text-primary">{item.amount.toFixed(2)} €</p>
-                <p className="text-sm text-text-secondary">{percentage.toFixed(1)}% del total</p>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+      {expensesByCategory.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {expensesByCategory.map((item) => {
+            const percentage = (item.amount / totalExpenses) * 100
+            return (
+              <Card key={item.name} hover>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="font-medium text-text-primary">{item.name}</span>
+                  </div>
+                  <p className="text-2xl font-bold text-text-primary">{item.amount.toFixed(2)} €</p>
+                  <p className="text-sm text-text-secondary">{percentage.toFixed(1)}% del total</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
