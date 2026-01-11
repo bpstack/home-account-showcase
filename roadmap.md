@@ -83,9 +83,11 @@
 
 ### Media
 - [x] **Migrar AuthContext a Zustand**: Según ARQUITECTURA.md línea 133
-  - Store creado: `frontend/stores/authStore.ts`
-  - Estado UI (isLoggingIn, isRegistering, authError) en Zustand
-  - Datos remotos (user, account) en React Query
+  - [x] Store creado: `frontend/stores/authStore.ts`
+  - [x] Estado UI (isLoggingIn, isRegistering, authError) en Zustand
+  - [x] Datos remotos (user, account) en React Query
+  - [x] Eliminar Context y exponer hooks directamente (migración completa)
+  - [x] Documentación: `docs/ARQUITECTURA/decision-auth.md`
 
 ---
 

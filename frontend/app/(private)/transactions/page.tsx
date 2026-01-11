@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import {
   transactions as transactionsApi,
   subcategories as subcategoriesApi,

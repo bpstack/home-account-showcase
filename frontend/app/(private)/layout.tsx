@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Menu, X, ChevronRight } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { Sidebar, ProfileDropdown } from '@/components/layout'
 import { ThemeToggle } from '@/components/ui'
 

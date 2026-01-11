@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { useCategories } from '@/lib/queries/categories'
 import { importApi, type ParseResult, type CategoryMapping, type Category } from '@/lib/apiClient'
 import { Button, Card, CardContent, Select } from '@/components/ui'

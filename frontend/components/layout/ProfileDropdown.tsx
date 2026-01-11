@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut, ChevronDown, CreditCard, PieChart, Tags, Wallet } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 
 export function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false)

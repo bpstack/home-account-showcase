@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab } from '@/components/ui'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { transactions, CategorySummary, Transaction } from '@/lib/apiClient'
 import { useTransactions } from '@/lib/queries/transactions'
 import { CategoryPieChart, MonthlyBarChart, BalanceLineChart } from '@/components/charts'
