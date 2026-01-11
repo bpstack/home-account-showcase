@@ -16,35 +16,36 @@
 - [x] Importar XLS del banco (parsear extractos)
 - [x] Mapeo categorías banco → categorías usuario
 - [x] Dashboard con resumen mensual
-- [~] Filtros por fecha, categoría, tipo (falta filtro por tipo income/expense)
-- [~] Gráficos básicos (falta instalar recharts e implementar pie/bar/line charts)
+- [x] Filtros por fecha, categoría, tipo (income/expense)
+- [x] Gráficos básicos (recharts: CategoryPieChart, BalanceLineChart, MonthlyBarChart)
 
 ## Fase 3: Seguridad
 
 ### 3.1 Sistema de Tokens (Desarrollo Local)
-- [ ] Access Token: 5 min expiración, almacenado en memoria (variable JS)
-- [ ] Refresh Token: 8 horas expiración, almacenado en localStorage
-- [ ] Envío via header `Authorization: Bearer <token>` (evita problemas CORS/cookies en local)
-- [ ] Refresh automático silencioso mientras hay actividad
-- [ ] Logout automático si refresh token expira (8h → login obligatorio)
+- [x] Access Token: 5 min expiración, almacenado en memoria (variable JS)
+- [x] Refresh Token: 8 horas expiración, almacenado en localStorage
+- [x] Envío via header `Authorization: Bearer <token>` (evita problemas CORS/cookies en local)
+- [x] Refresh automático silencioso mientras hay actividad
+- [x] Logout automático si refresh token expira (8h → login obligatorio)
 
 ### 3.2 Backend Agnóstico
-- [ ] Middleware unificado: extrae token de header Authorization O cookie
-- [ ] Misma lógica auth para ambos entornos (solo cambia el canal de transporte)
-- [ ] Endpoint POST /auth/refresh para renovar access token
+- [x] Middleware unificado: extrae token de header Authorization O cookie
+- [x] Misma lógica auth para ambos entornos (solo cambia el canal de transporte)
+- [x] Endpoint POST /auth/refresh para renovar access token
 
 ### 3.3 Protección Frontend
-- [ ] Interceptor para refresh automático (401 → refresh → retry request)
-- [ ] Si refresh falla → logout y redirige a /login
-- [ ] Access token en memoria (no persiste al cerrar pestaña)
+- [x] Interceptor para refresh automático (401 → refresh → retry request)
+- [x] Si refresh falla → logout y redirige a /login
+- [x] Access token en memoria (no persiste al cerrar pestaña)
 
 ### 3.4 Rate Limiting & Brute Force
-- [ ] Rate limiting SOLO en /auth/login
-- [ ] Bloqueo tras 7 intentos fallidos de login
-- [ ] Desbloqueo automático tras X minutos o manual
+- [x] Rate limiting SOLO en /auth/login
+- [x] Bloqueo tras 7 intentos fallidos de login (15 min ventana)
+- [x] Desbloqueo automático tras 15 minutos
 
 ### 3.5 Validación
-- [ ] Zod en backend para validar inputs
+- [x] Zod en backend para validar auth (register, login, refresh)
+- [ ] Zod en transacciones y categorías (pendiente)
 - [ ] Sanitización de datos antes de BD
 
 ### 3.6 Sistema de Invitaciones (sin roles)
@@ -57,6 +58,35 @@
 - [ ] Refresh Token → HttpOnly Cookie separada
 - [ ] CSRF protection
 - [ ] CORS restringido a dominio producción
+- [ ] Blacklist de tokens (Redis) para logout real
+
+## Fase 3.8: Refactorizaciones de Arquitectura (ARQUITECTURA.md)
+
+> Violaciones detectadas contra los principios documentados en `docs/ARQUITECTURA/ARQUITECTURA.md`
+
+### Críticas
+- [ ] **AuthContext → React Query**: Mover `user` y `account` de useState a React Query
+  - Archivo: `frontend/contexts/AuthContext.tsx:32-60`
+  - Violación: "Si el dato viene del backend → React Query"
+
+- [ ] **Cálculos Dashboard → Backend**: Mover agregaciones al servidor
+  - Archivo: `frontend/app/(private)/dashboard/page.tsx:70-79, 283-303`
+  - Violación: "NO calcular evolución, ahorro o inversión en el cliente"
+  - Crear: `GET /api/transactions/stats` y `GET /api/transactions/balance-history`
+
+### Altas
+- [ ] **Validación Zod en Transacciones**: Añadir schemas de validación
+  - Archivo: `backend/controllers/transactions/transaction-controller.ts:106-112`
+  - Crear: `backend/validators/transaction-validators.ts`
+
+- [ ] **Validación en updateTransaction**: Endpoint sin validación
+  - Archivo: `backend/controllers/transactions/transaction-controller.ts:147-178`
+
+### Media
+- [ ] **Migrar AuthContext a Zustand**: Según ARQUITECTURA.md línea 133
+  - Solo después de mover datos a React Query
+
+---
 
 ## Fase 4: Mejoras UX
 - [ ] Tema oscuro/claro

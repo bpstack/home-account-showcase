@@ -14,12 +14,21 @@ declare module 'express' {
 
 /**
  * Middleware para verificar el token JWT
- * Busca el token en el header Authorization: Bearer <token>
+ * Backend agnóstico: extrae token de header Authorization O cookie
+ * - Desarrollo local: header Authorization: Bearer <token>
+ * - Producción: cookie accessToken (futuro)
  */
 export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
   try {
+    // Intentar obtener token del header Authorization (desarrollo local)
     const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null
+    const tokenFromHeader =
+      authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null
+
+    // Intentar obtener token de cookie (producción futura)
+    const tokenFromCookie = req.cookies?.accessToken
+
+    const token = tokenFromHeader || tokenFromCookie
 
     if (!token) {
       res.status(401).json({

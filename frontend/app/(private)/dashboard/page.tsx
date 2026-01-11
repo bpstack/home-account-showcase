@@ -113,7 +113,6 @@ function OverviewTab({
   transactions: Transaction[]
 }) {
   const recentTransactions = txList.slice(0, 5)
-  const totalExpenses = stats.expenses || 1
 
   const expensesByCategory = summary
     .reduce(
@@ -309,19 +308,20 @@ function MonthlyTab() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const chartData = yearlySummary?.map(({ month, summary }) => {
-    const income = summary
-      .filter((item: any) => Number(item.total_amount) > 0)
-      .reduce((sum: number, item: any) => sum + Number(item.total_amount), 0)
-    const expenses = summary
-      .filter((item: any) => Number(item.total_amount) < 0)
-      .reduce((sum: number, item: any) => sum + Math.abs(Number(item.total_amount)), 0)
-    return {
-      month: months[month].substring(0, 3),
-      income,
-      expenses,
-    }
-  }) || []
+  const chartData =
+    yearlySummary?.map(({ month, summary }) => {
+      const income = summary
+        .filter((item: any) => Number(item.total_amount) > 0)
+        .reduce((sum: number, item: any) => sum + Number(item.total_amount), 0)
+      const expenses = summary
+        .filter((item: any) => Number(item.total_amount) < 0)
+        .reduce((sum: number, item: any) => sum + Math.abs(Number(item.total_amount)), 0)
+      return {
+        month: months[month].substring(0, 3),
+        income,
+        expenses,
+      }
+    }) || []
 
   return (
     <div className="space-y-6">

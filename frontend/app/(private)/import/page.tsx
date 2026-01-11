@@ -3,13 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCategories } from '@/lib/queries/categories'
-import {
-  importApi,
-  type ParseResult,
-  type ParsedTransaction,
-  type CategoryMapping,
-  type Category,
-} from '@/lib/apiClient'
+import { importApi, type ParseResult, type CategoryMapping, type Category } from '@/lib/apiClient'
 import { Button, Card, CardContent, Select } from '@/components/ui'
 import {
   Upload,
@@ -108,7 +102,8 @@ export default function ImportPage() {
 
       for (const appCat of categoryList) {
         // Comparar nombres de categoría (case-insensitive, trim)
-        const catNameMatch = appCat.name.toLowerCase().trim() === fileCat.category.toLowerCase().trim()
+        const catNameMatch =
+          appCat.name.toLowerCase().trim() === fileCat.category.toLowerCase().trim()
 
         if (catNameMatch && appCat.subcategories) {
           // Buscar subcategoría que coincida
@@ -208,9 +203,7 @@ export default function ImportPage() {
   }
 
   const getSubcategoryOptions = (categoryList: Category[]) => {
-    const options: { value: string; label: string }[] = [
-      { value: '', label: 'Sin asignar' },
-    ]
+    const options: { value: string; label: string }[] = [{ value: '', label: 'Sin asignar' }]
 
     categoryList.forEach((cat) => {
       if (cat.subcategories) {
@@ -297,9 +290,7 @@ export default function ImportPage() {
                   <p className="text-text-primary font-medium mb-2">
                     Arrastra tu archivo Excel aquí
                   </p>
-                  <p className="text-sm text-text-secondary mb-4">
-                    o haz clic para seleccionar
-                  </p>
+                  <p className="text-sm text-text-secondary mb-4">o haz clic para seleccionar</p>
                   <p className="text-xs text-text-secondary">
                     Soporta: Control de Gastos (.xlsx) y Movimientos CC (.xls)
                   </p>
@@ -332,7 +323,10 @@ export default function ImportPage() {
                   <div>
                     <p className="font-medium text-text-primary">{file?.name}</p>
                     <p className="text-sm text-text-secondary">
-                      Tipo: {parseResult.file_type === 'control_gastos' ? 'Control de Gastos' : 'Movimientos CC'}
+                      Tipo:{' '}
+                      {parseResult.file_type === 'control_gastos'
+                        ? 'Control de Gastos'
+                        : 'Movimientos CC'}
                     </p>
                   </div>
                 </div>
@@ -368,9 +362,15 @@ export default function ImportPage() {
                   <thead className="bg-layer-1 sticky top-0">
                     <tr className="border-b border-layer-3">
                       <th className="text-left py-2 px-4 text-text-secondary font-medium">Fecha</th>
-                      <th className="text-left py-2 px-4 text-text-secondary font-medium">Descripción</th>
-                      <th className="text-left py-2 px-4 text-text-secondary font-medium">Categoría</th>
-                      <th className="text-right py-2 px-4 text-text-secondary font-medium">Importe</th>
+                      <th className="text-left py-2 px-4 text-text-secondary font-medium">
+                        Descripción
+                      </th>
+                      <th className="text-left py-2 px-4 text-text-secondary font-medium">
+                        Categoría
+                      </th>
+                      <th className="text-right py-2 px-4 text-text-secondary font-medium">
+                        Importe
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -391,7 +391,8 @@ export default function ImportPage() {
                             tx.amount >= 0 ? 'text-success' : 'text-danger'
                           }`}
                         >
-                          {tx.amount >= 0 ? '+' : ''}{tx.amount.toFixed(2)} €
+                          {tx.amount >= 0 ? '+' : ''}
+                          {tx.amount.toFixed(2)} €
                         </td>
                       </tr>
                     ))}
@@ -431,15 +432,13 @@ export default function ImportPage() {
                     {mappingStats.mapped} mapeadas
                   </span>
                   {mappingStats.pending > 0 && (
-                    <span className="text-warning">
-                      {mappingStats.pending} sin asignar
-                    </span>
+                    <span className="text-warning">{mappingStats.pending} sin asignar</span>
                   )}
                 </div>
               </div>
               <p className="text-sm text-text-secondary">
-                Se han mapeado automáticamente las categorías coincidentes.
-                Puedes modificar cualquier asignación manualmente.
+                Se han mapeado automáticamente las categorías coincidentes. Puedes modificar
+                cualquier asignación manualmente.
               </p>
             </CardContent>
           </Card>
@@ -457,29 +456,27 @@ export default function ImportPage() {
                         isMapped ? 'bg-success/5' : 'bg-warning/5'
                       }`}
                     >
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        isMapped ? 'bg-success' : 'bg-warning'
-                      }`} />
+                      <div
+                        className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                          isMapped ? 'bg-success' : 'bg-warning'
+                        }`}
+                      />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-text-primary truncate">
-                          {cat.category}
-                        </p>
+                        <p className="font-medium text-text-primary truncate">{cat.category}</p>
                         {cat.subcategory && (
-                          <p className="text-sm text-text-secondary truncate">
-                            {cat.subcategory}
-                          </p>
+                          <p className="text-sm text-text-secondary truncate">{cat.subcategory}</p>
                         )}
                       </div>
-                      <ArrowRight className={`h-4 w-4 flex-shrink-0 ${
-                        isMapped ? 'text-success' : 'text-text-secondary'
-                      }`} />
+                      <ArrowRight
+                        className={`h-4 w-4 flex-shrink-0 ${
+                          isMapped ? 'text-success' : 'text-text-secondary'
+                        }`}
+                      />
                       <div className="w-72">
                         <Select
                           options={subcategoryOptions}
                           value={mappings[key] || ''}
-                          onChange={(e) =>
-                            handleMappingChange(key, e.target.value || null)
-                          }
+                          onChange={(e) => handleMappingChange(key, e.target.value || null)}
                         />
                       </div>
                     </div>
@@ -515,16 +512,16 @@ export default function ImportPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-text-primary mb-2">
-              Importación completada
-            </h2>
+            <h2 className="text-xl font-bold text-text-primary mb-2">Importación completada</h2>
             <div className="space-y-1 mb-6">
               <p className="text-text-secondary">
-                <span className="font-medium text-success">{importResult.inserted}</span> transacciones importadas
+                <span className="font-medium text-success">{importResult.inserted}</span>{' '}
+                transacciones importadas
               </p>
               {importResult.skipped > 0 && (
                 <p className="text-text-secondary">
-                  <span className="font-medium text-warning">{importResult.skipped}</span> transacciones omitidas
+                  <span className="font-medium text-warning">{importResult.skipped}</span>{' '}
+                  transacciones omitidas
                 </p>
               )}
             </div>

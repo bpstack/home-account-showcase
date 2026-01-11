@@ -2,7 +2,13 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { auth, accounts, Account } from '@/lib/apiClient'
+import { auth, accounts, Account, ApiError } from '@/lib/apiClient'
+import {
+  setAccessToken,
+  setRefreshToken,
+  getRefreshToken,
+  clearAllTokens,
+} from '@/lib/tokenService'
 
 interface User {
   id: string
@@ -33,13 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function checkAuth() {
-    const token = localStorage.getItem('token')
-    if (!token) {
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) {
       setIsLoading(false)
       return
     }
 
     try {
+      // Primero intentar refresh token para asegurar access token válido
+      const { accessToken } = await auth.refresh(refreshToken)
+      setAccessToken(accessToken)
+
+      // Ahora con access token válido, obtener usuario
       const { user } = await auth.me()
       setUser(user)
 
@@ -47,16 +58,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userAccounts.length > 0) {
         setAccount(userAccounts[0])
       }
-    } catch {
-      localStorage.removeItem('token')
+    } catch (error) {
+      // Si falla refresh o /me, limpiar tokens y redirigir a login
+      if (error instanceof ApiError && error.status === 401) {
+        clearAllTokens()
+        setUser(null)
+        setAccount(null)
+        router.push('/login')
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
   async function login(email: string, password: string) {
-    const { token, user } = await auth.login(email, password)
-    localStorage.setItem('token', token)
+    const { accessToken, refreshToken, user } = await auth.login(email, password)
+
+    // Guardar tokens: access en memoria, refresh en localStorage
+    setAccessToken(accessToken)
+    setRefreshToken(refreshToken)
+
     setUser(user)
 
     const { accounts: userAccounts } = await accounts.getAll()
@@ -68,8 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(email: string, password: string, name: string) {
-    const { token, user } = await auth.register(email, password, name)
-    localStorage.setItem('token', token)
+    const { accessToken, refreshToken, user } = await auth.register(email, password, name)
+
+    // Guardar tokens: access en memoria, refresh en localStorage
+    setAccessToken(accessToken)
+    setRefreshToken(refreshToken)
+
     setUser(user)
 
     const { accounts: userAccounts } = await accounts.getAll()
@@ -80,11 +105,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/dashboard')
   }
 
-  function logout() {
-    localStorage.removeItem('token')
-    setUser(null)
-    setAccount(null)
-    router.push('/login')
+  async function logout() {
+    try {
+      // Notificar al servidor (opcional, para logging)
+      await auth.logout()
+    } catch {
+      // Si falla el servidor, igual limpiamos localmente
+    } finally {
+      clearAllTokens()
+      setUser(null)
+      setAccount(null)
+      router.push('/login')
+    }
   }
 
   return (

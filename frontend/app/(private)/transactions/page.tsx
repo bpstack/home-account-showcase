@@ -307,9 +307,7 @@ export default function TransactionsPage() {
           <button
             onClick={() => setFilterType('income')}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-              filterType === 'income'
-                ? 'text-success'
-                : 'text-text-secondary hover:text-success'
+              filterType === 'income' ? 'text-success' : 'text-text-secondary hover:text-success'
             }`}
           >
             Ingresos
@@ -318,9 +316,7 @@ export default function TransactionsPage() {
           <button
             onClick={() => setFilterType('expense')}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-              filterType === 'expense'
-                ? 'text-danger'
-                : 'text-text-secondary hover:text-danger'
+              filterType === 'expense' ? 'text-danger' : 'text-text-secondary hover:text-danger'
             }`}
           >
             Gastos

@@ -1,11 +1,14 @@
 // lib/api.ts - API Client
 
+import { getAccessToken, setAccessToken, getRefreshToken, clearAllTokens } from './tokenService'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
 type RequestOptions = {
   method?: string
   headers?: Record<string, string>
-  body?: string
+  body?: string | FormData
+  skipAuth?: boolean // Para endpoints que no requieren auth (login, register, refresh)
 }
 
 class ApiError extends Error {
@@ -16,22 +19,84 @@ class ApiError extends Error {
     super(message)
     this.name = 'ApiError'
   }
+
+  get status(): number {
+    return this._status
+  }
 }
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('token')
-}
+// Variable para evitar múltiples refresh simultáneos
+let isRefreshing = false
+let refreshPromise: Promise<string | null> | null = null
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const token = getToken()
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+/**
+ * Intenta refrescar el access token usando el refresh token
+ */
+async function refreshAccessToken(): Promise<string | null> {
+  // Si ya hay un refresh en progreso, esperar a que termine
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+  isRefreshing = true
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = getRefreshToken()
+      if (!refreshToken) {
+        return null
+      }
+
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Refresh token expirado o inválido
+        clearAllTokens()
+        return null
+      }
+
+      const newAccessToken = data.accessToken
+      if (newAccessToken) {
+        setAccessToken(newAccessToken)
+        return newAccessToken
+      }
+
+      return null
+    } catch (error) {
+      clearAllTokens()
+      return null
+    } finally {
+      isRefreshing = false
+      refreshPromise = null
+    }
+  })()
+
+  return refreshPromise
+}
+
+/**
+ * Función de request con interceptor para refresh automático
+ */
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const accessToken = getAccessToken()
+
+  const headers: Record<string, string> = {}
+
+  // No agregar Content-Type si es FormData (fetch lo maneja automáticamente)
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  // Agregar access token si existe y no es un endpoint sin auth
+  if (!options.skipAuth && accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
   }
 
   const response = await fetch(`${API_URL}${endpoint}`, {
@@ -44,6 +109,39 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   const data = await response.json()
 
+  // Si recibimos 401 y no estamos en un endpoint sin auth, intentar refresh
+  if (response.status === 401 && !options.skipAuth && endpoint !== '/auth/refresh') {
+    const newAccessToken = await refreshAccessToken()
+
+    if (newAccessToken) {
+      // Retry la petición original con el nuevo token
+      const retryHeaders: Record<string, string> = {
+        ...headers,
+        Authorization: `Bearer ${newAccessToken}`,
+      }
+
+      const retryResponse = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers: {
+          ...retryHeaders,
+          ...(options.headers as Record<string, string>),
+        },
+      })
+
+      const retryData = await retryResponse.json()
+
+      if (!retryResponse.ok) {
+        throw new ApiError(retryResponse.status, retryData.error || 'Error desconocido')
+      }
+
+      return retryData
+    } else {
+      // Refresh falló, limpiar tokens y lanzar error
+      // El frontend deberá manejar esto y redirigir a login
+      throw new ApiError(401, 'Sesión expirada')
+    }
+  }
+
   if (!response.ok) {
     throw new ApiError(response.status, data.error || 'Error desconocido')
   }
@@ -54,25 +152,43 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 // Auth
 export const auth = {
   login: (email: string, password: string) =>
-    request<{ success: boolean; token: string; user: { id: string; email: string; name: string } }>(
-      '/auth/login',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      }
-    ),
+    request<{
+      success: boolean
+      accessToken: string
+      refreshToken: string
+      user: { id: string; email: string; name: string }
+    }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      skipAuth: true,
+    }),
 
   register: (email: string, password: string, name: string) =>
-    request<{ success: boolean; token: string; user: { id: string; email: string; name: string } }>(
-      '/auth/register',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password, name }),
-      }
-    ),
+    request<{
+      success: boolean
+      accessToken: string
+      refreshToken: string
+      user: { id: string; email: string; name: string }
+    }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+      skipAuth: true,
+    }),
 
   me: () =>
     request<{ success: boolean; user: { id: string; email: string; name: string } }>('/auth/me'),
+
+  logout: () =>
+    request<{ success: boolean; message: string }>('/auth/logout', {
+      method: 'POST',
+    }),
+
+  refresh: (refreshToken: string) =>
+    request<{ success: boolean; accessToken: string }>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+      skipAuth: true,
+    }),
 }
 
 // Accounts
@@ -305,27 +421,21 @@ export interface ImportResult {
 
 // Import API
 export const importApi = {
-  parse: async (file: File, sheetName?: string): Promise<{ success: boolean; data: ParseResult }> => {
-    const token = localStorage.getItem('token')
+  parse: async (
+    file: File,
+    sheetName?: string
+  ): Promise<{ success: boolean; data: ParseResult }> => {
+    // Usar la función request para tener refresh automático
     const formData = new FormData()
     formData.append('file', file)
     if (sheetName) {
       formData.append('sheet_name', sheetName)
     }
 
-    const response = await fetch(`${API_URL}/import/parse`, {
+    return request<{ success: boolean; data: ParseResult }>('/import/parse', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       body: formData,
     })
-
-    const data = await response.json()
-    if (!response.ok) {
-      throw new ApiError(response.status, data.error || 'Error al parsear archivo')
-    }
-    return data
   },
 
   confirm: (data: {
@@ -339,7 +449,9 @@ export const importApi = {
     }),
 
   getCategories: (accountId: string) =>
-    request<{ success: boolean; categories: Category[] }>(`/import/categories?account_id=${accountId}`),
+    request<{ success: boolean; categories: Category[] }>(
+      `/import/categories?account_id=${accountId}`
+    ),
 }
 
 // AI Types

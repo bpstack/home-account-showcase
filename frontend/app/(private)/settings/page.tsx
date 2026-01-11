@@ -130,9 +130,7 @@ export default function SettingsPage() {
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                status?.enabled
-                  ? 'bg-success/10 text-success'
-                  : 'bg-danger/10 text-danger'
+                status?.enabled ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
               }`}
             >
               <span
@@ -162,19 +160,10 @@ export default function SettingsPage() {
                   />
                   {hasChanges && (
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCancel}
-                        disabled={saving}
-                      >
+                      <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
                         Cancelar
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleSave}
-                        isLoading={saving}
-                      >
+                      <Button size="sm" onClick={handleSave} isLoading={saving}>
                         Guardar
                       </Button>
                     </div>
@@ -192,7 +181,7 @@ export default function SettingsPage() {
             {hasChanges && (
               <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
                 <p className="text-sm text-warning">
-                  Tienes cambios sin guardar. Pulsa "Guardar" para aplicarlos.
+                  Tienes cambios sin guardar. Pulsa &quot;Guardar&quot; para aplicarlos.
                 </p>
               </div>
             )}
@@ -228,7 +217,8 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2 text-sm">
                     <Zap className="h-4 w-4 text-text-secondary" />
                     <span className="text-text-secondary">
-                      Proveedor: <span className="text-text-primary font-medium">{selectedProvider}</span>
+                      Proveedor:{' '}
+                      <span className="text-text-primary font-medium">{selectedProvider}</span>
                     </span>
                   </div>
                 </div>

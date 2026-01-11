@@ -51,6 +51,8 @@ export interface TokenPayload {
 export interface AuthResponse {
   success: boolean
   user?: User
-  token?: string
+  token?: string // @deprecated Usar accessToken
+  accessToken?: string
+  refreshToken?: string
   error?: string
 }
