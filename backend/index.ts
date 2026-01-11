@@ -8,6 +8,7 @@ import accountRoutes from './routes/accounts/account-routes.js'
 import categoryRoutes from './routes/categories/category-routes.js'
 import subcategoryRoutes from './routes/subcategories/subcategory-routes.js'
 import transactionRoutes from './routes/transactions/transaction-routes.js'
+import importRoutes from './routes/import/import-routes.js'
 
 dotenv.config()
 
@@ -22,6 +23,7 @@ app.use('/api/accounts', accountRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/subcategories', subcategoryRoutes)
 app.use('/api/transactions', transactionRoutes)
+app.use('/api/import', importRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

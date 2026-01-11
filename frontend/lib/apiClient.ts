@@ -269,4 +269,75 @@ export interface CategorySummary {
   transaction_count: number
 }
 
+// Import types
+export interface ParsedTransaction {
+  date: string
+  description: string
+  amount: number
+  bank_category: string
+  bank_subcategory: string
+}
+
+export interface ParseResult {
+  success: boolean
+  file_type: 'control_gastos' | 'movimientos_cc' | 'unknown'
+  sheet_name?: string
+  available_sheets?: string[]
+  transactions: ParsedTransaction[]
+  categories: { category: string; subcategory: string }[]
+  errors: string[]
+}
+
+export interface CategoryMapping {
+  bank_category: string
+  bank_subcategory: string
+  subcategory_id: string | null
+}
+
+export interface ImportResult {
+  total: number
+  inserted: number
+  skipped: number
+  errors: string[]
+}
+
+// Import API
+export const importApi = {
+  parse: async (file: File, sheetName?: string): Promise<{ success: boolean; data: ParseResult }> => {
+    const token = localStorage.getItem('token')
+    const formData = new FormData()
+    formData.append('file', file)
+    if (sheetName) {
+      formData.append('sheet_name', sheetName)
+    }
+
+    const response = await fetch(`${API_URL}/import/parse`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al parsear archivo')
+    }
+    return data
+  },
+
+  confirm: (data: {
+    account_id: string
+    transactions: ParsedTransaction[]
+    category_mappings: CategoryMapping[]
+  }) =>
+    request<{ success: boolean; data: ImportResult }>('/import/confirm', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getCategories: (accountId: string) =>
+    request<{ success: boolean; categories: Category[] }>(`/import/categories?account_id=${accountId}`),
+}
+
 export { ApiError }
