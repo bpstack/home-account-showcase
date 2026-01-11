@@ -82,8 +82,10 @@
   - Archivo: `backend/controllers/transactions/transaction-controller.ts`
 
 ### Media
-- [ ] **Migrar AuthContext a Zustand**: Según ARQUITECTURA.md línea 133
-  - Opcional: Context funciona bien con React Query para datos remotos
+- [x] **Migrar AuthContext a Zustand**: Según ARQUITECTURA.md línea 133
+  - Store creado: `frontend/stores/authStore.ts`
+  - Estado UI (isLoggingIn, isRegistering, authError) en Zustand
+  - Datos remotos (user, account) en React Query
 
 ---
 

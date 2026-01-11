@@ -11,6 +11,7 @@ import {
   clearAllTokens,
   getAccessToken,
 } from '@/lib/tokenService'
+import { useAuthStore, AUTH_QUERY_KEYS } from '@/stores/authStore'
 
 interface User {
   id: string
@@ -23,32 +24,42 @@ interface AuthContextType {
   account: Account | null
   isLoading: boolean
   isAuthenticated: boolean
+  isLoggingIn: boolean
+  isRegistering: boolean
+  authError: string | null
   login: (_email: string, _password: string) => Promise<void>
   register: (_email: string, _password: string, _name: string) => Promise<void>
   logout: () => void
+  clearError: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-// Query keys
-const AUTH_USER_KEY = ['auth', 'user']
-const AUTH_ACCOUNT_KEY = ['auth', 'account']
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [isMounted, setIsMounted] = useState(false)
 
+  // Estado UI desde Zustand
+  const {
+    isLoggingIn,
+    isRegistering,
+    isLoggingOut,
+    authError,
+    setLoggingIn,
+    setRegistering,
+    setLoggingOut,
+    setAuthError,
+    clearError,
+  } = useAuthStore()
+
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
-  // React Query para el usuario - datos remotos gestionados por React Query
-  const {
-    data: userData,
-    isLoading: isLoadingUser,
-  } = useQuery({
-    queryKey: AUTH_USER_KEY,
+  // React Query para el usuario - datos remotos
+  const { data: userData, isLoading: isLoadingUser } = useQuery({
+    queryKey: AUTH_QUERY_KEYS.user,
     queryFn: async () => {
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
@@ -56,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Si no hay access token, intentar refresh
         if (!getAccessToken()) {
           const { accessToken } = await auth.refresh(refreshToken)
           setAccessToken(accessToken)
@@ -71,20 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     retry: false,
-    enabled: isMounted, // Solo ejecutar en cliente
+    enabled: isMounted,
   })
 
-  // React Query para la cuenta - datos remotos gestionados por React Query
+  // React Query para la cuenta - datos remotos
   const { data: accountData, isLoading: isLoadingAccount } = useQuery({
-    queryKey: AUTH_ACCOUNT_KEY,
+    queryKey: AUTH_QUERY_KEYS.account,
     queryFn: async () => {
       const { accounts: userAccounts } = await accounts.getAll()
       return userAccounts.length > 0 ? userAccounts[0] : null
     },
-    enabled: isMounted && !!userData, // Solo ejecutar si hay usuario y está montado
+    enabled: isMounted && !!userData,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: false,
@@ -96,38 +106,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!user
 
   async function login(email: string, password: string) {
-    const { accessToken, refreshToken, user: loggedUser } = await auth.login(email, password)
+    setLoggingIn(true)
+    setAuthError(null)
 
-    // Guardar tokens
-    setAccessToken(accessToken)
-    setRefreshToken(refreshToken)
+    try {
+      const { accessToken, refreshToken, user: loggedUser } = await auth.login(email, password)
 
-    // Actualizar cache de React Query directamente
-    queryClient.setQueryData(AUTH_USER_KEY, loggedUser)
+      setAccessToken(accessToken)
+      setRefreshToken(refreshToken)
 
-    // Invalidar y refetch account
-    await queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNT_KEY })
+      queryClient.setQueryData(AUTH_QUERY_KEYS.user, loggedUser)
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.account })
 
-    router.push('/dashboard')
+      router.push('/dashboard')
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setAuthError(error.message)
+      } else {
+        setAuthError('Error al iniciar sesión')
+      }
+      throw error
+    } finally {
+      setLoggingIn(false)
+    }
   }
 
   async function register(email: string, password: string, name: string) {
-    const { accessToken, refreshToken, user: newUser } = await auth.register(email, password, name)
+    setRegistering(true)
+    setAuthError(null)
 
-    // Guardar tokens
-    setAccessToken(accessToken)
-    setRefreshToken(refreshToken)
+    try {
+      const { accessToken, refreshToken, user: newUser } = await auth.register(email, password, name)
 
-    // Actualizar cache de React Query directamente
-    queryClient.setQueryData(AUTH_USER_KEY, newUser)
+      setAccessToken(accessToken)
+      setRefreshToken(refreshToken)
 
-    // Invalidar y refetch account
-    await queryClient.invalidateQueries({ queryKey: AUTH_ACCOUNT_KEY })
+      queryClient.setQueryData(AUTH_QUERY_KEYS.user, newUser)
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.account })
 
-    router.push('/dashboard')
+      router.push('/dashboard')
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setAuthError(error.message)
+      } else {
+        setAuthError('Error al registrar')
+      }
+      throw error
+    } finally {
+      setRegistering(false)
+    }
   }
 
   async function logout() {
+    setLoggingOut(true)
+
     try {
       await auth.logout()
     } catch {
@@ -135,14 +167,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       clearAllTokens()
 
-      // Limpiar cache de React Query
-      queryClient.setQueryData(AUTH_USER_KEY, null)
-      queryClient.setQueryData(AUTH_ACCOUNT_KEY, null)
-
-      // Invalidar todas las queries relacionadas con datos del usuario
+      queryClient.setQueryData(AUTH_QUERY_KEYS.user, null)
+      queryClient.setQueryData(AUTH_QUERY_KEYS.account, null)
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
 
+      setLoggingOut(false)
       router.push('/login')
     }
   }
@@ -154,9 +184,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         account,
         isLoading,
         isAuthenticated,
+        isLoggingIn,
+        isRegistering,
+        authError,
         login,
         register,
         logout,
+        clearError,
       }}
     >
       {children}
