@@ -2,9 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Settings, LogOut, ChevronDown, CreditCard, PieChart, Tags } from 'lucide-react'
+import { User, LogOut, ChevronDown, CreditCard, PieChart, Tags, Wallet } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 export function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false)
@@ -43,40 +42,35 @@ export function ProfileDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-200 hover:bg-layer-2"
+        className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-lg transition-colors duration-200 hover:bg-layer-2 border border-transparent hover:border-layer-3"
       >
         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-accent to-purple-600 text-white text-sm font-semibold">
           {user.name.charAt(0).toUpperCase()}
         </div>
         <div className="hidden md:block text-left">
-          <p className="text-sm font-medium text-text-primary">{user.name}</p>
-          {account && (
-            <p className="text-xs text-text-secondary">{account.name}</p>
-          )}
+          <p className="text-sm font-medium text-text-primary leading-tight">{user.name}</p>
+          <p className="text-xs text-text-secondary leading-tight">{account?.name || 'Mi cuenta'}</p>
         </div>
         <ChevronDown
-          className={`h-4 w-4 text-text-secondary transition-transform duration-200 ${
+          className={`hidden md:block h-4 w-4 text-text-secondary transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 rounded-lg bg-layer-1 shadow-lg border border-layer-3 z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-56 rounded-lg bg-layer-1 shadow-xl border border-layer-3 z-50 overflow-hidden">
           {/* User info */}
-          <div className="px-4 py-3 border-b border-layer-3">
+          <div className="px-4 py-3 border-b border-layer-3 bg-layer-2/50">
             <p className="text-sm font-medium text-text-primary">{user.name}</p>
             <p className="text-xs text-text-secondary truncate">{user.email}</p>
-            {account && (
-              <p className="text-xs text-accent mt-1">{account.name}</p>
-            )}
           </div>
 
-          {/* Quick links */}
+          {/* Menu items */}
           <div className="py-1">
             <button
               onClick={() => navigateTo('/dashboard')}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-text-primary hover:bg-layer-2 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-layer-2 transition-colors"
             >
               <PieChart className="h-4 w-4 text-text-secondary" />
               <span>Dashboard</span>
@@ -84,7 +78,7 @@ export function ProfileDropdown() {
 
             <button
               onClick={() => navigateTo('/transactions')}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-text-primary hover:bg-layer-2 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-layer-2 transition-colors"
             >
               <CreditCard className="h-4 w-4 text-text-secondary" />
               <span>Transacciones</span>
@@ -92,26 +86,26 @@ export function ProfileDropdown() {
 
             <button
               onClick={() => navigateTo('/categories')}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-text-primary hover:bg-layer-2 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-layer-2 transition-colors"
             >
               <Tags className="h-4 w-4 text-text-secondary" />
               <span>Categorías</span>
             </button>
-          </div>
 
-          {/* Theme toggle */}
-          <div className="border-t border-layer-3 px-4 py-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">Tema</span>
-              <ThemeToggle />
-            </div>
+            <button
+              onClick={() => navigateTo('/balance')}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-layer-2 transition-colors"
+            >
+              <Wallet className="h-4 w-4 text-text-secondary" />
+              <span>Balance</span>
+            </button>
           </div>
 
           {/* Logout */}
           <div className="border-t border-layer-3 py-1">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-danger hover:bg-danger/10 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               <span>Cerrar sesión</span>
