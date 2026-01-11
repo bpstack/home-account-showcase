@@ -69,18 +69,17 @@
   - Archivo: `frontend/contexts/AuthContext.tsx:32-60`
   - Violación: "Si el dato viene del backend → React Query"
 
-- [ ] **Cálculos Dashboard → Backend**: Mover agregaciones al servidor
-  - Archivo: `frontend/app/(private)/dashboard/page.tsx:70-79, 283-303`
-  - Violación: "NO calcular evolución, ahorro o inversión en el cliente"
-  - Crear: `GET /api/transactions/stats` y `GET /api/transactions/balance-history`
+- [~] **Cálculos Dashboard → Backend**: Mover agregaciones al servidor
+  - [x] Backend: Endpoints creados (`/stats`, `/balance-history`, `/monthly-summary`)
+  - [x] Frontend: apiClient actualizado con nuevos endpoints
+  - [ ] Frontend: Refactorizar dashboard para usar nuevos endpoints
 
 ### Altas
-- [ ] **Validación Zod en Transacciones**: Añadir schemas de validación
-  - Archivo: `backend/controllers/transactions/transaction-controller.ts:106-112`
-  - Crear: `backend/validators/transaction-validators.ts`
+- [x] **Validación Zod en Transacciones**: Añadir schemas de validación
+  - Archivo: `backend/validators/transaction-validators.ts`
 
-- [ ] **Validación en updateTransaction**: Endpoint sin validación
-  - Archivo: `backend/controllers/transactions/transaction-controller.ts:147-178`
+- [x] **Validación en updateTransaction**: Endpoint con validación Zod
+  - Archivo: `backend/controllers/transactions/transaction-controller.ts`
 
 ### Media
 - [ ] **Migrar AuthContext a Zustand**: Según ARQUITECTURA.md línea 133

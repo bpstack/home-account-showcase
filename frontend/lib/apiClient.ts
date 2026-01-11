@@ -307,6 +307,32 @@ export const transactions = {
       `/transactions/summary?${params}`
     )
   },
+
+  getStats: (accountId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ account_id: accountId })
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
+    return request<{
+      success: boolean
+      stats: { income: number; expenses: number; balance: number; transactionCount: number }
+    }>(`/transactions/stats?${params}`)
+  },
+
+  getBalanceHistory: (accountId: string, year: number) => {
+    const params = new URLSearchParams({ account_id: accountId, year: year.toString() })
+    return request<{
+      success: boolean
+      balanceHistory: { date: string; fullDate: string; balance: number }[]
+    }>(`/transactions/balance-history?${params}`)
+  },
+
+  getMonthlySummary: (accountId: string, year: number) => {
+    const params = new URLSearchParams({ account_id: accountId, year: year.toString() })
+    return request<{
+      success: boolean
+      monthlySummary: { month: string; income: number; expenses: number }[]
+    }>(`/transactions/monthly-summary?${params}`)
+  },
 }
 
 // Types
