@@ -203,3 +203,91 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
     })
   }
 }
+
+/**
+ * Obtener transacciones huérfanas al borrar categoría
+ * GET /api/categories/:id/orphaned-count
+ */
+export const getOrphanedCount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
+
+    const count = await CategoryRepository.getOrphanedTransactionsCount(id, req.user!.id)
+
+    res.status(200).json({
+      success: true,
+      count,
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'No tienes acceso a esta cuenta') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en getOrphanedCount:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+/**
+ * Reasignar transacciones a otra subcategoría
+ * POST /api/categories/:id/reassign
+ */
+export const reassignTransactions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: fromCategoryId } = req.params
+    const { to_category_id } = req.body
+
+    if (!to_category_id) {
+      res.status(400).json({
+        success: false,
+        error: 'to_category_id es requerido',
+      })
+      return
+    }
+
+    const count = await CategoryRepository.reassignTransactions(
+      fromCategoryId,
+      to_category_id,
+      req.user!.id
+    )
+
+    res.status(200).json({
+      success: true,
+      message: `Transacciones reasignadas: ${count}`,
+      reassignedCount: count,
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message.includes('no encontrada') || err.message.includes('misma cuenta')) {
+      res.status(400).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    if (err.message === 'No tienes acceso a esta cuenta') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en reassignTransactions:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}

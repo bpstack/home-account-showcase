@@ -198,6 +198,158 @@ export class AccountRepository {
   }
 
   /**
+   * Copiar categorías por defecto a una cuenta
+   */
+  static async copyDefaultCategories(accountId: string): Promise<{ categories: number; subcategories: number }> {
+    const connection = await db.getConnection()
+
+    try {
+      await connection.beginTransaction()
+
+      // Obtener categorías por defecto
+      const [defaultCategories] = await connection.query<any[]>(
+        `SELECT id, name, color, icon, subcategories FROM default_categories`
+      )
+
+      let categoriesCount = 0
+      let subcategoriesCount = 0
+
+      for (const dc of defaultCategories) {
+        // Verificar si ya existe la categoría
+        const [existing] = await connection.query<any[]>(
+          `SELECT id FROM categories WHERE account_id = ? AND name = ?`,
+          [accountId, dc.name]
+        )
+
+        let categoryId: string
+
+        if (existing.length > 0) {
+          // Usar categoría existente
+          categoryId = existing[0].id
+          categoriesCount++
+        } else {
+          // Crear nueva categoría
+          categoryId = crypto.randomUUID()
+          await connection.query(
+            `INSERT INTO categories (id, account_id, name, color, icon)
+             VALUES (?, ?, ?, ?, ?)`,
+            [categoryId, accountId, dc.name, dc.color, dc.icon]
+          )
+          categoriesCount++
+        }
+
+        // Parsear subcategorías del JSON
+        const subcategories: string[] = typeof dc.subcategories === 'string'
+          ? JSON.parse(dc.subcategories)
+          : dc.subcategories
+
+        // Crear subcategorías (solo si no existen)
+        for (const subName of subcategories) {
+          const [subExisting] = await connection.query<any[]>(
+            `SELECT id FROM subcategories WHERE category_id = ? AND name = ?`,
+            [categoryId, subName]
+          )
+
+          if (subExisting.length === 0) {
+            const subId = crypto.randomUUID()
+            await connection.query(
+              `INSERT INTO subcategories (id, category_id, name) VALUES (?, ?, ?)`,
+              [subId, categoryId, subName]
+            )
+            subcategoriesCount++
+          }
+        }
+      }
+
+      await connection.commit()
+
+      return { categories: categoriesCount, subcategories: subcategoriesCount }
+    } catch (error) {
+      await connection.rollback()
+      console.error('Error copying default categories:', error)
+      throw new Error('Error al copiar categorías por defecto')
+    } finally {
+      connection.release()
+    }
+  }
+
+  /**
+   * Crear account con owner Y copiar categorías por defecto
+   */
+  static async createWithDefaults({ name, userId }: CreateAccountDTO): Promise<{ account: Account; categoriesCopied: { categories: number; subcategories: number } }> {
+    const connection = await db.getConnection()
+
+    try {
+      await connection.beginTransaction()
+
+      const accountId = crypto.randomUUID()
+      const accountUserId = crypto.randomUUID()
+
+      // Crear account
+      await connection.query(
+        `INSERT INTO accounts (id, name) VALUES (?, ?)`,
+        [accountId, name]
+      )
+
+      // Asignar usuario como owner
+      await connection.query(
+        `INSERT INTO account_users (id, account_id, user_id, role)
+         VALUES (?, ?, ?, 'owner')`,
+        [accountUserId, accountId, userId]
+      )
+
+      // Copiar categorías por defecto
+      const [defaultCategories] = await connection.query<any[]>(
+        `SELECT id, name, color, icon, subcategories FROM default_categories`
+      )
+
+      let categoriesCount = 0
+      let subcategoriesCount = 0
+
+      for (const dc of defaultCategories) {
+        const categoryId = crypto.randomUUID()
+
+        await connection.query(
+          `INSERT INTO categories (id, account_id, name, color, icon)
+           VALUES (?, ?, ?, ?, ?)`,
+          [categoryId, accountId, dc.name, dc.color, dc.icon]
+        )
+        categoriesCount++
+
+        const subcategories: string[] = typeof dc.subcategories === 'string'
+          ? JSON.parse(dc.subcategories)
+          : dc.subcategories
+
+        for (const subName of subcategories) {
+          const subId = crypto.randomUUID()
+          await connection.query(
+            `INSERT INTO subcategories (id, category_id, name) VALUES (?, ?, ?)`,
+            [subId, categoryId, subName]
+          )
+          subcategoriesCount++
+        }
+      }
+
+      await connection.commit()
+
+      return {
+        account: {
+          id: accountId,
+          name,
+          created_at: new Date(),
+        },
+        categoriesCopied: { categories: categoriesCount, subcategories: subcategoriesCount },
+      }
+    } catch (error) {
+      await connection.rollback()
+      console.error('Error creating account with defaults:', error)
+      throw new Error('Error interno al crear cuenta')
+    } finally {
+      connection.release()
+    }
+  }
+
+  /**
    * Obtener miembros del account
    */
   static async getMembers(accountId: string, userId: string): Promise<any[]> {

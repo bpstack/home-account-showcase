@@ -2,44 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================
-   VARIABLES DE TEMA - GitHub Style
-   ============================================ */
 :root {
-  /* Light Mode Colors */
+  /* Light Mode Colors - Four-Points Style */
   --background: #ffffff;
-  --layer-1: #f6f8fa;
-  --layer-2: #eaeef2;
-  --layer-3: #d0d7de;
-  --text-primary: #1f2328;
-  --text-secondary: #656d76;
-  --accent: #0969da;
-  --accent-hover: #1264c9;
-  --accent-border: rgba(9, 105, 218, 0.6);
-  --success: #1a7f37;
-  --warning: #9a6700;
-  --danger: #cf222e;
+  --layer-1: #ffffff;
+  --layer-2: #f3f4f6;
+  --layer-3: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-border: rgba(37, 99, 235, 0.6);
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --danger: #dc2626;
 }
 
 .dark {
-  /* Dark Mode Colors */
+  /* Dark Mode Colors - Four-Points Style */
   --background: #010409;
   --layer-1: #0d1117;
-  --layer-2: #151b23;
-  --layer-3: #262c36;
-  --text-primary: #e6edf3;
-  --text-secondary: #7d8590;
-  --accent: #238636;
-  --accent-hover: #2ea043;
-  --accent-border: rgba(35, 134, 54, 0.6);
-  --success: #3fb950;
-  --warning: #d29922;
-  --danger: #f85149;
+  --layer-2: #161b22;
+  --layer-3: #30363d;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-border: rgba(59, 130, 246, 0.6);
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
 }
 
-/* ============================================
-   BASE STYLES
-   ============================================ */
 @layer base {
   * {
     box-sizing: border-box;
@@ -55,7 +49,7 @@
   body {
     background-color: var(--background);
     color: var(--text-primary);
-    font-family: var(--font-poppins), 'Poppins', system-ui, sans-serif;
+    font-family: 'Poppins', system-ui, sans-serif;
     font-size: 14px;
     overflow-x: hidden;
     width: 100%;
@@ -65,9 +59,29 @@
   }
 }
 
-/* ============================================
-   SCROLLBAR
-   ============================================ */
+@layer components {
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
+    @apply text-text-secondary hover:bg-layer-2 hover:text-text-primary;
+  }
+
+  .nav-link-active {
+    @apply bg-layer-2 text-accent;
+  }
+
+  .card {
+    @apply bg-layer-1 border border-layer-3 rounded-lg;
+  }
+
+  .card-header {
+    @apply px-6 py-4 border-b border-layer-3;
+  }
+
+  .card-content {
+    @apply p-6;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -86,9 +100,6 @@
   background: var(--text-secondary);
 }
 
-/* ============================================
-   FOCUS & SELECTION
-   ============================================ */
 *:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -96,27 +107,5 @@
 
 ::selection {
   background-color: var(--accent);
-  color: var(--background);
-}
-
-/* ============================================
-   TRANSITIONS
-   ============================================ */
-body,
-nav,
-.card,
-button,
-a,
-input,
-select,
-textarea {
-  transition: background-color 200ms ease-in-out,
-              border-color 200ms ease-in-out,
-              color 200ms ease-in-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body, nav, .card, button, a, input, select, textarea {
-    transition: none;
-  }
+  color: white;
 }

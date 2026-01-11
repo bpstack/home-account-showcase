@@ -1,8 +1,7 @@
 ### Variables
 @baseUrl = http://localhost:3001/api
 # Pega aquí el token del login:
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQwOWQwMTJiLWI1MjAtNGVhZC1hYzg4LWY3NDA3YTk4Njg5NSIsImVtYWlsIjoibnVldm9AdGVzdC5jb20iLCJpYXQiOjE3NjgwNTg1NjMsImV4cCI6MTc2ODY2MzM2M30.4AGVhWvA6snyZk-y-pZUMy2xqiLKPSX2Zb8Ic48TFkY
-
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjlkOTQwNTYwLTU5ZWEtNDNkYi1hMTg3LTAzZTM0Y2M4ZjRmZCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTc2ODA5ODQ0OCwiZXhwIjoxNzY4NzAzMjQ4fQ.4fBmCSAcInKARNqE04Zr58qZiB7w_9O1cobDtb7BMU8
 ### ========================================
 ### ACCOUNTS ENDPOINTS
 ### ========================================

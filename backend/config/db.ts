@@ -18,17 +18,21 @@ interface DBConfig {
   ssl: {
     rejectUnauthorized: boolean
   }
+  charset: string
+  collate: string
 }
 
 const config: DBConfig = {
   host: process.env.AIVEN_DB_HOST || '',
-  port: parseInt(process.env.AIVEN_DB_PORT || '23999'),
+  port: parseInt(process.env.AIVEN_PORT || '23999'),
   user: process.env.AIVEN_DB_USER || 'avnadmin',
   password: process.env.AIVEN_PASSWORD,
   database: process.env.AIVEN_DB_NAME || 'home_account',
   ssl: {
-    rejectUnauthorized: false, // Para desarrollo, en producción usar certificado
+    rejectUnauthorized: false,
   },
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci',
 }
 
 // ========================================

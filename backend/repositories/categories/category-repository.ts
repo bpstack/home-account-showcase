@@ -6,6 +6,8 @@ import { AccountRepository } from '../accounts/account-repository.js'
 import type {
   Category,
   CategoryRow,
+  SubcategoryRow,
+  Subcategory,
   CreateCategoryDTO,
   UpdateCategoryDTO,
 } from '../../models/categories/index.js'
@@ -49,7 +51,7 @@ export class CategoryRepository {
   }
 
   /**
-   * Obtener categorías por account
+   * Obtener categorías por account con subcategorías
    */
   static async getByAccountId(accountId: string, userId: string): Promise<Category[]> {
     // Verificar acceso
@@ -58,7 +60,8 @@ export class CategoryRepository {
       throw new Error('No tienes acceso a esta cuenta')
     }
 
-    const [rows] = await db.query<CategoryRow[]>(
+    // Obtener categorías
+    const [categories] = await db.query<CategoryRow[]>(
       `SELECT id, account_id, name, color, icon, created_at, updated_at
        FROM categories
        WHERE account_id = ?
@@ -66,7 +69,28 @@ export class CategoryRepository {
       [accountId]
     )
 
-    return rows
+    // Obtener subcategorías para cada categoría
+    const [subcategories] = await db.query<SubcategoryRow[]>(
+      `SELECT id, category_id, name, created_at, updated_at
+       FROM subcategories
+       WHERE category_id IN (SELECT id FROM categories WHERE account_id = ?)
+       ORDER BY name ASC`,
+      [accountId]
+    )
+
+    // Agrupar subcategorías por categoría
+    const subcategoriesByCategory = new Map<string, Subcategory[]>()
+    for (const sub of subcategories) {
+      const list = subcategoriesByCategory.get(sub.category_id) || []
+      list.push(sub)
+      subcategoriesByCategory.set(sub.category_id, list)
+    }
+
+    // Combinar categorías con sus subcategorías
+    return categories.map((cat) => ({
+      ...cat,
+      subcategories: subcategoriesByCategory.get(cat.id) || [],
+    }))
   }
 
   /**
@@ -132,7 +156,56 @@ export class CategoryRepository {
   }
 
   /**
-   * Eliminar categoría
+   * Obtener conteo de transacciones huérfanas al borrar categoría
+   */
+  static async getOrphanedTransactionsCount(categoryId: string, userId: string): Promise<number> {
+    const category = await this.getById(categoryId, userId)
+    if (!category) {
+      return 0
+    }
+
+    const [rows] = await db.query<any[]>(
+      `SELECT COUNT(*) as count FROM transactions WHERE subcategory_id = ?`,
+      [categoryId]
+    )
+
+    return rows[0]?.count || 0
+  }
+
+  /**
+   * Reasignar transacciones a otra subcategoría antes de borrar
+   */
+  static async reassignTransactions(
+    fromCategoryId: string,
+    toCategoryId: string,
+    userId: string
+  ): Promise<number> {
+    // Verificar acceso a ambas categorías
+    const fromCategory = await this.getById(fromCategoryId, userId)
+    if (!fromCategory) {
+      throw new Error('Categoría de origen no encontrada')
+    }
+
+    const toCategory = await this.getById(toCategoryId, userId)
+    if (!toCategory) {
+      throw new Error('Categoría de destino no encontrada')
+    }
+
+    // Verificar que ambas pertenecen al mismo account
+    if (fromCategory.account_id !== toCategory.account_id) {
+      throw new Error('Las categorías deben pertenecer a la misma cuenta')
+    }
+
+    const [result] = await db.query<any>(
+      `UPDATE transactions SET subcategory_id = ? WHERE subcategory_id = ?`,
+      [toCategoryId, fromCategoryId]
+    )
+
+    return result.affectedRows
+  }
+
+  /**
+   * Eliminar categoría (usa ON DELETE SET NULL automáticamente)
    */
   static async delete(categoryId: string, userId: string): Promise<boolean> {
     // Verificar acceso

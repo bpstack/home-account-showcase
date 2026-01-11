@@ -7,6 +7,8 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  getOrphanedCount,
+  reassignTransactions,
 } from '../../controllers/categories/category-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 
@@ -18,7 +20,9 @@ router.use(authenticateToken)
 // CRUD
 router.get('/', getCategories)
 router.get('/:id', getCategoryById)
+router.get('/:id/orphaned-count', getOrphanedCount)
 router.post('/', createCategory)
+router.post('/:id/reassign', reassignTransactions)
 router.put('/:id', updateCategory)
 router.delete('/:id', deleteCategory)
 

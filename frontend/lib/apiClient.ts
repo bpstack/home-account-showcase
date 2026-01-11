@@ -80,6 +80,9 @@ export const categories = {
   getAll: (accountId: string) =>
     request<{ success: boolean; categories: Category[] }>(`/categories?account_id=${accountId}`),
 
+  getById: (id: string) =>
+    request<{ success: boolean; category: Category }>(`/categories/${id}`),
+
   create: (data: { account_id: string; name: string; color?: string; icon?: string }) =>
     request<{ success: boolean; category: Category }>('/categories', {
       method: 'POST',
@@ -94,6 +97,24 @@ export const categories = {
 
   delete: (id: string) =>
     request<{ success: boolean }>(`/categories/${id}`, { method: 'DELETE' }),
+
+  addDefaults: (accountId: string) =>
+    request<{ success: boolean; categories: number; subcategories: number }>(
+      `/accounts/${accountId}/categories/default`,
+      { method: 'POST' }
+    ),
+
+  getOrphanedCount: (id: string) =>
+    request<{ success: boolean; count: number }>(`/categories/${id}/orphaned-count`),
+
+  reassignTransactions: (fromId: string, toId: string) =>
+    request<{ success: boolean; message: string; reassignedCount: number }>(
+      `/categories/${fromId}/reassign`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ to_category_id: toId }),
+      }
+    ),
 }
 
 // Subcategories
@@ -175,6 +196,7 @@ export interface Category {
   color: string
   icon: string | null
   created_at: string
+  subcategories?: Subcategory[]
 }
 
 export interface Subcategory {

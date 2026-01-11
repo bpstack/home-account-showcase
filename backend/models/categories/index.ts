@@ -3,6 +3,20 @@
 import { RowDataPacket } from 'mysql2'
 
 // ============================================
+// SUBCATEGORY TYPES
+// ============================================
+
+export interface Subcategory {
+  id: string
+  category_id: string
+  name: string
+  created_at: Date
+  updated_at?: Date
+}
+
+export interface SubcategoryRow extends Subcategory, RowDataPacket {}
+
+// ============================================
 // CATEGORY TYPES
 // ============================================
 
@@ -14,6 +28,7 @@ export interface Category {
   icon: string | null
   created_at: Date
   updated_at?: Date
+  subcategories?: Subcategory[]
 }
 
 export interface CategoryRow extends Category, RowDataPacket {}

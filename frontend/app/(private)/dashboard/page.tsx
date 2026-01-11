@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/layout'
 import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
-import { transactions, categories, Transaction, Category, CategorySummary } from '@/lib/api'
+import { transactions, categories, Transaction, Category, CategorySummary } from '@/lib/apiClient'
 import { TrendingDown, TrendingUp, Wallet, PieChart, Calendar, BarChart3, Loader2 } from 'lucide-react'
 
 const tabs = [
@@ -76,7 +75,6 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div>
-        <Header title="Dashboard" description="Resumen de tus finanzas" />
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
@@ -86,8 +84,6 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Header title="Dashboard" description="Resumen de tus finanzas" />
-
       <Tabs tabs={tabs} defaultTab="overview" className="mb-6" variant="pills" />
 
       {activeTab === 'overview' && (

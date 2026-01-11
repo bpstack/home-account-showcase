@@ -1,6 +1,5 @@
 'use client'
 
-import { Header } from '@/components/layout'
 import { Card, CardHeader, CardTitle, CardContent, Button, Tabs, useActiveTab } from '@/components/ui'
 import { mockMonthlyBalance, mockCategories, mockTransactions } from '@/lib/mock/data'
 import { ArrowLeft, ArrowRight, Download, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
@@ -23,8 +22,6 @@ export default function BalancePage() {
 
   return (
     <div>
-      <Header title="Control de Gastos 2025" description="Seguimiento mensual de finanzas" />
-
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <Tabs tabs={tabs} defaultTab="balance" />
 
