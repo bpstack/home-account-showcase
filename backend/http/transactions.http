@@ -1,0 +1,66 @@
+@baseUrl = http://localhost:3001/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjlkOTQwNTYwLTU5ZWEtNDNkYi1hMTg3LTAzZTM0Y2M4ZjRmZCIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsImlhdCI6MTc2ODA5MTA3MCwiZXhwIjoxNzY4Njk1ODcwfQ.YMmk1Lz_VVn0-F5Q3efCvcd7MVKpur8By-7cnmginyo
+@account_id = 50470968-34a7-4a97-bc4b-869b6aa1ec84
+
+### Transacciones
+
+# Login (para obtener token)
+# POST {{baseUrl}}/auth/login
+# Content-Type: application/json
+# {"email":"test@test.com","password":"123456"}
+
+# Obtener cuentas (para account_id)
+# GET {{baseUrl}}/accounts
+# Authorization: Bearer {{token}}
+
+# Obtener transacciones
+GET {{baseUrl}}/transactions?account_id={{account_id}}
+Authorization: Bearer {{token}}
+
+# Obtener transacción por ID
+GET {{baseUrl}}/transactions/d6ecaef7-b4c6-4224-a94b-cf225759ac8e
+Authorization: Bearer {{token}}
+
+# Crear transacción
+POST {{baseUrl}}/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "account_id": "{{account_id}}",
+  "date": "2025-01-15",
+  "description": "Supermercado Mercadona",
+  "amount": 125.50,
+  "bank_category": "COMPRAS",
+  "bank_subcategory": "ALIMENTACION"
+}
+
+# Actualizar transacción
+PUT {{baseUrl}}/transactions/d6ecaef7-b4c6-4224-a94b-cf225759ac8e
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "description": "Supermercado Carrefour",
+  "amount": 89.99
+}
+
+# Eliminar transacción
+DELETE {{baseUrl}}/transactions/e81c9a18-2c3e-4aad-bd94-116a9591e7d5
+Authorization: Bearer {{token}}
+
+# Resumen por categoría
+GET {{baseUrl}}/transactions/summary?account_id={{account_id}}&start_date=2025-01-01&end_date=2025-01-31
+Authorization: Bearer {{token}}
+
+# Filtrar por fecha
+GET {{baseUrl}}/transactions?account_id={{account_id}}&start_date=2025-01-10&end_date=2025-01-20
+Authorization: Bearer {{token}}
+
+# Buscar por descripción
+GET {{baseUrl}}/transactions?account_id={{account_id}}&search=Mercadona
+Authorization: Bearer {{token}}
+
+# Filtrar por monto
+GET {{baseUrl}}/transactions?account_id={{account_id}}&min_amount=50&max_amount=200
+Authorization: Bearer {{token}}
