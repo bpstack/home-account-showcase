@@ -56,5 +56,5 @@ export interface UpdateAccountDTO {
 
 export interface AddMemberDTO {
   accountId: string
-  userId: string
+  identifier: string // email o nombre del usuario
 }

@@ -13,6 +13,7 @@ interface Account {
   id: string
   name: string
   created_at: string
+  role: string
 }
 
 export function useAuth() {
@@ -24,7 +25,8 @@ export function useAuth() {
   const isLoggingOut = useAuthStore((s) => s.isLoggingOut)
   const authError = useAuthStore((s) => s.authError)
   const clearError = useAuthStore((s) => s.clearError)
-  const setAuthError = useAuthStore((s) => s.setAuthError)
+  const selectedAccountId = useAuthStore((s) => s.selectedAccountId)
+  const setSelectedAccountId = useAuthStore((s) => s.setSelectedAccountId)
 
   const userQuery = useQuery({
     queryKey: AUTH_QUERY_KEYS.user,
@@ -55,16 +57,29 @@ export function useAuth() {
     retry: false,
   })
 
-  const accountQuery = useQuery({
-    queryKey: AUTH_QUERY_KEYS.account,
+  const accountsQuery = useQuery({
+    queryKey: AUTH_QUERY_KEYS.accounts,
     queryFn: async () => {
       const { accounts: userAccounts } = await accounts.getAll()
-      return userAccounts.length > 0 ? userAccounts[0] : null
+      return userAccounts as Account[]
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     gcTime: 10 * 60 * 1000,
     retry: false,
+    enabled: !!userQuery.data,
   })
+
+  const account = accountsQuery.data?.find((a) => a.id === selectedAccountId) ||
+    (accountsQuery.data && accountsQuery.data.length > 0 ? accountsQuery.data[0] : null)
+
+  const switchAccount = async (accountId: string) => {
+    const newAccount = accountsQuery.data?.find((a) => a.id === accountId)
+    if (newAccount) {
+      setSelectedAccountId(accountId)
+      queryClient.setQueryData(AUTH_QUERY_KEYS.account, newAccount)
+      router.refresh()
+    }
+  }
 
   const login = async (email: string, password: string) => {
     useAuthStore.getState().setLoggingIn(true)
@@ -79,8 +94,16 @@ export function useAuth() {
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
 
       const { accounts: userAccounts } = await accounts.getAll()
-      const account = userAccounts.length > 0 ? userAccounts[0] : null
-      queryClient.setQueryData(AUTH_QUERY_KEYS.account, account)
+      queryClient.setQueryData(AUTH_QUERY_KEYS.accounts, userAccounts)
+
+      const lastAccountId = localStorage.getItem('last_account_id')
+      const savedAccount = userAccounts.find((a: Account) => a.id === lastAccountId)
+      const activeAccount = savedAccount || (userAccounts.length > 0 ? userAccounts[0] : null)
+
+      queryClient.setQueryData(AUTH_QUERY_KEYS.account, activeAccount)
+      if (activeAccount) {
+        setSelectedAccountId(activeAccount.id)
+      }
 
       router.push('/dashboard')
     } catch (error) {
@@ -92,12 +115,17 @@ export function useAuth() {
     }
   }
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (
+    email: string,
+    password: string,
+    name: string,
+    accountName?: string
+  ) => {
     useAuthStore.getState().setRegistering(true)
     useAuthStore.getState().setAuthError(null)
 
     try {
-      const { accessToken, refreshToken, user } = await auth.register(email, password, name)
+      const { accessToken, refreshToken, user } = await auth.register(email, password, name, accountName)
 
       setAccessToken(accessToken)
       setRefreshToken(refreshToken)
@@ -105,8 +133,13 @@ export function useAuth() {
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
 
       const { accounts: userAccounts } = await accounts.getAll()
+      queryClient.setQueryData(AUTH_QUERY_KEYS.accounts, userAccounts)
+
       const account = userAccounts.length > 0 ? userAccounts[0] : null
       queryClient.setQueryData(AUTH_QUERY_KEYS.account, account)
+      if (account) {
+        setSelectedAccountId(account.id)
+      }
 
       router.push('/dashboard')
     } catch (error) {
@@ -124,24 +157,27 @@ export function useAuth() {
     try {
       await auth.logout()
     } catch {
-      // Si falla el servidor, igual limpiamos localmente
     } finally {
       clearAllTokens()
+      localStorage.removeItem('last_account_id')
 
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.user })
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.account })
+      queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.accounts })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
 
       useAuthStore.getState().setLoggingOut(false)
+      useAuthStore.getState().setSelectedAccountId(null)
       router.push('/login')
     }
   }
 
   return {
     user: userQuery.data as User | null,
-    account: accountQuery.data as Account | null,
-    isLoading: !userQuery.data || accountQuery.isLoading,
+    account: account as Account | null,
+    accounts: (accountsQuery.data as Account[]) || [],
+    isLoading: !userQuery.data || accountsQuery.isLoading,
     isAuthenticated: !!userQuery.data,
     isLoggingIn,
     isRegistering,
@@ -151,5 +187,6 @@ export function useAuth() {
     register,
     logout,
     clearError,
+    switchAccount,
   }
 }

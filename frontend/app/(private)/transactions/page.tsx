@@ -1,14 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import {
-  transactions as transactionsApi,
-  subcategories as subcategoriesApi,
-  Subcategory,
-  Transaction,
-} from '@/lib/apiClient'
+import { subcategories as subcategoriesApi, Subcategory, Transaction } from '@/lib/apiClient'
 import {
   useTransactions,
   useCreateTransaction,
@@ -24,8 +20,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Upload,
   Loader2,
+  ExternalLink,
 } from 'lucide-react'
 
 const months = [
@@ -64,16 +60,46 @@ const emptyForm: TransactionForm = {
 export default function TransactionsPage() {
   const { account } = useAuth()
   const queryClient = useQueryClient()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterCategory, setFilterCategory] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const searchTerm = searchParams.get('search') || ''
+  const filterCategory = searchParams.get('category') || ''
+  const filterType = (searchParams.get('type') as 'all' | 'income' | 'expense') || 'all'
+  const currentMonth = parseInt(searchParams.get('month') || String(new Date().getMonth()), 10)
+  const currentYear = parseInt(searchParams.get('year') || String(new Date().getFullYear()), 10)
+
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
-  const [importData, setImportData] = useState('')
+
+  const updateUrl = useCallback(
+    (updates: {
+      search?: string
+      category?: string
+      type?: 'all' | 'income' | 'expense'
+      month?: number
+      year?: number
+    }) => {
+      const params = new URLSearchParams(searchParams.toString())
+
+      if (updates.search !== undefined) {
+        if (updates.search) params.set('search', updates.search)
+        else params.delete('search')
+      }
+      if (updates.category !== undefined) {
+        if (updates.category) params.set('category', updates.category)
+        else params.delete('category')
+      }
+      if (updates.type) params.set('type', updates.type)
+      if (updates.month !== undefined) params.set('month', String(updates.month))
+      if (updates.year !== undefined) params.set('year', String(updates.year))
+
+      router.push(`${pathname}?${params.toString()}`, { scroll: false })
+    },
+    [searchParams, router, pathname]
+  )
 
   const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
   const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
@@ -142,19 +168,17 @@ export default function TransactionsPage() {
 
   const prevMonth = () => {
     if (currentMonth === 0) {
-      setCurrentMonth(11)
-      setCurrentYear(currentYear - 1)
+      updateUrl({ month: 11, year: currentYear - 1 })
     } else {
-      setCurrentMonth(currentMonth - 1)
+      updateUrl({ month: currentMonth - 1 })
     }
   }
 
   const nextMonth = () => {
     if (currentMonth === 11) {
-      setCurrentMonth(0)
-      setCurrentYear(currentYear + 1)
+      updateUrl({ month: 0, year: currentYear + 1 })
     } else {
-      setCurrentMonth(currentMonth + 1)
+      updateUrl({ month: currentMonth + 1 })
     }
   }
 
@@ -217,50 +241,6 @@ export default function TransactionsPage() {
     })
   }
 
-  const handleImport = () => {
-    if (!account || !importData.trim()) return
-
-    const lines = importData.trim().split('\n')
-    let successCount = 0
-    let errorCount = 0
-
-    const createPromises = lines.map(async (line) => {
-      try {
-        const [date, description, amountStr] = line.split(';').map((s) => s.trim())
-
-        if (!date || !description || !amountStr) {
-          errorCount++
-          return
-        }
-
-        const amount = parseFloat(amountStr)
-        if (isNaN(amount)) {
-          errorCount++
-          return
-        }
-
-        await transactionsApi.create({
-          account_id: account.id,
-          date,
-          description,
-          amount,
-        })
-        successCount++
-      } catch {
-        errorCount++
-      }
-    })
-
-    Promise.all(createPromises).then(() => {
-      alert(
-        `Importación completada: ${successCount} transacciones importadas, ${errorCount} errores`
-      )
-      setIsImportModalOpen(false)
-      setImportData('')
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    })
-  }
-
   const totals = filteredTransactions.reduce(
     (acc, tx) => {
       const amount = Number(tx.amount)
@@ -294,7 +274,7 @@ export default function TransactionsPage() {
         {/* Type Filter */}
         <div className="inline-flex items-center bg-layer-2 rounded-lg p-0.5">
           <button
-            onClick={() => setFilterType('all')}
+            onClick={() => updateUrl({ type: 'all' })}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
               filterType === 'all'
                 ? 'text-text-primary'
@@ -305,7 +285,7 @@ export default function TransactionsPage() {
           </button>
           <div className="w-px h-5 bg-layer-3 mx-0.5" />
           <button
-            onClick={() => setFilterType('income')}
+            onClick={() => updateUrl({ type: 'income' })}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
               filterType === 'income' ? 'text-success' : 'text-text-secondary hover:text-success'
             }`}
@@ -314,7 +294,7 @@ export default function TransactionsPage() {
           </button>
           <div className="w-px h-5 bg-layer-3 mx-0.5" />
           <button
-            onClick={() => setFilterType('expense')}
+            onClick={() => updateUrl({ type: 'expense' })}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
               filterType === 'expense' ? 'text-danger' : 'text-text-secondary hover:text-danger'
             }`}
@@ -328,7 +308,7 @@ export default function TransactionsPage() {
           <Input
             placeholder="Buscar transacciones..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => updateUrl({ search: e.target.value })}
             className="pl-10"
           />
         </div>
@@ -337,11 +317,11 @@ export default function TransactionsPage() {
           <Select
             options={categoryOptions}
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
+            onChange={(e) => updateUrl({ category: e.target.value })}
             className="w-auto min-w-[180px]"
           />
-          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
-            <Upload className="h-4 w-4" />
+          <Button variant="outline" onClick={() => router.push('/import')}>
+            <ExternalLink className="h-4 w-4" />
             <span className="hidden sm:inline ml-2">Importar</span>
           </Button>
           <Button onClick={openCreateModal}>
@@ -571,43 +551,6 @@ export default function TransactionsPage() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : null}
             {editingId ? 'Guardar' : 'Crear'}
-          </Button>
-        </ModalFooter>
-      </Modal>
-
-      {/* Modal Importar */}
-      <Modal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        title="Importar transacciones"
-        size="lg"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
-            Pega las transacciones en formato CSV (una por línea):
-          </p>
-          <p className="text-xs text-text-secondary bg-layer-2 p-2 rounded font-mono">
-            fecha;descripción;importe
-            <br />
-            2025-01-15;Compra supermercado;-45.50
-            <br />
-            2025-01-16;Nómina;1500.00
-          </p>
-          <textarea
-            className="w-full h-48 p-3 text-sm bg-layer-2 border border-layer-3 rounded-lg text-text-primary font-mono resize-none focus:outline-none focus:ring-2 focus:ring-accent"
-            placeholder="2025-01-15;Compra supermercado;-45.50"
-            value={importData}
-            onChange={(e) => setImportData(e.target.value)}
-          />
-        </div>
-
-        <ModalFooter>
-          <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleImport} disabled={!importData.trim()}>
-            <Upload className="h-4 w-4" />
-            <span className="ml-2">Importar</span>
           </Button>
         </ModalFooter>
       </Modal>

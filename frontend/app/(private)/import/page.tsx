@@ -55,15 +55,25 @@ export default function ImportPage() {
 
     try {
       const result = await importApi.parse(selectedFile)
+
+      if (!result.success || !result.data.success) {
+        const errorMsg = result.data?.errors?.[0] || result.data?.error || 'Error al procesar el archivo'
+        setError(errorMsg)
+        setIsLoading(false)
+        return
+      }
+
       setParseResult(result.data)
 
       if (result.data.file_type === 'control_gastos' && result.data.available_sheets?.length) {
         setSelectedSheet(result.data.sheet_name || result.data.available_sheets[0])
       }
 
-      if (result.data.success && result.data.transactions.length > 0) {
+      if (result.data.transactions.length > 0) {
         initializeMappings(result.data.categories)
         setStep('preview')
+      } else {
+        setError('No se encontraron transacciones en el archivo')
       }
     } catch (err) {
       setError((err as Error).message)
@@ -91,55 +101,95 @@ export default function ImportPage() {
     }
   }
 
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+  }
+
+  const findBestMatch = (
+    fileCat: { category: string; subcategory: string },
+    categoryList: Category[]
+  ): string | null => {
+    const normalizedFileCat = fileCat.category.toLowerCase().trim()
+    const normalizedFileSub = fileCat.subcategory.toLowerCase().trim()
+
+    for (const appCat of categoryList) {
+      const normalizedAppCat = appCat.name.toLowerCase().trim()
+
+      // Exact match (case-insensitive, normalized)
+      if (normalizeText(appCat.name) === normalizeText(fileCat.category)) {
+        if (appCat.subcategories) {
+          // Buscar subcategoría que coincida
+          for (const sub of appCat.subcategories) {
+            if (normalizeText(sub.name) === normalizeText(fileCat.subcategory)) {
+              return sub.id
+            }
+          }
+          // Si no hay subcategoría en el archivo, retornar primera subcategoría
+          if (!fileCat.subcategory && appCat.subcategories.length > 0) {
+            return appCat.subcategories[0].id
+          }
+        }
+        return null
+      }
+
+      // Coincidencia parcial en categoría
+      if (
+        normalizeText(appCat.name).includes(normalizedFileCat) ||
+        normalizedFileCat.includes(normalizeText(appCat.name))
+      ) {
+        if (appCat.subcategories) {
+          for (const sub of appCat.subcategories) {
+            if (normalizeText(sub.name) === normalizeText(fileCat.subcategory)) {
+              return sub.id
+            }
+          }
+          // Buscar subcategoría que contenga o sea contenida por el texto del archivo
+          if (fileCat.subcategory) {
+            for (const sub of appCat.subcategories) {
+              const normalizedSub = normalizeText(sub.name)
+              if (
+                normalizedSub.includes(normalizedFileSub) ||
+                normalizedFileSub.includes(normalizedSub)
+              ) {
+                return sub.id
+              }
+            }
+          }
+          if (!fileCat.subcategory && appCat.subcategories.length > 0) {
+            return appCat.subcategories[0].id
+          }
+        }
+      }
+
+      // Buscar en todas las subcategorías de todas las categorías
+      // (ignorar categoría del archivo y buscar por subcategoría directamente)
+      if (fileCat.subcategory && appCat.subcategories) {
+        for (const sub of appCat.subcategories) {
+          const normalizedSub = normalizeText(sub.name)
+          if (
+            normalizedSub === normalizedFileSub ||
+            normalizedSub.includes(normalizedFileSub) ||
+            normalizedFileSub.includes(normalizedSub)
+          ) {
+            return sub.id
+          }
+        }
+      }
+    }
+
+    return null
+  }
+
   const initializeMappings = (fileCategories: { category: string; subcategory: string }[]) => {
     const initialMappings: MappingState = {}
 
     fileCategories.forEach((fileCat) => {
       const key = `${fileCat.category}|${fileCat.subcategory}`
-
-      // Intentar auto-mapeo por coincidencia de nombres
-      let matchedSubcategoryId: string | null = null
-
-      for (const appCat of categoryList) {
-        // Comparar nombres de categoría (case-insensitive, trim)
-        const catNameMatch =
-          appCat.name.toLowerCase().trim() === fileCat.category.toLowerCase().trim()
-
-        if (catNameMatch && appCat.subcategories) {
-          // Buscar subcategoría que coincida
-          const matchedSub = appCat.subcategories.find(
-            (sub) => sub.name.toLowerCase().trim() === fileCat.subcategory.toLowerCase().trim()
-          )
-          if (matchedSub) {
-            matchedSubcategoryId = matchedSub.id
-            break
-          }
-        }
-
-        // También buscar coincidencia parcial en subcategorías
-        if (!matchedSubcategoryId && appCat.subcategories) {
-          for (const sub of appCat.subcategories) {
-            const subNameLower = sub.name.toLowerCase().trim()
-            const fileSubLower = fileCat.subcategory.toLowerCase().trim()
-            const fileCatLower = fileCat.category.toLowerCase().trim()
-
-            // Match si la subcategoría del archivo contiene el nombre de la app o viceversa
-            if (
-              subNameLower.includes(fileSubLower) ||
-              fileSubLower.includes(subNameLower) ||
-              subNameLower.includes(fileCatLower) ||
-              fileCatLower.includes(subNameLower)
-            ) {
-              matchedSubcategoryId = sub.id
-              break
-            }
-          }
-        }
-
-        if (matchedSubcategoryId) break
-      }
-
-      initialMappings[key] = matchedSubcategoryId
+      initialMappings[key] = findBestMatch(fileCat, categoryList)
     })
 
     setMappings(initialMappings)

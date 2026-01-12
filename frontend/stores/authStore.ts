@@ -5,9 +5,7 @@ import { auth, accounts, Account, ApiError } from '@/lib/apiClient'
 import {
   setAccessToken,
   setRefreshToken,
-  getRefreshToken,
   clearAllTokens,
-  getAccessToken,
 } from '@/lib/tokenService'
 
 export interface User {
@@ -17,45 +15,70 @@ export interface User {
 }
 
 interface AuthState {
-  // Estado UI local
   isLoggingIn: boolean
   isRegistering: boolean
   isLoggingOut: boolean
   authError: string | null
+  selectedAccountId: string | null
 
-  // Acciones UI
   setLoggingIn: (value: boolean) => void
   setRegistering: (value: boolean) => void
   setLoggingOut: (value: boolean) => void
   setAuthError: (error: string | null) => void
   clearError: () => void
-
-  // Acciones de autenticación
+  setSelectedAccountId: (accountId: string | null) => void
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
 }
 
+const LAST_ACCOUNT_KEY = 'last_account_id'
+
+function getLastAccountId(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(LAST_ACCOUNT_KEY)
+}
+
+function setLastAccountId(accountId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LAST_ACCOUNT_KEY, accountId)
+  }
+}
+
+function clearLastAccountId(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(LAST_ACCOUNT_KEY)
+  }
+}
+
 export const AUTH_QUERY_KEYS = {
   user: ['auth', 'user'] as const,
   account: ['auth', 'account'] as const,
+  accounts: ['auth', 'accounts'] as const,
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  // Estado inicial
+export const useAuthStore = create<AuthState>((set) => ({
   isLoggingIn: false,
   isRegistering: false,
   isLoggingOut: false,
   authError: null,
+  selectedAccountId: null,
 
-  // Acciones UI
   setLoggingIn: (value) => set({ isLoggingIn: value }),
   setRegistering: (value) => set({ isRegistering: value }),
   setLoggingOut: (value) => set({ isLoggingOut: value }),
   setAuthError: (error) => set({ authError: error }),
   clearError: () => set({ authError: null }),
 
-  // Acción login
+  setSelectedAccountId: (accountId) => {
+    set({ selectedAccountId: accountId })
+    if (accountId) {
+      setLastAccountId(accountId)
+    } else {
+      clearLastAccountId()
+    }
+  },
+
   login: async (email: string, password: string) => {
     const router = useRouter()
     const queryClient = useQueryClient()
@@ -71,8 +94,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
 
       const { accounts: userAccounts } = await accounts.getAll()
-      const account = userAccounts.length > 0 ? userAccounts[0] : null
+      queryClient.setQueryData(AUTH_QUERY_KEYS.accounts, userAccounts)
+
+      const lastAccountId = getLastAccountId()
+      const savedAccount = userAccounts.find((a) => a.id === lastAccountId)
+      const account = savedAccount || (userAccounts.length > 0 ? userAccounts[0] : null)
+
       queryClient.setQueryData(AUTH_QUERY_KEYS.account, account)
+      if (account) {
+        setLastAccountId(account.id)
+        set({ selectedAccountId: account.id })
+      }
 
       router.push('/dashboard')
     } catch (error) {
@@ -84,7 +116,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // Acción register
   register: async (email: string, password: string, name: string) => {
     const router = useRouter()
     const queryClient = useQueryClient()
@@ -100,8 +131,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
 
       const { accounts: userAccounts } = await accounts.getAll()
+      queryClient.setQueryData(AUTH_QUERY_KEYS.accounts, userAccounts)
+
       const account = userAccounts.length > 0 ? userAccounts[0] : null
       queryClient.setQueryData(AUTH_QUERY_KEYS.account, account)
+      if (account) {
+        setLastAccountId(account.id)
+        set({ selectedAccountId: account.id })
+      }
 
       router.push('/dashboard')
     } catch (error) {
@@ -113,7 +150,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // Acción logout
   logout: async () => {
     const router = useRouter()
     const queryClient = useQueryClient()
@@ -123,16 +159,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await auth.logout()
     } catch {
-      // Si falla el servidor, igual limpiamos localmente
     } finally {
       clearAllTokens()
+      clearLastAccountId()
 
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.user })
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.account })
+      queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.accounts })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
 
-      set({ isLoggingOut: false })
+      set({
+        isLoggingOut: false,
+        selectedAccountId: null,
+      })
       router.push('/login')
     }
   },

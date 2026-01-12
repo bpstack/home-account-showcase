@@ -14,11 +14,13 @@ interface Account {
   id: string
   name: string
   created_at: string
+  role: string
 }
 
 interface AuthContextType {
   user: User | null
   account: Account | null
+  accounts: Account[]
   isLoading: boolean
   isAuthenticated: boolean
   isLoggingIn: boolean
@@ -29,6 +31,7 @@ interface AuthContextType {
   register: (_email: string, _password: string, _name: string) => Promise<void>
   logout: () => void
   clearError: () => void
+  switchAccount: (_accountId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: auth.user,
         account: auth.account,
+        accounts: auth.accounts,
         isLoading,
         isAuthenticated: auth.isAuthenticated,
         isLoggingIn: auth.isLoggingIn,
@@ -58,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register: auth.register,
         logout: auth.logout,
         clearError: auth.clearError,
+        switchAccount: auth.switchAccount,
       }}
     >
       {children}

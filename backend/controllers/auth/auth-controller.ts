@@ -30,9 +30,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    const { email, password, name } = validationResult.data as RegisterInput
+    const { email, password, name, accountName } = validationResult.data as RegisterInput
 
-    const user = await UserRepository.create({ email, password, name })
+    const user = await UserRepository.create({ email, password, name, accountName })
     const accessToken = generateAccessToken({ id: user.id, email: user.email })
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email })
 

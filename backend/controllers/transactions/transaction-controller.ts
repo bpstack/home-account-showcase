@@ -14,7 +14,6 @@ import {
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validación con Zod
     const validationResult = getTransactionsSchema.safeParse(req.query)
     if (!validationResult.success) {
       const firstError = validationResult.error.issues[0]
@@ -38,7 +37,7 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
       offset,
     } = validationResult.data
 
-    const transactions = await TransactionRepository.getByAccountId(
+    const { transactions, total } = await TransactionRepository.getByAccountIdWithPagination(
       {
         account_id,
         startDate: start_date,
@@ -57,6 +56,9 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
     res.status(200).json({
       success: true,
       transactions,
+      total,
+      limit: limit || 50,
+      offset: offset || 0,
     })
   } catch (error) {
     const err = error as Error

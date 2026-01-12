@@ -144,13 +144,25 @@ export class AccountRepository {
   }
 
   /**
-   * Agregar miembro al account (solo owner)
+   * Agregar miembro al account por email Y nombre (solo owner)
    */
-  static async addMember(accountId: string, ownerId: string, memberId: string): Promise<void> {
+  static async addMember(
+    accountId: string,
+    ownerId: string,
+    email: string,
+    name: string
+  ): Promise<void> {
     const role = await this.getUserRole(accountId, ownerId)
 
     if (role !== 'owner') {
       throw new Error('Solo el owner puede agregar miembros')
+    }
+
+    const { UserRepository } = await import('../../repositories/auth/user-repository.js')
+    const user = await UserRepository.findByEmailAndName(email, name)
+
+    if (!user) {
+      throw new Error('Usuario no encontrado: el email y nombre no coinciden')
     }
 
     const accountUserId = crypto.randomUUID()
@@ -159,7 +171,7 @@ export class AccountRepository {
       await db.query(
         `INSERT INTO account_users (id, account_id, user_id, role)
          VALUES (?, ?, ?, 'member')`,
-        [accountUserId, accountId, memberId]
+        [accountUserId, accountId, user.id]
       )
     } catch (error: any) {
       if (error.code === 'ER_DUP_ENTRY') {
@@ -368,5 +380,25 @@ export class AccountRepository {
     )
 
     return rows
+  }
+
+  /**
+   * Abandonar cuenta (usuario se remueve a sí mismo)
+   */
+  static async leaveAccount(accountId: string, userId: string): Promise<void> {
+    const role = await this.getUserRole(accountId, userId)
+
+    if (role === null) {
+      throw new Error('No tienes acceso a esta cuenta')
+    }
+
+    if (role === 'owner') {
+      throw new Error('El owner no puede abandonar la cuenta. Transfiere la propiedad primero.')
+    }
+
+    await db.query(`DELETE FROM account_users WHERE account_id = ? AND user_id = ?`, [
+      accountId,
+      userId,
+    ])
   }
 }

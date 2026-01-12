@@ -10,7 +10,7 @@ export class UserRepository {
   /**
    * Crear nuevo usuario + account automática
    */
-  static async create({ email, password, name }: RegisterDTO): Promise<User> {
+  static async create({ email, password, name, accountName }: RegisterDTO): Promise<User> {
     const connection = await db.getConnection()
 
     try {
@@ -29,10 +29,11 @@ export class UserRepository {
       )
 
       // 2. Crear account personal
+      const finalAccountName = accountName || `Cuenta de ${name}`
       await connection.query(
         `INSERT INTO accounts (id, name)
          VALUES (?, ?)`,
-        [accountId, `Cuenta de ${name}`]
+        [accountId, finalAccountName]
       )
 
       // 3. Asignar usuario como owner
@@ -117,6 +118,34 @@ export class UserRepository {
        FROM users
        WHERE email = ?`,
       [email]
+    )
+
+    return rows[0] || null
+  }
+
+  /**
+   * Buscar usuario por email o nombre (case-insensitive)
+   */
+  static async findByEmailOrName(identifier: string): Promise<User | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, name, created_at, updated_at
+       FROM users
+       WHERE LOWER(email) = LOWER(?) OR LOWER(name) = LOWER(?)`,
+      [identifier, identifier]
+    )
+
+    return rows[0] || null
+  }
+
+  /**
+   * Buscar usuario por email Y nombre (case-insensitive)
+   */
+  static async findByEmailAndName(email: string, name: string): Promise<User | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, name, created_at, updated_at
+       FROM users
+       WHERE LOWER(email) = LOWER(?) AND LOWER(name) = LOWER(?)`,
+      [email, name]
     )
 
     return rows[0] || null

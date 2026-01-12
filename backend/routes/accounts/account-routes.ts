@@ -8,6 +8,9 @@ import {
   updateAccount,
   deleteAccount,
   getMembers,
+  addMember,
+  removeMember,
+  leaveAccount,
   addDefaultCategories,
 } from '../../controllers/accounts/account-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
@@ -26,6 +29,11 @@ router.delete('/:id', deleteAccount)
 
 // Members
 router.get('/:id/members', getMembers)
+router.post('/:id/members', addMember)
+router.delete('/:id/members/:memberId', removeMember)
+
+// Leave account (abandonar cuenta)
+router.post('/:id/leave', leaveAccount)
 
 // Categories
 router.post('/:id/categories/default', addDefaultCategories)

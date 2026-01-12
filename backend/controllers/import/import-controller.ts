@@ -90,18 +90,55 @@ export const confirmImport = async (
       }
     }
 
+    // Check for existing transactions to avoid duplicates
+    const existingTxQuery = await db.query<any[]>(
+      `SELECT 
+         DATE_FORMAT(date, '%Y-%m-%d') as tx_date, 
+         REPLACE(REPLACE(REPLACE(LOWER(TRIM(description)), '\r', ''), '\n', ''), '.', '') as tx_desc, 
+         ROUND(amount, 2) as tx_amount
+       FROM transactions WHERE account_id = ?`,
+      [account_id]
+    )
+
+    const existingSet = new Set(
+      existingTxQuery[0].map((tx) => `${tx.tx_date}|${tx.tx_desc}|${tx.tx_amount}`)
+    )
+
+    const normalizeDesc = (desc: string) =>
+      desc
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[\r\n\t]/g, '')
+        .replace(/[.,¿?¡!¿:'"]/g, '')
+        .replace(/[^a-z0-9\s]/g, '')
+    const normalizeAmount = (amt: number) => Math.round(amt * 100) / 100
+    const normalizeDate = (date: string) => date.split('T')[0] || date
+
     // Insert transactions in batches
     const BATCH_SIZE = 100
     let inserted = 0
     let skipped = 0
     const errors: string[] = []
+    const insertedKeys = new Set<string>()
 
     for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
       const batch = transactions.slice(i, i + BATCH_SIZE)
       const values: any[] = []
       const placeholders: string[] = []
+      const batchKeys: string[] = []
 
       for (const tx of batch) {
+        const txAmount = normalizeAmount(parseFloat(String(tx.amount)))
+        const txDesc = normalizeDesc(tx.description)
+        const txKey = `${normalizeDate(tx.date)}|${txDesc}|${txAmount}`
+
+        // Check both DB and already inserted in this batch
+        if (existingSet.has(txKey) || insertedKeys.has(txKey)) {
+          skipped++
+          continue
+        }
+
         const id = crypto.randomUUID()
         const mappingKey = `${tx.bank_category}|${tx.bank_subcategory}`
         const subcategoryId = mappingLookup.get(mappingKey) || null
@@ -117,7 +154,10 @@ export const confirmImport = async (
           tx.bank_category,
           tx.bank_subcategory
         )
+        batchKeys.push(txKey)
       }
+
+      if (placeholders.length === 0) continue
 
       try {
         await db.query(
@@ -125,10 +165,11 @@ export const confirmImport = async (
            VALUES ${placeholders.join(', ')}`,
           values
         )
-        inserted += batch.length
+        inserted += placeholders.length
+        batchKeys.forEach((k) => insertedKeys.add(k))
       } catch (err) {
         errors.push(`Error insertando lote ${Math.floor(i / BATCH_SIZE) + 1}: ${(err as Error).message}`)
-        skipped += batch.length
+        skipped += placeholders.length
       }
     }
 

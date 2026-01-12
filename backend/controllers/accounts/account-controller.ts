@@ -255,3 +255,144 @@ export const getMembers = async (req: Request, res: Response): Promise<void> => 
     })
   }
 }
+
+/**
+ * Agregar miembro al account por email Y nombre
+ * POST /api/accounts/:id/members
+ */
+export const addMember = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
+    const { email, name } = req.body
+
+    if (!email || !name) {
+      res.status(400).json({
+        success: false,
+        error: 'Email y nombre son requeridos',
+      })
+      return
+    }
+
+    await AccountRepository.addMember(id, req.user!.id, email, name)
+
+    res.status(201).json({
+      success: true,
+      message: 'Miembro agregado correctamente',
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'Solo el owner puede agregar miembros') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    if (err.message === 'Usuario no encontrado: el email y nombre no coinciden') {
+      res.status(404).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    if (err.message === 'El usuario ya es miembro de esta cuenta') {
+      res.status(409).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en addMember:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+/**
+ * Remover miembro de account (solo owner puede remover a otros)
+ * DELETE /api/accounts/:id/members/:memberId
+ */
+export const removeMember = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, memberId } = req.params
+
+    await AccountRepository.removeMember(id, req.user!.id, memberId)
+
+    res.status(200).json({
+      success: true,
+      message: 'Miembro removido correctamente',
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'Solo el owner puede remover miembros') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    if (err.message === 'El owner no puede removerse a sí mismo') {
+      res.status(400).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en removeMember:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+/**
+ * Abandonar cuenta (usuario se remueve a sí mismo)
+ * POST /api/accounts/:id/leave
+ */
+export const leaveAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params
+    const userId = req.user!.id
+
+    await AccountRepository.leaveAccount(id, userId)
+
+    res.status(200).json({
+      success: true,
+      message: 'Has abandonado la cuenta correctamente',
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'No tienes acceso a esta cuenta') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    if (err.message === 'El owner no puede abandonar la cuenta. Transfiere la propiedad primero.') {
+      res.status(400).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en leaveAccount:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}

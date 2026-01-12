@@ -22,6 +22,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [accountName, setAccountName] = useState('')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +42,7 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      await register(email, password, name)
+      await register(email, password, name, accountName || undefined)
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -70,11 +71,19 @@ export default function RegisterPage() {
             <Input
               id="name"
               type="text"
-              label="Nombre"
-              placeholder="Tu nombre"
+              label="Tu nombre"
+              placeholder="Juan Pérez"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+            />
+            <Input
+              id="accountName"
+              type="text"
+              label="Nombre de la cuenta (opcional)"
+              placeholder="Mi economia"
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
             />
             <Input
               id="email"

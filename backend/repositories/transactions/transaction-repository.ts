@@ -131,6 +131,79 @@ export class TransactionRepository {
   }
 
   /**
+   * Obtener total de transacciones para paginación
+   * https://nextjs.org/docs/app/building-your-application/routing/linking-and-navigating
+   * Usar URL params para pagination state en vez de client-only state
+   */
+  static async getCountByAccountId(
+    filters: TransactionFilters,
+    userId: string
+  ): Promise<number> {
+    const hasAccess = await AccountRepository.hasAccess(filters.account_id, userId)
+    if (!hasAccess) {
+      throw new Error('No tienes acceso a esta cuenta')
+    }
+
+    let query = `SELECT COUNT(*) as total FROM transactions t WHERE t.account_id = ?`
+    const params: any[] = [filters.account_id]
+
+    if (filters.startDate) {
+      query += ' AND t.date >= ?'
+      params.push(filters.startDate)
+    }
+
+    if (filters.endDate) {
+      query += ' AND t.date <= ?'
+      params.push(filters.endDate)
+    }
+
+    if (filters.subcategory_id) {
+      query += ' AND t.subcategory_id = ?'
+      params.push(filters.subcategory_id)
+    }
+
+    if (filters.minAmount !== undefined) {
+      query += ' AND t.amount >= ?'
+      params.push(filters.minAmount)
+    }
+
+    if (filters.maxAmount !== undefined) {
+      query += ' AND t.amount <= ?'
+      params.push(filters.maxAmount)
+    }
+
+    if (filters.search) {
+      query += ' AND t.description LIKE ?'
+      params.push(`%${filters.search}%`)
+    }
+
+    if (filters.type === 'income') {
+      query += ' AND t.amount > 0'
+    } else if (filters.type === 'expense') {
+      query += ' AND t.amount < 0'
+    }
+
+    const [rows] = await db.query<any[]>(query, params)
+
+    return rows[0]?.total || 0
+  }
+
+  /**
+   * Obtener transacciones con paginación y total
+   */
+  static async getByAccountIdWithPagination(
+    filters: TransactionFilters,
+    userId: string
+  ): Promise<{ transactions: TransactionWithDetails[]; total: number }> {
+    const [transactions, total] = await Promise.all([
+      this.getByAccountId(filters, userId),
+      this.getCountByAccountId(filters, userId),
+    ])
+
+    return { transactions, total }
+  }
+
+  /**
    * Obtener transacción por ID
    */
   static async getById(

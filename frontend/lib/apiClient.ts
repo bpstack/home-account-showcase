@@ -163,7 +163,7 @@ export const auth = {
       skipAuth: true,
     }),
 
-  register: (email: string, password: string, name: string) =>
+  register: (email: string, password: string, name: string, accountName?: string) =>
     request<{
       success: boolean
       accessToken: string
@@ -171,7 +171,7 @@ export const auth = {
       user: { id: string; email: string; name: string }
     }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, accountName }),
       skipAuth: true,
     }),
 
@@ -194,6 +194,25 @@ export const auth = {
 // Accounts
 export const accounts = {
   getAll: () => request<{ success: boolean; accounts: Account[] }>('/accounts'),
+  update: (id: string, data: { name: string }) =>
+    request<{ success: boolean; account: Account }>(`/accounts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  getMembers: (id: string) =>
+    request<{
+      success: boolean
+      members: { id: string; email: string; name: string; role: string; joined_at: string }[]
+    }>(`/accounts/${id}/members`),
+  addMember: (id: string, email: string, name: string) =>
+    request<{ success: boolean; message: string }>(`/accounts/${id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ email, name }),
+    }),
+  leaveAccount: (id: string) =>
+    request<{ success: boolean; message: string }>(`/accounts/${id}/leave`, {
+      method: 'POST',
+    }),
 }
 
 // Categories
@@ -276,9 +295,13 @@ export const transactions = {
     if (params.limit) searchParams.set('limit', params.limit.toString())
     if (params.offset) searchParams.set('offset', params.offset.toString())
 
-    return request<{ success: boolean; transactions: Transaction[] }>(
-      `/transactions?${searchParams}`
-    )
+    return request<{
+      success: boolean
+      transactions: Transaction[]
+      total: number
+      limit: number
+      offset: number
+    }>(`/transactions?${searchParams}`)
   },
 
   getById: (id: string) =>

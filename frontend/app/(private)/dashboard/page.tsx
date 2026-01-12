@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab } from '@/components/ui'
+import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab, Button } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { transactions, CategorySummary, Transaction } from '@/lib/apiClient'
 import { useTransactions } from '@/lib/queries/transactions'
@@ -15,12 +16,18 @@ import {
   Calendar,
   BarChart3,
   Loader2,
+  PiggyBank,
+  TrendingUpIcon,
+  Sparkles,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react'
 
 const tabs = [
   { id: 'overview', label: 'Resumen' },
-  { id: 'monthly', label: 'Por meses' },
+  { id: 'history', label: 'Histórico' },
   { id: 'stats', label: 'Estadísticas' },
+  { id: 'savings', label: 'Ahorro e Inversión' },
 ]
 
 const months = [
@@ -38,6 +45,8 @@ const months = [
   'Diciembre',
 ]
 
+type Period = 'month' | 'year' | 'all'
+
 interface Stats {
   income: number
   expenses: number
@@ -45,59 +54,152 @@ interface Stats {
 }
 
 export default function DashboardPage() {
-  const activeTab = useActiveTab('tab', 'overview')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const { account } = useAuth()
 
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+  const activeTab = useActiveTab('tab', 'overview')
+  const period = (searchParams.get('period') as Period) || 'month'
+  const selectedYear = parseInt(searchParams.get('year') || String(new Date().getFullYear()), 10)
 
-  // Usar nuevo endpoint /stats para cálculos en servidor
+  const now = new Date()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  const updateUrl = useCallback((updates: { tab?: string; period?: Period; year?: number }) => {
+    const params = new URLSearchParams(searchParams.toString())
+    
+    if (updates.tab) params.set('tab', updates.tab)
+    if (updates.period) params.set('period', updates.period)
+    if (updates.year !== undefined) params.set('year', String(updates.year))
+    
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  const getDateRange = useCallback(() => {
+    switch (period) {
+      case 'month':
+        return {
+          startDate: new Date(currentYear, currentMonth, 1).toISOString().split('T')[0],
+          endDate: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
+        }
+      case 'year':
+        return {
+          startDate: `${selectedYear}-01-01`,
+          endDate: `${selectedYear}-12-31`,
+        }
+      case 'all':
+        return {
+          startDate: '2020-01-01',
+          endDate: now.toISOString().split('T')[0],
+        }
+    }
+  }, [period, currentYear, currentMonth, selectedYear, now])
+
+  const { startDate, endDate } = getDateRange()
+
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['transactions', 'stats', account?.id, startOfMonth, endOfMonth],
-    queryFn: () => transactions.getStats(account!.id, startOfMonth, endOfMonth),
+    queryKey: ['transactions', 'stats', account?.id, startDate, endDate],
+    queryFn: () => transactions.getStats(account!.id, startDate, endDate),
     enabled: !!account,
   })
 
   const { data: txData, isLoading: isLoadingTx } = useTransactions({
     account_id: account?.id || '',
-    start_date: startOfMonth,
-    end_date: endOfMonth,
+    start_date: startDate,
+    end_date: endDate,
   })
 
   const { data: summaryData } = useQuery({
-    queryKey: ['transactions', 'summary', account?.id, startOfMonth, endOfMonth],
-    queryFn: () => transactions.getSummary(account!.id, startOfMonth, endOfMonth),
+    queryKey: ['transactions', 'summary', account?.id, startDate, endDate],
+    queryFn: () => transactions.getSummary(account!.id, startDate, endDate),
     enabled: !!account,
   })
 
   const transactionList = txData?.transactions || []
   const summary = summaryData?.summary || []
-
-  // Stats calculados en el servidor
   const stats: Stats = statsData?.stats || { income: 0, expenses: 0, balance: 0 }
 
   const isLoading = isLoadingStats || isLoadingTx
 
-  if (isLoading) {
-    return (
-      <div>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-accent" />
-        </div>
-      </div>
-    )
+  const formatPeriodLabel = () => {
+    switch (period) {
+      case 'month':
+        return `${months[currentMonth]} ${currentYear}`
+      case 'year':
+        return String(selectedYear)
+      case 'all':
+        return 'Todos los datos'
+    }
   }
 
   return (
     <div>
-      <Tabs tabs={tabs} defaultTab="overview" className="mb-6" variant="pills" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <Tabs tabs={tabs} defaultTab="overview" className="mb-0" variant="pills" />
 
-      {activeTab === 'overview' && (
-        <OverviewTab stats={stats} summary={summary} transactions={transactionList} />
+        <div className="flex items-center gap-2">
+          {(activeTab === 'overview' || activeTab === 'stats' || activeTab === 'savings') && (
+            <>
+              <Button
+                variant={period === 'month' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => updateUrl({ period: 'month' })}
+              >
+                Mes
+              </Button>
+              <Button
+                variant={period === 'year' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => updateUrl({ period: 'year' })}
+              >
+                Año
+              </Button>
+              <Button
+                variant={period === 'all' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => updateUrl({ period: 'all' })}
+              >
+                Todo
+              </Button>
+            </>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear - 1 })}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium text-text-primary min-w-[100px] text-center">
+                {selectedYear}
+              </span>
+              <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear + 1 })}>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <p className="text-xs text-text-secondary text-center mb-4">
+        {formatPeriodLabel()}
+      </p>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        </div>
+      ) : (
+        <>
+          {activeTab === 'overview' && (
+            <OverviewTab stats={stats} summary={summary} transactions={transactionList} />
+          )}
+          {activeTab === 'history' && <HistoryTab selectedYear={selectedYear} />}
+          {activeTab === 'stats' && <StatsTab summary={summary} />}
+          {activeTab === 'savings' && <SavingsTab stats={stats} period={period} />}
+        </>
       )}
-      {activeTab === 'monthly' && <MonthlyTab />}
-      {activeTab === 'stats' && <StatsTab summary={summary} />}
     </div>
   )
 }
@@ -133,6 +235,8 @@ function OverviewTab({
     )
     .sort((a, b) => b.value - a.value)
 
+  const formatCurrency = (value: number) => `${value.toFixed(2)} €`
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -141,7 +245,7 @@ function OverviewTab({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">Ingresos</p>
-                <p className="text-2xl font-bold text-success">+{stats.income.toFixed(2)} €</p>
+                <p className="text-2xl font-bold text-success">+{formatCurrency(stats.income)}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
                 <TrendingUp className="h-6 w-6 text-success" />
@@ -155,7 +259,7 @@ function OverviewTab({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-secondary">Gastos</p>
-                <p className="text-2xl font-bold text-danger">-{stats.expenses.toFixed(2)} €</p>
+                <p className="text-2xl font-bold text-danger">-{formatCurrency(stats.expenses)}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-danger/10 flex items-center justify-center">
                 <TrendingDown className="h-6 w-6 text-danger" />
@@ -172,8 +276,7 @@ function OverviewTab({
                 <p
                   className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}
                 >
-                  {stats.balance >= 0 ? '+' : ''}
-                  {stats.balance.toFixed(2)} €
+                  {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
                 </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
@@ -194,7 +297,7 @@ function OverviewTab({
           </CardHeader>
           <CardContent>
             {expensesByCategory.length === 0 ? (
-              <p className="text-text-secondary text-center py-4">No hay gastos este mes</p>
+              <p className="text-text-secondary text-center py-4">No hay gastos</p>
             ) : (
               <CategoryPieChart data={expensesByCategory} />
             )}
@@ -207,7 +310,7 @@ function OverviewTab({
           </CardHeader>
           <CardContent>
             {recentTransactions.length === 0 ? (
-              <p className="text-text-secondary text-center py-4">No hay transacciones este mes</p>
+              <p className="text-text-secondary text-center py-4">No hay transacciones</p>
             ) : (
               <div className="space-y-3">
                 {recentTransactions.map((tx) => (
@@ -242,12 +345,10 @@ function OverviewTab({
   )
 }
 
-function MonthlyTab() {
+function HistoryTab({ selectedYear }: { selectedYear: number }) {
   const { account } = useAuth()
   const currentYear = new Date().getFullYear()
-  const [selectedYear, setSelectedYear] = useState(currentYear)
 
-  // Usar nuevo endpoint /monthly-summary - 1 llamada en vez de 12
   const { data: monthlySummaryData, isLoading } = useQuery({
     queryKey: ['transactions', 'monthly-summary', account?.id, selectedYear],
     queryFn: () => transactions.getMonthlySummary(account!.id, selectedYear),
@@ -255,7 +356,6 @@ function MonthlyTab() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Usar nuevo endpoint /balance-history - cálculos en servidor
   const { data: balanceHistoryData, isLoading: isLoadingBalance } = useQuery({
     queryKey: ['transactions', 'balance-history', account?.id, selectedYear],
     queryFn: () => transactions.getBalanceHistory(account!.id, selectedYear),
@@ -263,7 +363,6 @@ function MonthlyTab() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Datos ya calculados en el servidor
   const chartData = monthlySummaryData?.monthlySummary || []
   const balanceData = balanceHistoryData?.balanceHistory || []
 
@@ -271,23 +370,10 @@ function MonthlyTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Ingresos vs Gastos - {selectedYear}
-            </CardTitle>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-layer-2 border border-layer-3 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              {[currentYear - 1, currentYear].map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Ingresos vs Gastos - {selectedYear}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -318,7 +404,7 @@ function MonthlyTab() {
             <BalanceLineChart data={balanceData} />
           ) : (
             <div className="py-12 text-center text-text-secondary">
-              No hay transacciones suficientes para mostrar la evolución
+              No hay transacciones suficientes para mostrar
             </div>
           )}
         </CardContent>
@@ -345,13 +431,9 @@ function MonthlyTab() {
                 <thead>
                   <tr className="border-b border-layer-3">
                     <th className="text-left py-3 px-4 text-text-secondary font-medium">Mes</th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium">
-                      Ingresos
-                    </th>
+                    <th className="text-right py-3 px-4 text-text-secondary font-medium">Ingresos</th>
                     <th className="text-right py-3 px-4 text-text-secondary font-medium">Gastos</th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium">
-                      Balance
-                    </th>
+                    <th className="text-right py-3 px-4 text-text-secondary font-medium">Balance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -478,6 +560,213 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+function SavingsTab({ stats, period }: { stats: Stats; period: Period }) {
+  const formatCurrency = (value: number) => `${value.toFixed(2)} €`
+
+  const savingsRate = stats.income > 0 ? (stats.balance / stats.income) * 100 : 0
+
+  const getSavingsLevel = (rate: number) => {
+    if (rate >= 50) return { label: 'Excelente', color: 'text-success', bg: 'bg-success/10' }
+    if (rate >= 20) return { label: 'Bueno', color: 'text-accent', bg: 'bg-accent/10' }
+    if (rate >= 0) return { label: 'Regular', color: 'text-warning', bg: 'bg-warning/10' }
+    return { label: 'Alto riesgo', color: 'text-danger', bg: 'bg-danger/10' }
+  }
+
+  const savingsLevel = getSavingsLevel(savingsRate)
+  const savingsAmount = Math.max(0, stats.balance)
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-accent/5 border-accent/20">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-text-secondary">Ahorro Total</p>
+                <p className="text-2xl font-bold text-accent">
+                  {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
+                </p>
+                <p className="text-xs text-text-secondary mt-1">
+                  Ingresos - Gastos
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-accent/20 flex items-center justify-center">
+                <PiggyBank className="h-6 w-6 text-accent" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-success/5 border-success/20">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-text-secondary">Tasa de Ahorro</p>
+                <p className={`text-2xl font-bold ${savingsLevel.color}`}>
+                  {savingsRate.toFixed(1)}%
+                </p>
+              </div>
+              <div className={`h-12 w-12 rounded-full ${savingsLevel.bg} flex items-center justify-center`}>
+                <TrendingUpIcon className="h-6 w-6 text-success" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-text-secondary">Nivel</p>
+                <p className={`text-2xl font-bold ${savingsLevel.color}`}>
+                  {savingsLevel.label}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-layer-2 flex items-center justify-center">
+                <Sparkles className="h-6 w-6 text-text-secondary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUpIcon className="h-5 w-5" />
+            Desglose de Ahorro
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-layer-2">
+              <span className="text-text-secondary">Ingresos</span>
+              <span className="font-medium text-success">+{formatCurrency(stats.income)}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-layer-2">
+              <span className="text-text-secondary">Gastos</span>
+              <span className="font-medium text-danger">-{formatCurrency(stats.expenses)}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-layer-3 bg-accent/5 px-4 -mx-4 rounded">
+              <span className="text-text-primary font-medium">Ahorro (Ingresos - Gastos)</span>
+              <span className="font-bold text-accent">
+                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-layer-2">
+              <span className="text-text-secondary">Ahorro proyectado (año)</span>
+              <span className="font-medium text-accent">
+                +{formatCurrency(savingsAmount * 12)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-layer-2">
+              <span className="text-text-secondary">Meta de ahorro (30%)</span>
+              <span className="font-medium text-success">
+                +{formatCurrency(stats.income * 0.3)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-3">
+              <span className="text-text-secondary">Diferencia con meta</span>
+              <span
+                className={`font-medium ${stats.balance >= stats.income * 0.3 ? 'text-success' : 'text-danger'}`}
+              >
+                {formatCurrency(stats.balance - stats.income * 0.3)}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Inversión
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-layer-2">
+              <span className="text-text-secondary">Ahorro disponible</span>
+              <span className="font-medium text-accent">
+                {stats.balance >= 0 ? formatCurrency(savingsAmount) : 'Sin ahorro'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-layer-2">
+              <span className="text-text-secondary">Porcentaje a invertir</span>
+              <span className="font-medium text-text-primary">0% (pendiente IA)</span>
+            </div>
+            <div className="flex justify-between items-center py-3">
+              <span className="text-text-secondary">Monto a invertir</span>
+              <span className="font-medium text-text-secondary">-</span>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-layer-2 rounded-lg border border-layer-3">
+            <div className="flex items-start gap-3">
+              <Sparkles className="h-5 w-5 text-accent mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-text-primary mb-2">
+                  Cálculo de inversión con IA
+                </p>
+                <p className="text-xs text-text-secondary mb-2">
+                  La IA analizará tus datos para determinar el % óptimo de inversión:
+                </p>
+                <ul className="text-xs text-text-secondary space-y-1 list-disc list-inside">
+                  <li>Perfil de riesgo (conservador, moderado, agresivo)</li>
+                  <li>Horizonte temporal (corto, medio, largo plazo)</li>
+                  <li>Objetivos financieros (jubilación, casa, emergencia)</li>
+                  <li>Cantidad disponible vs necesidades</li>
+                </ul>
+                <p className="text-xs text-text-secondary mt-2">
+                  Referencias: OpenAI GPT-4, Claude API
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Proyección de Ahorro
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-2 border-b border-layer-2">
+              <span className="text-text-secondary">Manteniendo ritmo actual</span>
+              <span className="font-medium text-accent">
+                +{formatCurrency(savingsAmount * 12)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-layer-2">
+              <span className="text-text-secondary">Ahorro recomendado (30%)</span>
+              <span className="font-medium text-success">
+                +{formatCurrency(stats.income * 0.3 * 12)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-layer-2">
+              <span className="text-text-secondary">Proyección conservadora (5%)</span>
+              <span className="font-medium text-text-primary">
+                +{formatCurrency(savingsAmount * 12 * 1.05)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-text-secondary">Proyección optimista (10%)</span>
+              <span className="font-medium text-success">
+                +{formatCurrency(savingsAmount * 12 * 1.1)}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

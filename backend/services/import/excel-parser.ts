@@ -176,7 +176,7 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
 
   // Find header row (F. VALOR, CATEGORÍA, SUBCATEGORÍA, DESCRIPCIÓN, COMENTARIO, IMPORTE)
   let headerRowIndex = -1
-  for (let i = 0; i < Math.min(10, data.length); i++) {
+  for (let i = 0; i < Math.min(15, data.length); i++) {
     const row = data[i]
     if (
       row &&
@@ -201,12 +201,41 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
     }
   }
 
+  // Find column indices dynamically
+  const headerRow = data[headerRowIndex] as string[]
+  const colIndices: Record<string, number> = {}
+  headerRow.forEach((cell, idx) => {
+    if (typeof cell === 'string') {
+      const upper = cell.toUpperCase()
+      if (upper.includes('F. VALOR') || upper.includes('FECHA')) colIndices.date = idx
+      if (upper.includes('CATEGORÍA')) colIndices.category = idx
+      if (upper.includes('SUBCATEGORÍA')) colIndices.subcategory = idx
+      if (upper.includes('DESCRIPCIÓN')) colIndices.description = idx
+      if (upper.includes('IMPORTE')) colIndices.amount = idx
+    }
+  })
+
+  // Validate required columns
+  if (colIndices.amount === undefined) {
+    return {
+      success: false,
+      file_type: 'movimientos_cc',
+      transactions: [],
+      categories: [],
+      errors: ['No se encontró la columna de importe'],
+    }
+  }
+
   // Parse data rows
   for (let i = headerRowIndex + 1; i < data.length; i++) {
     const row = data[i]
-    if (!row || !Array.isArray(row) || row.length < 6) continue
+    if (!row || !Array.isArray(row)) continue
 
-    const [dateValue, category, subcategory, description, , amount] = row
+    const dateValue = row[colIndices.date]
+    const category = row[colIndices.category]
+    const subcategory = row[colIndices.subcategory]
+    const description = row[colIndices.description]
+    const amount = row[colIndices.amount]
 
     // Skip empty rows
     if (!dateValue || amount === undefined || amount === null) continue
@@ -222,13 +251,13 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
       }
 
       const parsedAmount =
-        typeof amount === 'number' ? amount : parseFloat(String(amount))
+        typeof amount === 'number' ? amount : parseFloat(String(amount).replace(/[^\d.,-]/g, ''))
       if (isNaN(parsedAmount)) continue
 
       transactions.push({
         date: dateStr,
         description: String(description || '').trim() || 'Sin descripción',
-        amount: parsedAmount, // Ya viene con signo correcto
+        amount: parsedAmount,
         bank_category: String(category || '').trim(),
         bank_subcategory: String(subcategory || '').trim(),
       })
