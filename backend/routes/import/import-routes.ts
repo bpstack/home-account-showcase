@@ -5,6 +5,7 @@ import {
   parseFile,
   confirmImport,
   getExistingCategories,
+  getSavedMappings,
 } from '../../controllers/import/import-controller.js'
 
 const router: RouterType = Router()
@@ -42,5 +43,8 @@ router.post('/confirm', authenticateToken, confirmImport)
 
 // Get existing categories for mapping UI
 router.get('/categories', authenticateToken, getExistingCategories)
+
+// Get saved category mappings for auto-categorization
+router.get('/mappings', authenticateToken, getSavedMappings)
 
 export default router

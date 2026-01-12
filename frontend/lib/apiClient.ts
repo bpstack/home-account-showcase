@@ -501,6 +501,12 @@ export const importApi = {
     request<{ success: boolean; categories: Category[] }>(
       `/import/categories?account_id=${accountId}`
     ),
+
+  getSavedMappings: (accountId: string) =>
+    request<{
+      success: boolean
+      mappings: { bank_category: string; bank_subcategory: string; subcategory_id: string }[]
+    }>(`/import/mappings?account_id=${accountId}`),
 }
 
 // AI Types

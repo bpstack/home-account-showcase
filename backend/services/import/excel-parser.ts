@@ -206,12 +206,16 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
   const colIndices: Record<string, number> = {}
   headerRow.forEach((cell, idx) => {
     if (typeof cell === 'string') {
-      const upper = cell.toUpperCase()
-      if (upper.includes('F. VALOR') || upper.includes('FECHA')) colIndices.date = idx
-      if (upper.includes('CATEGORÍA')) colIndices.category = idx
-      if (upper.includes('SUBCATEGORÍA')) colIndices.subcategory = idx
-      if (upper.includes('DESCRIPCIÓN')) colIndices.description = idx
-      if (upper.includes('IMPORTE')) colIndices.amount = idx
+      const upper = cell.toUpperCase().trim()
+      if (upper.includes('F. VALOR') || upper === 'FECHA') colIndices.date = idx
+      // Check SUBCATEGORÍA first (more specific) to avoid collision with CATEGORÍA
+      if (upper === 'SUBCATEGORÍA' || upper === 'SUBCATEGORIA') {
+        colIndices.subcategory = idx
+      } else if (upper === 'CATEGORÍA' || upper === 'CATEGORIA') {
+        colIndices.category = idx
+      }
+      if (upper.includes('DESCRIPCIÓN') || upper.includes('DESCRIPCION') || upper === 'CONCEPTO') colIndices.description = idx
+      if (upper.includes('IMPORTE') || upper === 'CANTIDAD' || upper === 'AMOUNT') colIndices.amount = idx
     }
   })
 

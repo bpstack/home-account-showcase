@@ -90,20 +90,7 @@ export const confirmImport = async (
       }
     }
 
-    // Check for existing transactions to avoid duplicates
-    const existingTxQuery = await db.query<any[]>(
-      `SELECT 
-         DATE_FORMAT(date, '%Y-%m-%d') as tx_date, 
-         REPLACE(REPLACE(REPLACE(LOWER(TRIM(description)), '\r', ''), '\n', ''), '.', '') as tx_desc, 
-         ROUND(amount, 2) as tx_amount
-       FROM transactions WHERE account_id = ?`,
-      [account_id]
-    )
-
-    const existingSet = new Set(
-      existingTxQuery[0].map((tx) => `${tx.tx_date}|${tx.tx_desc}|${tx.tx_amount}`)
-    )
-
+    // Normalization functions (used for both existing and new transactions)
     const normalizeDesc = (desc: string) =>
       desc
         .toLowerCase()
@@ -112,8 +99,26 @@ export const confirmImport = async (
         .replace(/[\r\n\t]/g, '')
         .replace(/[.,¿?¡!¿:'"]/g, '')
         .replace(/[^a-z0-9\s]/g, '')
-    const normalizeAmount = (amt: number) => Math.round(amt * 100) / 100
+    const normalizeAmount = (amt: number) => (Math.round(amt * 100) / 100).toFixed(2)
     const normalizeDate = (date: string) => date.split('T')[0] || date
+
+    // Check for existing transactions to avoid duplicates
+    // Fetch raw data and normalize in JS to ensure consistency
+    const existingTxQuery = await db.query<any[]>(
+      `SELECT
+         DATE_FORMAT(date, '%Y-%m-%d') as tx_date,
+         description as tx_desc,
+         amount as tx_amount
+       FROM transactions WHERE account_id = ?`,
+      [account_id]
+    )
+
+    const existingSet = new Set(
+      existingTxQuery[0].map(
+        (tx) =>
+          `${tx.tx_date}|${normalizeDesc(tx.tx_desc)}|${normalizeAmount(parseFloat(tx.tx_amount))}`
+      )
+    )
 
     // Insert transactions in batches
     const BATCH_SIZE = 100
@@ -173,6 +178,37 @@ export const confirmImport = async (
       }
     }
 
+    // Save category mappings for future imports (only those with subcategory_id assigned)
+    if (category_mappings && category_mappings.length > 0) {
+      const validMappings = category_mappings.filter((m) => m.subcategory_id)
+      if (validMappings.length > 0) {
+        const mappingPlaceholders: string[] = []
+        const mappingValues: any[] = []
+
+        for (const mapping of validMappings) {
+          mappingPlaceholders.push('(UUID(), ?, ?, ?, ?)')
+          mappingValues.push(
+            account_id,
+            mapping.bank_category,
+            mapping.bank_subcategory,
+            mapping.subcategory_id
+          )
+        }
+
+        try {
+          await db.query(
+            `INSERT INTO category_mappings (id, account_id, bank_category, bank_subcategory, subcategory_id)
+             VALUES ${mappingPlaceholders.join(', ')}
+             ON DUPLICATE KEY UPDATE subcategory_id = VALUES(subcategory_id), updated_at = CURRENT_TIMESTAMP`,
+            mappingValues
+          )
+        } catch (err) {
+          // Non-critical error, log but don't fail the import
+          console.error('Error saving category mappings:', err)
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
       data: {
@@ -223,6 +259,50 @@ export const getExistingCategories = async (
     })
   } catch (error) {
     console.error('Error en getExistingCategories:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+export const getSavedMappings = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { account_id } = req.query
+
+    if (!account_id || typeof account_id !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: 'account_id es requerido',
+      })
+      return
+    }
+
+    const hasAccess = await AccountRepository.hasAccess(account_id, req.user!.id)
+    if (!hasAccess) {
+      res.status(403).json({
+        success: false,
+        error: 'No tienes acceso a esta cuenta',
+      })
+      return
+    }
+
+    const result = await db.query<any[]>(
+      `SELECT bank_category, bank_subcategory, subcategory_id
+       FROM category_mappings
+       WHERE account_id = ?`,
+      [account_id]
+    )
+
+    res.status(200).json({
+      success: true,
+      mappings: result[0],
+    })
+  } catch (error) {
+    console.error('Error en getSavedMappings:', error)
     res.status(500).json({
       success: false,
       error: 'Error interno del servidor',

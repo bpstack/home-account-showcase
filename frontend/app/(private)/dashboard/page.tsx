@@ -163,6 +163,20 @@ export default function DashboardPage() {
               >
                 Todo
               </Button>
+              {period === 'year' && (
+                <>
+                  <div className="w-px h-6 bg-layer-3 mx-1" />
+                  <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear - 1 })}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium text-text-primary min-w-[60px] text-center">
+                    {selectedYear}
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear + 1 })}>
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </>
           )}
 

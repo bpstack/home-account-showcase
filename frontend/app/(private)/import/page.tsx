@@ -1,9 +1,15 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCategories } from '@/lib/queries/categories'
 import { importApi, type ParseResult, type CategoryMapping, type Category } from '@/lib/apiClient'
+
+interface SavedMapping {
+  bank_category: string
+  bank_subcategory: string
+  subcategory_id: string
+}
 import { Button, Card, CardContent, Select } from '@/components/ui'
 import {
   Upload,
@@ -31,6 +37,7 @@ export default function ImportPage() {
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
   const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [mappings, setMappings] = useState<MappingState>({})
+  const [savedMappings, setSavedMappings] = useState<SavedMapping[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<{
@@ -39,6 +46,21 @@ export default function ImportPage() {
     skipped: number
     errors: string[]
   } | null>(null)
+  const savedMappingsLoaded = useRef(false)
+
+  // Load saved mappings when account is available
+  useEffect(() => {
+    if (account?.id && !savedMappingsLoaded.current) {
+      savedMappingsLoaded.current = true
+      importApi.getSavedMappings(account.id).then((res) => {
+        if (res.success && res.mappings) {
+          setSavedMappings(res.mappings)
+        }
+      }).catch(() => {
+        // Ignore errors loading saved mappings
+      })
+    }
+  }, [account?.id])
 
   const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -109,72 +131,130 @@ export default function ImportPage() {
       .replace(/[\u0300-\u036f]/g, '')
   }
 
+  // Keyword mappings: bank keywords → app category/subcategory keywords
+  // Order matters: more specific matches should come first
+  const KEYWORD_MAPPINGS: { keywords: string[]; category: string; subcategory?: string }[] = [
+    // Supermercado / Alimentación
+    { keywords: ['supermercado', 'alimentacion', 'alimentación', 'mercadona', 'carrefour', 'lidl', 'aldi', 'dia', 'experos', 'hipercor', 'eroski', 'consum'], category: 'supermercado', subcategory: 'alimentacion' },
+    { keywords: ['ropa', 'complementos', 'vestir', 'zara', 'hm', 'primark', 'mango', 'pull', 'bershka', 'stradivarius'], category: 'supermercado', subcategory: 'ropa' },
+    { keywords: ['limpieza', 'drogueria'], category: 'supermercado', subcategory: 'limpieza' },
+    // Ocio y viajes
+    { keywords: ['restaurante', 'cafeteria', 'cafe', 'comida fuera', 'cena', 'almuerzo', 'barullo', 'mcdonalds', 'burger', 'telepizza', 'dominos'], category: 'ocio', subcategory: 'restaurantes' },
+    { keywords: ['bar', 'cerveza', 'copa', 'pub'], category: 'ocio', subcategory: 'bares' },
+    { keywords: ['juguete', 'jugueteria', 'regalo', 'toys', 'regalos'], category: 'ocio', subcategory: 'regalos' },
+    { keywords: ['vacacion', 'viaje', 'hotel', 'vuelo', 'airbnb', 'booking', 'ocio y viajes'], category: 'ocio', subcategory: 'vacaciones' },
+    { keywords: ['cine', 'teatro', 'concierto', 'espectaculo', 'entrada', 'netflix', 'spotify', 'hbo', 'disney'], category: 'ocio', subcategory: 'espectaculos' },
+    { keywords: ['deporte', 'gimnasio', 'fitness', 'padel', 'tenis', 'futbol', 'decathlon'], category: 'ocio', subcategory: 'deporte' },
+    // Transporte / Vehículo
+    { keywords: ['gasolina', 'combustible', 'gasolinera', 'repsol', 'cepsa', 'bp', 'shell', 'galp', 'vehiculo', 'vehículo'], category: 'transporte', subcategory: 'combustible' },
+    { keywords: ['taxi', 'uber', 'cabify', 'bus', 'tren', 'metro', 'transporte publico', 'renfe', 'avanza'], category: 'transporte', subcategory: 'taxi' },
+    { keywords: ['parking', 'garage', 'aparcamiento'], category: 'transporte', subcategory: 'garage' },
+    { keywords: ['taller', 'mecanico', 'itv', 'mantenimiento auto', 'neumatico', 'norauto', 'midas'], category: 'transporte', subcategory: 'mantenimiento' },
+    // Vivienda / Hogar
+    { keywords: ['hogar', 'casa', 'vivienda', 'mueble', 'ikea', 'decoracion', 'leroy', 'bricomart'], category: 'vivienda', subcategory: 'muebles' },
+    { keywords: ['electrodomestico', 'media markt', 'worten', 'el corte ingles electronica'], category: 'vivienda', subcategory: 'electrodomesticos' },
+    { keywords: ['reparacion', 'fontanero', 'electricista', 'reforma'], category: 'vivienda', subcategory: 'reparaciones' },
+    // Gastos Fijos
+    { keywords: ['luz', 'electricidad', 'endesa', 'iberdrola', 'naturgy'], category: 'gastos fijos', subcategory: 'luz' },
+    { keywords: ['agua', 'canal', 'emasa', 'aguas'], category: 'gastos fijos', subcategory: 'agua' },
+    { keywords: ['internet', 'fibra', 'movistar', 'vodafone', 'orange', 'telefono', 'digi', 'masmovil', 'jazztel'], category: 'gastos fijos', subcategory: 'internet' },
+    { keywords: ['hipoteca', 'prestamo vivienda'], category: 'gastos fijos', subcategory: 'hipoteca' },
+    { keywords: ['comunidad', 'vecinos'], category: 'gastos fijos', subcategory: 'comunidad' },
+    // Salud / Educación y salud
+    { keywords: ['farmacia', 'medicina', 'medicamento', 'herbolario', 'nutricion', 'educacion y salud'], category: 'salud', subcategory: 'farmacia' },
+    { keywords: ['medico', 'hospital', 'clinica', 'dentista', 'oculista'], category: 'salud', subcategory: 'obra social' },
+    { keywords: ['peluqueria', 'estetica', 'belleza', 'cuidado personal'], category: 'salud', subcategory: 'cuidado personal' },
+    // Efectivo / Otros gastos
+    { keywords: ['cajero', 'efectivo', 'atm', 'retirada'], category: 'efectivo', subcategory: 'cajero' },
+    { keywords: ['bizum'], category: 'efectivo', subcategory: 'bizum' },
+    { keywords: ['transferencia', 'otros gastos', 'revolut', 'paypal', 'wise'], category: 'efectivo', subcategory: 'transferencias' },
+    // Ingresos / Ventajas
+    { keywords: ['nomina', 'salario', 'sueldo', 'pago empresa'], category: 'ingresos', subcategory: 'nomina' },
+    { keywords: ['ingreso', 'abono', 'devolucion', 'ventajas', 'incentivo', 'bonificacion'], category: 'ingresos', subcategory: 'otros ingresos' },
+    // Seguros
+    { keywords: ['seguro', 'mapfre', 'axa', 'allianz', 'generali', 'sanitas', 'adeslas'], category: 'seguros' },
+    // Formación
+    { keywords: ['colegio', 'escuela', 'instituto', 'universidad', 'educacion'], category: 'formacion', subcategory: 'colegio' },
+    { keywords: ['libro', 'material escolar', 'papeleria'], category: 'formacion', subcategory: 'libros' },
+    { keywords: ['curso', 'formacion', 'academia', 'udemy', 'coursera'], category: 'formacion', subcategory: 'cursos' },
+    // Compras genéricas (ING)
+    { keywords: ['compras'], category: 'supermercado' },
+  ]
+
   const findBestMatch = (
     fileCat: { category: string; subcategory: string },
     categoryList: Category[]
   ): string | null => {
-    const normalizedFileCat = fileCat.category.toLowerCase().trim()
-    const normalizedFileSub = fileCat.subcategory.toLowerCase().trim()
+    const bankText = normalizeText(`${fileCat.category} ${fileCat.subcategory}`)
+
+    // Debug log
+    console.log('findBestMatch:', { bankText, categoryListLength: categoryList.length, fileCat })
+
+    // 1. Try keyword matching first
+    for (const mapping of KEYWORD_MAPPINGS) {
+      const hasKeyword = mapping.keywords.some((kw) => bankText.includes(normalizeText(kw)))
+      if (hasKeyword) {
+        // Find the app category
+        const appCat = categoryList.find(
+          (c) => normalizeText(c.name).includes(normalizeText(mapping.category))
+        )
+        if (appCat?.subcategories) {
+          // If we have a subcategory hint, find it
+          if (mapping.subcategory) {
+            const sub = appCat.subcategories.find((s) =>
+              normalizeText(s.name).includes(normalizeText(mapping.subcategory!))
+            )
+            if (sub) return sub.id
+          }
+          // Otherwise return first subcategory
+          if (appCat.subcategories.length > 0) {
+            return appCat.subcategories[0].id
+          }
+        }
+      }
+    }
+
+    // 2. Fallback: exact/partial name matching
+    const normalizedFileCat = normalizeText(fileCat.category)
+    const normalizedFileSub = normalizeText(fileCat.subcategory)
 
     for (const appCat of categoryList) {
-      const normalizedAppCat = appCat.name.toLowerCase().trim()
+      const normalizedAppCat = normalizeText(appCat.name)
 
-      // Exact match (case-insensitive, normalized)
-      if (normalizeText(appCat.name) === normalizeText(fileCat.category)) {
+      // Exact match on category name
+      if (normalizedAppCat === normalizedFileCat) {
         if (appCat.subcategories) {
-          // Buscar subcategoría que coincida
           for (const sub of appCat.subcategories) {
-            if (normalizeText(sub.name) === normalizeText(fileCat.subcategory)) {
+            if (normalizeText(sub.name) === normalizedFileSub) {
               return sub.id
             }
           }
-          // Si no hay subcategoría en el archivo, retornar primera subcategoría
-          if (!fileCat.subcategory && appCat.subcategories.length > 0) {
-            return appCat.subcategories[0].id
-          }
-        }
-        return null
-      }
-
-      // Coincidencia parcial en categoría
-      if (
-        normalizeText(appCat.name).includes(normalizedFileCat) ||
-        normalizedFileCat.includes(normalizeText(appCat.name))
-      ) {
-        if (appCat.subcategories) {
-          for (const sub of appCat.subcategories) {
-            if (normalizeText(sub.name) === normalizeText(fileCat.subcategory)) {
-              return sub.id
-            }
-          }
-          // Buscar subcategoría que contenga o sea contenida por el texto del archivo
-          if (fileCat.subcategory) {
-            for (const sub of appCat.subcategories) {
-              const normalizedSub = normalizeText(sub.name)
-              if (
-                normalizedSub.includes(normalizedFileSub) ||
-                normalizedFileSub.includes(normalizedSub)
-              ) {
-                return sub.id
-              }
-            }
-          }
-          if (!fileCat.subcategory && appCat.subcategories.length > 0) {
+          if (appCat.subcategories.length > 0) {
             return appCat.subcategories[0].id
           }
         }
       }
 
-      // Buscar en todas las subcategorías de todas las categorías
-      // (ignorar categoría del archivo y buscar por subcategoría directamente)
+      // Partial match on category
+      if (normalizedAppCat.includes(normalizedFileCat) || normalizedFileCat.includes(normalizedAppCat)) {
+        if (appCat.subcategories) {
+          for (const sub of appCat.subcategories) {
+            const normalizedSub = normalizeText(sub.name)
+            if (normalizedSub.includes(normalizedFileSub) || normalizedFileSub.includes(normalizedSub)) {
+              return sub.id
+            }
+          }
+          if (appCat.subcategories.length > 0) {
+            return appCat.subcategories[0].id
+          }
+        }
+      }
+
+      // Search in all subcategories
       if (fileCat.subcategory && appCat.subcategories) {
         for (const sub of appCat.subcategories) {
           const normalizedSub = normalizeText(sub.name)
-          if (
-            normalizedSub === normalizedFileSub ||
-            normalizedSub.includes(normalizedFileSub) ||
-            normalizedFileSub.includes(normalizedSub)
-          ) {
+          if (normalizedSub.includes(normalizedFileSub) || normalizedFileSub.includes(normalizedSub)) {
             return sub.id
           }
         }
@@ -187,20 +267,35 @@ export default function ImportPage() {
   const initializeMappings = (fileCategories: { category: string; subcategory: string }[]) => {
     const initialMappings: MappingState = {}
 
+    // Create a lookup map from saved mappings for O(1) access
+    const savedMappingsMap = new Map<string, string>()
+    savedMappings.forEach((m) => {
+      const key = `${m.bank_category}|${m.bank_subcategory}`
+      savedMappingsMap.set(key, m.subcategory_id)
+    })
+
     fileCategories.forEach((fileCat) => {
       const key = `${fileCat.category}|${fileCat.subcategory}`
-      initialMappings[key] = findBestMatch(fileCat, categoryList)
+
+      // Priority 1: Check saved mappings first
+      if (savedMappingsMap.has(key)) {
+        initialMappings[key] = savedMappingsMap.get(key)!
+      } else {
+        // Priority 2: Try automatic matching
+        initialMappings[key] = findBestMatch(fileCat, categoryList)
+      }
     })
 
     setMappings(initialMappings)
   }
 
-  // Re-calcular mappings cuando las categorías de la app estén disponibles
+  // Re-calcular mappings cuando las categorías de la app o savedMappings estén disponibles
   useEffect(() => {
     if (parseResult?.categories && categoryList.length > 0) {
+      console.log('useEffect triggered: recalculating mappings with', categoryList.length, 'categories')
       initializeMappings(parseResult.categories)
     }
-  }, [categoryList.length])
+  }, [categoryList, savedMappings, parseResult?.categories])
 
   // Estadísticas de mapeo
   const mappingStats = useMemo(() => {
