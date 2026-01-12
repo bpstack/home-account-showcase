@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
@@ -24,6 +24,15 @@ import {
   Loader2,
   ExternalLink,
 } from 'lucide-react'
+
+function TransactionsPageFallback() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="h-5 w-5 animate-spin text-text-secondary" />
+      <span className="ml-2 text-text-secondary">Cargando...</span>
+    </div>
+  )
+}
 
 const months = [
   'Enero',
@@ -59,6 +68,14 @@ const emptyForm: TransactionForm = {
 }
 
 export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<TransactionsPageFallback />}>
+      <TransactionsPageContent />
+    </Suspense>
+  )
+}
+
+function TransactionsPageContent() {
   const { account } = useAuth()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -68,8 +85,14 @@ export default function TransactionsPage() {
   const searchTerm = searchParams.get('search') || ''
   const filterCategory = searchParams.get('category') || ''
   const filterType = (searchParams.get('type') as 'all' | 'income' | 'expense') || 'all'
-  const currentMonth = parseInt(searchParams.get('month') || String(new Date().getMonth()), 10)
-  const currentYear = parseInt(searchParams.get('year') || String(new Date().getFullYear()), 10)
+  const currentMonthParam = searchParams.get('month')
+  const currentMonth = currentMonthParam && currentMonthParam !== 'null' && currentMonthParam !== '' ? parseInt(currentMonthParam, 10) : null
+  const currentYearParam = searchParams.get('year')
+  const currentYearRaw = currentYearParam ? parseInt(currentYearParam, 10) : new Date().getFullYear()
+  const safeYear = currentYearParam && !Number.isNaN(currentYearRaw) && currentYearRaw >= 1000 && currentYearRaw <= 9999 ? currentYearRaw : new Date().getFullYear()
+  const pageParam = searchParams.get('page')
+  const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1
+  const limit = 500
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -98,8 +121,9 @@ export default function TransactionsPage() {
       search?: string
       category?: string
       type?: 'all' | 'income' | 'expense'
-      month?: number
+      month?: number | null
       year?: number
+      page?: number
     }) => {
       const params = new URLSearchParams(searchParams.toString())
 
@@ -112,16 +136,42 @@ export default function TransactionsPage() {
         else params.delete('category')
       }
       if (updates.type) params.set('type', updates.type)
-      if (updates.month !== undefined) params.set('month', String(updates.month))
+      if (updates.month !== undefined) {
+        if (updates.month === null) {
+          params.delete('month')
+        } else {
+          params.set('month', String(updates.month))
+        }
+      }
       if (updates.year !== undefined) params.set('year', String(updates.year))
+      if (updates.page !== undefined) {
+        if (updates.page <= 1) params.delete('page')
+        else params.set('page', String(updates.page))
+      }
 
       router.push(`${pathname}?${params.toString()}`, { scroll: false })
     },
     [searchParams, router, pathname]
   )
 
-  const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
-  const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
+  const startDate = currentMonth !== null
+    ? new Date(safeYear, currentMonth, 1).toISOString().split('T')[0]
+    : new Date(safeYear, 0, 1).toISOString().split('T')[0]
+  const endDate = currentMonth !== null
+    ? new Date(safeYear, currentMonth + 1, 0).toISOString().split('T')[0]
+    : new Date(safeYear, 11, 31).toISOString().split('T')[0]
+
+  const [searchInputValue, setSearchInputValue] = useState(searchTerm)
+
+  useEffect(() => {
+    setSearchInputValue(searchTerm)
+  }, [searchTerm])
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchInputValue(value)
+    updateUrl({ search: value || undefined })
+  }
 
   const { data: txData, isLoading: isLoadingTx } = useTransactions({
     account_id: account?.id || '',
@@ -129,9 +179,19 @@ export default function TransactionsPage() {
     end_date: endDate,
     search: searchTerm || undefined,
     type: filterType !== 'all' ? filterType : undefined,
+    limit,
+    offset: (page - 1) * limit,
   })
 
   const { data: catData } = useCategories(account?.id || '')
+
+  const { data: allTxData } = useTransactions({
+    account_id: account?.id || '',
+    start_date: startDate,
+    end_date: endDate,
+    search: searchTerm || undefined,
+    type: filterType !== 'all' ? filterType : undefined,
+  })
 
   const createMutation = useCreateTransaction()
   const updateMutation = useUpdateTransaction()
@@ -165,10 +225,34 @@ export default function TransactionsPage() {
     return matchesCategory
   })
 
+  const allTransactions = allTxData?.transactions || []
+
+  const totals = allTransactions.reduce(
+    (acc, tx) => {
+      const amount = Number(tx.amount)
+      if (amount >= 0) {
+        acc.income += amount
+      } else {
+        acc.expenses += Math.abs(amount)
+      }
+      return acc
+    },
+    { income: 0, expenses: 0 }
+  )
+
   const categoryOptions = [
     { value: '', label: 'Todas las categorías' },
     ...categoryList.map((c) => ({ value: c.name, label: c.name })),
   ]
+
+  const monthOptions = [
+    { value: '', label: 'Elegir mes' },
+    ...months.map((m, index) => ({ value: String(index), label: m })),
+  ]
+
+  const periodLabel = currentMonth !== null
+    ? `${months[currentMonth]} ${safeYear}`
+    : `Año ${safeYear}`
 
   const categoryFormOptions = [
     { value: '', label: 'Selecciona categoría' },
@@ -185,20 +269,17 @@ export default function TransactionsPage() {
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-  const prevMonth = () => {
-    if (currentMonth === 0) {
-      updateUrl({ month: 11, year: currentYear - 1 })
-    } else {
-      updateUrl({ month: currentMonth - 1 })
-    }
+  const prevYear = () => {
+    updateUrl({ year: safeYear - 1, month: null })
   }
 
-  const nextMonth = () => {
-    if (currentMonth === 11) {
-      updateUrl({ month: 0, year: currentYear + 1 })
-    } else {
-      updateUrl({ month: currentMonth + 1 })
-    }
+  const nextYear = () => {
+    updateUrl({ year: safeYear + 1, month: null })
+  }
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+    updateUrl({ month: value === '' ? null : parseInt(value, 10) })
   }
 
   const openCreateModal = () => {
@@ -214,7 +295,7 @@ export default function TransactionsPage() {
       date: tx.date.split('T')[0],
       amount: Math.abs(Number(tx.amount)).toString(),
       type: Number(tx.amount) >= 0 ? 'income' : 'expense',
-      category_id: '', // We'd need to load this from subcategory
+      category_id: '',
       subcategory_id: tx.subcategory_id || '',
     })
     setIsModalOpen(true)
@@ -260,93 +341,96 @@ export default function TransactionsPage() {
     })
   }
 
-  const totals = filteredTransactions.reduce(
-    (acc, tx) => {
-      const amount = Number(tx.amount)
-      if (amount >= 0) {
-        acc.income += amount
-      } else {
-        acc.expenses += Math.abs(amount)
-      }
-      return acc
-    },
-    { income: 0, expenses: 0 }
-  )
-
   return (
     <div>
       {/* Toolbar */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-6">
-        {/* Month Selector */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={prevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium text-text-primary min-w-[140px] text-center">
-            {months[currentMonth]} {currentYear}
-          </span>
-          <Button variant="ghost" size="icon" onClick={nextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+      <div className="flex flex-col gap-4 mb-6">
+        {/* Line 1: Search | Type filter | Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex-1 relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
+            <Input
+              placeholder="Buscar transacciones..."
+              value={searchInputValue}
+              onChange={handleSearchChange}
+              className="pl-10 w-full"
+            />
+          </div>
+
+          {/* Type Filter */}
+          <div className="inline-flex items-center bg-layer-2 rounded-lg p-0.5">
+            <button
+              onClick={() => updateUrl({ type: 'all' })}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                filterType === 'all'
+                  ? 'text-text-primary'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Todos
+            </button>
+            <div className="w-px h-5 bg-layer-3 mx-0.5" />
+            <button
+              onClick={() => updateUrl({ type: 'income' })}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                filterType === 'income' ? 'text-success' : 'text-text-secondary hover:text-success'
+              }`}
+            >
+              Ingresos
+            </button>
+            <div className="w-px h-5 bg-layer-3 mx-0.5" />
+            <button
+              onClick={() => updateUrl({ type: 'expense' })}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                filterType === 'expense' ? 'text-danger' : 'text-text-secondary hover:text-danger'
+              }`}
+            >
+              Gastos
+            </button>
+          </div>
+
+          <div className="flex gap-2 sm:ml-auto">
+            <Button variant="outline" onClick={() => router.push('/import')}>
+              <ExternalLink className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Importar</span>
+            </Button>
+            <Button onClick={openCreateModal}>
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Nueva</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Type Filter */}
-        <div className="inline-flex items-center bg-layer-2 rounded-lg p-0.5">
-          <button
-            onClick={() => updateUrl({ type: 'all' })}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-              filterType === 'all'
-                ? 'text-text-primary'
-                : 'text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Todos
-          </button>
-          <div className="w-px h-5 bg-layer-3 mx-0.5" />
-          <button
-            onClick={() => updateUrl({ type: 'income' })}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-              filterType === 'income' ? 'text-success' : 'text-text-secondary hover:text-success'
-            }`}
-          >
-            Ingresos
-          </button>
-          <div className="w-px h-5 bg-layer-3 mx-0.5" />
-          <button
-            onClick={() => updateUrl({ type: 'expense' })}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-              filterType === 'expense' ? 'text-danger' : 'text-text-secondary hover:text-danger'
-            }`}
-          >
-            Gastos
-          </button>
-        </div>
+        {/* Line 2: Year | Month | Category */}
+        <div className="flex flex-wrap gap-4 items-center">
+          {/* Year Selector */}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={prevYear} className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium text-text-primary min-w-[60px] text-center">
+              {safeYear}
+            </span>
+            <Button variant="ghost" size="icon" onClick={nextYear} className="h-8 w-8">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
 
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-          <Input
-            placeholder="Buscar transacciones..."
-            value={searchTerm}
-            onChange={(e) => updateUrl({ search: e.target.value })}
-            className="pl-10"
+          {/* Month Selector */}
+          <Select
+            options={monthOptions}
+            value={currentMonth !== null ? String(currentMonth) : ''}
+            onChange={handleMonthChange}
+            className="w-auto min-w-[140px]"
           />
-        </div>
 
-        <div className="flex gap-2">
+          {/* Category Filter */}
           <Select
             options={categoryOptions}
             value={filterCategory}
             onChange={(e) => updateUrl({ category: e.target.value })}
             className="w-auto min-w-[180px]"
           />
-          <Button variant="outline" onClick={() => router.push('/import')}>
-            <ExternalLink className="h-4 w-4" />
-            <span className="hidden sm:inline ml-2">Importar</span>
-          </Button>
-          <Button onClick={openCreateModal}>
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline ml-2">Nueva</span>
-          </Button>
         </div>
       </div>
 
@@ -472,11 +556,39 @@ export default function TransactionsPage() {
                 </tbody>
               </table>
             )}
+
+            {txData && txData.total > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-layer-3 bg-layer-1">
+                <span className="text-sm text-text-secondary">
+                  Mostrando {transactionList.length} de {txData.total} transacciones
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateUrl({ page: page - 1 })}
+                    disabled={page <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateUrl({ page: page + 1 })}
+                    disabled={page * limit >= txData.total}
+                  >
+                    Siguiente
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {!isLoadingTx && filteredTransactions.length === 0 && (
             <div className="py-12 text-center text-text-secondary">
-              No se encontraron transacciones para {months[currentMonth]} {currentYear}
+              No se encontraron transacciones para {periodLabel}
             </div>
           )}
         </CardContent>
