@@ -364,4 +364,50 @@ export class TransactionRepository {
 
     return rows[0]?.total || 0
   }
+
+  /**
+   * Contar transacciones por patrón de descripción
+   */
+  static async countByDescriptionPattern(
+    accountId: string,
+    userId: string,
+    descriptionPattern: string
+  ): Promise<number> {
+    const hasAccess = await AccountRepository.hasAccess(accountId, userId)
+    if (!hasAccess) {
+      throw new Error('No tienes acceso a esta cuenta')
+    }
+
+    const [rows] = await db.query<any[]>(
+      `SELECT COUNT(*) as total FROM transactions
+       WHERE account_id = ? AND description LIKE ?`,
+      [accountId, `%${descriptionPattern}%`]
+    )
+
+    return rows[0]?.total || 0
+  }
+
+  /**
+   * Actualizar categoría de transacciones por patrón de descripción
+   */
+  static async bulkUpdateCategory(
+    accountId: string,
+    userId: string,
+    descriptionPattern: string,
+    subcategoryId: string | null
+  ): Promise<number> {
+    const hasAccess = await AccountRepository.hasAccess(accountId, userId)
+    if (!hasAccess) {
+      throw new Error('No tienes acceso a esta cuenta')
+    }
+
+    const [result] = await db.query<any>(
+      `UPDATE transactions
+       SET subcategory_id = ?
+       WHERE account_id = ? AND description LIKE ?`,
+      [subcategoryId, accountId, `%${descriptionPattern}%`]
+    )
+
+    return result.affectedRows || 0
+  }
 }

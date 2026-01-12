@@ -11,6 +11,8 @@ import {
   getStats,
   getBalanceHistory,
   getMonthlySummary,
+  bulkUpdatePreview,
+  bulkUpdateCategory,
 } from '../../controllers/transactions/transaction-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 
@@ -23,8 +25,10 @@ router.get('/summary', getTransactionsSummary)
 router.get('/stats', getStats)
 router.get('/balance-history', getBalanceHistory)
 router.get('/monthly-summary', getMonthlySummary)
+router.get('/bulk-update-preview', bulkUpdatePreview)
 router.get('/:id', getTransactionById)
 router.post('/', createTransaction)
+router.put('/bulk-update-category', bulkUpdateCategory)
 router.put('/:id', updateTransaction)
 router.delete('/:id', deleteTransaction)
 

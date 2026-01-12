@@ -13,6 +13,7 @@ import {
 } from '@/lib/queries/transactions'
 import { useCategories } from '@/lib/queries/categories'
 import { Button, Card, CardContent, Input, Select, Modal, ModalFooter } from '@/components/ui'
+import { CategoryChangeModal } from '@/components/transactions'
 import {
   Plus,
   Search,
@@ -73,6 +74,24 @@ export default function TransactionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
+
+  // Estado para el modal de cambio de categoria
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+
+  const handleCategoryClick = (tx: Transaction) => {
+    setSelectedTransaction(tx)
+    setIsCategoryModalOpen(true)
+  }
+
+  const handleCategoryModalClose = () => {
+    setIsCategoryModalOpen(false)
+    setSelectedTransaction(null)
+  }
+
+  const handleCategoryChangeSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+  }
 
   const updateUrl = useCallback(
     (updates: {
@@ -391,30 +410,36 @@ export default function TransactionsPage() {
                       <td className="py-3 px-4 text-text-primary text-xs">{formatDate(tx.date)}</td>
                       <td className="py-3 px-4 text-text-primary">{tx.description}</td>
                       <td className="py-3 px-4 hidden md:table-cell">
-                        {tx.category_name ? (
-                          <div>
-                            <span
-                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
-                              style={{
-                                backgroundColor: `${tx.category_color}20`,
-                                color: tx.category_color,
-                              }}
-                            >
+                        <button
+                          onClick={() => handleCategoryClick(tx)}
+                          className="text-left hover:ring-2 hover:ring-accent/50 rounded-lg transition-all p-1 -m-1"
+                          title="Clic para cambiar categoria"
+                        >
+                          {tx.category_name ? (
+                            <div>
                               <span
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: tx.category_color }}
-                              />
-                              {tx.category_name}
-                            </span>
-                            {tx.subcategory_name && (
-                              <div className="text-xs text-text-secondary mt-0.5 ml-2">
-                                {tx.subcategory_name}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-text-secondary text-xs">Sin categoría</span>
-                        )}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
+                                style={{
+                                  backgroundColor: `${tx.category_color}20`,
+                                  color: tx.category_color,
+                                }}
+                              >
+                                <span
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: tx.category_color }}
+                                />
+                                {tx.category_name}
+                              </span>
+                              {tx.subcategory_name && (
+                                <div className="text-xs text-text-secondary mt-0.5 ml-2">
+                                  {tx.subcategory_name}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-text-secondary text-xs">Sin categoria</span>
+                          )}
+                        </button>
                       </td>
                       <td
                         className={`py-3 px-4 text-right font-medium ${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}
@@ -554,6 +579,17 @@ export default function TransactionsPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Modal para cambio de categoria */}
+      {account && (
+        <CategoryChangeModal
+          isOpen={isCategoryModalOpen}
+          onClose={handleCategoryModalClose}
+          transaction={selectedTransaction}
+          accountId={account.id}
+          onSuccess={handleCategoryChangeSuccess}
+        />
+      )}
     </div>
   )
 }

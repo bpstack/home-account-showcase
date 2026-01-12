@@ -10,6 +10,8 @@ import {
   getStatsSchema,
   getBalanceHistorySchema,
   getMonthlySummarySchema,
+  bulkUpdatePreviewSchema,
+  bulkUpdateCategorySchema,
 } from '../../validators/transaction-validators.js'
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
@@ -279,7 +281,7 @@ export const getTransactionsSummary = async (req: Request, res: Response): Promi
 }
 
 /**
- * Obtiene estadísticas de ingresos, gastos y balance
+ * Obtiene estadísticas de ingresos, gastos, balance y desglose de ingresos por tipo
  * GET /api/transactions/stats
  * Query: account_id, start_date?, end_date?
  */
@@ -308,15 +310,31 @@ export const getStats = async (req: Request, res: Response): Promise<void> => {
     )
 
     // Cálculos en el servidor
-    const income = transactions
-      .filter((t) => Number(t.amount) > 0)
-      .reduce((sum, t) => sum + Number(t.amount), 0)
+    const incomeTransactions = transactions.filter((t) => Number(t.amount) > 0)
+    const income = incomeTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
 
     const expenses = transactions
       .filter((t) => Number(t.amount) < 0)
       .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0)
 
     const balance = income - expenses
+
+    // Desglose de ingresos por tipo
+    const incomeByType: Record<string, number> = {}
+    for (const t of incomeTransactions) {
+      const desc = t.description.toLowerCase()
+      let type = 'Otros Ingresos'
+      if (desc.includes('nómina') || desc.includes('nomina')) {
+        type = 'Nómina'
+      } else if (desc.includes('transferencia') || desc.includes('transfer')) {
+        type = 'Transferencias'
+      } else if (desc.includes('bizum')) {
+        type = 'Bizum'
+      } else if (desc.includes('bonus') || desc.includes('bonific')) {
+        type = 'Bonificaciones'
+      }
+      incomeByType[type] = (incomeByType[type] || 0) + Number(t.amount)
+    }
 
     res.status(200).json({
       success: true,
@@ -325,6 +343,7 @@ export const getStats = async (req: Request, res: Response): Promise<void> => {
         expenses,
         balance,
         transactionCount: transactions.length,
+        incomeByType,
       },
     })
   } catch (error) {
@@ -390,7 +409,8 @@ export const getBalanceHistory = async (req: Request, res: Response): Promise<vo
     // Agrupar transacciones por fecha
     const transactionsByDate = transactions.reduce(
       (acc, tx) => {
-        const date = tx.date.split('T')[0]
+        const dateStr = tx.date instanceof Date ? tx.date.toISOString() : String(tx.date)
+        const date = dateStr.split('T')[0]
         if (!acc[date]) {
           acc[date] = 0
         }
@@ -510,6 +530,109 @@ export const getMonthlySummary = async (req: Request, res: Response): Promise<vo
     }
 
     console.error('Error en getMonthlySummary:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+/**
+ * Preview de cuántas transacciones serán afectadas por el bulk update
+ * GET /api/transactions/bulk-update-preview
+ * Query: account_id, description_pattern
+ */
+export const bulkUpdatePreview = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const validationResult = bulkUpdatePreviewSchema.safeParse(req.query)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      res.status(400).json({
+        success: false,
+        error: firstError?.message || 'Parámetros inválidos',
+      })
+      return
+    }
+
+    const { account_id, description_pattern } = validationResult.data
+
+    const count = await TransactionRepository.countByDescriptionPattern(
+      account_id,
+      req.user!.id,
+      description_pattern
+    )
+
+    res.status(200).json({
+      success: true,
+      count,
+      description_pattern,
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'No tienes acceso a esta cuenta') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en bulkUpdatePreview:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+/**
+ * Actualizar categoría de múltiples transacciones por patrón de descripción
+ * PUT /api/transactions/bulk-update-category
+ * Body: account_id, description_pattern, subcategory_id, save_mapping?
+ */
+export const bulkUpdateCategory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const validationResult = bulkUpdateCategorySchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      res.status(400).json({
+        success: false,
+        error: firstError?.message || 'Datos inválidos',
+      })
+      return
+    }
+
+    const { account_id, description_pattern, subcategory_id, save_mapping } = validationResult.data
+
+    const updatedCount = await TransactionRepository.bulkUpdateCategory(
+      account_id,
+      req.user!.id,
+      description_pattern,
+      subcategory_id
+    )
+
+    // TODO: Si save_mapping es true, guardar en category_mappings para futuras importaciones
+    // Por ahora solo actualizamos las transacciones existentes
+
+    res.status(200).json({
+      success: true,
+      updatedCount,
+      description_pattern,
+      subcategory_id,
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'No tienes acceso a esta cuenta') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en bulkUpdateCategory:', error)
     res.status(500).json({
       success: false,
       error: 'Error interno del servidor',

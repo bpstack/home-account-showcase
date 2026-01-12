@@ -14,7 +14,8 @@ import {
   useActiveTab,
   Input,
 } from '@/components/ui'
-import { ArrowLeft, ArrowRight, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { TransactionTable, CategoryChangeModal } from '@/components/transactions'
+import { ArrowLeft, ArrowRight, Calendar, Loader2 } from 'lucide-react'
 import type { Transaction } from '@/lib/apiClient'
 
 /**
@@ -76,7 +77,19 @@ const months = [
   'Diciembre',
 ]
 
+// Genera años disponibles (desde 2020 hasta el año actual + 1)
+const currentYearNow = new Date().getFullYear()
+const availableYears = Array.from({ length: currentYearNow - 2020 + 2 }, (_, i) => 2020 + i)
+
 type Period = 'monthly' | 'yearly' | 'custom'
+
+// Formatea fecha local sin conversión a UTC (evita desfases de zona horaria)
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 // Configuración de paginación
 const PAGE_SIZE = 50
@@ -120,156 +133,144 @@ export default function BalancePage() {
   // Pagination state
   const [page, setPage] = useState(1)
 
-  // Data states
-  const [monthlyData, setMonthlyData] = useState<PaginatedTransactions>({
+  // State para mantener el desplegable abierto al cambiar fechas
+  const [showTransactions, setShowTransactions] = useState(false)
+
+  // State para el modal de cambio de categoria
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+
+  const handleCategoryClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction)
+    setIsCategoryModalOpen(true)
+  }
+
+  const handleCategoryModalClose = () => {
+    setIsCategoryModalOpen(false)
+    setSelectedTransaction(null)
+  }
+
+  const handleCategoryChangeSuccess = () => {
+    loadData() // Recargar datos despues de cambiar categoria
+  }
+
+  // Stats del backend (totales reales del período completo)
+  interface PeriodStats {
+    income: number
+    expenses: number
+    balance: number
+    transactionCount: number
+    incomeByType: Record<string, number>
+  }
+
+  const emptyStats: PeriodStats = {
+    income: 0,
+    expenses: 0,
+    balance: 0,
+    transactionCount: 0,
+    incomeByType: {},
+  }
+
+  const [monthlyStats, setMonthlyStats] = useState<PeriodStats>(emptyStats)
+  const [yearlyStats, setYearlyStats] = useState<PeriodStats>(emptyStats)
+  const [customStats, setCustomStats] = useState<PeriodStats>(emptyStats)
+
+  // Data states - transacciones para el período actual
+  const [currentData, setCurrentData] = useState<PaginatedTransactions>({
     transactions: [],
     total: 0,
     page: 1,
     limit: PAGE_SIZE,
     totalPages: 0,
   })
-  const [yearlyData, setYearlyData] = useState<PaginatedTransactions>({
-    transactions: [],
-    total: 0,
-    page: 1,
-    limit: PAGE_SIZE,
-    totalPages: 0,
-  })
-  const [customData, setCustomData] = useState<PaginatedTransactions>({
-    transactions: [],
-    total: 0,
-    page: 1,
-    limit: PAGE_SIZE,
-    totalPages: 0,
-  })
 
-  const [isLoadingMonthly, setIsLoadingMonthly] = useState(true)
-  const [isLoadingYearly, setIsLoadingYearly] = useState(true)
-  const [isLoadingCustom, setIsLoadingCustom] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const getDateRange = useCallback(
-    (p: Period, month: number, year: number, start?: string, end?: string) => {
-      switch (p) {
-        case 'monthly':
-          return {
-            startDate: new Date(year, month, 1).toISOString().split('T')[0],
-            endDate: new Date(year, month + 1, 0).toISOString().split('T')[0],
-          }
-        case 'yearly':
-          return {
-            startDate: `${year}-01-01`,
-            endDate: `${year}-12-31`,
-          }
-        case 'custom':
-          return {
-            startDate: start || '',
-            endDate: end || '',
-          }
-      }
-    },
-    []
-  )
-
-  const loadMonthlyData = useCallback(async () => {
-    if (!account) return
-    setIsLoadingMonthly(true)
-
-    try {
-      const { startDate, endDate } = getDateRange('monthly', currentMonth, currentYear)
-      const response = await transactionsApi.getAll({
-        account_id: account.id,
-        start_date: startDate,
-        end_date: endDate,
-        limit: PAGE_SIZE,
-        offset: (page - 1) * PAGE_SIZE,
-      })
-
-      setMonthlyData({
-        transactions: response.transactions,
-        total: response.total || 0,
-        page,
-        limit: response.limit || PAGE_SIZE,
-        totalPages: Math.ceil((response.total || 0) / (response.limit || PAGE_SIZE)),
-      })
-    } catch (error) {
-      console.error('Error loading monthly data:', error)
-      setMonthlyData((prev) => ({ ...prev, transactions: [], total: 0 }))
-    } finally {
-      setIsLoadingMonthly(false)
+  const getDateRange = useCallback(() => {
+    switch (period) {
+      case 'monthly':
+        return {
+          startDate: formatLocalDate(new Date(currentYear, currentMonth, 1)),
+          endDate: formatLocalDate(new Date(currentYear, currentMonth + 1, 0)),
+        }
+      case 'yearly':
+        return {
+          startDate: `${currentYear}-01-01`,
+          endDate: `${currentYear}-12-31`,
+        }
+      case 'custom':
+        return {
+          startDate: customStartDate || '',
+          endDate: customEndDate || '',
+        }
     }
-  }, [account, currentMonth, currentYear, page, getDateRange])
-
-  const loadYearlyData = useCallback(async () => {
-    if (!account) return
-    setIsLoadingYearly(true)
-
-    try {
-      const { startDate, endDate } = getDateRange('yearly', 0, currentYear)
-      const response = await transactionsApi.getAll({
-        account_id: account.id,
-        start_date: startDate,
-        end_date: endDate,
-        limit: PAGE_SIZE,
-        offset: (page - 1) * PAGE_SIZE,
-      })
-
-      setYearlyData({
-        transactions: response.transactions,
-        total: response.total || 0,
-        page,
-        limit: response.limit || PAGE_SIZE,
-        totalPages: Math.ceil((response.total || 0) / (response.limit || PAGE_SIZE)),
-      })
-    } catch (error) {
-      console.error('Error loading yearly data:', error)
-      setYearlyData((prev) => ({ ...prev, transactions: [], total: 0 }))
-    } finally {
-      setIsLoadingYearly(false)
-    }
-  }, [account, currentYear, page, getDateRange])
-
-  const loadCustomData = useCallback(async () => {
-    if (!account || !customStartDate || !customEndDate) return
-    setIsLoadingCustom(true)
-
-    try {
-      const { startDate, endDate } = getDateRange('custom', 0, 0, customStartDate, customEndDate)
-      const response = await transactionsApi.getAll({
-        account_id: account.id,
-        start_date: startDate,
-        end_date: endDate,
-        limit: PAGE_SIZE,
-        offset: (page - 1) * PAGE_SIZE,
-      })
-
-      setCustomData({
-        transactions: response.transactions,
-        total: response.total || 0,
-        page,
-        limit: response.limit || PAGE_SIZE,
-        totalPages: Math.ceil((response.total || 0) / (response.limit || PAGE_SIZE)),
-      })
-    } catch (error) {
-      console.error('Error loading custom data:', error)
-      setCustomData((prev) => ({ ...prev, transactions: [], total: 0 }))
-    } finally {
-      setIsLoadingCustom(false)
-    }
-  }, [account, customStartDate, customEndDate, page, getDateRange])
-
-  useEffect(() => {
-    setPage(1)
   }, [period, currentMonth, currentYear, customStartDate, customEndDate])
 
-  useEffect(() => {
-    if (account) {
-      loadMonthlyData()
-      loadYearlyData()
-      if (customStartDate && customEndDate) {
-        loadCustomData()
+  // Determinar el tipo de filtro según el tab activo
+  const getTypeFilter = useCallback((): 'income' | 'expense' | undefined => {
+    if (activeTab === 'income') return 'income'
+    if (activeTab === 'expenses') return 'expense'
+    return undefined
+  }, [activeTab])
+
+  const loadData = useCallback(async () => {
+    if (!account) return
+    if (period === 'custom' && (!customStartDate || !customEndDate)) return
+
+    setIsLoading(true)
+
+    try {
+      const { startDate, endDate } = getDateRange()
+      const typeFilter = getTypeFilter()
+
+      // Cargar transacciones y stats en paralelo
+      const [response, statsResponse] = await Promise.all([
+        transactionsApi.getAll({
+          account_id: account.id,
+          start_date: startDate,
+          end_date: endDate,
+          type: typeFilter, // Filtrar por tipo en backend si es tab de ingresos/gastos
+          limit: PAGE_SIZE,
+          offset: (page - 1) * PAGE_SIZE,
+        }),
+        transactionsApi.getStats(account.id, startDate, endDate),
+      ])
+
+      setCurrentData({
+        transactions: response.transactions,
+        total: response.total || 0,
+        page,
+        limit: response.limit || PAGE_SIZE,
+        totalPages: Math.ceil((response.total || 0) / (response.limit || PAGE_SIZE)),
+      })
+
+      // Actualizar stats según el período
+      if (statsResponse.success) {
+        if (period === 'monthly') {
+          setMonthlyStats(statsResponse.stats)
+        } else if (period === 'yearly') {
+          setYearlyStats(statsResponse.stats)
+        } else {
+          setCustomStats(statsResponse.stats)
+        }
       }
+    } catch (error) {
+      console.error('Error loading data:', error)
+      setCurrentData((prev) => ({ ...prev, transactions: [], total: 0 }))
+    } finally {
+      setIsLoading(false)
     }
-  }, [account, currentMonth, currentYear, page, loadMonthlyData, loadYearlyData, loadCustomData])
+  }, [account, period, currentMonth, currentYear, customStartDate, customEndDate, page, activeTab, getDateRange, getTypeFilter])
+
+  // Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setPage(1)
+  }, [period, currentMonth, currentYear, customStartDate, customEndDate, activeTab])
+
+  // Cargar datos cuando cambian los parámetros
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const prevMonth = () => {
     if (currentMonth === 0) {
@@ -290,52 +291,16 @@ export default function BalancePage() {
   const prevYear = () => updateUrl({ year: currentYear - 1 })
   const nextYear = () => updateUrl({ year: currentYear + 1 })
 
-  const getTotals = (txs: Transaction[]) =>
-    txs.reduce(
-      (acc, tx) => {
-        const amount = Number(tx.amount)
-        if (amount >= 0) {
-          acc.income += amount
-        } else {
-          acc.expenses += Math.abs(amount)
-        }
-        return acc
-      },
-      { income: 0, expenses: 0 }
-    )
+  // Obtener stats según el período actual
+  const currentStats =
+    period === 'monthly' ? monthlyStats : period === 'yearly' ? yearlyStats : customStats
 
-  const getSavings = (totals: { income: number; expenses: number }) =>
-    totals.income - totals.expenses
+  // Usar stats del backend para totales reales del período completo
+  const currentTotals = { income: currentStats.income, expenses: currentStats.expenses }
+  const currentSavings = currentStats.balance
 
-  const getIncomeByType = (txs: Transaction[]) =>
-    txs
-      .filter((tx) => Number(tx.amount) >= 0)
-      .reduce(
-        (acc, tx) => {
-          const desc = tx.description.toLowerCase()
-          let type = 'Otros Ingresos'
-          if (desc.includes('nómina') || desc.includes('nomina')) type = 'Nómina'
-          else if (desc.includes('transferencia') || desc.includes('transfer'))
-            type = 'Transferencias'
-          else if (desc.includes('bizum')) type = 'Bizum'
-          else if (desc.includes('bonus') || desc.includes('bonific')) type = 'Bonificaciones'
-          acc[type] = (acc[type] || 0) + Number(tx.amount)
-          return acc
-        },
-        {} as Record<string, number>
-      )
-
-  const monthlyTotals = getTotals(monthlyData.transactions)
-  const yearlyTotals = getTotals(yearlyData.transactions)
-  const customTotals = getTotals(customData.transactions)
-  const monthlySavings = getSavings(monthlyTotals)
-  const yearlySavings = getSavings(yearlyTotals)
-  const customSavings = getSavings(customTotals)
-  const monthlyIncomeByType = getIncomeByType(monthlyData.transactions)
-  const yearlyIncomeByType = getIncomeByType(yearlyData.transactions)
-  const customIncomeByType = getIncomeByType(customData.transactions)
-
-  const isLoading = isLoadingMonthly || isLoadingYearly || isLoadingCustom
+  // Desglose de ingresos por tipo del backend (correcto para todo el período)
+  const currentIncomeByType = currentStats.incomeByType
 
   return (
     <div>
@@ -375,9 +340,28 @@ export default function BalancePage() {
           <Button variant="ghost" size="icon" onClick={prevMonth}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-medium text-text-primary min-w-[140px] text-center">
-            {months[currentMonth]} {currentYear}
-          </span>
+          <select
+            value={currentYear}
+            onChange={(e) => updateUrl({ year: parseInt(e.target.value, 10) })}
+            className="bg-layer-2 border border-layer-3 rounded-md px-2 py-1 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            {availableYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+          <select
+            value={currentMonth}
+            onChange={(e) => updateUrl({ month: parseInt(e.target.value, 10) })}
+            className="bg-layer-2 border border-layer-3 rounded-md px-2 py-1 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent min-w-[120px]"
+          >
+            {months.map((month, index) => (
+              <option key={index} value={index}>
+                {month}
+              </option>
+            ))}
+          </select>
           <Button variant="ghost" size="icon" onClick={nextMonth}>
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -389,9 +373,17 @@ export default function BalancePage() {
           <Button variant="ghost" size="icon" onClick={prevYear}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-medium text-text-primary min-w-[80px] text-center">
-            {currentYear}
-          </span>
+          <select
+            value={currentYear}
+            onChange={(e) => updateUrl({ year: parseInt(e.target.value, 10) })}
+            className="bg-layer-2 border border-layer-3 rounded-md px-3 py-1 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            {availableYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
           <Button variant="ghost" size="icon" onClick={nextYear}>
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -428,108 +420,66 @@ export default function BalancePage() {
         </div>
       ) : (
         <>
-          {period === 'monthly' && (
-            <>
-              {activeTab === 'balance' && (
-                <BalanceTab
-                  title="Transacciones del mes"
-                  totals={monthlyTotals}
-                  savings={monthlySavings}
-                  data={monthlyData}
-                  setPage={setPage}
-                  periodLabel={`${months[currentMonth]} ${currentYear}`}
-                />
-              )}
-              {activeTab === 'income' && (
-                <IncomeTab
-                  title="Ingresos del mes"
-                  incomeByType={monthlyIncomeByType}
-                  totalIncome={monthlyTotals.income}
-                  data={monthlyData}
-                  setPage={setPage}
-                  periodLabel={`${months[currentMonth]} ${currentYear}`}
-                />
-              )}
-              {activeTab === 'expenses' && (
-                <ExpensesTab
-                  title="Gastos del mes"
-                  totals={monthlyTotals}
-                  savings={monthlySavings}
-                  data={monthlyData}
-                  setPage={setPage}
-                  periodLabel={`${months[currentMonth]} ${currentYear}`}
-                />
-              )}
-            </>
-          )}
-          {period === 'yearly' && (
-            <>
-              {activeTab === 'balance' && (
-                <BalanceTab
-                  title={`Transacciones del año ${currentYear}`}
-                  totals={yearlyTotals}
-                  savings={yearlySavings}
-                  data={yearlyData}
-                  setPage={setPage}
-                  periodLabel={`Año ${currentYear}`}
-                />
-              )}
-              {activeTab === 'income' && (
-                <IncomeTab
-                  title={`Ingresos del año ${currentYear}`}
-                  incomeByType={yearlyIncomeByType}
-                  totalIncome={yearlyTotals.income}
-                  data={yearlyData}
-                  setPage={setPage}
-                  periodLabel={`Año ${currentYear}`}
-                />
-              )}
-              {activeTab === 'expenses' && (
-                <ExpensesTab
-                  title={`Gastos del año ${currentYear}`}
-                  totals={yearlyTotals}
-                  savings={yearlySavings}
-                  data={yearlyData}
-                  setPage={setPage}
-                  periodLabel={`Año ${currentYear}`}
-                />
-              )}
-            </>
-          )}
-          {period === 'custom' && customStartDate && customEndDate && (
-            <>
-              {activeTab === 'balance' && (
-                <BalanceTab
-                  title={`Transacciones del período`}
-                  totals={customTotals}
-                  savings={customSavings}
-                  data={customData}
-                  setPage={setPage}
-                  periodLabel={`${customStartDate} - ${customEndDate}`}
-                />
-              )}
-              {activeTab === 'income' && (
-                <IncomeTab
-                  title={`Ingresos del período`}
-                  incomeByType={customIncomeByType}
-                  totalIncome={customTotals.income}
-                  data={customData}
-                  setPage={setPage}
-                  periodLabel={`${customStartDate} - ${customEndDate}`}
-                />
-              )}
-              {activeTab === 'expenses' && (
-                <ExpensesTab
-                  title={`Gastos del período`}
-                  totals={customTotals}
-                  savings={customSavings}
-                  data={customData}
-                  setPage={setPage}
-                  periodLabel={`${customStartDate} - ${customEndDate}`}
-                />
-              )}
-            </>
-          )}
+          {/* Generar labels según el período */}
+          {(() => {
+            const periodLabel =
+              period === 'monthly'
+                ? `${months[currentMonth]} ${currentYear}`
+                : period === 'yearly'
+                  ? `Año ${currentYear}`
+                  : `${customStartDate} - ${customEndDate}`
+
+            const titleSuffix =
+              period === 'monthly'
+                ? 'del mes'
+                : period === 'yearly'
+                  ? `del año ${currentYear}`
+                  : 'del período'
+
+            return (
+              <>
+                {activeTab === 'balance' && (
+                  <BalanceTab
+                    title={`Transacciones ${titleSuffix}`}
+                    totals={currentTotals}
+                    savings={currentSavings}
+                    data={currentData}
+                    setPage={setPage}
+                    periodLabel={periodLabel}
+                    showTransactions={showTransactions}
+                    setShowTransactions={setShowTransactions}
+                    onCategoryClick={handleCategoryClick}
+                  />
+                )}
+                {activeTab === 'income' && (
+                  <IncomeTab
+                    title={`Ingresos ${titleSuffix}`}
+                    incomeByType={currentIncomeByType}
+                    totalIncome={currentTotals.income}
+                    data={currentData}
+                    setPage={setPage}
+                    periodLabel={periodLabel}
+                    showTransactions={showTransactions}
+                    setShowTransactions={setShowTransactions}
+                    onCategoryClick={handleCategoryClick}
+                  />
+                )}
+                {activeTab === 'expenses' && (
+                  <ExpensesTab
+                    title={`Gastos ${titleSuffix}`}
+                    totals={currentTotals}
+                    savings={currentSavings}
+                    data={currentData}
+                    setPage={setPage}
+                    periodLabel={periodLabel}
+                    showTransactions={showTransactions}
+                    setShowTransactions={setShowTransactions}
+                    onCategoryClick={handleCategoryClick}
+                  />
+                )}
+              </>
+            )
+          })()}
           {period === 'custom' && (!customStartDate || !customEndDate) && (
             <Card>
               <CardContent className="py-12">
@@ -541,115 +491,18 @@ export default function BalancePage() {
           )}
         </>
       )}
+
+      {/* Modal para cambio de categoria */}
+      {account && (
+        <CategoryChangeModal
+          isOpen={isCategoryModalOpen}
+          onClose={handleCategoryModalClose}
+          transaction={selectedTransaction}
+          accountId={account.id}
+          onSuccess={handleCategoryChangeSuccess}
+        />
+      )}
     </div>
-  )
-}
-
-function PaginatedTable({
-  transactions,
-  page,
-  totalPages,
-  onPageChange,
-  filterType,
-}: {
-  transactions: Transaction[]
-  page: number
-  totalPages: number
-  onPageChange: (p: number) => void
-  filterType: 'all' | 'income' | 'expense'
-}) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
-  }
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
-  }
-
-  const filteredTransactions = transactions.filter((tx) => {
-    if (filterType === 'income') return Number(tx.amount) >= 0
-    if (filterType === 'expense') return Number(tx.amount) < 0
-    return true
-  })
-
-  if (filteredTransactions.length === 0) {
-    return (
-      <p className="text-sm text-text-secondary text-center py-8">
-        No hay transacciones en este período
-      </p>
-    )
-  }
-
-  return (
-    <>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-layer-3">
-              <th className="text-left py-3 px-2 text-text-secondary font-medium">Fecha</th>
-              <th className="text-left py-3 px-2 text-text-secondary font-medium">Descripción</th>
-              <th className="text-left py-3 px-2 text-text-secondary font-medium">Categoría</th>
-              <th className="text-right py-3 px-2 text-text-secondary font-medium">Importe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTransactions.map((tx) => (
-              <tr key={tx.id} className="border-b border-layer-2 hover:bg-layer-2/50">
-                <td className="py-3 px-2 text-text-secondary">{formatDate(tx.date)}</td>
-                <td className="py-3 px-2 text-text-primary font-medium">{tx.description}</td>
-                <td className="py-3 px-2">
-                  <span
-                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                    style={{
-                      backgroundColor: tx.category_color ? `${tx.category_color}20` : '#f3f4f6',
-                      color: tx.category_color || '#6b7280',
-                    }}
-                  >
-                    {tx.category_name || 'Sin categoría'}
-                  </span>
-                </td>
-                <td
-                  className={`py-3 px-2 text-right font-medium ${
-                    Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'
-                  }`}
-                >
-                  {Number(tx.amount) >= 0 ? '+' : ''}
-                  {formatCurrency(Number(tx.amount))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex flex-col items-center gap-2 mt-4">
-        <span className="text-xs text-text-secondary">
-          Mostrando {filteredTransactions.length} de {transactions.length} transacciones
-        </span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-text-secondary px-2">
-            Página {page} de {totalPages || 1}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </>
   )
 }
 
@@ -660,6 +513,9 @@ function BalanceTab({
   data,
   setPage,
   periodLabel,
+  showTransactions,
+  setShowTransactions,
+  onCategoryClick,
 }: {
   title: string
   totals: { income: number; expenses: number }
@@ -667,8 +523,10 @@ function BalanceTab({
   data: PaginatedTransactions
   setPage: (p: number) => void
   periodLabel: string
+  showTransactions: boolean
+  setShowTransactions: (show: boolean) => void
+  onCategoryClick: (tx: Transaction) => void
 }) {
-  const [showTransactions, setShowTransactions] = useState(false)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
@@ -758,12 +616,13 @@ function BalanceTab({
         </CardHeader>
         <CardContent>
           {showTransactions && (
-            <PaginatedTable
+            <TransactionTable
               transactions={data.transactions}
+              total={data.total}
               page={data.page}
               totalPages={data.totalPages}
               onPageChange={setPage}
-              filterType="all"
+              onCategoryClick={onCategoryClick}
             />
           )}
           {!showTransactions && (
@@ -784,6 +643,9 @@ function IncomeTab({
   data,
   setPage,
   periodLabel,
+  showTransactions,
+  setShowTransactions,
+  onCategoryClick,
 }: {
   title: string
   incomeByType: Record<string, number>
@@ -791,8 +653,10 @@ function IncomeTab({
   data: PaginatedTransactions
   setPage: (p: number) => void
   periodLabel: string
+  showTransactions: boolean
+  setShowTransactions: (show: boolean) => void
+  onCategoryClick: (tx: Transaction) => void
 }) {
-  const [showTransactions, setShowTransactions] = useState(false)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
@@ -859,12 +723,13 @@ function IncomeTab({
         </CardHeader>
         <CardContent>
           {showTransactions && (
-            <PaginatedTable
+            <TransactionTable
               transactions={data.transactions}
+              total={data.total}
               page={data.page}
               totalPages={data.totalPages}
               onPageChange={setPage}
-              filterType="income"
+              onCategoryClick={onCategoryClick}
             />
           )}
           {!showTransactions && (
@@ -885,6 +750,9 @@ function ExpensesTab({
   data,
   setPage,
   periodLabel,
+  showTransactions,
+  setShowTransactions,
+  onCategoryClick,
 }: {
   title: string
   totals: { income: number; expenses: number }
@@ -892,8 +760,10 @@ function ExpensesTab({
   data: PaginatedTransactions
   setPage: (p: number) => void
   periodLabel: string
+  showTransactions: boolean
+  setShowTransactions: (show: boolean) => void
+  onCategoryClick: (tx: Transaction) => void
 }) {
-  const [showTransactions, setShowTransactions] = useState(false)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
@@ -959,12 +829,13 @@ function ExpensesTab({
         </CardHeader>
         <CardContent>
           {showTransactions && (
-            <PaginatedTable
+            <TransactionTable
               transactions={data.transactions}
+              total={data.total}
               page={data.page}
               totalPages={data.totalPages}
               onPageChange={setPage}
-              filterType="expense"
+              onCategoryClick={onCategoryClick}
             />
           )}
           {!showTransactions && (

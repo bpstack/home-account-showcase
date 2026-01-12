@@ -337,7 +337,13 @@ export const transactions = {
     if (endDate) params.set('end_date', endDate)
     return request<{
       success: boolean
-      stats: { income: number; expenses: number; balance: number; transactionCount: number }
+      stats: {
+        income: number
+        expenses: number
+        balance: number
+        transactionCount: number
+        incomeByType: Record<string, number>
+      }
     }>(`/transactions/stats?${params}`)
   },
 
@@ -356,6 +362,34 @@ export const transactions = {
       monthlySummary: { month: string; income: number; expenses: number }[]
     }>(`/transactions/monthly-summary?${params}`)
   },
+
+  bulkUpdatePreview: (accountId: string, descriptionPattern: string) => {
+    const params = new URLSearchParams({
+      account_id: accountId,
+      description_pattern: descriptionPattern,
+    })
+    return request<{
+      success: boolean
+      count: number
+      description_pattern: string
+    }>(`/transactions/bulk-update-preview?${params}`)
+  },
+
+  bulkUpdateCategory: (data: {
+    account_id: string
+    description_pattern: string
+    subcategory_id: string | null
+    save_mapping?: boolean
+  }) =>
+    request<{
+      success: boolean
+      updatedCount: number
+      description_pattern: string
+      subcategory_id: string | null
+    }>('/transactions/bulk-update-category', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Types

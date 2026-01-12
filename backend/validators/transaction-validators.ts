@@ -108,6 +108,24 @@ export const getMonthlySummarySchema = z.object({
     .pipe(z.number().int().min(2000).max(2100)),
 })
 
+/**
+ * Schema para preview de bulk update (query params)
+ */
+export const bulkUpdatePreviewSchema = z.object({
+  account_id: z.string().uuid('account_id debe ser un UUID válido'),
+  description_pattern: z.string().min(1, 'description_pattern es requerido'),
+})
+
+/**
+ * Schema para bulk update de categoría (body)
+ */
+export const bulkUpdateCategorySchema = z.object({
+  account_id: z.string().uuid('account_id debe ser un UUID válido'),
+  description_pattern: z.string().min(1, 'description_pattern es requerido'),
+  subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').nullable(),
+  save_mapping: z.boolean().optional().default(false),
+})
+
 // Tipos inferidos
 export type GetTransactionsInput = z.infer<typeof getTransactionsSchema>
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>
@@ -116,3 +134,5 @@ export type GetSummaryInput = z.infer<typeof getSummarySchema>
 export type GetStatsInput = z.infer<typeof getStatsSchema>
 export type GetBalanceHistoryInput = z.infer<typeof getBalanceHistorySchema>
 export type GetMonthlySummaryInput = z.infer<typeof getMonthlySummarySchema>
+export type BulkUpdatePreviewInput = z.infer<typeof bulkUpdatePreviewSchema>
+export type BulkUpdateCategoryInput = z.infer<typeof bulkUpdateCategorySchema>

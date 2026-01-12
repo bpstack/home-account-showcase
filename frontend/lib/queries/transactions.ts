@@ -57,3 +57,22 @@ export function useDeleteTransaction() {
     mutationFn: (id: string) => transactionsApi.delete(id),
   })
 }
+
+export function useBulkUpdatePreview(accountId: string, descriptionPattern: string) {
+  return useQuery({
+    queryKey: ['transactions', 'bulk-preview', accountId, descriptionPattern] as const,
+    queryFn: () => transactionsApi.bulkUpdatePreview(accountId, descriptionPattern),
+    enabled: !!accountId && !!descriptionPattern,
+  })
+}
+
+export function useBulkUpdateCategory() {
+  return useMutation({
+    mutationFn: (data: {
+      account_id: string
+      description_pattern: string
+      subcategory_id: string | null
+      save_mapping?: boolean
+    }) => transactionsApi.bulkUpdateCategory(data),
+  })
+}

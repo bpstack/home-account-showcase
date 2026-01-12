@@ -79,7 +79,7 @@ export default function ImportPage() {
       const result = await importApi.parse(selectedFile)
 
       if (!result.success || !result.data.success) {
-        const errorMsg = result.data?.errors?.[0] || result.data?.error || 'Error al procesar el archivo'
+        const errorMsg = result.data?.errors?.[0] || 'Error al procesar el archivo'
         setError(errorMsg)
         setIsLoading(false)
         return

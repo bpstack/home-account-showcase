@@ -68,6 +68,7 @@ export default function CategoriesPage() {
 
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
 
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null)
   const [parentCategoryId, setParentCategoryId] = useState<string>('')
@@ -112,6 +113,7 @@ export default function CategoriesPage() {
   function openCreateCategoryModal() {
     setEditingCategory(null)
     setCategoryForm(emptyCategoryForm)
+    setShowCategoryModal(true)
   }
 
   function openEditCategoryModal(category: Category) {
@@ -135,6 +137,7 @@ export default function CategoriesPage() {
 
     mutation.then(() => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
+      setShowCategoryModal(false)
     })
   }
 
@@ -209,8 +212,7 @@ export default function CategoriesPage() {
 
   const orphanedCount = orphanedQuery.data?.count || 0
 
-  const showCategoryModal =
-    !!editingCategory || (editingCategory === null && categoryForm.name === '' && false)
+  const isCategoryModalOpen = !!editingCategory || showCategoryModal
   const showSubcategoryModal =
     !!editingSubcategory || (editingSubcategory === null && parentCategoryId !== '')
   const showDeleteModal = !!categoryToDelete
@@ -369,8 +371,8 @@ export default function CategoriesPage() {
       ) : null}
 
       <Modal
-        isOpen={showCategoryModal}
-        onClose={() => setEditingCategory(null)}
+        isOpen={isCategoryModalOpen}
+        onClose={() => { setEditingCategory(null); setShowCategoryModal(false) }}
         title={editingCategory ? 'Editar categoría' : 'Nueva categoría'}
       >
         <div className="space-y-4">
@@ -400,7 +402,7 @@ export default function CategoriesPage() {
           </div>
         </div>
         <ModalFooter>
-          <Button variant="outline" onClick={() => setEditingCategory(null)}>
+          <Button variant="outline" onClick={() => { setEditingCategory(null); setShowCategoryModal(false) }}>
             Cancelar
           </Button>
           <Button
