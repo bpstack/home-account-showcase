@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { subcategories as subcategoriesApi, Subcategory, Transaction } from '@/lib/apiClient'
@@ -12,42 +12,10 @@ import {
   useDeleteTransaction,
 } from '@/lib/queries/transactions'
 import { useCategories } from '@/lib/queries/categories'
-import { Button, Card, CardContent, Input, Select, Modal, ModalFooter } from '@/components/ui'
-import { CategoryChangeModal } from '@/components/transactions'
-import {
-  Plus,
-  Search,
-  Edit2,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  ExternalLink,
-} from 'lucide-react'
-
-function TransactionsPageFallback() {
-  return (
-    <div className="flex items-center justify-center py-12">
-      <Loader2 className="h-5 w-5 animate-spin text-text-secondary" />
-      <span className="ml-2 text-text-secondary">Cargando...</span>
-    </div>
-  )
-}
-
-const months = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-]
+import { useFiltersStore } from '@/stores/filtersStore'
+import { Button, Input, Select, Modal, ModalFooter } from '@/components/ui'
+import { Loader2 } from 'lucide-react'
+import { TransactionsToolbar, TransactionsSummary, TransactionsTable, CategoryChangeModal } from '@/components/transactions'
 
 interface TransactionForm {
   description: string
@@ -67,6 +35,15 @@ const emptyForm: TransactionForm = {
   subcategory_id: '',
 }
 
+function TransactionsPageFallback() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="h-5 w-5 animate-spin text-text-secondary" />
+      <span className="ml-2 text-text-secondary">Cargando...</span>
+    </div>
+  )
+}
+
 export default function TransactionsPage() {
   return (
     <Suspense fallback={<TransactionsPageFallback />}>
@@ -79,109 +56,39 @@ function TransactionsPageContent() {
   const { account } = useAuth()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
 
   const searchTerm = searchParams.get('search') || ''
-  const filterCategory = searchParams.get('category') || ''
-  const filterType = (searchParams.get('type') as 'all' | 'income' | 'expense') || 'all'
-  const currentMonthParam = searchParams.get('month')
-  const currentMonth = currentMonthParam && currentMonthParam !== 'null' && currentMonthParam !== '' ? parseInt(currentMonthParam, 10) : null
-  const currentYearParam = searchParams.get('year')
-  const currentYearRaw = currentYearParam ? parseInt(currentYearParam, 10) : new Date().getFullYear()
-  const safeYear = currentYearParam && !Number.isNaN(currentYearRaw) && currentYearRaw >= 1000 && currentYearRaw <= 9999 ? currentYearRaw : new Date().getFullYear()
+
+  const { selectedYear, selectedMonth, selectedCategory, selectedType, setCategory } = useFiltersStore()
+
   const pageParam = searchParams.get('page')
   const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1
-  const limit = 500
+  const limit = 100
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
 
-  // Estado para el modal de cambio de categoria
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
 
-  const handleCategoryClick = (tx: Transaction) => {
-    setSelectedTransaction(tx)
-    setIsCategoryModalOpen(true)
-  }
-
-  const handleCategoryModalClose = () => {
-    setIsCategoryModalOpen(false)
-    setSelectedTransaction(null)
-  }
-
-  const handleCategoryChangeSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['transactions'] })
-  }
-
-  const updateUrl = useCallback(
-    (updates: {
-      search?: string
-      category?: string
-      type?: 'all' | 'income' | 'expense'
-      month?: number | null
-      year?: number
-      page?: number
-    }) => {
-      const params = new URLSearchParams(searchParams.toString())
-
-      if (updates.search !== undefined) {
-        if (updates.search) params.set('search', updates.search)
-        else params.delete('search')
-      }
-      if (updates.category !== undefined) {
-        if (updates.category) params.set('category', updates.category)
-        else params.delete('category')
-      }
-      if (updates.type) params.set('type', updates.type)
-      if (updates.month !== undefined) {
-        if (updates.month === null) {
-          params.delete('month')
-        } else {
-          params.set('month', String(updates.month))
-        }
-      }
-      if (updates.year !== undefined) params.set('year', String(updates.year))
-      if (updates.page !== undefined) {
-        if (updates.page <= 1) params.delete('page')
-        else params.set('page', String(updates.page))
-      }
-
-      router.push(`${pathname}?${params.toString()}`, { scroll: false })
-    },
-    [searchParams, router, pathname]
-  )
-
-  const startDate = currentMonth !== null
-    ? new Date(safeYear, currentMonth, 1).toISOString().split('T')[0]
-    : new Date(safeYear, 0, 1).toISOString().split('T')[0]
-  const endDate = currentMonth !== null
-    ? new Date(safeYear, currentMonth + 1, 0).toISOString().split('T')[0]
-    : new Date(safeYear, 11, 31).toISOString().split('T')[0]
-
-  const [searchInputValue, setSearchInputValue] = useState(searchTerm)
-
-  useEffect(() => {
-    setSearchInputValue(searchTerm)
-  }, [searchTerm])
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearchInputValue(value)
-    updateUrl({ search: value || undefined })
-  }
+  const startDate = selectedMonth !== null
+    ? new Date(selectedYear, selectedMonth, 1).toISOString().split('T')[0]
+    : new Date(selectedYear, 0, 1).toISOString().split('T')[0]
+  const endDate = selectedMonth !== null
+    ? new Date(selectedYear, selectedMonth + 1, 0).toISOString().split('T')[0]
+    : new Date(selectedYear, 11, 31).toISOString().split('T')[0]
 
   const { data: txData, isLoading: isLoadingTx } = useTransactions({
     account_id: account?.id || '',
     start_date: startDate,
     end_date: endDate,
     search: searchTerm || undefined,
-    type: filterType !== 'all' ? filterType : undefined,
+    type: selectedType !== 'all' ? selectedType : undefined,
     limit,
     offset: (page - 1) * limit,
-  })
+  }, { staleTime: 0 })
 
   const { data: catData } = useCategories(account?.id || '')
 
@@ -190,15 +97,29 @@ function TransactionsPageContent() {
     start_date: startDate,
     end_date: endDate,
     search: searchTerm || undefined,
-    type: filterType !== 'all' ? filterType : undefined,
-  })
+    type: selectedType !== 'all' ? selectedType : undefined,
+  }, { staleTime: 0 })
 
   const createMutation = useCreateTransaction()
   const updateMutation = useUpdateTransaction()
   const deleteMutation = useDeleteTransaction()
 
-  const transactionList = txData?.transactions || []
   const categoryList = catData?.categories || []
+
+  const categoryOptions = [
+    { value: '', label: 'Todas las categorías' },
+    ...categoryList.map((c) => ({ value: c.name, label: c.name })),
+  ]
+
+  const categoryFormOptions = [
+    { value: '', label: 'Selecciona categoría' },
+    ...categoryList.map((c) => ({ value: c.id, label: c.name })),
+  ]
+
+  const subcategoryFormOptions = [
+    { value: '', label: 'Selecciona subcategoría' },
+    ...subcategoryList.map((s) => ({ value: s.id, label: s.name })),
+  ]
 
   useEffect(() => {
     if (form.category_id) {
@@ -218,10 +139,9 @@ function TransactionsPageContent() {
     }
   }
 
-  const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
-
+  const transactionList = txData?.transactions || []
   const filteredTransactions = transactionList.filter((tx) => {
-    const matchesCategory = !filterCategory || tx.category_name === filterCategory
+    const matchesCategory = !selectedCategory || tx.category_name === selectedCategory
     return matchesCategory
   })
 
@@ -240,46 +160,23 @@ function TransactionsPageContent() {
     { income: 0, expenses: 0 }
   )
 
-  const categoryOptions = [
-    { value: '', label: 'Todas las categorías' },
-    ...categoryList.map((c) => ({ value: c.name, label: c.name })),
-  ]
-
-  const monthOptions = [
-    { value: '', label: 'Elegir mes' },
-    ...months.map((m, index) => ({ value: String(index), label: m })),
-  ]
-
-  const periodLabel = currentMonth !== null
-    ? `${months[currentMonth]} ${safeYear}`
-    : `Año ${safeYear}`
-
-  const categoryFormOptions = [
-    { value: '', label: 'Selecciona categoría' },
-    ...categoryList.map((c) => ({ value: c.id, label: c.name })),
-  ]
-
-  const subcategoryFormOptions = [
-    { value: '', label: 'Selecciona subcategoría' },
-    ...subcategoryList.map((s) => ({ value: s.id, label: s.name })),
-  ]
-
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-  const prevYear = () => {
-    updateUrl({ year: safeYear - 1, month: null })
+  const handleCategoryClick = (tx: Transaction) => {
+    setSelectedTransaction(tx)
+    setIsCategoryModalOpen(true)
   }
 
-  const nextYear = () => {
-    updateUrl({ year: safeYear + 1, month: null })
+  const handleCategoryModalClose = () => {
+    setIsCategoryModalOpen(false)
+    setSelectedTransaction(null)
   }
 
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value
-    updateUrl({ month: value === '' ? null : parseInt(value, 10) })
+  const handleCategoryChangeSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
   }
 
   const openCreateModal = () => {
@@ -341,260 +238,39 @@ function TransactionsPageContent() {
     })
   }
 
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (newPage <= 1) {
+      params.delete('page')
+    } else {
+      params.set('page', String(newPage))
+    }
+    window.history.pushState(null, '', `?${params.toString()}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
   return (
     <div>
-      {/* Toolbar */}
-      <div className="flex flex-col gap-4 mb-6">
-        {/* Line 1: Search | Type filter | Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <div className="flex-1 relative w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
-            <Input
-              placeholder="Buscar transacciones..."
-              value={searchInputValue}
-              onChange={handleSearchChange}
-              className="pl-10 w-full"
-            />
-          </div>
+      <TransactionsToolbar
+        categoryOptions={categoryOptions}
+        onOpenCreateModal={openCreateModal}
+      />
 
-          {/* Type Filter */}
-          <div className="inline-flex items-center bg-layer-2 rounded-lg p-0.5">
-            <button
-              onClick={() => updateUrl({ type: 'all' })}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                filterType === 'all'
-                  ? 'text-text-primary'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              Todos
-            </button>
-            <div className="w-px h-5 bg-layer-3 mx-0.5" />
-            <button
-              onClick={() => updateUrl({ type: 'income' })}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                filterType === 'income' ? 'text-success' : 'text-text-secondary hover:text-success'
-              }`}
-            >
-              Ingresos
-            </button>
-            <div className="w-px h-5 bg-layer-3 mx-0.5" />
-            <button
-              onClick={() => updateUrl({ type: 'expense' })}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                filterType === 'expense' ? 'text-danger' : 'text-text-secondary hover:text-danger'
-              }`}
-            >
-              Gastos
-            </button>
-          </div>
+      <TransactionsSummary totals={totals} />
 
-          <div className="flex gap-2 sm:ml-auto">
-            <Button variant="outline" onClick={() => router.push('/import')}>
-              <ExternalLink className="h-4 w-4" />
-              <span className="hidden sm:inline ml-2">Importar</span>
-            </Button>
-            <Button onClick={openCreateModal}>
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline ml-2">Nueva</span>
-            </Button>
-          </div>
-        </div>
+      <TransactionsTable
+        transactions={filteredTransactions}
+        isLoading={isLoadingTx}
+        total={txData?.total || 0}
+        limit={limit}
+        page={page}
+        onEdit={openEditModal}
+        onDelete={handleDelete}
+        onPageChange={handlePageChange}
+        formatDate={formatDate}
+        handleCategoryClick={handleCategoryClick}
+      />
 
-        {/* Line 2: Year | Month | Category */}
-        <div className="flex flex-wrap gap-4 items-center">
-          {/* Year Selector */}
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={prevYear} className="h-8 w-8">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium text-text-primary min-w-[60px] text-center">
-              {safeYear}
-            </span>
-            <Button variant="ghost" size="icon" onClick={nextYear} className="h-8 w-8">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Month Selector */}
-          <Select
-            options={monthOptions}
-            value={currentMonth !== null ? String(currentMonth) : ''}
-            onChange={handleMonthChange}
-            className="w-auto min-w-[140px]"
-          />
-
-          {/* Category Filter */}
-          <Select
-            options={categoryOptions}
-            value={filterCategory}
-            onChange={(e) => updateUrl({ category: e.target.value })}
-            className="w-auto min-w-[180px]"
-          />
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="py-4">
-            <p className="text-xs text-text-secondary">Ingresos</p>
-            <p className="text-lg font-semibold text-success">+{totals.income.toFixed(2)} €</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <p className="text-xs text-text-secondary">Gastos</p>
-            <p className="text-lg font-semibold text-danger">-{totals.expenses.toFixed(2)} €</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <p className="text-xs text-text-secondary">Balance</p>
-            <p
-              className={`text-lg font-semibold ${totals.income - totals.expenses >= 0 ? 'text-success' : 'text-danger'}`}
-            >
-              {(totals.income - totals.expenses).toFixed(2)} €
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            {isLoadingTx ? (
-              <div className="py-12 flex items-center justify-center gap-2 text-text-secondary">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Cargando transacciones...
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-layer-3 bg-layer-1">
-                    <th className="text-left py-3 px-4 text-text-secondary font-medium">Fecha</th>
-                    <th className="text-left py-3 px-4 text-text-secondary font-medium">
-                      Descripción
-                    </th>
-                    <th className="text-left py-3 px-4 text-text-secondary font-medium hidden md:table-cell">
-                      Categoría
-                    </th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium">
-                      Importe
-                    </th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium w-24">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((tx) => (
-                    <tr key={tx.id} className="border-b border-layer-2 hover:bg-layer-1">
-                      <td className="py-3 px-4 text-text-primary text-xs">{formatDate(tx.date)}</td>
-                      <td className="py-3 px-4 text-text-primary">{tx.description}</td>
-                      <td className="py-3 px-4 hidden md:table-cell">
-                        <button
-                          onClick={() => handleCategoryClick(tx)}
-                          className="text-left hover:ring-2 hover:ring-accent/50 rounded-lg transition-all p-1 -m-1"
-                          title="Clic para cambiar categoria"
-                        >
-                          {tx.category_name ? (
-                            <div>
-                              <span
-                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
-                                style={{
-                                  backgroundColor: `${tx.category_color}20`,
-                                  color: tx.category_color,
-                                }}
-                              >
-                                <span
-                                  className="w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: tx.category_color }}
-                                />
-                                {tx.category_name}
-                              </span>
-                              {tx.subcategory_name && (
-                                <div className="text-xs text-text-secondary mt-0.5 ml-2">
-                                  {tx.subcategory_name}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-text-secondary text-xs">Sin categoria</span>
-                          )}
-                        </button>
-                      </td>
-                      <td
-                        className={`py-3 px-4 text-right font-medium ${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}
-                      >
-                        {Number(tx.amount) >= 0 ? '+' : ''}
-                        {Number(tx.amount).toFixed(2)} €
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEditModal(tx)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-danger hover:text-danger"
-                            onClick={() => handleDelete(tx.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {txData && txData.total > 0 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-layer-3 bg-layer-1">
-                <span className="text-sm text-text-secondary">
-                  Mostrando {transactionList.length} de {txData.total} transacciones
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => updateUrl({ page: page - 1 })}
-                    disabled={page <= 1}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Anterior
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => updateUrl({ page: page + 1 })}
-                    disabled={page * limit >= txData.total}
-                  >
-                    Siguiente
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {!isLoadingTx && filteredTransactions.length === 0 && (
-            <div className="py-12 text-center text-text-secondary">
-              No se encontraron transacciones para {periodLabel}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Modal Nueva/Editar Transacción */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -692,7 +368,6 @@ function TransactionsPageContent() {
         </ModalFooter>
       </Modal>
 
-      {/* Modal para cambio de categoria */}
       {account && (
         <CategoryChangeModal
           isOpen={isCategoryModalOpen}

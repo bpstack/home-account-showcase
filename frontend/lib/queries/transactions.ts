@@ -17,10 +17,11 @@ export const transactionKeys = {
     ['transactions', 'summary', accountId, startDate, endDate] as const,
 }
 
-export function useTransactions(params: TransactionParams) {
+export function useTransactions(params: TransactionParams, options?: { staleTime?: number }) {
   return useQuery({
     queryKey: transactionKeys.list(params),
     queryFn: () => transactionsApi.getAll(params),
+    staleTime: options?.staleTime ?? 0,
   })
 }
 
