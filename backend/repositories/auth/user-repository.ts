@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { SALT_ROUNDS } from '../../config/config.js'
 import db from '../../config/db.js'
-import type { User, UserRow, RegisterDTO, LoginDTO } from '../../models/auth/index.js'
+import type { User, UserRow, RegisterDTO, LoginDTO, UpdateUserDTO } from '../../models/auth/index.js'
 
 export class UserRepository {
   /**
@@ -149,5 +149,93 @@ export class UserRepository {
     )
 
     return rows[0] || null
+  }
+
+  /**
+   * Obtener todos los usuarios
+   */
+  static async getAll(): Promise<User[]> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, name, created_at, updated_at
+       FROM users
+       ORDER BY created_at DESC`
+    )
+
+    return rows as User[]
+  }
+
+  /**
+   * Actualizar usuario (nombre y email)
+   */
+  static async update(id: string, data: UpdateUserDTO): Promise<User | null> {
+    const { name, email } = data
+
+    const [result] = await db.query(
+      `UPDATE users
+       SET name = COALESCE(?, name), email = COALESCE(?, email), updated_at = NOW()
+       WHERE id = ?`,
+      [name, email, id]
+    )
+
+    if ((result as any).affectedRows === 0) {
+      return null
+    }
+
+    return this.getById(id)
+  }
+
+  /**
+   * Resetear contraseña (admin)
+   */
+  static async resetPassword(id: string, newPassword: string): Promise<boolean> {
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
+
+    const [result] = await db.query(
+      `UPDATE users
+       SET password_hash = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [hashedPassword, id]
+    )
+
+    return (result as any).affectedRows > 0
+  }
+
+  /**
+   * Cambiar contraseña propia (验证 contraseña actual)
+   */
+  static async changePassword(id: string, currentPassword: string, newPassword: string): Promise<boolean> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT password_hash FROM users WHERE id = ?`,
+      [id]
+    )
+
+    const user = rows[0]
+    if (!user) {
+      throw new Error('Usuario no encontrado')
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash!)
+    if (!isCurrentPasswordValid) {
+      throw new Error('Contraseña actual incorrecta')
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
+
+    const [result] = await db.query(
+      `UPDATE users
+       SET password_hash = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [hashedPassword, id]
+    )
+
+    return (result as any).affectedRows > 0
+  }
+
+  /**
+   * Eliminar usuario
+   */
+  static async delete(id: string): Promise<boolean> {
+    const [result] = await db.query(`DELETE FROM users WHERE id = ?`, [id])
+    return (result as any).affectedRows > 0
   }
 }

@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import db from './config/db.js'
 import { PORT } from './config/config.js'
 import authRoutes from './routes/auth/auth-routes.js'
+import userRoutes from './routes/auth/user-routes.js'
 import accountRoutes from './routes/accounts/account-routes.js'
 import categoryRoutes from './routes/categories/category-routes.js'
 import subcategoryRoutes from './routes/subcategories/subcategory-routes.js'
@@ -24,6 +25,7 @@ app.use(cookieParser())
 
 // Routes
 app.use('/api/auth', authRoutes)
+app.use('/api/users', userRoutes)
 app.use('/api/accounts', accountRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/subcategories', subcategoryRoutes)

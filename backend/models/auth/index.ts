@@ -34,6 +34,11 @@ export interface LoginDTO {
   password: string
 }
 
+export interface UpdateUserDTO {
+  name?: string
+  email?: string
+}
+
 // ============================================
 // TOKEN TYPES
 // ============================================

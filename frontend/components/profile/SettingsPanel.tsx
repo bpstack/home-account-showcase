@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
 import { Button, Input } from '@/components/ui'
@@ -13,34 +14,75 @@ interface Member {
   joined_at: string
 }
 
+type SettingsTab = 'account' | 'members' | 'budget' | 'savings' | 'security'
+
+const tabs: { id: SettingsTab; label: string; description: string }[] = [
+  { id: 'account', label: 'Cuenta', description: 'Gestiona tu cuenta' },
+  { id: 'members', label: 'Miembros', description: 'Administra los miembros de tu cuenta' },
+  { id: 'budget', label: 'Presupuesto', description: 'Establecer los límites de gastos dependiendo la categoría seleccionada' },
+  { id: 'savings', label: 'Ahorro e Inversión', description: 'Qué parte destinaremos al ahorro y qué parte a Inversión' },
+  { id: 'security', label: 'Seguridad', description: 'Aumentar la seguridad de mi cuenta' },
+]
+
 export function SettingsPanel() {
-  const { user, account } = useAuth()
+  const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const activePanel = searchParams.get('panel')
+  const activeTab = (searchParams.get('tab') as SettingsTab) || 'account'
+
+  const handleTabChange = (tab: SettingsTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('panel', 'settings')
+    params.set('tab', tab)
+    router.push(`/profile?${params.toString()}`, { scroll: false })
+  }
+
+  if (activePanel !== 'settings') {
+    return null
+  }
+
+  return (
+    <div className="h-full max-w-[1400px]">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Configuración</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Gestiona los ajustes de tu cuenta</p>
+      </div>
+
+      <div className="border-b border-gray-200 dark:border-[#30363d] mb-6">
+        <nav className="flex gap-4 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`px-1 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      <div>
+        {activeTab === 'account' && <AccountSettings />}
+        {activeTab === 'members' && <MembersSettings />}
+        {activeTab === 'budget' && <BudgetSettings />}
+        {activeTab === 'savings' && <SavingsSettings />}
+        {activeTab === 'security' && <SecuritySettings />}
+      </div>
+    </div>
+  )
+}
+
+function AccountSettings() {
+  const { account } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [members, setMembers] = useState<Member[]>([])
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false)
-  const [newMemberEmail, setNewMemberEmail] = useState('')
-  const [newMemberName, setNewMemberName] = useState('')
-  const [isAddingMember, setIsAddingMember] = useState(false)
-
-  useEffect(() => {
-    if (account?.id) {
-      loadMembers()
-    }
-  }, [account?.id])
-
-  const loadMembers = async () => {
-    if (!account?.id) return
-    setIsLoadingMembers(true)
-    try {
-      const { members: membersData } = await accounts.getMembers(account.id)
-      setMembers(membersData)
-    } catch (error) {
-      console.error('Error loading members:', error)
-    } finally {
-      setIsLoadingMembers(false)
-    }
-  }
 
   const handleSaveName = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -58,6 +100,69 @@ export function SettingsPanel() {
       setMessage({ type: 'error', text: 'Error al actualizar el nombre' })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Nombre de la cuenta</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cambia el nombre de tu cuenta</p>
+      </div>
+
+      <div className="p-4">
+        {message && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${
+            message.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+          }`}>
+            {message.text}
+          </div>
+        )}
+        <form onSubmit={handleSaveName} className="space-y-4">
+          <Input
+            id="accountName"
+            type="text"
+            label="Nombre de la cuenta"
+            name="name"
+            defaultValue={account?.name || ''}
+            required
+          />
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Guardando...' : 'Guardar cambios'}
+          </Button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function MembersSettings() {
+  const { account } = useAuth()
+  const [members, setMembers] = useState<Member[]>([])
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false)
+  const [newMemberEmail, setNewMemberEmail] = useState('')
+  const [newMemberName, setNewMemberName] = useState('')
+  const [isAddingMember, setIsAddingMember] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  useEffect(() => {
+    if (account?.id) {
+      loadMembers()
+    }
+  }, [account?.id])
+
+  const loadMembers = async () => {
+    if (!account?.id) return
+    setIsLoadingMembers(true)
+    try {
+      const { members: membersData } = await accounts.getMembers(account.id)
+      setMembers(membersData)
+    } catch (error) {
+      console.error('Error loading members:', error)
+    } finally {
+      setIsLoadingMembers(false)
     }
   }
 
@@ -87,58 +192,26 @@ export function SettingsPanel() {
 
   return (
     <div className="space-y-6">
-      {message && (
-        <div
-          className={`p-3 rounded-lg text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
       <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Nombre de la cuenta
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Cambia el nombre de tu cuenta
-          </p>
-        </div>
-
-        <div className="p-4">
-          <form onSubmit={handleSaveName} className="space-y-4">
-            <Input
-              id="accountName"
-              type="text"
-              label="Nombre de la cuenta"
-              name="name"
-              defaultValue={account?.name || ''}
-              required
-            />
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Guardando...' : 'Guardar cambios'}
-            </Button>
-          </form>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Agregar miembro
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Agregar miembro</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             Escribe el email y nombre del usuario que quieres agregar
           </p>
         </div>
 
         <div className="p-4">
+          {message && (
+            <div className={`mb-4 p-3 rounded-lg text-sm ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            }`}>
+              {message.text}
+            </div>
+          )}
           <form onSubmit={handleAddMember} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 id="memberEmail"
                 type="email"
@@ -167,9 +240,7 @@ export function SettingsPanel() {
 
       <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Miembros de la cuenta
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Miembros de la cuenta</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {members.length} {members.length === 1 ? 'miembro' : 'miembros'}
           </p>
@@ -179,9 +250,7 @@ export function SettingsPanel() {
           {isLoadingMembers ? (
             <div className="text-center py-4 text-sm text-gray-500">Cargando...</div>
           ) : members.length === 0 ? (
-            <div className="text-center py-4 text-sm text-gray-500">
-              No hay miembros en esta cuenta
-            </div>
+            <div className="text-center py-4 text-sm text-gray-500">No hay miembros en esta cuenta</div>
           ) : (
             <div className="space-y-3">
               {members.map((member) => (
@@ -194,28 +263,68 @@ export function SettingsPanel() {
                       {member.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {member.name}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{member.name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{member.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        member.role === 'owner'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {member.role === 'owner' ? 'Propietario' : 'Miembro'}
-                    </span>
-                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    member.role === 'owner'
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  }`}>
+                    {member.role === 'owner' ? 'Propietario' : 'Miembro'}
+                  </span>
                 </div>
               ))}
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function BudgetSettings() {
+  return (
+    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Presupuesto</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          Establecer los límites de gastos dependiendo la categoría seleccionada
+        </p>
+      </div>
+      <div className="p-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400">Próximamente...</p>
+      </div>
+    </div>
+  )
+}
+
+function SavingsSettings() {
+  return (
+    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Ahorro e Inversión</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          Qué parte destinaremos al ahorro y qué parte a Inversión
+        </p>
+      </div>
+      <div className="p-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400">Próximamente...</p>
+      </div>
+    </div>
+  )
+}
+
+function SecuritySettings() {
+  return (
+    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Seguridad</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Aumentar la seguridad de mi cuenta</p>
+      </div>
+      <div className="p-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400">Próximamente...</p>
       </div>
     </div>
   )
