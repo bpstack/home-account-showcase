@@ -2,6 +2,7 @@
 
 import { Request, Response } from 'express'
 import { TransactionRepository } from '../../repositories/transactions/transaction-repository.js'
+import { sanitizeForStorage } from '../../utils/sanitize.js'
 import {
   getTransactionsSchema,
   createTransactionSchema,
@@ -123,14 +124,19 @@ export const createTransaction = async (req: Request, res: Response): Promise<vo
     const { account_id, date, description, amount, subcategory_id, bank_category, bank_subcategory } =
       validationResult.data
 
+    // Sanitize text fields to prevent XSS attacks
+    const safeDescription = sanitizeForStorage(description)
+    const safeBankCategory = bank_category ? sanitizeForStorage(bank_category) : undefined
+    const safeBankSubcategory = bank_subcategory ? sanitizeForStorage(bank_subcategory) : undefined
+
     const transaction = await TransactionRepository.create(req.user!.id, {
       account_id,
       date,
-      description,
+      description: safeDescription,
       amount,
       subcategory_id: subcategory_id ?? undefined,
-      bank_category: bank_category ?? undefined,
-      bank_subcategory: bank_subcategory ?? undefined,
+      bank_category: safeBankCategory,
+      bank_subcategory: safeBankSubcategory,
     })
 
     res.status(201).json({
@@ -173,9 +179,12 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
 
     const { date, description, amount, subcategory_id } = validationResult.data
 
+    // Sanitize text fields to prevent XSS attacks
+    const safeDescription = description ? sanitizeForStorage(description) : undefined
+
     const transaction = await TransactionRepository.update(id, req.user!.id, {
       date,
-      description,
+      description: safeDescription,
       amount,
       subcategory_id: subcategory_id ?? undefined,
     })

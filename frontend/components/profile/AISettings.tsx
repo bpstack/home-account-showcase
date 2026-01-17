@@ -13,7 +13,7 @@ const PROVIDER_OPTIONS = [
   { value: 'ollama', label: 'Ollama (Local)' },
 ]
 
-export default function SettingsPage() {
+export function AISettings() {
   const [status, setStatus] = useState<AIStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedProvider, setSelectedProvider] = useState<string>('none')
@@ -114,8 +114,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Configuración</h1>
-        <p className="text-sm text-text-secondary mt-1">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Inteligencia Artificial</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           Configura los proveedores de IA para el parsing de transacciones
         </p>
       </div>
@@ -126,11 +126,13 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Bot className="h-6 w-6 text-accent" />
-              <CardTitle>Inteligencia Artificial</CardTitle>
+              <CardTitle>Proveedor de IA</CardTitle>
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                status?.enabled ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
+                status?.enabled
+                  ? 'bg-success/10 text-success'
+                  : 'bg-danger/10 text-danger'
               }`}
             >
               <span
@@ -148,7 +150,7 @@ export default function SettingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-text-primary mb-2">
-                  Proveedor de IA
+                  Seleccionar proveedor
                 </label>
                 <div className="flex items-center gap-3">
                   <Select
@@ -160,10 +162,19 @@ export default function SettingsPage() {
                   />
                   {hasChanges && (
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCancel}
+                        disabled={saving}
+                      >
                         Cancelar
                       </Button>
-                      <Button size="sm" onClick={handleSave} isLoading={saving}>
+                      <Button
+                        size="sm"
+                        onClick={handleSave}
+                        isLoading={saving}
+                      >
                         Guardar
                       </Button>
                     </div>
@@ -181,7 +192,7 @@ export default function SettingsPage() {
             {hasChanges && (
               <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
                 <p className="text-sm text-warning">
-                  Tienes cambios sin guardar. Pulsa &quot;Guardar&quot; para aplicarlos.
+                  Tienes cambios sin guardar. Pulsa "Guardar" para aplicarlos.
                 </p>
               </div>
             )}
@@ -217,8 +228,7 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2 text-sm">
                     <Zap className="h-4 w-4 text-text-secondary" />
                     <span className="text-text-secondary">
-                      Proveedor:{' '}
-                      <span className="text-text-primary font-medium">{selectedProvider}</span>
+                      Proveedor: <span className="text-text-primary font-medium capitalize">{selectedProvider}</span>
                     </span>
                   </div>
                 </div>

@@ -521,7 +521,7 @@ export interface ParsedTransaction {
 
 export interface ParseResult {
   success: boolean
-  file_type: 'control_gastos' | 'movimientos_cc' | 'unknown'
+  file_type: 'control_gastos' | 'movimientos_cc' | 'csv_revolut' | 'csv_generic' | 'ai_parsed' | 'unknown'
   sheet_name?: string
   available_sheets?: string[]
   transactions: ParsedTransaction[]
@@ -643,6 +643,15 @@ export const ai = {
       method: 'POST',
       body: JSON.stringify({ text, provider }),
     }),
+
+  categorize: (transactions: Array<{ description: string; date?: string; amount?: number }>) =>
+    request<{ success: boolean; categories: Array<{ category: string; subcategory: string }>; responseTime: number }>(
+      '/ai/categorize',
+      {
+        method: 'POST',
+        body: JSON.stringify({ transactions }),
+      }
+    ),
 }
 
 export { ApiError }

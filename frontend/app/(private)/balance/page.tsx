@@ -12,6 +12,7 @@ import {
   CardContent,
   Button,
   Input,
+  FilterSelect,
 } from '@/components/ui'
 import { ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
 import {
@@ -29,8 +30,18 @@ import {
 import type { Transaction } from '@/lib/apiClient'
 
 const monthsFull = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ]
 
 const currentYearNow = new Date().getFullYear()
@@ -116,13 +127,24 @@ function BalancePageContent() {
     totalPages: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
-  const [expensesByCategory, setExpensesByCategory] = useState<{ name: string; color: string; amount: number }[]>([])
-  const [incomeByCategory, setIncomeByCategory] = useState<{ name: string; color: string; amount: number }[]>([])
+  const [expensesByCategory, setExpensesByCategory] = useState<
+    { name: string; color: string; amount: number }[]
+  >([])
+  const [incomeByCategory, setIncomeByCategory] = useState<
+    { name: string; color: string; amount: number }[]
+  >([])
 
   const { data: catData } = useCategories(account?.id || '')
 
   const updateUrl = useCallback(
-    (updates: { tab?: TabType; period?: Period; month?: number; year?: number; start?: string; end?: string }) => {
+    (updates: {
+      tab?: TabType
+      period?: Period
+      month?: number
+      year?: number
+      start?: string
+      end?: string
+    }) => {
       const params = new URLSearchParams(searchParams.toString())
       if (updates.tab) params.set('tab', updates.tab)
       if (updates.period) params.set('period', updates.period)
@@ -201,30 +223,36 @@ function BalancePageContent() {
         const expenseMap = new Map<string, { color: string; amount: number }>()
         const incomeMap = new Map<string, { color: string; amount: number }>()
 
-        summaryResponse.summary.forEach((item: { category_name: string; category_color: string; total_amount: string | number }) => {
-          const rawAmount = Number(item.total_amount)
-          const catName = item.category_name || 'Sin categoría'
-          const color = item.category_color || '#6B7280'
+        summaryResponse.summary.forEach(
+          (item: {
+            category_name: string
+            category_color: string
+            total_amount: string | number
+          }) => {
+            const rawAmount = Number(item.total_amount)
+            const catName = item.category_name || 'Sin categoría'
+            const color = item.category_color || '#6B7280'
 
-          if (rawAmount < 0) {
-            // Es un gasto (negativo)
-            const amount = Math.abs(rawAmount)
-            const existing = expenseMap.get(catName)
-            if (existing) {
-              existing.amount += amount
-            } else {
-              expenseMap.set(catName, { color, amount })
-            }
-          } else if (rawAmount > 0) {
-            // Es un ingreso (positivo)
-            const existing = incomeMap.get(catName)
-            if (existing) {
-              existing.amount += rawAmount
-            } else {
-              incomeMap.set(catName, { color, amount: rawAmount })
+            if (rawAmount < 0) {
+              // Es un gasto (negativo)
+              const amount = Math.abs(rawAmount)
+              const existing = expenseMap.get(catName)
+              if (existing) {
+                existing.amount += amount
+              } else {
+                expenseMap.set(catName, { color, amount })
+              }
+            } else if (rawAmount > 0) {
+              // Es un ingreso (positivo)
+              const existing = incomeMap.get(catName)
+              if (existing) {
+                existing.amount += rawAmount
+              } else {
+                incomeMap.set(catName, { color, amount: rawAmount })
+              }
             }
           }
-        })
+        )
 
         const sortedExpenses = Array.from(expenseMap.entries())
           .map(([name, data]) => ({ name, ...data }))
@@ -241,7 +269,18 @@ function BalancePageContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [account, period, currentMonth, currentYear, customStartDate, customEndDate, page, activeTab, getDateRange, getTypeFilter])
+  }, [
+    account,
+    period,
+    currentMonth,
+    currentYear,
+    customStartDate,
+    customEndDate,
+    page,
+    activeTab,
+    getDateRange,
+    getTypeFilter,
+  ])
 
   useEffect(() => {
     setPage(1)
@@ -284,6 +323,9 @@ function BalancePageContent() {
     }
     return 'Selecciona fechas'
   }
+
+  const monthOptions = monthsFull.map((month, index) => ({ value: String(index), label: month }))
+  const yearOptions = availableYears.map((year) => ({ value: String(year), label: String(year) }))
 
   return (
     <div className="space-y-6">
@@ -343,25 +385,19 @@ function BalancePageContent() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
 
-              <select
-                value={currentMonth}
+              <FilterSelect
+                value={String(currentMonth)}
                 onChange={(e) => updateUrl({ month: parseInt(e.target.value, 10) })}
-                className="h-9 px-3 bg-layer-1 border border-layer-3 text-text-primary text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
-              >
-                {monthsFull.map((month, index) => (
-                  <option key={index} value={index}>{month}</option>
-                ))}
-              </select>
+                options={monthOptions}
+                className="w-32"
+              />
 
-              <select
-                value={currentYear}
+              <FilterSelect
+                value={String(currentYear)}
                 onChange={(e) => updateUrl({ year: parseInt(e.target.value, 10) })}
-                className="h-9 px-3 bg-layer-1 border border-layer-3 text-text-primary text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
-              >
-                {availableYears.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
+                options={yearOptions}
+                className="w-24"
+              />
 
               <Button variant="ghost" size="icon" onClick={nextMonth} className="h-9 w-9">
                 <ArrowRight className="h-4 w-4" />
@@ -380,15 +416,12 @@ function BalancePageContent() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
 
-              <select
-                value={currentYear}
+              <FilterSelect
+                value={String(currentYear)}
                 onChange={(e) => updateUrl({ year: parseInt(e.target.value, 10) })}
-                className="h-9 px-4 bg-layer-1 border border-layer-3 text-text-primary text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
-              >
-                {availableYears.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
+                options={yearOptions}
+                className="w-24"
+              />
 
               <Button
                 variant="ghost"
@@ -543,7 +576,9 @@ function BalanceTabContent({
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-text-secondary uppercase tracking-wide">Ingresos</p>
-                <p className="text-lg font-bold text-success truncate">+{formatCurrency(stats.income)}</p>
+                <p className="text-lg font-bold text-success truncate">
+                  +{formatCurrency(stats.income)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -557,7 +592,9 @@ function BalanceTabContent({
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-text-secondary uppercase tracking-wide">Gastos</p>
-                <p className="text-lg font-bold text-danger truncate">-{formatCurrency(stats.expenses)}</p>
+                <p className="text-lg font-bold text-danger truncate">
+                  -{formatCurrency(stats.expenses)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -571,8 +608,11 @@ function BalanceTabContent({
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-text-secondary uppercase tracking-wide">Ahorro</p>
-                <p className={`text-lg font-bold truncate ${stats.balance >= 0 ? 'text-accent' : 'text-danger'}`}>
-                  {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
+                <p
+                  className={`text-lg font-bold truncate ${stats.balance >= 0 ? 'text-accent' : 'text-danger'}`}
+                >
+                  {stats.balance >= 0 ? '+' : ''}
+                  {formatCurrency(stats.balance)}
                 </p>
               </div>
             </div>
@@ -779,7 +819,9 @@ function IncomeTabContent({
       ) : (
         <Card>
           <CardContent className="py-12">
-            <p className="text-center text-text-secondary">No hay ingresos registrados en este período</p>
+            <p className="text-center text-text-secondary">
+              No hay ingresos registrados en este período
+            </p>
           </CardContent>
         </Card>
       )}
@@ -853,7 +895,9 @@ function ExpensesTabContent({
                     />
                     <p className="text-xs text-text-secondary truncate">{cat.name}</p>
                   </div>
-                  <p className="text-base font-bold text-text-primary">{formatCurrency(cat.amount)}</p>
+                  <p className="text-base font-bold text-text-primary">
+                    {formatCurrency(cat.amount)}
+                  </p>
                   <div className="mt-2 h-1 bg-layer-2 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
@@ -869,7 +913,9 @@ function ExpensesTabContent({
       ) : (
         <Card>
           <CardContent className="py-12">
-            <p className="text-center text-text-secondary">No hay gastos registrados en este período</p>
+            <p className="text-center text-text-secondary">
+              No hay gastos registrados en este período
+            </p>
           </CardContent>
         </Card>
       )}

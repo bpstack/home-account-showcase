@@ -2,6 +2,7 @@
 
 import { Request, Response } from 'express'
 import { CategoryRepository } from '../../repositories/categories/category-repository.js'
+import { sanitizeForStorage } from '../../utils/sanitize.js'
 
 /**
  * Obtener categorías por account
@@ -90,9 +91,12 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
       return
     }
 
+    // Sanitize text fields to prevent XSS attacks
+    const safeName = sanitizeForStorage(name)
+
     const category = await CategoryRepository.create(req.user!.id, {
       account_id,
-      name,
+      name: safeName,
       color,
       icon,
     })
@@ -137,8 +141,11 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
     const { id } = req.params
     const { name, color, icon } = req.body
 
+    // Sanitize text fields to prevent XSS attacks
+    const safeName = name ? sanitizeForStorage(name) : undefined
+
     const category = await CategoryRepository.update(id, req.user!.id, {
-      name,
+      name: safeName,
       color,
       icon,
     })

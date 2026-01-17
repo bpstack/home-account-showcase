@@ -1,4 +1,5 @@
 import XLSX from 'xlsx'
+import { sanitizeCSVValue } from '../../utils/sanitize.js'
 
 export interface ParsedTransaction {
   date: string
@@ -127,17 +128,22 @@ function parseControlGastos(
         typeof amount === 'number' ? amount : parseFloat(String(amount))
       if (isNaN(parsedAmount)) continue
 
+      // Sanitize text fields to prevent injection attacks
+      const safeDescription = sanitizeCSVValue(String(description || '')) || 'Sin descripción'
+      const safeCategory = sanitizeCSVValue(String(category || ''))
+      const safeSubcategory = sanitizeCSVValue(String(subcategory || ''))
+
       transactions.push({
         date: dateStr,
-        description: String(description || '').trim() || 'Sin descripción',
+        description: safeDescription,
         amount: -Math.abs(parsedAmount), // Gastos como negativos
-        bank_category: String(category).trim(),
-        bank_subcategory: String(subcategory || '').trim(),
+        bank_category: safeCategory,
+        bank_subcategory: safeSubcategory,
       })
 
       // Track categories
-      const cat = String(category).trim()
-      const subcat = String(subcategory || '').trim()
+      const cat = safeCategory
+      const subcat = safeSubcategory
       if (!categoriesSet.has(cat)) {
         categoriesSet.set(cat, new Set())
       }
@@ -263,17 +269,22 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
         typeof amount === 'number' ? amount : parseFloat(String(amount).replace(/[^\d.,-]/g, ''))
       if (isNaN(parsedAmount)) continue
 
+      // Sanitize text fields to prevent injection attacks
+      const safeDescription = sanitizeCSVValue(String(description || '')) || 'Sin descripción'
+      const safeCategory = sanitizeCSVValue(String(category || ''))
+      const safeSubcategory = sanitizeCSVValue(String(subcategory || ''))
+
       transactions.push({
         date: dateStr,
-        description: String(description || '').trim() || 'Sin descripción',
+        description: safeDescription,
         amount: parsedAmount,
-        bank_category: String(category || '').trim(),
-        bank_subcategory: String(subcategory || '').trim(),
+        bank_category: safeCategory,
+        bank_subcategory: safeSubcategory,
       })
 
       // Track categories
-      const cat = String(category || '').trim()
-      const subcat = String(subcategory || '').trim()
+      const cat = safeCategory
+      const subcat = safeSubcategory
       if (cat && !categoriesSet.has(cat)) {
         categoriesSet.set(cat, new Set())
       }
@@ -317,6 +328,9 @@ interface CSVColumnMapping {
 
 type CSVFormat = 'revolut' | 'generic' | 'unknown'
 
+// sanitizeCSVValue is imported from ../../utils/sanitize.js
+// It handles both CSV injection and XSS protection
+
 function parseCSVLine(line: string): string[] {
   const result: string[] = []
   let current = ''
@@ -353,17 +367,26 @@ function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVCo
     }
   }
 
-  // Generic CSV - try to find common column names
+  // Generic CSV - flexible column detection
+  // Date patterns: fecha, date, f. valor, mi_fecha, fecha_operacion, etc.
   const dateIdx = headerLower.findIndex(h =>
-    h.includes('date') || h.includes('fecha') || h === 'f. valor'
+    h.includes('date') || h.includes('fecha') || h.includes('valor') || h.includes('dia')
   )
+
+  // Description patterns: descripcion, description, concepto, detalle, texto, movimiento
   const descIdx = headerLower.findIndex(h =>
     h.includes('description') || h.includes('descripcion') || h.includes('descripción') ||
-    h.includes('concepto') || h.includes('detalle')
+    h.includes('concepto') || h.includes('detalle') || h.includes('texto') ||
+    h.includes('movimiento') || h.includes('operacion')
   )
+
+  // Amount patterns: importe, amount, cantidad, monto, valor, euro
   const amountIdx = headerLower.findIndex(h =>
-    h.includes('amount') || h.includes('importe') || h.includes('cantidad') || h.includes('monto')
+    h.includes('amount') || h.includes('importe') || h.includes('cantidad') ||
+    h.includes('monto') || h.includes('euro') || h.includes('valor')
   )
+
+  // Category patterns
   const categoryIdx = headerLower.findIndex(h =>
     h === 'category' || h === 'categoría' || h === 'categoria' || h === 'type' || h === 'tipo'
   )
@@ -371,6 +394,7 @@ function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVCo
     h === 'subcategory' || h === 'subcategoría' || h === 'subcategoria'
   )
 
+  // If we found all 3 required fields
   if (dateIdx !== -1 && descIdx !== -1 && amountIdx !== -1) {
     return {
       format: 'generic',
@@ -380,6 +404,27 @@ function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVCo
         amount: amountIdx,
         category: categoryIdx !== -1 ? categoryIdx : undefined,
         subcategory: subcategoryIdx !== -1 ? subcategoryIdx : undefined,
+      }
+    }
+  }
+
+  // Last resort: try positional detection (3 columns: date, desc, amount)
+  if (headers.length >= 3) {
+    // Check if first column looks like a date
+    const firstHeader = headerLower[0]
+    const hasDateLikeFirst = firstHeader.includes('fecha') || firstHeader.includes('date') ||
+                             /\d/.test(firstHeader) === false // No numbers in header
+
+    if (hasDateLikeFirst) {
+      return {
+        format: 'generic',
+        mapping: {
+          date: 0,
+          description: 1,
+          amount: headers.length - 1, // Last column is usually amount
+          category: undefined,
+          subcategory: undefined,
+        }
       }
     }
   }
@@ -492,8 +537,8 @@ function parseCSVFile(content: string): ParseResult {
       continue
     }
 
-    // Validate description
-    const description = descriptionRaw?.trim()
+    // Validate and sanitize description (prevent CSV injection)
+    const description = sanitizeCSVValue(descriptionRaw || '')
     if (!description) {
       errors.push(`Fila ${rowNum}: Descripción vacía o faltante`)
       continue
@@ -506,9 +551,9 @@ function parseCSVFile(content: string): ParseResult {
       continue
     }
 
-    // Optional fields
-    const category = mapping.category !== undefined ? row[mapping.category]?.trim() || null : null
-    const subcategory = mapping.subcategory !== undefined ? row[mapping.subcategory]?.trim() || null : null
+    // Optional fields (also sanitized)
+    const category = mapping.category !== undefined ? sanitizeCSVValue(row[mapping.category] || '') || null : null
+    const subcategory = mapping.subcategory !== undefined ? sanitizeCSVValue(row[mapping.subcategory] || '') || null : null
 
     transactions.push({
       date,

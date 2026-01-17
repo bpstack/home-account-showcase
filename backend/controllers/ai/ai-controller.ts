@@ -197,3 +197,111 @@ TEXTO A ANALIZAR:
 ${text}
 ---`
 }
+
+/**
+ * Categorize transactions based on descriptions using AI
+ * POST /api/ai/categorize
+ * Body: { transactions: { description: string; date?: string; amount?: number }[] }
+ */
+export const categorizeTransactions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { transactions } = req.body as {
+      transactions: Array<{ description: string; date?: string; amount?: number }>
+    }
+
+    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'transactions es requerido y debe ser un array no vacío',
+      })
+      return
+    }
+
+    if (!isAIEnabled()) {
+      res.status(400).json({
+        success: false,
+        error: 'AI está deshabilitada (AI_ENABLED=false)',
+      })
+      return
+    }
+
+    const client = createAIClient()
+    if (!client.isAvailable()) {
+      res.status(400).json({
+        success: false,
+        error: 'No hay proveedor de IA disponible',
+      })
+      return
+    }
+
+    const startTime = Date.now()
+
+    const prompt = buildCategorizationPrompt(transactions)
+    const response = await client.sendPromptJSON<{
+      categories: Array<{ category: string; subcategory: string }>
+    }>(prompt)
+
+    const responseTime = Date.now() - startTime
+
+    console.log(`[AI:${client.getProviderName()}] Categorized ${transactions.length} transactions in ${responseTime}ms`)
+
+    res.status(200).json({
+      success: true,
+      categories: response.categories || [],
+      responseTime,
+    })
+  } catch (error) {
+    console.error('Error en categorizeTransactions:', error)
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Error interno del servidor',
+    })
+  }
+}
+
+/**
+ * Build the prompt for categorizing transactions
+ */
+function buildCategorizationPrompt(
+  transactions: Array<{ description: string; date?: string; amount?: number }>
+): string {
+  const txList = transactions
+    .map((tx, i) => `${i + 1}. "${tx.description}"${tx.amount ? ` (${tx.amount})` : ''}`)
+    .join('\n')
+
+  return `Eres un asistente especializado en categorizar transacciones financieras.
+
+Para cada transacción, analiza la descripción y propone la categoría y subcategoría más apropiada.
+
+Categorías comunes:
+- ALIMENTACION: supermercados, mercados, alimentación
+- TRANSPORTE: gasolina, transporte público, taxi, uber
+- RESTAURANTES: restaurantes, bares, cafeterías, comida rápida
+- SALUD: farmacia, médico, hospitales, gimnasio
+- HOGAR: electricidad, agua, gas, internet, móvil
+- OCIO: cine, teatro, conciertos, viajes, entretenimiento
+- VEHICULO: coche, mantenimiento, seguros
+- ROPA: tiendas de ropa, zapaterías
+- INGRESOS: nómina, transferencias recibidas, ingresos
+- TRANSFERENCIAS: bizum, transferencias entre cuentas
+- OTROS: cualquier cosa que no encaje
+
+Devuelve un JSON con el siguiente formato:
+{
+  "categories": [
+    { "category": "categoria", "subcategory": "subcategoria" }
+  ]
+}
+
+Cada posición del array debe corresponder a la transacción con el mismo índice.
+
+REGLAS:
+- Usa categorías en minúsculas
+- category siempre requerida
+- subcategory puede ser igual a category o más específica
+- Si no estás seguro, usa "otros"
+- Devuelve SOLO el JSON, sin explicaciones
+
+TRANSACCIONES A CATEGORIZAR:
+${txList}`
+}

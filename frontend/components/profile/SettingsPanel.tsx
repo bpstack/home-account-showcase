@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
 import { Button, Input } from '@/components/ui'
+import { AISettings } from './AISettings'
 
 interface Member {
   id: string
@@ -14,11 +15,12 @@ interface Member {
   joined_at: string
 }
 
-type SettingsTab = 'account' | 'members' | 'budget' | 'savings' | 'security'
+type SettingsTab = 'account' | 'members' | 'budget' | 'savings' | 'security' | 'ia'
 
 const tabs: { id: SettingsTab; label: string; description: string }[] = [
   { id: 'account', label: 'Cuenta', description: 'Gestiona tu cuenta' },
   { id: 'members', label: 'Miembros', description: 'Administra los miembros de tu cuenta' },
+  { id: 'ia', label: 'IA', description: 'Configura los proveedores de IA para el parsing' },
   { id: 'budget', label: 'Presupuesto', description: 'Establecer los límites de gastos dependiendo la categoría seleccionada' },
   { id: 'savings', label: 'Ahorro e Inversión', description: 'Qué parte destinaremos al ahorro y qué parte a Inversión' },
   { id: 'security', label: 'Seguridad', description: 'Aumentar la seguridad de mi cuenta' },
@@ -71,6 +73,7 @@ export function SettingsPanel() {
       <div>
         {activeTab === 'account' && <AccountSettings />}
         {activeTab === 'members' && <MembersSettings />}
+        {activeTab === 'ia' && <AISettings />}
         {activeTab === 'budget' && <BudgetSettings />}
         {activeTab === 'savings' && <SavingsSettings />}
         {activeTab === 'security' && <SecuritySettings />}

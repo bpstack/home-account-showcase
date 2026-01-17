@@ -2,6 +2,7 @@
 
 import { Request, Response } from 'express'
 import { SubcategoryRepository } from '../../repositories/subcategories/subcategory-repository.js'
+import { sanitizeForStorage } from '../../utils/sanitize.js'
 
 /**
  * Obtener subcategorías por categoría
@@ -90,9 +91,12 @@ export const createSubcategory = async (req: Request, res: Response): Promise<vo
       return
     }
 
+    // Sanitize text fields to prevent XSS attacks
+    const safeName = sanitizeForStorage(name)
+
     const subcategory = await SubcategoryRepository.create(req.user!.id, {
       category_id,
-      name,
+      name: safeName,
     })
 
     res.status(201).json({
@@ -135,7 +139,10 @@ export const updateSubcategory = async (req: Request, res: Response): Promise<vo
     const { id } = req.params
     const { name } = req.body
 
-    const subcategory = await SubcategoryRepository.update(id, req.user!.id, { name })
+    // Sanitize text fields to prevent XSS attacks
+    const safeName = name ? sanitizeForStorage(name) : undefined
+
+    const subcategory = await SubcategoryRepository.update(id, req.user!.id, { name: safeName })
 
     if (!subcategory) {
       res.status(404).json({
