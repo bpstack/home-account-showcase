@@ -1,0 +1,55 @@
+# Users Management Endpoints
+# Base URL: http://localhost:3001/api
+# Pega aquí el token del login:
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImY1OGYyYzVkLTEzMjEtNGVlNC05ZjBmLTQyZDQ5YTY4MTU1MyIsImVtYWlsIjoiYWRtaW5AYWRtaW4uY29tIiwiaWF0IjoxNzY4MzUxMDg1LCJleHAiOjE3NjgzNTEzODV9.jARikWOrGbsPy4EVqT6QuTllRuHWe-BOikjm1uyNlK8
+
+# Get all users (admin only)
+GET http://localhost:3001/api/users
+Authorization: Bearer {{token}}
+
+###
+
+# Get user by ID
+GET http://localhost:3001/api/users/:id
+Authorization: Bearer {{token}}
+
+###
+
+# Update user (name, email)
+PUT http://localhost:3001/api/users/:id
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "New Name",
+  "email": "newemail@example.com"
+}
+
+###
+
+# Delete user (admin only)
+DELETE http://localhost:3001/api/users/:id
+Authorization: Bearer {{token}}
+
+###
+
+# Reset user password (admin only)
+POST http://localhost:3001/api/users/:id/reset-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "newPassword": "newpassword123"
+}
+
+###
+
+# Change own password (requires current password)
+POST http://localhost:3001/api/users/:id/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "oldpassword123",
+  "newPassword": "newpassword123"
+}

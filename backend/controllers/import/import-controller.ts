@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import crypto from 'crypto'
 import {
-  parseExcelFile,
+  parseFile as parseImportFile,
   type ParsedTransaction,
 } from '../../services/import/excel-parser.js'
 import { CategoryRepository } from '../../repositories/categories/category-repository.js'
@@ -26,7 +26,8 @@ export const parseFile = async (req: Request, res: Response): Promise<void> => {
     }
 
     const sheetName = req.body.sheet_name as string | undefined
-    const result = parseExcelFile(req.file.buffer, sheetName)
+    const filename = req.file.originalname || 'file.xlsx'
+    const result = parseImportFile(req.file.buffer, filename, sheetName)
 
     res.status(200).json({
       success: result.success,

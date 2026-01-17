@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab, Button } from '@/components/ui'
@@ -22,6 +22,51 @@ import {
   ArrowLeft,
   ArrowRight,
 } from 'lucide-react'
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="pt-6">
+              <div className="h-16 bg-layer-2 rounded" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="h-64 bg-layer-2 rounded" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="h-64 bg-layer-2 rounded" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function HistorySkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="h-80 bg-layer-2 rounded" />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="h-80 bg-layer-2 rounded" />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 const tabs = [
   { id: 'overview', label: 'Resumen' },
@@ -200,19 +245,37 @@ export default function DashboardPage() {
         {formatPeriodLabel()}
       </p>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-accent" />
-        </div>
-      ) : (
-        <>
-          {activeTab === 'overview' && (
+      {activeTab === 'overview' && (
+        <Suspense fallback={<DashboardSkeleton />}>
+          {isLoading ? (
+            <DashboardSkeleton />
+          ) : (
             <OverviewTab stats={stats} summary={summary} transactions={transactionList} />
           )}
-          {activeTab === 'history' && <HistoryTab selectedYear={selectedYear} />}
-          {activeTab === 'stats' && <StatsTab summary={summary} />}
-          {activeTab === 'savings' && <SavingsTab stats={stats} period={period} />}
-        </>
+        </Suspense>
+      )}
+      {activeTab === 'history' && (
+        <Suspense fallback={<HistorySkeleton />}>
+          <HistoryTab selectedYear={selectedYear} />
+        </Suspense>
+      )}
+      {activeTab === 'stats' && (
+        <Suspense fallback={<DashboardSkeleton />}>
+          {isLoading ? (
+            <DashboardSkeleton />
+          ) : (
+            <StatsTab summary={summary} />
+          )}
+        </Suspense>
+      )}
+      {activeTab === 'savings' && (
+        <Suspense fallback={<DashboardSkeleton />}>
+          {isLoading ? (
+            <DashboardSkeleton />
+          ) : (
+            <SavingsTab stats={stats} period={period} />
+          )}
+        </Suspense>
       )}
     </div>
   )

@@ -437,14 +437,14 @@ export default function ImportPage() {
                   </p>
                   <p className="text-sm text-text-secondary mb-4">o haz clic para seleccionar</p>
                   <p className="text-xs text-text-secondary">
-                    Soporta: Control de Gastos (.xlsx) y Movimientos CC (.xls)
+                    Formatos Excel aceptados: .xlsx, .xls y .csv
                   </p>
                 </>
               )}
               <input
                 id="file-input"
                 type="file"
-                accept=".xls,.xlsx"
+                accept=".xls,.xlsx,.csv"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0]

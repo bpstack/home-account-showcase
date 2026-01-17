@@ -20,9 +20,10 @@ const upload = multer({
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/octet-stream',
+      'text/csv',
+      'text/plain',
     ]
-    const allowedExtensions = ['.xls', '.xlsx']
-    const ext = file.originalname.toLowerCase().slice(-5)
+    const allowedExtensions = ['.xls', '.xlsx', '.csv']
 
     if (
       allowedTypes.includes(file.mimetype) ||
@@ -30,7 +31,7 @@ const upload = multer({
     ) {
       cb(null, true)
     } else {
-      cb(new Error('Solo se permiten archivos Excel (.xls, .xlsx)'))
+      cb(new Error('Solo se permiten archivos Excel (.xls, .xlsx) o CSV (.csv)'))
     }
   },
 })

@@ -4,19 +4,24 @@ export interface ParsedTransaction {
   date: string
   description: string
   amount: number
-  bank_category: string
-  bank_subcategory: string
+  bank_category: string | null
+  bank_subcategory: string | null
 }
+
+export type FileType = 'control_gastos' | 'movimientos_cc' | 'csv_revolut' | 'csv_generic' | 'unknown'
 
 export interface ParseResult {
   success: boolean
-  file_type: 'control_gastos' | 'movimientos_cc' | 'unknown'
+  file_type: FileType
   sheet_name?: string
   available_sheets?: string[]
   transactions: ParsedTransaction[]
   categories: { category: string; subcategory: string }[]
   errors: string[]
 }
+
+// Required fields for a valid transaction
+const REQUIRED_FIELDS = ['date', 'description', 'amount'] as const
 
 function excelDateToISO(serial: number): string {
   const utcDays = Math.floor(serial - 25569)
@@ -300,6 +305,254 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
   }
 }
 
+// ============ CSV PARSING ============
+
+interface CSVColumnMapping {
+  date: number
+  description: number
+  amount: number
+  category?: number
+  subcategory?: number
+}
+
+type CSVFormat = 'revolut' | 'generic' | 'unknown'
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  result.push(current.trim())
+  return result
+}
+
+function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVColumnMapping | null } {
+  const headerLower = headers.map(h => h.toLowerCase().trim())
+
+  // Revolut format detection
+  if (headerLower.includes('completed date') && headerLower.includes('type') && headerLower.includes('amount')) {
+    return {
+      format: 'revolut',
+      mapping: {
+        date: headerLower.indexOf('completed date'),
+        description: headerLower.indexOf('description'),
+        amount: headerLower.indexOf('amount'),
+        category: headerLower.indexOf('type'),
+      }
+    }
+  }
+
+  // Generic CSV - try to find common column names
+  const dateIdx = headerLower.findIndex(h =>
+    h.includes('date') || h.includes('fecha') || h === 'f. valor'
+  )
+  const descIdx = headerLower.findIndex(h =>
+    h.includes('description') || h.includes('descripcion') || h.includes('descripción') ||
+    h.includes('concepto') || h.includes('detalle')
+  )
+  const amountIdx = headerLower.findIndex(h =>
+    h.includes('amount') || h.includes('importe') || h.includes('cantidad') || h.includes('monto')
+  )
+  const categoryIdx = headerLower.findIndex(h =>
+    h === 'category' || h === 'categoría' || h === 'categoria' || h === 'type' || h === 'tipo'
+  )
+  const subcategoryIdx = headerLower.findIndex(h =>
+    h === 'subcategory' || h === 'subcategoría' || h === 'subcategoria'
+  )
+
+  if (dateIdx !== -1 && descIdx !== -1 && amountIdx !== -1) {
+    return {
+      format: 'generic',
+      mapping: {
+        date: dateIdx,
+        description: descIdx,
+        amount: amountIdx,
+        category: categoryIdx !== -1 ? categoryIdx : undefined,
+        subcategory: subcategoryIdx !== -1 ? subcategoryIdx : undefined,
+      }
+    }
+  }
+
+  return { format: 'unknown', mapping: null }
+}
+
+function parseDateToISO(dateStr: string): string | null {
+  if (!dateStr) return null
+
+  // Already ISO format: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr
+  }
+
+  // Revolut format: YYYY-MM-DD HH:MM:SS
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateStr)) {
+    return dateStr.split(' ')[0]
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const euMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (euMatch) {
+    const [, day, month, year] = euMatch
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+
+  // MM/DD/YYYY (US format)
+  const usMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (usMatch) {
+    // Assume EU format by default for Spanish banks
+    const [, day, month, year] = usMatch
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+
+  return null
+}
+
+function parseAmount(value: string): number | null {
+  if (!value) return null
+
+  // Remove currency symbols and spaces
+  let cleaned = value.replace(/[€$£\s]/g, '').trim()
+
+  // Handle European format: 1.234,56 -> 1234.56
+  if (/^\-?\d{1,3}(\.\d{3})*,\d{2}$/.test(cleaned)) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+  }
+  // Handle format with comma as thousands: 1,234.56
+  else if (/^\-?\d{1,3}(,\d{3})*\.\d{2}$/.test(cleaned)) {
+    cleaned = cleaned.replace(/,/g, '')
+  }
+  // Simple comma decimal: 123,45 -> 123.45
+  else if (/^\-?\d+,\d{2}$/.test(cleaned)) {
+    cleaned = cleaned.replace(',', '.')
+  }
+
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? null : num
+}
+
+function parseCSVFile(content: string): ParseResult {
+  const lines = content.split(/\r?\n/).filter(line => line.trim())
+
+  if (lines.length < 2) {
+    return {
+      success: false,
+      file_type: 'unknown',
+      transactions: [],
+      categories: [],
+      errors: ['El archivo CSV está vacío o no tiene datos'],
+    }
+  }
+
+  const headers = parseCSVLine(lines[0])
+  const { format, mapping } = detectCSVFormat(headers)
+
+  if (!mapping) {
+    return {
+      success: false,
+      file_type: 'unknown',
+      transactions: [],
+      categories: [],
+      errors: [
+        'No se pudieron detectar las columnas requeridas (date, description, amount). ' +
+        'Columnas encontradas: ' + headers.join(', ')
+      ],
+    }
+  }
+
+  const transactions: ParsedTransaction[] = []
+  const categoriesSet = new Map<string, Set<string>>()
+  const errors: string[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const row = parseCSVLine(lines[i])
+    if (row.length < 3) continue
+
+    const rowNum = i + 1
+
+    // Extract and validate required fields
+    const dateRaw = row[mapping.date]
+    const descriptionRaw = row[mapping.description]
+    const amountRaw = row[mapping.amount]
+
+    // Validate date
+    const date = parseDateToISO(dateRaw)
+    if (!date) {
+      errors.push(`Fila ${rowNum}: Fecha inválida o faltante "${dateRaw}"`)
+      continue
+    }
+
+    // Validate description
+    const description = descriptionRaw?.trim()
+    if (!description) {
+      errors.push(`Fila ${rowNum}: Descripción vacía o faltante`)
+      continue
+    }
+
+    // Validate amount
+    const amount = parseAmount(amountRaw)
+    if (amount === null) {
+      errors.push(`Fila ${rowNum}: Importe inválido o faltante "${amountRaw}"`)
+      continue
+    }
+
+    // Optional fields
+    const category = mapping.category !== undefined ? row[mapping.category]?.trim() || null : null
+    const subcategory = mapping.subcategory !== undefined ? row[mapping.subcategory]?.trim() || null : null
+
+    transactions.push({
+      date,
+      description,
+      amount,
+      bank_category: category,
+      bank_subcategory: subcategory,
+    })
+
+    // Track categories
+    if (category) {
+      if (!categoriesSet.has(category)) {
+        categoriesSet.set(category, new Set())
+      }
+      if (subcategory) {
+        categoriesSet.get(category)!.add(subcategory)
+      }
+    }
+  }
+
+  const categories: { category: string; subcategory: string }[] = []
+  categoriesSet.forEach((subcats, cat) => {
+    if (subcats.size === 0) {
+      categories.push({ category: cat, subcategory: '' })
+    } else {
+      subcats.forEach((subcat) => {
+        categories.push({ category: cat, subcategory: subcat })
+      })
+    }
+  })
+
+  const fileType: FileType = format === 'revolut' ? 'csv_revolut' : 'csv_generic'
+
+  return {
+    success: transactions.length > 0,
+    file_type: fileType,
+    transactions,
+    categories,
+    errors,
+  }
+}
+
+// ============ EXCEL PARSING ============
+
 function detectFileType(
   workbook: XLSX.WorkBook
 ): 'control_gastos' | 'movimientos_cc' | 'unknown' {
@@ -344,10 +597,30 @@ function detectFileType(
   return 'unknown'
 }
 
-export function parseExcelFile(
+export function parseFile(
   buffer: Buffer,
+  filename: string,
   sheetName?: string
 ): ParseResult {
+  const extension = filename.toLowerCase().split('.').pop()
+
+  // CSV files
+  if (extension === 'csv') {
+    try {
+      const content = buffer.toString('utf-8')
+      return parseCSVFile(content)
+    } catch (err) {
+      return {
+        success: false,
+        file_type: 'unknown',
+        transactions: [],
+        categories: [],
+        errors: [`Error al leer el archivo CSV: ${(err as Error).message}`],
+      }
+    }
+  }
+
+  // Excel files (.xls, .xlsx)
   try {
     const workbook = XLSX.read(buffer, { type: 'buffer' })
     const fileType = detectFileType(workbook)
@@ -364,7 +637,7 @@ export function parseExcelFile(
           transactions: [],
           categories: [],
           errors: [
-            'Formato de archivo no reconocido. Use archivos de Control de Gastos (.xlsx) o Movimientos CC (.xls)',
+            'Formato de archivo no reconocido. Formatos soportados: CSV, Control de Gastos (.xlsx), Movimientos CC (.xls)',
           ],
         }
     }
@@ -377,6 +650,14 @@ export function parseExcelFile(
       errors: [`Error al leer el archivo: ${(err as Error).message}`],
     }
   }
+}
+
+// Backwards compatibility
+export function parseExcelFile(
+  buffer: Buffer,
+  sheetName?: string
+): ParseResult {
+  return parseFile(buffer, 'file.xlsx', sheetName)
 }
 
 export function getAvailableSheets(buffer: Buffer): string[] {

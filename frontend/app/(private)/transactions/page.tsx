@@ -15,7 +15,7 @@ import { useCategories } from '@/lib/queries/categories'
 import { useFiltersStore } from '@/stores/filtersStore'
 import { Button, Input, Select, Modal, ModalFooter } from '@/components/ui'
 import { Loader2 } from 'lucide-react'
-import { TransactionsToolbar, TransactionsSummary, TransactionsTable, CategoryChangeModal } from '@/components/transactions'
+import { TransactionsToolbar, TransactionsSummary, ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
 
 interface TransactionForm {
   description: string
@@ -160,11 +160,6 @@ function TransactionsPageContent() {
     { income: 0, expenses: 0 }
   )
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  }
-
   const handleCategoryClick = (tx: Transaction) => {
     setSelectedTransaction(tx)
     setIsCategoryModalOpen(true)
@@ -258,17 +253,17 @@ function TransactionsPageContent() {
 
       <TransactionsSummary totals={totals} />
 
-      <TransactionsTable
+      <ResponsiveTransactionTable
         transactions={filteredTransactions}
         isLoading={isLoadingTx}
         total={txData?.total || 0}
-        limit={limit}
         page={page}
+        totalPages={Math.ceil((txData?.total || 0) / limit)}
         onEdit={openEditModal}
         onDelete={handleDelete}
         onPageChange={handlePageChange}
-        formatDate={formatDate}
-        handleCategoryClick={handleCategoryClick}
+        onCategoryClick={handleCategoryClick}
+        showSubcategory
       />
 
       <Modal
