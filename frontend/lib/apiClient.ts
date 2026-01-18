@@ -1,6 +1,4 @@
-// lib/api.ts - API Client
-
-import { getAccessToken, setAccessToken, getRefreshToken, clearAllTokens } from './tokenService'
+// lib/apiClient.ts - API Client con cookies httpOnly
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
@@ -8,7 +6,6 @@ type RequestOptions = {
   method?: string
   headers?: Record<string, string>
   body?: string | FormData
-  skipAuth?: boolean // Para endpoints que no requieren auth (login, register, refresh)
 }
 
 class ApiError extends Error {
@@ -27,12 +24,12 @@ class ApiError extends Error {
 
 // Variable para evitar múltiples refresh simultáneos
 let isRefreshing = false
-let refreshPromise: Promise<string | null> | null = null
+let refreshPromise: Promise<boolean> | null = null
 
 /**
- * Intenta refrescar el access token usando el refresh token
+ * Intenta refrescar el access token usando la cookie refreshToken
  */
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshAccessToken(): Promise<boolean> {
   // Si ya hay un refresh en progreso, esperar a que termine
   if (isRefreshing && refreshPromise) {
     return refreshPromise
@@ -41,37 +38,19 @@ async function refreshAccessToken(): Promise<string | null> {
   isRefreshing = true
   refreshPromise = (async () => {
     try {
-      const refreshToken = getRefreshToken()
-      if (!refreshToken) {
-        return null
-      }
-
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refreshToken }),
+        credentials: 'include', // Envía cookie refreshToken
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        // Refresh token expirado o inválido
-        clearAllTokens()
-        return null
+        return false
       }
 
-      const newAccessToken = data.accessToken
-      if (newAccessToken) {
-        setAccessToken(newAccessToken)
-        return newAccessToken
-      }
-
-      return null
-    } catch (error) {
-      clearAllTokens()
-      return null
+      // El servidor ya estableció la nueva cookie accessToken
+      return true
+    } catch {
+      return false
     } finally {
       isRefreshing = false
       refreshPromise = null
@@ -83,10 +62,9 @@ async function refreshAccessToken(): Promise<string | null> {
 
 /**
  * Función de request con interceptor para refresh automático
+ * Usa credentials: 'include' para enviar cookies automáticamente
  */
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const accessToken = getAccessToken()
-
   const headers: Record<string, string> = {}
 
   // No agregar Content-Type si es FormData (fetch lo maneja automáticamente)
@@ -94,13 +72,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['Content-Type'] = 'application/json'
   }
 
-  // Agregar access token si existe y no es un endpoint sin auth
-  if (!options.skipAuth && accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`
-  }
-
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
+    credentials: 'include', // IMPORTANTE: envía cookies automáticamente
     headers: {
       ...headers,
       ...(options.headers as Record<string, string>),
@@ -109,21 +83,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   const data = await response.json()
 
-  // Si recibimos 401 y no estamos en un endpoint sin auth, intentar refresh
-  if (response.status === 401 && !options.skipAuth && endpoint !== '/auth/refresh') {
-    const newAccessToken = await refreshAccessToken()
+  // Si recibimos 401, intentar refresh (excepto en el endpoint de refresh)
+  if (response.status === 401 && endpoint !== '/auth/refresh') {
+    const refreshed = await refreshAccessToken()
 
-    if (newAccessToken) {
-      // Retry la petición original con el nuevo token
-      const retryHeaders: Record<string, string> = {
-        ...headers,
-        Authorization: `Bearer ${newAccessToken}`,
-      }
-
+    if (refreshed) {
+      // Retry la petición original (la nueva cookie ya está establecida)
       const retryResponse = await fetch(`${API_URL}${endpoint}`, {
         ...options,
+        credentials: 'include',
         headers: {
-          ...retryHeaders,
+          ...headers,
           ...(options.headers as Record<string, string>),
         },
       })
@@ -136,8 +106,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
       return retryData
     } else {
-      // Refresh falló, limpiar tokens y lanzar error
-      // El frontend deberá manejar esto y redirigir a login
+      // Refresh falló - sesión expirada
       throw new ApiError(401, 'Sesión expirada')
     }
   }
@@ -154,25 +123,19 @@ export const auth = {
   login: (email: string, password: string) =>
     request<{
       success: boolean
-      accessToken: string
-      refreshToken: string
       user: { id: string; email: string; name: string }
     }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
-      skipAuth: true,
     }),
 
   register: (email: string, password: string, name: string, accountName?: string) =>
     request<{
       success: boolean
-      accessToken: string
-      refreshToken: string
       user: { id: string; email: string; name: string }
     }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, name, accountName }),
-      skipAuth: true,
     }),
 
   me: () =>
@@ -183,11 +146,9 @@ export const auth = {
       method: 'POST',
     }),
 
-  refresh: (refreshToken: string) =>
-    request<{ success: boolean; accessToken: string }>('/auth/refresh', {
+  refresh: () =>
+    request<{ success: boolean }>('/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ refreshToken }),
-      skipAuth: true,
     }),
 }
 
@@ -548,7 +509,6 @@ export const importApi = {
     file: File,
     sheetName?: string
   ): Promise<{ success: boolean; data: ParseResult }> => {
-    // Usar la función request para tener refresh automático
     const formData = new FormData()
     formData.append('file', file)
     if (sheetName) {

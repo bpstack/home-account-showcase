@@ -13,6 +13,25 @@ import {
   type RefreshInput,
 } from '../../validators/auth-validators.js'
 
+// Configuración de cookies httpOnly
+const isProduction = process.env.NODE_ENV === 'production'
+
+const accessTokenCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: 'lax' as const,
+  maxAge: 5 * 60 * 1000, // 5 minutos
+  path: '/',
+}
+
+const refreshTokenCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: 'lax' as const,
+  maxAge: 8 * 60 * 60 * 1000, // 8 horas
+  path: '/api/auth', // Solo para endpoints de auth
+}
+
 /**
  * Registro de nuevo usuario
  * POST /api/auth/register
@@ -36,11 +55,14 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const accessToken = generateAccessToken({ id: user.id, email: user.email })
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email })
 
+    // Establecer cookies httpOnly
+    res.cookie('accessToken', accessToken, accessTokenCookieOptions)
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+
+    // Respuesta sin tokens (ya están en cookies)
     res.status(201).json({
       success: true,
       user,
-      accessToken,
-      refreshToken,
     })
   } catch (error) {
     const err = error as Error
@@ -84,11 +106,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const accessToken = generateAccessToken({ id: user.id, email: user.email })
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email })
 
+    // Establecer cookies httpOnly
+    res.cookie('accessToken', accessToken, accessTokenCookieOptions)
+    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+
+    // Respuesta sin tokens (ya están en cookies)
     res.status(200).json({
       success: true,
       user,
-      accessToken,
-      refreshToken,
     })
   } catch (error) {
     const err = error as Error
@@ -180,9 +205,11 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     // Generar nuevo access token
     const newAccessToken = generateAccessToken({ id: user.id, email: user.email })
 
+    // Establecer nueva cookie httpOnly
+    res.cookie('accessToken', newAccessToken, accessTokenCookieOptions)
+
     res.status(200).json({
       success: true,
-      accessToken: newAccessToken,
     })
   } catch (error) {
     const err = error as Error
@@ -213,14 +240,13 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
  */
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Limpiar cookies httpOnly
+    res.clearCookie('accessToken', { path: '/' })
+    res.clearCookie('refreshToken', { path: '/api/auth' })
+
     // Opcional: Invalidar refresh token en BD si implementamos blacklist
-    // Por ahora, el frontend borra los tokens y este endpoint responde éxito
-    const refreshToken = req.cookies?.refreshToken || (req.body as any)?.refreshToken
-    
-    if (refreshToken) {
-      // Aquí se podría añadir el token a una blacklist en Redis
-      // Por ejemplo: await Redis.set(`blacklist:${refreshToken}`, '1', 'EX', 8 * 60 * 60)
-    }
+    // Por ahora las cookies se borran y eso es suficiente
+    // Para invalidación inmediata, se usaría una blacklist en Redis
 
     res.status(200).json({
       success: true,

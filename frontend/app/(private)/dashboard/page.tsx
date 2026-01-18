@@ -5,8 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab, Button } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
-import { transactions, CategorySummary, Transaction } from '@/lib/apiClient'
-import { useTransactions } from '@/lib/queries/transactions'
+import { transactions, CategorySummary } from '@/lib/apiClient'
 import { CategoryPieChart, MonthlyBarChart, BalanceLineChart } from '@/components/charts'
 import {
   TrendingDown,
@@ -150,23 +149,16 @@ export default function DashboardPage() {
     enabled: !!account,
   })
 
-  const { data: txData, isLoading: isLoadingTx } = useTransactions({
-    account_id: account?.id || '',
-    start_date: startDate,
-    end_date: endDate,
-  })
-
-  const { data: summaryData } = useQuery({
+const { data: summaryData } = useQuery({
     queryKey: ['transactions', 'summary', account?.id, startDate, endDate],
     queryFn: () => transactions.getSummary(account!.id, startDate, endDate),
     enabled: !!account,
   })
 
-  const transactionList = txData?.transactions || []
   const summary = summaryData?.summary || []
   const stats: Stats = statsData?.stats || { income: 0, expenses: 0, balance: 0 }
 
-  const isLoading = isLoadingStats || isLoadingTx
+  const isLoading = isLoadingStats
 
   const formatPeriodLabel = () => {
     switch (period) {
@@ -250,7 +242,7 @@ export default function DashboardPage() {
           {isLoading ? (
             <DashboardSkeleton />
           ) : (
-            <OverviewTab stats={stats} summary={summary} transactions={transactionList} />
+            <OverviewTab stats={stats} summary={summary} />
           )}
         </Suspense>
       )}
@@ -284,15 +276,86 @@ export default function DashboardPage() {
 function OverviewTab({
   stats,
   summary,
-  transactions: txList,
 }: {
   stats: Stats
   summary: CategorySummary[]
-  transactions: Transaction[]
 }) {
-  const recentTransactions = txList.slice(0, 5)
+  const { account } = useAuth()
+  const searchParams = useSearchParams()
+  const period = (searchParams.get('period') as Period) || 'month'
+  const currentYear = new Date().getFullYear()
+  const currentMonth = new Date().getMonth()
+
+  const getPreviousDateRange = () => {
+    switch (period) {
+      case 'month':
+        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
+        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
+        return {
+          startDate: new Date(prevYear, prevMonth, 1).toISOString().split('T')[0],
+          endDate: new Date(prevYear, prevMonth + 1, 0).toISOString().split('T')[0],
+        }
+      case 'year':
+        return {
+          startDate: `${currentYear - 1}-01-01`,
+          endDate: `${currentYear - 1}-12-31`,
+        }
+      case 'all':
+        return {
+          startDate: '2019-01-01',
+          endDate: '2019-12-31',
+        }
+    }
+  }
+
+  const { startDate: currentStart, endDate: currentEnd } = (() => {
+    switch (period) {
+      case 'month':
+        return {
+          startDate: new Date(currentYear, currentMonth, 1).toISOString().split('T')[0],
+          endDate: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
+        }
+      case 'year':
+        return {
+          startDate: `${currentYear}-01-01`,
+          endDate: `${currentYear}-12-31`,
+        }
+      case 'all':
+        return {
+          startDate: '2020-01-01',
+          endDate: new Date().toISOString().split('T')[0],
+        }
+    }
+  })()
+
+  const { startDate: prevStart, endDate: prevEnd } = getPreviousDateRange()
+
+  const { data: prevStatsData } = useQuery({
+    queryKey: ['transactions', 'stats', account?.id, prevStart, prevEnd],
+    queryFn: () => transactions.getStats(account!.id, prevStart, prevEnd),
+    enabled: !!account,
+  })
+
+  const prevStats = prevStatsData?.stats || { income: 0, expenses: 0, balance: 0 }
+
+  const formatCurrency = (value: number) => `${value.toFixed(2)} €`
+
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return { value: 0, percentage: 0, isPositive: current > 0 }
+    const change = current - previous
+    const percentage = (change / Math.abs(previous)) * 100
+    return {
+      value: change,
+      percentage: Math.abs(percentage),
+      isPositive: change >= 0,
+    }
+  }
+
+  const incomeChange = calculateChange(stats.income, prevStats.income)
+  const expensesChange = calculateChange(stats.expenses, prevStats.expenses)
 
   const expensesByCategory = summary
+    .filter(item => Number(item.total_amount) < 0)
     .reduce(
       (acc, item) => {
         const catName = item.category_name || 'Sin categoría'
@@ -312,7 +375,66 @@ function OverviewTab({
     )
     .sort((a, b) => b.value - a.value)
 
-  const formatCurrency = (value: number) => `${value.toFixed(2)} €`
+  const incomeByCategory = summary
+    .filter(item => Number(item.total_amount) > 0)
+    .reduce(
+      (acc, item) => {
+        const catName = item.category_name || 'Sin categoría'
+        const existing = acc.find((e) => e.name === catName)
+        if (existing) {
+          existing.value += Number(item.total_amount)
+        } else {
+          acc.push({
+            name: catName,
+            color: item.category_color || '#22C55E',
+            value: Number(item.total_amount),
+          })
+        }
+        return acc
+      },
+      [] as { name: string; color: string; value: number }[]
+    )
+    .sort((a, b) => b.value - a.value)
+
+  const ComparisonCard = ({
+    title,
+    current,
+    previous,
+    type,
+  }: {
+    title: string
+    current: number
+    previous: number
+    type: 'income' | 'expense'
+  }) => {
+    const change = calculateChange(current, previous)
+    const periodLabel = period === 'month' ? 'mes anterior' : 'año anterior'
+
+    return (
+      <div className="bg-layer-2 rounded-lg p-4">
+        <p className="text-sm text-text-secondary mb-2">{title}</p>
+        <div className="flex items-baseline gap-2">
+          <span className={`text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}>
+            {type === 'income' ? '+' : '-'}{formatCurrency(current)}
+          </span>
+        </div>
+        <div className={`flex items-center gap-1 mt-1 ${change.isPositive ? 'text-success' : 'text-danger'}`}>
+          {change.isPositive ? (
+            <TrendingUp className="h-4 w-4" />
+          ) : (
+            <TrendingDown className="h-4 w-4" />
+          )}
+          <span className="text-sm font-medium">
+            {change.isPositive ? '+' : '-'}
+            {formatCurrency(Math.abs(change.value))}
+          </span>
+          <span className="text-xs text-text-secondary">
+            ({change.isPositive ? '+' : '-'}{change.percentage.toFixed(1)}% vs {periodLabel})
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -373,6 +495,14 @@ function OverviewTab({
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="mb-4">
+              <ComparisonCard
+                title="Total Gastos"
+                current={stats.expenses}
+                previous={prevStats.expenses}
+                type="expense"
+              />
+            </div>
             {expensesByCategory.length === 0 ? (
               <p className="text-text-secondary text-center py-4">No hay gastos</p>
             ) : (
@@ -383,37 +513,24 @@ function OverviewTab({
 
         <Card>
           <CardHeader>
-            <CardTitle>Últimas transacciones</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-success" />
+              Ingresos por categoría
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {recentTransactions.length === 0 ? (
-              <p className="text-text-secondary text-center py-4">No hay transacciones</p>
+            <div className="mb-4">
+              <ComparisonCard
+                title="Total Ingresos"
+                current={stats.income}
+                previous={prevStats.income}
+                type="income"
+              />
+            </div>
+            {incomeByCategory.length === 0 ? (
+              <p className="text-text-secondary text-center py-4">No hay ingresos</p>
             ) : (
-              <div className="space-y-3">
-                {recentTransactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between py-2 border-b border-layer-2 last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-2 h-8 rounded-full"
-                        style={{ backgroundColor: tx.category_color || '#6B7280' }}
-                      />
-                      <div>
-                        <p className="text-sm text-text-primary">{tx.description}</p>
-                        <p className="text-xs text-text-secondary">{tx.date}</p>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}
-                    >
-                      {Number(tx.amount) >= 0 ? '+' : ''}
-                      {Number(tx.amount).toFixed(2)} €
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <CategoryPieChart data={incomeByCategory} />
             )}
           </CardContent>
         </Card>
