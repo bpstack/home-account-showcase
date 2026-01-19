@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { User, Settings, LogOut, ChevronDown, Building2, ExternalLink } from 'lucide-react'
+import { User, LogOut, ChevronDown, Building2, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
 
@@ -154,14 +154,6 @@ export function ProfileDropdown() {
             >
               <User className="h-4 w-4 text-text-secondary" />
               <span>Mi Perfil</span>
-            </button>
-
-            <button
-              onClick={() => navigateTo('/profile?panel=settings')}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-layer-2 transition-colors"
-            >
-              <Settings className="h-4 w-4 text-text-secondary" />
-              <span>Configuración</span>
             </button>
           </div>
 

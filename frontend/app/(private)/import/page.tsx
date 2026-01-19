@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCategories } from '@/lib/queries/categories'
+import { useImportTransactions } from '@/lib/queries/useImportTransactions'
 import { importApi, transactions, ai, type ParseResult, type CategoryMapping, type Category, type CreateTransactionData } from '@/lib/apiClient'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -44,6 +45,7 @@ interface SingleForm {
 export default function ImportPage() {
   const { account } = useAuth()
   const queryClient = useQueryClient()
+  const importMutation = useImportTransactions()
   const { data: catData } = useCategories(account?.id || '')
   const categoryList = catData?.categories || []
 
@@ -785,30 +787,32 @@ export default function ImportPage() {
   const handleConfirmImport = async () => {
     if (!account || !parseResult) return
 
-    setIsLoading(true)
     setError(null)
 
-    try {
-      const categoryMappings: CategoryMapping[] = Object.entries(mappings).map(
-        ([key, subcategory_id]) => {
-          const [bank_category, bank_subcategory] = key.split('|')
-          return { bank_category, bank_subcategory, subcategory_id }
-        }
-      )
+    const categoryMappings: CategoryMapping[] = Object.entries(mappings).map(
+      ([key, subcategory_id]) => {
+        const [bank_category, bank_subcategory] = key.split('|')
+        return { bank_category, bank_subcategory, subcategory_id }
+      }
+    )
 
-      const result = await importApi.confirm({
+    // Usar mutation con optimistic updates
+    importMutation.mutate(
+      {
         account_id: account.id,
         transactions: parseResult.transactions,
         category_mappings: categoryMappings,
-      })
-
-      setImportResult(result.data)
-      setStep('result')
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setIsLoading(false)
-    }
+      },
+      {
+        onSuccess: (result) => {
+          setImportResult(result.data)
+          setStep('result')
+        },
+        onError: (err) => {
+          setError((err as Error).message)
+        },
+      }
+    )
   }
 
   const resetImport = () => {
@@ -1439,8 +1443,8 @@ export default function ImportPage() {
             <Button variant="outline" onClick={() => setStep('preview')}>
               Atrás
             </Button>
-            <Button onClick={handleConfirmImport} disabled={isLoading}>
-              {isLoading ? (
+            <Button onClick={handleConfirmImport} disabled={importMutation.isPending}>
+              {importMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Importando...

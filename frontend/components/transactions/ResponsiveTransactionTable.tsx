@@ -1,11 +1,16 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Edit2, Trash2, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit2, Trash2, Loader2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui'
 import type { Transaction } from '@/lib/apiClient'
 
+// Extended transaction type with optimistic flag
+export type TransactionWithOptimistic = Transaction & {
+  _optimistic?: boolean
+}
+
 export interface ResponsiveTransactionTableProps {
-  transactions: Transaction[]
+  transactions: TransactionWithOptimistic[]
   total: number
   page: number
   totalPages: number
@@ -93,9 +98,23 @@ export function ResponsiveTransactionTable({
             </thead>
             <tbody>
               {transactions.map((tx) => (
-                <tr key={tx.id} className="border-b border-layer-2 hover:bg-layer-2/50 transition-colors">
-                  <td className="py-3 px-2 text-text-secondary text-sm">{formatDate(tx.date)}</td>
-                  <td className="py-3 px-2 text-text-primary font-medium text-sm">{tx.description}</td>
+                <tr
+                  key={tx.id}
+                  className={`border-b border-layer-2 transition-colors ${
+                    tx._optimistic
+                      ? 'bg-accent/5 animate-pulse'
+                      : 'hover:bg-layer-2/50'
+                  }`}
+                >
+                  <td className="py-3 px-2 text-text-secondary text-sm">
+                    {tx._optimistic && (
+                      <Clock className="h-3 w-3 inline-block mr-1 text-accent" />
+                    )}
+                    {formatDate(tx.date)}
+                  </td>
+                  <td className={`py-3 px-2 font-medium text-sm ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}>
+                    {tx.description}
+                  </td>
                   <td className="py-3 px-2">
                     <button
                       onClick={() => onCategoryClick?.(tx)}
@@ -137,28 +156,32 @@ export function ResponsiveTransactionTable({
                   </td>
                   {hasActions && (
                     <td className="py-3 px-2 text-right">
-                      <div className="flex justify-end gap-1">
-                        {onEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onEdit(tx)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {onDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-danger hover:text-danger"
-                            onClick={() => onDelete(tx.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                      {tx._optimistic ? (
+                        <span className="text-xs text-accent">Guardando...</span>
+                      ) : (
+                        <div className="flex justify-end gap-1">
+                          {onEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => onEdit(tx)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {onDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-danger hover:text-danger"
+                              onClick={() => onDelete(tx.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   )}
                 </tr>
@@ -173,23 +196,39 @@ export function ResponsiveTransactionTable({
         {transactions.map((tx) => (
           <div
             key={tx.id}
-            className="bg-layer-1 rounded-lg border border-layer-3 p-3 hover:shadow-md transition-shadow"
+            className={`rounded-lg border p-3 transition-shadow ${
+              tx._optimistic
+                ? 'bg-accent/5 border-accent/20 animate-pulse'
+                : 'bg-layer-1 border-layer-3 hover:shadow-md'
+            }`}
           >
             {/* Header: Descripcion + Importe */}
             <div className="flex items-start justify-between gap-3 mb-2">
-              <p className="text-sm font-medium text-text-primary flex-1 min-w-0 line-clamp-2">
-                {tx.description}
-              </p>
+              <div className="flex-1 min-w-0">
+                {tx._optimistic && (
+                  <span className="inline-flex items-center gap-1 text-xs text-accent mb-1">
+                    <Clock className="h-3 w-3" />
+                    Guardando...
+                  </span>
+                )}
+                <p className={`text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}>
+                  {tx.description}
+                </p>
+              </div>
               <div className="flex items-center gap-1 shrink-0">
                 <span
                   className={`text-sm font-semibold ${
-                    Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'
+                    tx._optimistic
+                      ? 'text-text-secondary'
+                      : Number(tx.amount) >= 0
+                        ? 'text-success'
+                        : 'text-danger'
                   }`}
                 >
                   {Number(tx.amount) >= 0 ? '+' : ''}
                   {formatCurrency(Number(tx.amount))}
                 </span>
-                {hasActions && (
+                {hasActions && !tx._optimistic && (
                   <div className="flex gap-0.5 ml-1">
                     {onEdit && (
                       <Button

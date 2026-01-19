@@ -1,13 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { auth, accounts, ApiError } from '@/lib/apiClient'
-import {
-  setAccessToken,
-  getAccessToken,
-  clearAllTokens,
-  setRefreshToken,
-} from '@/lib/tokenService'
-import { useAuthStore, AUTH_QUERY_KEYS, User } from '@/stores/authStore'
+import { useAuthStore, AUTH_QUERY_KEYS, User, getLastAccountId, clearLastAccountId } from '@/stores/authStore'
 
 interface Account {
   id: string
@@ -28,26 +22,19 @@ export function useAuth() {
   const selectedAccountId = useAuthStore((s) => s.selectedAccountId)
   const setSelectedAccountId = useAuthStore((s) => s.setSelectedAccountId)
 
+  // Query para obtener el usuario autenticado
+  // Las cookies se envían automáticamente con credentials: 'include'
   const userQuery = useQuery({
     queryKey: AUTH_QUERY_KEYS.user,
     queryFn: async () => {
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (!refreshToken) {
-        return null
-      }
-
       try {
-        const storedAccessToken = getAccessToken()
-        if (!storedAccessToken) {
-          const { accessToken } = await auth.refresh(refreshToken)
-          setAccessToken(accessToken)
-        }
-
+        // El apiClient maneja el refresh automático si el accessToken expiró
         const { user } = await auth.me()
         return user
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          clearAllTokens()
+          // Sesión expirada - las cookies ya fueron limpiadas por el servidor
+          return null
         }
         return null
       }
@@ -86,17 +73,15 @@ export function useAuth() {
     useAuthStore.getState().setAuthError(null)
 
     try {
-      const { accessToken, refreshToken, user } = await auth.login(email, password)
-
-      setAccessToken(accessToken)
-      setRefreshToken(refreshToken)
+      // El servidor establece las cookies httpOnly automáticamente
+      const { user } = await auth.login(email, password)
 
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
 
       const { accounts: userAccounts } = await accounts.getAll()
       queryClient.setQueryData(AUTH_QUERY_KEYS.accounts, userAccounts)
 
-      const lastAccountId = localStorage.getItem('last_account_id')
+      const lastAccountId = getLastAccountId()
       const savedAccount = userAccounts.find((a: Account) => a.id === lastAccountId)
       const activeAccount = savedAccount || (userAccounts.length > 0 ? userAccounts[0] : null)
 
@@ -125,20 +110,18 @@ export function useAuth() {
     useAuthStore.getState().setAuthError(null)
 
     try {
-      const { accessToken, refreshToken, user } = await auth.register(email, password, name, accountName)
-
-      setAccessToken(accessToken)
-      setRefreshToken(refreshToken)
+      // El servidor establece las cookies httpOnly automáticamente
+      const { user } = await auth.register(email, password, name, accountName)
 
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
 
       const { accounts: userAccounts } = await accounts.getAll()
       queryClient.setQueryData(AUTH_QUERY_KEYS.accounts, userAccounts)
 
-      const account = userAccounts.length > 0 ? userAccounts[0] : null
-      queryClient.setQueryData(AUTH_QUERY_KEYS.account, account)
-      if (account) {
-        setSelectedAccountId(account.id)
+      const activeAccount = userAccounts.length > 0 ? userAccounts[0] : null
+      queryClient.setQueryData(AUTH_QUERY_KEYS.account, activeAccount)
+      if (activeAccount) {
+        setSelectedAccountId(activeAccount.id)
       }
 
       router.push('/dashboard')
@@ -155,11 +138,13 @@ export function useAuth() {
     useAuthStore.getState().setLoggingOut(true)
 
     try {
+      // El servidor limpia las cookies httpOnly
       await auth.logout()
     } catch {
+      // Ignorar errores de logout
     } finally {
-      clearAllTokens()
-      localStorage.removeItem('last_account_id')
+      // Limpiar estado local
+      clearLastAccountId()
 
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.user })
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.account })
@@ -177,7 +162,7 @@ export function useAuth() {
     user: userQuery.data as User | null,
     account: account as Account | null,
     accounts: (accountsQuery.data as Account[]) || [],
-    isLoading: !userQuery.data || accountsQuery.isLoading,
+    isLoading: userQuery.isLoading || (!!userQuery.data && accountsQuery.isLoading),
     isAuthenticated: !!userQuery.data,
     isLoggingIn,
     isRegistering,
