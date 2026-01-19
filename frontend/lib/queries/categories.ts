@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { categories as categoriesApi, subcategories as subcategoriesApi } from '../apiClient'
+import type { Category } from '../apiClient'
 
 export const categoryKeys = {
   all: ['categories'] as const,
@@ -8,10 +9,15 @@ export const categoryKeys = {
   orphanedCount: (id: string) => ['categories', 'orphaned', id] as const,
 }
 
-export function useCategories(accountId: string) {
+interface UseCategoriesOptions {
+  initialData?: { categories: Category[] }
+}
+
+export function useCategories(accountId: string, options?: UseCategoriesOptions) {
   return useQuery({
     queryKey: categoryKeys.lists(accountId),
     queryFn: () => categoriesApi.getAll(accountId),
+    initialData: options?.initialData,
   })
 }
 

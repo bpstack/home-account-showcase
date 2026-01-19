@@ -7,6 +7,7 @@ import type {
   MonthlySummaryResponse,
   BalanceHistoryResponse,
   TransactionsResponse,
+  CategoriesResponse,
 } from './types'
 
 /**
@@ -91,6 +92,28 @@ export async function getTransactions(
   if (options?.type) params.set('type', options.type)
   if (options?.limit) params.set('limit', options.limit.toString())
   if (options?.offset) params.set('offset', options.offset.toString())
+
+  return serverFetch<TransactionsResponse>(`/transactions?${params}`)
+}
+
+/**
+ * Obtener todas las transacciones para cálculo de totales (sin paginación)
+ */
+export async function getAllTransactions(
+  accountId: string,
+  options?: {
+    startDate?: string
+    endDate?: string
+    search?: string
+    type?: 'income' | 'expense' | 'all'
+  }
+): Promise<TransactionsResponse> {
+  const params = new URLSearchParams({ account_id: accountId })
+
+  if (options?.startDate) params.set('start_date', options.startDate)
+  if (options?.endDate) params.set('end_date', options.endDate)
+  if (options?.search) params.set('search', options.search)
+  if (options?.type) params.set('type', options.type)
 
   return serverFetch<TransactionsResponse>(`/transactions?${params}`)
 }

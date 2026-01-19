@@ -1,6 +1,11 @@
 // lib/apiClient.ts - API Client con cookies httpOnly
+// Auth usa proxy local (/api/auth/*) para manejar cookies cross-origin
+// El resto de endpoints van directo al backend
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+
+// En cliente, auth va por proxy local de Next.js
+const AUTH_URL = typeof window !== 'undefined' ? '/api/auth' : API_URL + '/auth'
 
 type RequestOptions = {
   method?: string
@@ -28,6 +33,7 @@ let refreshPromise: Promise<boolean> | null = null
 
 /**
  * Intenta refrescar el access token usando la cookie refreshToken
+ * Usa el proxy local de Next.js para manejar cookies
  */
 async function refreshAccessToken(): Promise<boolean> {
   // Si ya hay un refresh en progreso, esperar a que termine
@@ -38,16 +44,15 @@ async function refreshAccessToken(): Promise<boolean> {
   isRefreshing = true
   refreshPromise = (async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/refresh`, {
+      const response = await fetch(`${AUTH_URL}/refresh`, {
         method: 'POST',
-        credentials: 'include', // Envía cookie refreshToken
+        credentials: 'include',
       })
 
       if (!response.ok) {
         return false
       }
 
-      // El servidor ya estableció la nueva cookie accessToken
       return true
     } catch {
       return false
@@ -118,38 +123,71 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   return data
 }
 
-// Auth
+// Auth - usa proxy local de Next.js para manejar cookies cross-origin
 export const auth = {
-  login: (email: string, password: string) =>
-    request<{
-      success: boolean
-      user: { id: string; email: string; name: string }
-    }>('/auth/login', {
+  login: async (email: string, password: string) => {
+    const response = await fetch(`${AUTH_URL}/login`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
-    }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error de autenticación')
+    }
+    return data as { success: boolean; user: { id: string; email: string; name: string } }
+  },
 
-  register: (email: string, password: string, name: string, accountName?: string) =>
-    request<{
-      success: boolean
-      user: { id: string; email: string; name: string }
-    }>('/auth/register', {
+  register: async (email: string, password: string, name: string, accountName?: string) => {
+    const response = await fetch(`${AUTH_URL}/register`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, accountName }),
-    }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error de registro')
+    }
+    return data as { success: boolean; user: { id: string; email: string; name: string } }
+  },
 
-  me: () =>
-    request<{ success: boolean; user: { id: string; email: string; name: string } }>('/auth/me'),
+  me: async () => {
+    const response = await fetch(`${AUTH_URL}/me`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'No autenticado')
+    }
+    return data as { success: boolean; user: { id: string; email: string; name: string } }
+  },
 
-  logout: () =>
-    request<{ success: boolean; message: string }>('/auth/logout', {
+  logout: async () => {
+    const response = await fetch(`${AUTH_URL}/logout`, {
       method: 'POST',
-    }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al cerrar sesión')
+    }
+    return data as { success: boolean; message: string }
+  },
 
-  refresh: () =>
-    request<{ success: boolean }>('/auth/refresh', {
+  refresh: async () => {
+    const response = await fetch(`${AUTH_URL}/refresh`, {
       method: 'POST',
-    }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al refrescar sesión')
+    }
+    return data as { success: boolean }
+  },
 }
 
 // Users

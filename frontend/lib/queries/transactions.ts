@@ -17,18 +17,77 @@ export const transactionKeys = {
     ['transactions', 'summary', accountId, startDate, endDate] as const,
 }
 
-export function useTransactions(params: TransactionParams, options?: { staleTime?: number }) {
+import type { Transaction } from '../apiClient'
+
+interface UseTransactionsOptions {
+  staleTime?: number
+  initialData?: { transactions: Transaction[]; total: number; limit: number; offset: number }
+}
+
+export function useTransactions(params: TransactionParams, options?: UseTransactionsOptions) {
   return useQuery({
     queryKey: transactionKeys.list(params),
     queryFn: () => transactionsApi.getAll(params),
     staleTime: options?.staleTime ?? 0,
+    initialData: options?.initialData,
   })
 }
 
-export function useTransactionSummary(accountId: string, startDate?: string, endDate?: string) {
+interface StatsResponse {
+  success: boolean
+  stats: {
+    income: number
+    expenses: number
+    balance: number
+    transactionCount: number
+    incomeByType: Record<string, number>
+  }
+}
+
+interface UseTransactionStatsOptions {
+  initialData?: StatsResponse
+}
+
+export function useTransactionStats(
+  accountId: string,
+  startDate: string,
+  endDate: string,
+  options?: UseTransactionStatsOptions
+) {
+  return useQuery({
+    queryKey: ['transactions', 'stats', accountId, startDate, endDate] as const,
+    queryFn: () => transactionsApi.getStats(accountId, startDate, endDate),
+    staleTime: 0,
+    initialData: options?.initialData,
+    enabled: !!accountId,
+  })
+}
+
+interface SummaryResponse {
+  success: boolean
+  summary: Array<{
+    category_name: string | null
+    category_color: string | null
+    total_amount: string | number
+  }>
+}
+
+interface UseTransactionSummaryOptions {
+  initialData?: SummaryResponse
+}
+
+export function useTransactionSummary(
+  accountId: string,
+  startDate?: string,
+  endDate?: string,
+  options?: UseTransactionSummaryOptions
+) {
   return useQuery({
     queryKey: transactionKeys.summary(accountId, startDate, endDate),
     queryFn: () => transactionsApi.getSummary(accountId, startDate, endDate),
+    staleTime: 0,
+    initialData: options?.initialData,
+    enabled: !!accountId,
   })
 }
 
