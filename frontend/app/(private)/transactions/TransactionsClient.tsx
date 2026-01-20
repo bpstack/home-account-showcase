@@ -103,7 +103,6 @@ function TransactionsContent({
     limit,
     offset: (page - 1) * limit,
   }, {
-    staleTime: 30_000,
     initialData: initialTransactions && page === 1
       ? { transactions: initialTransactions, total: initialTotal || 0, limit, offset: 0 }
       : undefined,
@@ -121,11 +120,16 @@ function TransactionsContent({
     end_date: endDate,
     search: searchTerm || undefined,
     type: selectedType !== 'all' ? selectedType : undefined,
-  }, { staleTime: 30_000 })
+  })
 
   const createMutation = useCreateTransaction()
   const updateMutation = useUpdateTransaction()
   const deleteMutation = useDeleteTransaction()
+
+  // Invalidate all transactions queries after any mutation
+  const invalidateTransactions = () => {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+  }
 
   const categoryList = catData?.categories || []
 
@@ -194,7 +198,7 @@ function TransactionsContent({
   }
 
   const handleCategoryChangeSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    invalidateTransactions()
   }
 
   const openCreateModal = () => {
@@ -216,7 +220,7 @@ function TransactionsContent({
     setIsModalOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!account || !form.description || !form.date || !form.amount) return
 
     const amount =
@@ -224,8 +228,9 @@ function TransactionsContent({
         ? -Math.abs(parseFloat(form.amount))
         : Math.abs(parseFloat(form.amount))
 
-    const mutation = editingId
-      ? updateMutation.mutateAsync({
+    try {
+      if (editingId) {
+        await updateMutation.mutateAsync({
           id: editingId,
           data: {
             description: form.description,
@@ -234,25 +239,27 @@ function TransactionsContent({
             subcategory_id: form.subcategory_id || null,
           },
         })
-      : createMutation.mutateAsync({
+      } else {
+        await createMutation.mutateAsync({
           account_id: account.id,
           description: form.description,
           date: form.date,
           amount,
           subcategory_id: form.subcategory_id || undefined,
         })
-
-    mutation.then(() => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      }
       setIsModalOpen(false)
       setForm(emptyForm)
-    })
+      await invalidateTransactions()
+    } catch (error) {
+      console.error('Error saving transaction:', error)
+    }
   }
 
   const handleDelete = (id: string) => {
     if (!confirm('¿Estás seguro de eliminar esta transacción?')) return
     deleteMutation.mutate(id, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      onSuccess: () => invalidateTransactions(),
     })
   }
 
