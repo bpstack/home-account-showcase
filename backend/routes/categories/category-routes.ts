@@ -11,19 +11,22 @@ import {
   reassignTransactions,
 } from '../../controllers/categories/category-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
+import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
 
 const router = Router()
 
 // Todas las rutas requieren autenticación
 router.use(authenticateToken)
 
-// CRUD
+// CRUD - GETs no necesitan CSRF
 router.get('/', getCategories)
 router.get('/:id', getCategoryById)
 router.get('/:id/orphaned-count', getOrphanedCount)
-router.post('/', createCategory)
-router.post('/:id/reassign', reassignTransactions)
-router.put('/:id', updateCategory)
-router.delete('/:id', deleteCategory)
+
+// Mutaciones necesitan CSRF
+router.post('/', checkCSRF, createCategory)
+router.post('/:id/reassign', checkCSRF, reassignTransactions)
+router.put('/:id', checkCSRF, updateCategory)
+router.delete('/:id', checkCSRF, deleteCategory)
 
 export default router

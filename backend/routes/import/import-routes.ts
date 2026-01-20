@@ -1,6 +1,7 @@
 import { Router, type Router as RouterType } from 'express'
 import multer from 'multer'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
+import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
 import {
   parseFile,
   confirmImport,
@@ -40,7 +41,7 @@ const upload = multer({
 router.post('/parse', authenticateToken, upload.single('file'), parseFile)
 
 // Confirm import with category mappings
-router.post('/confirm', authenticateToken, confirmImport)
+router.post('/confirm', authenticateToken, checkCSRF, confirmImport)
 
 // Get existing categories for mapping UI
 router.get('/categories', authenticateToken, getExistingCategories)

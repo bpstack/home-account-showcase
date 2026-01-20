@@ -1,4 +1,4 @@
-// lib/apiClient.ts - API Client con cookies httpOnly
+// lib/apiClient.ts - API Client con cookies httpOnly y CSRF protection
 // Auth usa proxy local (/api/auth/*) para manejar cookies cross-origin
 // El resto de endpoints van directo al backend
 
@@ -31,6 +31,17 @@ class ApiError extends Error {
 let isRefreshing = false
 let refreshPromise: Promise<boolean> | null = null
 
+function getCSRFToken(): string {
+  if (typeof document === 'undefined') return ''
+  const match = document.cookie.match(/csrfToken=([^;]+)/)
+  return match ? match[1] : ''
+}
+
+function isMutationMethod(method?: string): boolean {
+  const m = (method || 'GET').toUpperCase()
+  return m === 'POST' || m === 'PUT' || m === 'DELETE'
+}
+
 /**
  * Intenta refrescar el access token usando la cookie refreshToken
  * Usa el proxy local de Next.js para manejar cookies
@@ -53,6 +64,11 @@ async function refreshAccessToken(): Promise<boolean> {
         return false
       }
 
+      const data = await response.json()
+      if (data.csrfToken) {
+        document.cookie = `csrfToken=${data.csrfToken}; path=/; max-age=${8 * 60 * 60}`
+      }
+
       return true
     } catch {
       return false
@@ -68,6 +84,7 @@ async function refreshAccessToken(): Promise<boolean> {
 /**
  * Función de request con interceptor para refresh automático
  * Usa credentials: 'include' para enviar cookies automáticamente
+ * Añade X-CSRF-Token header en mutaciones
  */
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {}
@@ -77,9 +94,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['Content-Type'] = 'application/json'
   }
 
+  // Añadir CSRF token en mutaciones
+  if (isMutationMethod(options.method)) {
+    const csrfToken = getCSRFToken()
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken
+    }
+  }
+
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
-    credentials: 'include', // IMPORTANTE: envía cookies automáticamente
+    credentials: 'include',
     headers: {
       ...headers,
       ...(options.headers as Record<string, string>),
@@ -94,11 +119,19 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
     if (refreshed) {
       // Retry la petición original (la nueva cookie ya está establecida)
+      const retryHeaders: Record<string, string> = {}
+      if (isMutationMethod(options.method)) {
+        const csrfToken = getCSRFToken()
+        if (csrfToken) {
+          retryHeaders['X-CSRF-Token'] = csrfToken
+        }
+      }
+
       const retryResponse = await fetch(`${API_URL}${endpoint}`, {
         ...options,
         credentials: 'include',
         headers: {
-          ...headers,
+          ...retryHeaders,
           ...(options.headers as Record<string, string>),
         },
       })
@@ -136,6 +169,11 @@ export const auth = {
     if (!response.ok) {
       throw new ApiError(response.status, data.error || 'Error de autenticación')
     }
+
+    if (typeof window !== 'undefined' && data.csrfToken) {
+      document.cookie = `csrfToken=${data.csrfToken}; path=/; max-age=${8 * 60 * 60}`
+    }
+
     return data as { success: boolean; user: { id: string; email: string; name: string } }
   },
 
@@ -150,6 +188,11 @@ export const auth = {
     if (!response.ok) {
       throw new ApiError(response.status, data.error || 'Error de registro')
     }
+
+    if (typeof window !== 'undefined' && data.csrfToken) {
+      document.cookie = `csrfToken=${data.csrfToken}; path=/; max-age=${8 * 60 * 60}`
+    }
+
     return data as { success: boolean; user: { id: string; email: string; name: string } }
   },
 
@@ -174,6 +217,11 @@ export const auth = {
     if (!response.ok) {
       throw new ApiError(response.status, data.error || 'Error al cerrar sesión')
     }
+
+    if (typeof window !== 'undefined') {
+      document.cookie = 'csrfToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    }
+
     return data as { success: boolean; message: string }
   },
 
@@ -186,6 +234,11 @@ export const auth = {
     if (!response.ok) {
       throw new ApiError(response.status, data.error || 'Error al refrescar sesión')
     }
+
+    if (typeof window !== 'undefined' && data.csrfToken) {
+      document.cookie = `csrfToken=${data.csrfToken}; path=/; max-age=${8 * 60 * 60}`
+    }
+
     return data as { success: boolean }
   },
 }

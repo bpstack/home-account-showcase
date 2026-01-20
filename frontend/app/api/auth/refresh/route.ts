@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { BACKEND_URL, isAllowedOrigin, accessTokenCookieOptions } from '../config'
+import { BACKEND_URL, isAllowedOrigin, accessTokenCookieOptions, csrfTokenCookieOptions } from '../config'
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       )
       response.cookies.delete('accessToken')
       response.cookies.delete('refreshToken')
+      response.cookies.delete('csrfToken')
       return response
     }
 
@@ -41,11 +42,15 @@ export async function POST(req: NextRequest) {
     const setCookieHeader = backendRes.headers.get('set-cookie')
     const cookies = parseCookies(setCookieHeader)
 
-    const response = NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true, csrfToken: data.csrfToken })
 
     // Setear el nuevo access token
     if (cookies.accessToken) {
       response.cookies.set('accessToken', cookies.accessToken, accessTokenCookieOptions)
+    }
+    // Setear el nuevo CSRF token
+    if (cookies.csrfToken) {
+      response.cookies.set('csrfToken', cookies.csrfToken, csrfTokenCookieOptions)
     }
 
     return response

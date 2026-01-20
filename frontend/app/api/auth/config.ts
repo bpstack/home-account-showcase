@@ -38,6 +38,14 @@ export const refreshTokenCookieOptions = {
   maxAge: 8 * 60 * 60, // 8 horas en segundos
 }
 
+export const csrfTokenCookieOptions = {
+  httpOnly: false,
+  secure: isProduction,
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 8 * 60 * 60, // 8 horas en segundos
+}
+
 // Cookie para cuenta seleccionada (no httpOnly para que JS pueda leerla)
 export const selectedAccountCookieOptions = {
   httpOnly: false,

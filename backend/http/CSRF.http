@@ -1,0 +1,281 @@
+### CSRF Protection Tests
+### Ejecutar con: Ctrl+Alt+R (REST Client) en VS Code
+
+### ========================================
+### CONFIGURACIÓN
+### ========================================
+
+@baseUrl = http://localhost:3001/api
+@accountId = TU_ACCOUNT_ID_AQUI
+@csrfToken = TU_CSRF_TOKEN_AQUI
+@csrfTokenInvalido = TOKEN_INVALIDO_PARA_PRUEBA
+
+### ========================================
+### PRUEBA 1: Login obtiene CSRF Token
+### Verificar que login devuelve csrfToken en cookies
+### ========================================
+
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@admin.com",
+  "password": "123456"
+}
+
+###
+# Expected Response:
+# - Set-Cookie: csrfToken=... (sin HttpOnly)
+# - JSON body incluye: "csrfToken": "..."
+# Verificar en Response Headers:
+# Set-Cookie: csrfToken=...; Path=/; Expires=...; SameSite=Lax
+# NOTA: accessToken y refreshToken tienen HttpOnly, csrfToken NO
+
+### ========================================
+### PRUEBA 2: Request SIN CSRF Token (DEBE FALLAR)
+### Mutación sin X-CSRF-Token header
+### Expected: 403 Forbidden
+### ========================================
+
+POST {{baseUrl}}/transactions
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+# SIN X-CSRF-Token header
+
+{
+  "account_id": "{{accountId}}",
+  "date": "2026-01-19",
+  "description": "Test sin CSRF token",
+  "amount": -50
+}
+
+###
+# Expected Response:
+# HTTP/1.1 403 Forbidden
+# {"success":false,"error":"CSRF token inválido o faltante"}
+#
+# Verificar: El servidor rechaza la request sin el header
+
+### ========================================
+### PRUEBA 3: Request CON Token Incorrecto (DEBE FALLAR)
+### Mutación con X-CSRF-Token que NO coincide con cookie
+### Expected: 403 Forbidden
+### ========================================
+
+POST {{baseUrl}}/transactions
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfTokenInvalido}}
+
+{
+  "account_id": "{{accountId}}",
+  "date": "2026-01-19",
+  "description": "Test con token incorrecto",
+  "amount": -50
+}
+
+###
+# Expected Response:
+# HTTP/1.1 403 Forbidden
+# {"success":false,"error":"CSRF token inválido o faltante"}
+#
+# Verificar: Tokens que no coinciden son rechazados
+
+### ========================================
+### PRUEBA 4: Request CON Token Correcto (DEBE PASAR)
+### Mutación con X-CSRF-Token que coincide con cookie
+### Expected: 201 Created (o error de autorización, pero NO 403 CSRF)
+### ========================================
+
+POST {{baseUrl}}/transactions
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "date": "2026-01-19",
+  "description": "Test con token correcto",
+  "amount": -50
+}
+
+###
+# Expected Response:
+# HTTP/1.1 201 Created
+# {"success":true,"transaction":{...}}
+#
+# Verificar: El error (si lo hay) es de autorización, NO de CSRF
+# Si da 403 "No tienes acceso a esta cuenta", es porque el accountId es incorrecto
+# pero el CSRF SÍ pasó
+
+### ========================================
+### PRUEBA 5: GET no requiere CSRF
+### Consultas (lectura) NO deben requerir token
+### Expected: 200 OK
+### ========================================
+
+GET {{baseUrl}}/categories?account_id={{accountId}}
+
+###
+# Expected Response:
+# HTTP/1.1 200 OK
+# {"success":true,"categories":[...]}
+#
+# Verificar: GET requests funcionan sin CSRF token
+
+### ========================================
+### PRUEBA 6: Refresh renueva CSRF Token
+### Hacer refresh y verificar que el token cambia
+### ========================================
+
+POST {{baseUrl}}/auth/refresh
+Cookie: csrfToken={{csrfToken}}
+
+###
+# Expected Response:
+# - Set-Cookie: csrfToken=NUEVO_TOKEN (diferente)
+# - JSON body incluye: "csrfToken": "NUEVO_TOKEN"
+#
+# Verificar: El token CSRF cambia después del refresh
+
+### ========================================
+### PRUEBA 7: Logout limpia CSRF Token
+### Hacer logout y verificar que la cookie se elimina
+### ========================================
+
+POST {{baseUrl}}/auth/logout
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+###
+# Expected Response:
+# - Set-Cookie: csrfToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT
+# {"success":true,"message":"Sesión cerrada correctamente"}
+#
+# Verificar: La cookie CSRF se elimina
+
+### ========================================
+### PRUEBA 8: Categoría SIN CSRF (DEBE FALLAR)
+### Crear categoría sin token
+### Expected: 403 Forbidden
+### ========================================
+
+POST {{baseUrl}}/categories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+# SIN X-CSRF-Token header
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Test Category"
+}
+
+###
+# Expected Response:
+# HTTP/1.1 403 Forbidden
+# {"success":false,"error":"CSRF token inválido o faltante"}
+#
+# Verificar: Las mutaciones de categorías también requieren CSRF
+
+### ========================================
+### PRUEBA 9: Categoría CON CSRF (DEBE PASAR)
+### Crear categoría con token
+### Expected: 201 Created
+### ========================================
+
+POST {{baseUrl}}/categories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Test Category CSRF OK"
+}
+
+###
+# Expected Response:
+# HTTP/1.1 201 Created
+# {"success":true,"category":{...}}
+#
+# Verificar: La categoría se crea correctamente
+
+### ========================================
+### PRUEBA 10: Subcategory SIN CSRF (DEBE FALLAR)
+### Expected: 403 Forbidden
+### ========================================
+
+# NOTA: Reemplazar TU_CATEGORY_ID con un category_id real
+POST {{baseUrl}}/subcategories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+# SIN X-CSRF-Token header
+
+{
+  "category_id": "TU_CATEGORY_ID",
+  "name": "Test Subcategory"
+}
+
+###
+# Expected Response:
+# HTTP/1.1 403 Forbidden
+# {"success":false,"error":"CSRF token inválido o faltante"}
+#
+# Verificar: Las mutaciones de subcategorías también requieren CSRF
+
+### ========================================
+### PRUEBA 11: Logout SIN CSRF (DEBE FALLAR)
+### Expected: 403 Forbidden
+### ========================================
+
+POST {{baseUrl}}/auth/logout
+Cookie: csrfToken={{csrfToken}}
+# SIN X-CSRF-Token header
+
+###
+# Expected Response:
+# HTTP/1.1 403 Forbidden
+# {"success":false,"error":"CSRF token inválido o faltante"}
+#
+# Verificar: El logout también requiere CSRF
+
+### ========================================
+### PRUEBA 12: Verificar cookie NO tiene HttpOnly
+### La cookie CSRF debe ser accesible por JavaScript
+### ========================================
+
+GET {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@admin.com",
+  "password": "123456"
+}
+
+###
+# Verificar en Response Headers:
+# Set-Cookie: csrfToken=...; Path=/; Expires=...; SameSite=Lax
+#                                        ^^^^^^^^
+# IMPORTANTE: NO debe decir "HttpOnly"
+# accessToken y refreshToken SÍ tienen HttpOnly
+# csrfToken NO debe tener HttpOnly (para que JS pueda leerlo)
+
+### ========================================
+### CÓMO USAR
+### ========================================
+#
+# 1. Iniciar servidor: cd backend && pnpm dev
+#
+# 2. Login y obtener account_id y csrfToken:
+#    POST {{baseUrl}}/auth/login
+#    POST {{baseUrl}}/accounts
+#
+# 3. Actualizar @accountId y @csrfToken arriba con los valores reales
+#
+# 4. Para Pruebas 2,3: @csrfTokenInvalido = cualquier_string_de_64_caracteres
+#
+# 5. Ejecutar cada prueba con Ctrl+Alt+R
+#
+# 6. Verificar resultados esperados en cada prueba
+#
+### ========================================

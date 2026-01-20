@@ -13,10 +13,20 @@ import transactionRoutes from './routes/transactions/transaction-routes.js'
 import importRoutes from './routes/import/import-routes.js'
 import aiRoutes from './routes/ai/ai-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
+import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
 
 dotenv.config()
 
 const app = express()
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Content-Security-Policy', "default-src 'self'")
+  next()
+})
 
 // CORS con credentials para cookies
 app.use(cors({
@@ -26,6 +36,10 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
 app.use(cookieParser())
+
+// Sanitization middleware (after body parsing)
+app.use(sanitizeBody)
+app.use(sanitizeQuery)
 
 // Routes
 app.use('/api/auth', authRoutes)

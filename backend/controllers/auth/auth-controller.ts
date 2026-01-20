@@ -3,6 +3,7 @@
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import { generateAccessToken, generateRefreshToken, verifyToken } from '../../services/auth/tokenService.js'
+import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
 import type { RegisterDTO, LoginDTO } from '../../models/auth/index.js'
 import {
   registerSchema,
@@ -13,7 +14,6 @@ import {
   type RefreshInput,
 } from '../../validators/auth-validators.js'
 
-// Configuración de cookies httpOnly
 const isProduction = process.env.NODE_ENV === 'production'
 
 const accessTokenCookieOptions = {
@@ -29,8 +29,10 @@ const refreshTokenCookieOptions = {
   secure: isProduction,
   sameSite: 'lax' as const,
   maxAge: 8 * 60 * 60 * 1000, // 8 horas
-  path: '/api/auth', // Solo para endpoints de auth
+  path: '/',
 }
+
+const csrfCookieOptions = createCSRFCookieOptions()
 
 /**
  * Registro de nuevo usuario
@@ -54,15 +56,19 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const user = await UserRepository.create({ email, password, name, accountName })
     const accessToken = generateAccessToken({ id: user.id, email: user.email })
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email })
+    const csrfToken = generateCSRFToken()
 
     // Establecer cookies httpOnly
     res.cookie('accessToken', accessToken, accessTokenCookieOptions)
     res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+    res.cookie('csrfToken', csrfToken, csrfCookieOptions)
 
     // Respuesta sin tokens (ya están en cookies)
+    // Enviamos el CSRF token en el body para que el frontend lo pueda leer
     res.status(201).json({
       success: true,
       user,
+      csrfToken,
     })
   } catch (error) {
     const err = error as Error
@@ -105,15 +111,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const user = await UserRepository.login({ email, password })
     const accessToken = generateAccessToken({ id: user.id, email: user.email })
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email })
+    const csrfToken = generateCSRFToken()
 
     // Establecer cookies httpOnly
     res.cookie('accessToken', accessToken, accessTokenCookieOptions)
     res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+    res.cookie('csrfToken', csrfToken, csrfCookieOptions)
 
     // Respuesta sin tokens (ya están en cookies)
     res.status(200).json({
       success: true,
       user,
+      csrfToken,
     })
   } catch (error) {
     const err = error as Error
@@ -204,12 +213,15 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 
     // Generar nuevo access token
     const newAccessToken = generateAccessToken({ id: user.id, email: user.email })
+    const newCSRFToken = generateCSRFToken()
 
     // Establecer nueva cookie httpOnly
     res.cookie('accessToken', newAccessToken, accessTokenCookieOptions)
+    res.cookie('csrfToken', newCSRFToken, csrfCookieOptions)
 
     res.status(200).json({
       success: true,
+      csrfToken: newCSRFToken,
     })
   } catch (error) {
     const err = error as Error
@@ -242,7 +254,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     // Limpiar cookies httpOnly
     res.clearCookie('accessToken', { path: '/' })
-    res.clearCookie('refreshToken', { path: '/api/auth' })
+    res.clearCookie('refreshToken', { path: '/' })
+    res.clearCookie('csrfToken', { path: '/' })
 
     // Opcional: Invalidar refresh token en BD si implementamos blacklist
     // Por ahora las cookies se borran y eso es suficiente

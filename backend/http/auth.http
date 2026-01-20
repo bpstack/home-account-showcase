@@ -1,7 +1,7 @@
 ### Variables
 @baseUrl = http://localhost:3001/api
-# Pega aquí el token del login:
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImY1OGYyYzVkLTEzMjEtNGVlNC05ZjBmLTQyZDQ5YTY4MTU1MyIsImVtYWlsIjoiYWRtaW5AYWRtaW4uY29tIiwiaWF0IjoxNzY4MTQyNjcyLCJleHAiOjE3Njg3NDc0NzJ9.xBGvpuPKczRndQySKkoZTGH5pFHR2yrI9MGLeoiNknM
+# Para Bearer token ( viejo sistema, ya no se usa para CSRF)
+# @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ### ========================================
 ### AUTH ENDPOINTS
@@ -14,20 +14,14 @@ GET {{baseUrl}}/health
 GET {{baseUrl}}/test-db
 
 ### ----------------------------------------
-### REGISTER - Crear nuevo usuario
-### ----------------------------------------
-POST {{baseUrl}}/auth/register
-Content-Type: application/json
-
-{
-  "email": "admin@admin.com",
-  "password": "123456",
-  "name": "Admin"
-}
-
-### ----------------------------------------
 ### LOGIN - Iniciar sesión
 # @name login
+# Los tokens van en COOKIES (Set-Cookie headers), no en el body
+# Ver los Response Headers para ver:
+# - Set-Cookie: accessToken=... (HttpOnly)
+# - Set-Cookie: refreshToken=... (HttpOnly)
+# - Set-Cookie: csrfToken=... (SIN HttpOnly, JS puede leerlo)
+# El body solo devuelve csrfToken para referencia
 ### ----------------------------------------
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
@@ -39,15 +33,19 @@ Content-Type: application/json
 
 ### ----------------------------------------
 ### ME - Obtener usuario autenticado
+# Nota: Ahora usa cookies automáticamente, no necesita Authorization header
+# @name me
 ### ----------------------------------------
 GET {{baseUrl}}/auth/me
-Authorization: Bearer {{token}}
+Cookie: accessToken=TOKEN; refreshToken=TOKEN; csrfToken=TOKEN
 
 ### ----------------------------------------
 ### LOGOUT - Cerrar sesión
+# Requiere CSRF token header
 ### ----------------------------------------
 POST {{baseUrl}}/auth/logout
-Authorization: Bearer {{token}}
+Cookie: accessToken=TOKEN; refreshToken=TOKEN; csrfToken=TOKEN
+X-CSRF-Token: TOKEN
 
 ### ========================================
 ### TEST CASES
@@ -72,5 +70,20 @@ Content-Type: application/json
   "name": "Otro User"
 }
 
-### ME sin token (debe fallar)
+### ME sin cookies (debe fallar - no hay sesión)
 GET {{baseUrl}}/auth/me
+
+### ----------------------------------------
+### CÓMO OBTENER LOS TOKENS
+### ----------------------------------------
+# 1. Hacer POST {{baseUrl}}/login
+# 2. Ver los Response Headers (no el body)
+# 3. Buscar Set-Cookie:
+#    Set-Cookie: accessToken=eyJ...; HttpOnly; SameSite=Lax
+#    Set-Cookie: refreshToken=eyJ...; HttpOnly; SameSite=Lax
+#    Set-Cookie: csrfToken=0670...; SameSite=Lax
+# 4. Copiar los valores en las requests que usen Cookie:
+#    Cookie: accessToken=VALOR; refreshToken=VALOR; csrfToken=VALOR
+# 5. Para mutaciones (POST/PUT/DELETE), añadir:
+#    X-CSRF-Token: VALOR
+### ----------------------------------------

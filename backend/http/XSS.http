@@ -1,0 +1,180 @@
+### XSS Protection Tests
+### Ejecutar con: Ctrl+Alt+R (REST Client) en VS Code
+
+### ========================================
+### CONFIGURACIÓN
+### ========================================
+
+@baseUrl = http://localhost:3001/api
+@accountId = f58f2c5d-1321-4ee4-9f0f-42d49a681553
+@csrfToken = b4a14e0506deca8315ce3639f125de13a4d5729c30d11df3826d3fa0732937d6
+
+### ========================================
+### PRUEBA 1: Verificar Headers de Seguridad
+### ========================================
+
+GET {{baseUrl}}/health
+
+###
+# Expected Response Headers:
+# X-Content-Type-Options: nosniff
+# X-XSS-Protection: 1; mode=block
+# X-Frame-Options: DENY
+# Content-Security-Policy: default-src 'self'
+
+### ========================================
+### PRUEBA 2: Sanitización de Script Tags
+### Input: <script>alert(1)</script>
+### Expected: alert(1) (tags eliminados)
+### ========================================
+
+POST {{baseUrl}}/categories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "name": "<script>alert(1)</script>"
+}
+
+### ========================================
+### PRUEBA 3: Sanitización de Event Handlers
+### Input: <img src=x onerror=alert(1)>
+### Expected: <img src=x > (onerror eliminado)
+### ========================================
+
+POST {{baseUrl}}/categories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Test<img src=x onerror=alert(1)>"
+}
+
+### ========================================
+### PRUEBA 4: Sanitización de JavaScript URLs
+### Input: Click here: javascript:alert(1)
+### Expected: Click here: alert(1)
+### ========================================
+
+POST {{baseUrl}}/transactions
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "date": "2026-01-19",
+  "description": "Click here: javascript:alert(1)",
+  "amount": -50
+}
+
+### ========================================
+### PRUEBA 5: Sanitización de Query Strings
+### Input: ?name=<script>alert(1)</script>
+### Expected: name=alert(1)
+### ========================================
+
+GET {{baseUrl}}/categories?account_id={{accountId}}&name=<script>alert(1)</script>
+
+###
+# Verificar que los parámetros se sanitizan
+
+### ========================================
+### PRUEBA 6: Múltiples Payloads XSS
+### Input: Varios ataques juntos
+### Expected: Todo limpio
+### ========================================
+
+POST {{baseUrl}}/categories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Test<script>alert('XSS')</script><img src=x onerror=alert(1) /><a href='javascript:alert(1)'>Click</a>"
+}
+
+### ========================================
+### PRUEBA 7: Data URLs
+### Input: <a href="data:text/html,<script>alert(1)</script>">Click</a>
+### Expected: Tags eliminados
+### ========================================
+
+POST {{baseUrl}}/categories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "name": "<a href='data:text/html,<script>alert(1)</script>'>Click</a>"
+}
+
+### ========================================
+### PRUEBA 8: SVG con event handler
+### Input: <svg onload=alert(1)>
+### Expected: <svg > (onload eliminado)
+### ========================================
+
+POST {{baseUrl}}/categories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "account_id": "{{accountId}}",
+  "name": "Logo<svg onload=alert(1)></svg>"
+}
+
+### ========================================
+### PRUEBA 9: Verificar datos guardados
+### Ver que las categorías tienen nombres limpios
+### ========================================
+
+GET {{baseUrl}}/categories?account_id={{accountId}}
+
+###
+# Verificar en la respuesta:
+# - NO hay <script> tags
+# - NO hay onerror=, onclick=, etc.
+# - NO hay javascript: URLs
+# - Los nombres aparecen como texto plano
+
+### ========================================
+### PRUEBA 10: Subcategory con XSS
+### Input: <iframe src="javascript:alert(1)">
+### Expected: Tags eliminados
+### ========================================
+
+POST {{baseUrl}}/subcategories
+Content-Type: application/json
+Cookie: csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "category_id": "TU_CATEGORY_ID",
+  "name": "Video<iframe src='javascript:alert(1)'></iframe>"
+}
+
+### ========================================
+### CÓMO USAR
+### ========================================
+#
+# 1. Iniciar servidor: cd backend && pnpm dev
+#
+# 2. Login y obtener account_id:
+#    POST {{baseUrl}}/login
+#    POST {{baseUrl}}/accounts (para account_id)
+#
+# 3. Actualizar @accountId y @csrfToken arriba con los valores reales
+#
+# 4. Ejecutar cada prueba con Ctrl+Alt+R
+#
+# 5. Verificar resultados esperados
+#
+### ========================================

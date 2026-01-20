@@ -4,6 +4,7 @@ import {
   isAllowedOrigin,
   accessTokenCookieOptions,
   refreshTokenCookieOptions,
+  csrfTokenCookieOptions,
 } from '../config'
 
 export async function POST(req: NextRequest) {
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       success: true,
       user: data.user,
+      csrfToken: data.csrfToken,
     })
 
     // Setear cookies httpOnly en la respuesta de Next.js
@@ -49,6 +51,9 @@ export async function POST(req: NextRequest) {
     }
     if (cookies.refreshToken) {
       response.cookies.set('refreshToken', cookies.refreshToken, refreshTokenCookieOptions)
+    }
+    if (cookies.csrfToken) {
+      response.cookies.set('csrfToken', cookies.csrfToken, csrfTokenCookieOptions)
     }
 
     return response
