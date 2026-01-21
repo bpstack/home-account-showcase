@@ -42,22 +42,22 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div
         className={cn(
-          'relative w-full mx-4 bg-layer-1 border border-layer-3 rounded-lg shadow-xl',
+          'relative w-full mx-4 bg-background border border-border rounded-lg shadow-2xl',
           sizes[size],
           className
         )}
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-layer-3">
-            <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-5 w-5" />
             </Button>
