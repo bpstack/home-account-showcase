@@ -12,6 +12,7 @@ import subcategoryRoutes from './routes/subcategories/subcategory-routes.js'
 import transactionRoutes from './routes/transactions/transaction-routes.js'
 import importRoutes from './routes/import/import-routes.js'
 import aiRoutes from './routes/ai/ai-routes.js'
+import investmentRoutes from './routes/investment/investment-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
 import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
 
@@ -50,6 +51,7 @@ app.use('/api/subcategories', subcategoryRoutes)
 app.use('/api/transactions', transactionRoutes)
 app.use('/api/import', importRoutes)
 app.use('/api/ai', aiRoutes)
+app.use('/api/investment', investmentRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
