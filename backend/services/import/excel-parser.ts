@@ -331,7 +331,21 @@ type CSVFormat = 'revolut' | 'generic' | 'unknown'
 // sanitizeCSVValue is imported from ../../utils/sanitize.js
 // It handles both CSV injection and XSS protection
 
-function parseCSVLine(line: string): string[] {
+function detectDelimiter(content: string): ',' | ';' | '\t' {
+  const firstLine = content.split(/\r?\n/)[0]
+
+  const delimiters = [',', ';', '\t'] as const
+  const counts = delimiters.map(d => ({
+    delimiter: d,
+    count: (firstLine.match(new RegExp(d === '\t' ? '\t' : `\\${d}`, 'g')) || []).length
+  }))
+
+  const best = counts.sort((a, b) => b.count - a.count)[0]
+  console.log(`[Import] CSV delimiter detection: comma=${counts[0].count}, semicolon=${counts[1].count}, tab=${counts[2].count} → selected: "${best.delimiter}"`)
+  return best.delimiter
+}
+
+function parseCSVLine(line: string, delimiter: ',' | ';' | '\t' = ','): string[] {
   const result: string[] = []
   let current = ''
   let inQuotes = false
@@ -340,7 +354,7 @@ function parseCSVLine(line: string): string[] {
     const char = line[i]
     if (char === '"') {
       inQuotes = !inQuotes
-    } else if (char === ',' && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       result.push(current.trim())
       current = ''
     } else {
@@ -499,7 +513,8 @@ function parseCSVFile(content: string): ParseResult {
     }
   }
 
-  const headers = parseCSVLine(lines[0])
+  const delimiter = detectDelimiter(content)
+  const headers = parseCSVLine(lines[0], delimiter)
   const { format, mapping } = detectCSVFormat(headers)
 
   if (!mapping) {
@@ -520,7 +535,7 @@ function parseCSVFile(content: string): ParseResult {
   const errors: string[] = []
 
   for (let i = 1; i < lines.length; i++) {
-    const row = parseCSVLine(lines[i])
+    const row = parseCSVLine(lines[i], delimiter)
     if (row.length < 3) continue
 
     const rowNum = i + 1
