@@ -28,6 +28,9 @@ import type {
   BalanceHistoryResponse,
 } from '@/lib/api/types'
 
+// Import InvestmentWidget
+import { InvestmentWidget } from '@/components/investment/InvestmentWidget'
+
 // Initial data types from RSC
 export interface DashboardInitialData {
   stats?: StatsResponse
@@ -285,7 +288,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           {isLoading ? (
             <DashboardSkeleton />
           ) : (
-            <SavingsTab stats={stats} period={period} />
+            <SavingsTab stats={stats} period={period} accountId={account?.id || ''} />
           )}
         </Suspense>
       )}
@@ -760,209 +763,121 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
   )
 }
 
-function SavingsTab({ stats, period }: { stats: Stats; period: Period }) {
+function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period; accountId: string }) {
   const formatCurrency = (value: number) => `${value.toFixed(2)} €`
 
   const savingsRate = stats.income > 0 ? (stats.balance / stats.income) * 100 : 0
 
   const getSavingsLevel = (rate: number) => {
-    if (rate >= 50) return { label: 'Excelente', color: 'text-success', bg: 'bg-success/10' }
+    if (rate >= 50) return { label: 'Excelente', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' }
     if (rate >= 20) return { label: 'Bueno', color: 'text-accent', bg: 'bg-accent/10' }
-    if (rate >= 0) return { label: 'Regular', color: 'text-warning', bg: 'bg-warning/10' }
-    return { label: 'Alto riesgo', color: 'text-danger', bg: 'bg-danger/10' }
+    if (rate >= 0) return { label: 'Regular', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' }
+    return { label: 'Alto riesgo', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' }
   }
 
   const savingsLevel = getSavingsLevel(savingsRate)
   const savingsAmount = Math.max(0, stats.balance)
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-accent/5 border-accent/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary">Ahorro Total</p>
-                <p className="text-2xl font-bold text-accent">
-                  {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
-                </p>
-                <p className="text-xs text-text-secondary mt-1">
-                  Ingresos - Gastos
-                </p>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Left column - Savings info (compact) */}
+      <div className="lg:col-span-2 space-y-4">
+        {/* Quick stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="bg-accent/5 border-accent/20">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <PiggyBank className="h-4 w-4 text-accent" />
+                <p className="text-xs text-muted-foreground">Ahorro Total</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-accent/20 flex items-center justify-center">
-                <PiggyBank className="h-6 w-6 text-accent" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-xl font-bold text-accent">
+                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-success/5 border-success/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary">Tasa de Ahorro</p>
-                <p className={`text-2xl font-bold ${savingsLevel.color}`}>
-                  {savingsRate.toFixed(1)}%
-                </p>
+          <Card className="bg-success/5 border-success/20">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUpIcon className="h-4 w-4 text-success" />
+                <p className="text-xs text-muted-foreground">Tasa</p>
               </div>
-              <div className={`h-12 w-12 rounded-full ${savingsLevel.bg} flex items-center justify-center`}>
-                <TrendingUpIcon className="h-6 w-6 text-success" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className={`text-xl font-bold ${savingsLevel.color}`}>
+                {savingsRate.toFixed(1)}%
+              </p>
+            </CardContent>
+          </Card>
 
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Nivel</p>
+              </div>
+              <p className={`text-xl font-bold ${savingsLevel.color}`}>
+                {savingsLevel.label}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Compact breakdown */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Desglose
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between items-center py-2 border-b border-layer-2 text-sm">
+              <span className="text-muted-foreground">Ingresos</span>
+              <span className="font-medium text-green-600">+{formatCurrency(stats.income)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-layer-2 text-sm">
+              <span className="text-muted-foreground">Gastos</span>
+              <span className="font-medium text-red-600">-{formatCurrency(stats.expenses)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 text-sm font-medium">
+              <span>Ahorro neto</span>
+              <span className="text-accent">
+                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Compact projections */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Proyección (año)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-sm text-text-secondary">Nivel</p>
-                <p className={`text-2xl font-bold ${savingsLevel.color}`}>
-                  {savingsLevel.label}
-                </p>
+                <p className="text-xs text-muted-foreground mb-1">Ritmo actual</p>
+                <p className="font-semibold text-accent">+{formatCurrency(savingsAmount * 12)}</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-layer-2 flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-text-secondary" />
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">30% recomendado</p>
+                <p className="font-semibold text-green-600">+{formatCurrency(stats.income * 0.3 * 12)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Con inversión (5%)</p>
+                <p className="font-semibold text-primary">+{formatCurrency(savingsAmount * 12 * 1.05)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUpIcon className="h-5 w-5" />
-            Desglose de Ahorro
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-3 border-b border-layer-2">
-              <span className="text-text-secondary">Ingresos</span>
-              <span className="font-medium text-success">+{formatCurrency(stats.income)}</span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-layer-2">
-              <span className="text-text-secondary">Gastos</span>
-              <span className="font-medium text-danger">-{formatCurrency(stats.expenses)}</span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-layer-3 bg-accent/5 px-4 -mx-4 rounded">
-              <span className="text-text-primary font-medium">Ahorro (Ingresos - Gastos)</span>
-              <span className="font-bold text-accent">
-                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-layer-2">
-              <span className="text-text-secondary">Ahorro proyectado (año)</span>
-              <span className="font-medium text-accent">
-                +{formatCurrency(savingsAmount * 12)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-layer-2">
-              <span className="text-text-secondary">Meta de ahorro (30%)</span>
-              <span className="font-medium text-success">
-                +{formatCurrency(stats.income * 0.3)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-3">
-              <span className="text-text-secondary">Diferencia con meta</span>
-              <span
-                className={`font-medium ${stats.balance >= stats.income * 0.3 ? 'text-success' : 'text-danger'}`}
-              >
-                {formatCurrency(stats.balance - stats.income * 0.3)}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Inversión
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-3 border-b border-layer-2">
-              <span className="text-text-secondary">Ahorro disponible</span>
-              <span className="font-medium text-accent">
-                {stats.balance >= 0 ? formatCurrency(savingsAmount) : 'Sin ahorro'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-layer-2">
-              <span className="text-text-secondary">Porcentaje a invertir</span>
-              <span className="font-medium text-text-primary">0% (pendiente IA)</span>
-            </div>
-            <div className="flex justify-between items-center py-3">
-              <span className="text-text-secondary">Monto a invertir</span>
-              <span className="font-medium text-text-secondary">-</span>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-layer-2 rounded-lg border border-layer-3">
-            <div className="flex items-start gap-3">
-              <Sparkles className="h-5 w-5 text-accent mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-text-primary mb-2">
-                  Cálculo de inversión con IA
-                </p>
-                <p className="text-xs text-text-secondary mb-2">
-                  La IA analizará tus datos para determinar el % óptimo de inversión:
-                </p>
-                <ul className="text-xs text-text-secondary space-y-1 list-disc list-inside">
-                  <li>Perfil de riesgo (conservador, moderado, agresivo)</li>
-                  <li>Horizonte temporal (corto, medio, largo plazo)</li>
-                  <li>Objetivos financieros (jubilación, casa, emergencia)</li>
-                  <li>Cantidad disponible vs necesidades</li>
-                </ul>
-                <p className="text-xs text-text-secondary mt-2">
-                  Referencias: OpenAI GPT-4, Claude API
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Proyección de Ahorro
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-layer-2">
-              <span className="text-text-secondary">Manteniendo ritmo actual</span>
-              <span className="font-medium text-accent">
-                +{formatCurrency(savingsAmount * 12)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-layer-2">
-              <span className="text-text-secondary">Ahorro recomendado (30%)</span>
-              <span className="font-medium text-success">
-                +{formatCurrency(stats.income * 0.3 * 12)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-layer-2">
-              <span className="text-text-secondary">Proyección conservadora (5%)</span>
-              <span className="font-medium text-text-primary">
-                +{formatCurrency(savingsAmount * 12 * 1.05)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-text-secondary">Proyección optimista (10%)</span>
-              <span className="font-medium text-success">
-                +{formatCurrency(savingsAmount * 12 * 1.1)}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Right column - Investment widget */}
+      <div className="lg:col-span-1">
+        <InvestmentWidget accountId={accountId} />
+      </div>
     </div>
   )
 }
