@@ -4,7 +4,7 @@
 export { InvestmentOverview, RiskBadge } from './InvestmentOverview'
 export { MarketPricesWidget } from './MarketPricesWidget'
 export { MarketSummary } from './MarketSummary'
-export { DisclaimerAlert, ChatDisclaimer } from './DisclaimerAlert'
+export { DisclaimerAlert } from './DisclaimerAlert'
 export { AIChat, AIChatCompact } from './AIChat'
 export { ProfileForm } from './ProfileForm'
 export { Recommendations } from './Recommendations'

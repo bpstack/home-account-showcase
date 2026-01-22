@@ -15,14 +15,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+          'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
           {
-            'bg-accent text-white hover:bg-accent-hover': variant === 'default',
-            'bg-layer-2 text-text-primary hover:bg-layer-3': variant === 'secondary',
-            'hover:bg-layer-2 text-text-primary': variant === 'ghost',
-            'border border-layer-3 bg-transparent hover:bg-layer-1 text-text-primary':
+            'bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600': variant === 'default',
+            'bg-muted text-foreground hover:bg-muted/80': variant === 'secondary',
+            'hover:bg-muted text-foreground': variant === 'ghost',
+            'border border-border bg-transparent hover:bg-muted text-foreground':
               variant === 'outline',
-            'bg-danger text-white hover:bg-danger/90': variant === 'danger',
+            'bg-destructive text-white hover:bg-destructive/90': variant === 'danger',
           },
           {
             'h-10 px-4 py-2 text-sm': size === 'default',

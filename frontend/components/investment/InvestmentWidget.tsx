@@ -138,7 +138,7 @@ export function InvestmentWidget({ accountId, compact = false }: InvestmentWidge
         {/* CTA */}
         <a
           href="/investment"
-          className="inline-flex items-center justify-center w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-accent text-white hover:bg-accent-hover transition-colors"
+          className="inline-flex items-center justify-center w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
         >
           <Sparkles className="h-4 w-4 mr-2" />
           Acceder al módulo

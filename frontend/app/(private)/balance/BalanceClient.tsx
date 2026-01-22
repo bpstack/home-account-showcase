@@ -15,6 +15,7 @@ import {
   Button,
   Input,
   FilterSelect,
+  Tabs,
 } from '@/components/ui'
 import { ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
 import {
@@ -41,6 +42,19 @@ const availableYears = Array.from({ length: currentYearNow - 2020 + 2 }, (_, i) 
 
 type Period = 'monthly' | 'yearly' | 'custom'
 type TabType = 'balance' | 'income' | 'expenses'
+
+// Tabs definidos fuera del componente para evitar recrearlos en cada render
+const mainTabs = [
+  { id: 'balance', label: 'Balance', icon: <Wallet className="h-4 w-4" /> },
+  { id: 'income', label: 'Ingresos', icon: <TrendingUp className="h-4 w-4" /> },
+  { id: 'expenses', label: 'Gastos', icon: <TrendingDown className="h-4 w-4" /> },
+]
+
+const periodTabs = [
+  { id: 'monthly', label: 'Mes' },
+  { id: 'yearly', label: 'Año' },
+  { id: 'custom', label: 'Rango' },
+]
 
 const formatLocalDate = (date: Date): string => {
   const year = date.getFullYear()
@@ -286,46 +300,21 @@ function BalanceContent({
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="inline-flex p-1 bg-muted rounded-lg self-center sm:self-auto">
-            {[
-              { id: 'balance', label: 'Balance', icon: Wallet },
-              { id: 'income', label: 'Ingresos', icon: TrendingUp },
-              { id: 'expenses', label: 'Gastos', icon: TrendingDown },
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => updateUrl({ tab: id as TabType })}
-                className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none ${
-                  activeTab === id
-                    ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="hidden xs:inline sm:inline">{label}</span>
-              </button>
-            ))}
-          </div>
+          <Tabs
+            tabs={mainTabs}
+            activeTab={activeTab}
+            onChange={(id) => updateUrl({ tab: id as TabType })}
+            variant="pills"
+            className="self-center sm:self-auto"
+          />
 
-          <div className="inline-flex p-1 bg-muted rounded-lg self-center sm:self-auto">
-            {[
-              { id: 'monthly', label: 'Mes' },
-              { id: 'yearly', label: 'Año' },
-              { id: 'custom', label: 'Rango' },
-            ].map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => updateUrl({ period: id as Period })}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  period === id
-                    ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            tabs={periodTabs}
+            activeTab={period}
+            onChange={(id) => updateUrl({ period: id as Period })}
+            variant="pills"
+            className="self-center sm:self-auto"
+          />
         </div>
 
         <div className="flex items-center justify-center">

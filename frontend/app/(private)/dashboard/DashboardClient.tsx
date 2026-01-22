@@ -770,7 +770,7 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
 
   const getSavingsLevel = (rate: number) => {
     if (rate >= 50) return { label: 'Excelente', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' }
-    if (rate >= 20) return { label: 'Bueno', color: 'text-accent', bg: 'bg-accent/10' }
+    if (rate >= 20) return { label: 'Bueno', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' }
     if (rate >= 0) return { label: 'Regular', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' }
     return { label: 'Alto riesgo', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' }
   }
@@ -784,13 +784,13 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
       <div className="lg:col-span-2 space-y-4">
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-3">
-          <Card className="bg-accent/5 border-accent/20">
+          <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-1">
-                <PiggyBank className="h-4 w-4 text-accent" />
+                <PiggyBank className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <p className="text-xs text-muted-foreground">Ahorro Total</p>
               </div>
-              <p className="text-xl font-bold text-accent">
+              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
                 {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
               </p>
             </CardContent>
@@ -840,7 +840,7 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
             </div>
             <div className="flex justify-between items-center py-2 text-sm font-medium">
               <span>Ahorro neto</span>
-              <span className="text-accent">
+              <span className="text-blue-600 dark:text-blue-400">
                 {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
               </span>
             </div>
@@ -859,7 +859,7 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Ritmo actual</p>
-                <p className="font-semibold text-accent">+{formatCurrency(savingsAmount * 12)}</p>
+                <p className="font-semibold text-blue-600 dark:text-blue-400">+{formatCurrency(savingsAmount * 12)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">30% recomendado</p>

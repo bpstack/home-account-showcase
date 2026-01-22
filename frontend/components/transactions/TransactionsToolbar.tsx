@@ -4,10 +4,16 @@
 
 import { useRouter } from 'next/navigation'
 import { useFiltersStore } from '@/stores/filtersStore'
-import { Button } from '@/components/ui'
-import { FilterSelect } from '@/components/ui'
+import { Button, FilterSelect, Tabs } from '@/components/ui'
 import { Search, Plus, Upload } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
+
+// Tabs definidos fuera del componente para evitar recrearlos en cada render
+const typeTabs = [
+  { id: 'all', label: 'Todos' },
+  { id: 'income', label: 'Ingresos' },
+  { id: 'expense', label: 'Gastos' },
+]
 
 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -101,38 +107,12 @@ export function TransactionsToolbar({
 
       {/* Row 2: Type Filter + Category */}
       <div className="flex items-center gap-2">
-        <div className="inline-flex bg-muted rounded-lg p-1">
-          <button
-            onClick={() => setType('all')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-              selectedType === 'all'
-                ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setType('income')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-              selectedType === 'income'
-                ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Ingresos
-          </button>
-          <button
-            onClick={() => setType('expense')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-              selectedType === 'expense'
-                ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Gastos
-          </button>
-        </div>
+        <Tabs
+          tabs={typeTabs}
+          activeTab={selectedType}
+          onChange={(id) => setType(id as 'all' | 'income' | 'expense')}
+          variant="pills"
+        />
 
         <FilterSelect
           value={selectedCategory}
