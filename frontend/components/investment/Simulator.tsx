@@ -60,44 +60,29 @@ export function Simulator({
   }
 
   return (
-    <Card className="bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 border-amber-200/50 dark:border-amber-800/30">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-          <Calculator className="h-5 w-5" />
-          Simulador de Inversión
+    <Card className="h-full border-none shadow-none bg-transparent">
+      <CardHeader className="px-0 pt-0 pb-4">
+        <CardTitle className="text-lg font-bold tracking-tight">
+          Simulador
         </CardTitle>
-        <CardDescription>
-          Calcula cómo podría crecer tu inversión con el tiempo
-        </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* Profile selector */}
-        <div className="grid grid-cols-3 gap-2">
+      <CardContent className="p-0 space-y-6">
+        {/* Profile selector - Compact */}
+        <div className="p-1 bg-muted/30 rounded-lg flex gap-1">
           {profiles.map((profile) => (
             <button
               key={profile.value}
               onClick={() => setParams(prev => ({ ...prev, profile: profile.value as any }))}
               className={cn(
-                'p-3 rounded-lg border text-center transition-all',
+                'flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition-all duration-200',
                 params.profile === profile.value
-                  ? `border-[${profile.color}] bg-[${profile.color}]/10`
-                  : 'hover:border-primary/50'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
-              style={{
-                borderColor: params.profile === profile.value ? profile.color : undefined,
-                backgroundColor: params.profile === profile.value ? `${profile.color}15` : undefined
-              }}
             >
-              <div
-                className="font-semibold"
-                style={{ color: params.profile === profile.value ? profile.color : undefined }}
-              >
-                {profile.label}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {profile.desc}
-              </div>
+              {profile.label}
+              <span className="block text-[10px] opacity-70 mt-0.5">{profile.desc}</span>
             </button>
           ))}
         </div>
@@ -148,7 +133,7 @@ export function Simulator({
               max={2000}
               step={50}
             />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <div className="flex justify-between text-xs text-muted-foreground mt-2 font-medium">
               <span>0€</span>
               <span>2.000€</span>
             </div>
@@ -173,24 +158,24 @@ export function Simulator({
         </div>
 
         {/* Results */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="flex flex-wrap gap-2 justify-between">
           <ResultCard
-            label="Escenario pesimista"
+            label="Pesimista"
             value={result.conservative}
             color="#ef4444"
-            icon={<TrendingDown className="h-4 w-4" />}
+            className="flex-1 min-w-[80px]"
           />
           <ResultCard
             label="Esperado"
             value={result.expected}
             color="#22c55e"
-            icon={<TrendingUp className="h-4 w-4" />}
+            className="flex-1 min-w-[80px]"
           />
           <ResultCard
             label="Optimista"
             value={result.optimistic}
             color="#3b82f6"
-            icon={<TrendingUp className="h-4 w-4" />}
+            className="flex-1 min-w-[80px]"
           />
         </div>
 
@@ -318,20 +303,19 @@ function ResultCard({
   label,
   value,
   color,
-  icon
+  className
 }: {
   label: string
   value: number
   color: string
-  icon: React.ReactNode
+  className?: string
 }) {
   return (
-    <div className="p-3 rounded-lg text-center" style={{ backgroundColor: `${color}10` }}>
-      <div className="flex items-center justify-center gap-1 mb-1" style={{ color }}>
-        {icon}
-        <span className="text-xs font-medium">{label}</span>
+    <div className={cn("p-2 rounded-lg text-center border bg-card/50 dark:bg-zinc-900 border-border/40 dark:border-white/5", className)}>
+      <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
+        {label}
       </div>
-      <div className="text-xl font-bold" style={{ color }}>
+      <div className="text-sm font-bold tracking-tight" style={{ color }}>
         {formatCurrency(value)}
       </div>
     </div>

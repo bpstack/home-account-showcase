@@ -17,7 +17,7 @@ function ProfileContent() {
   const activePanel = searchParams.get('panel')
 
   return (
-    <div className="h-full min-h-screen bg-white dark:bg-[#010409]">
+    <div className="h-full min-h-screen bg-background">
       <div className="h-full flex flex-col lg:flex-row gap-6 p-4 md:p-6">
         <aside className="w-full lg:w-72 xl:w-80 flex-shrink-0">
           <ProfileSidebar />

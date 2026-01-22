@@ -86,57 +86,57 @@ export function ProfileDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-lg transition-colors duration-200 hover:bg-layer-2 border border-transparent hover:border-layer-3"
+        className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-lg transition-colors duration-200 hover:bg-muted border border-transparent hover:border-border"
       >
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-accent to-purple-600 text-white text-sm font-semibold">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-semibold">
           {user.name.charAt(0).toUpperCase()}
         </div>
         <div className="hidden md:flex flex-col items-start">
-          <span className="text-base font-medium text-text-primary leading-none">{currentAccount?.name || 'Sin cuenta'}</span>
-          <span className="text-sm text-text-secondary leading-none mt-0.5">{account?.role === 'owner' ? 'Propietario' : 'Miembro'}</span>
+          <span className="text-base font-medium text-foreground leading-none">{currentAccount?.name || 'Sin cuenta'}</span>
+          <span className="text-sm text-muted-foreground leading-none mt-0.5">{account?.role === 'owner' ? 'Propietario' : 'Miembro'}</span>
         </div>
         <ChevronDown
-          className={`hidden md:block h-4 w-4 text-text-secondary transition-transform duration-200 ${
+          className={`hidden md:block h-4 w-4 text-muted-foreground transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 rounded-lg bg-layer-1 shadow-xl border border-layer-3 z-50 overflow-hidden">
-          <div className="px-4 py-3 border-b border-layer-3 bg-layer-2/50">
-            <p className="text-base font-medium text-text-primary">{user.name}</p>
-            <p className="text-sm text-text-secondary truncate">{user.email}</p>
+        <div className="absolute right-0 mt-2 w-72 rounded-lg bg-card shadow-xl border border-border z-50 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-muted/50">
+            <p className="text-base font-medium text-foreground">{user.name}</p>
+            <p className="text-sm text-muted-foreground truncate">{user.email}</p>
           </div>
 
           {allAccounts.length > 1 && (
-            <div className="border-b border-layer-3">
+            <div className="border-b border-border">
               <div className="relative" ref={accountMenuRef}>
                 <button
                   onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-base text-text-primary hover:bg-layer-2 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 text-base text-foreground hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-accent" />
+                    <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <span className="font-medium">{currentAccount?.name}</span>
                   </div>
                   <ChevronDown
-                    className={`h-4 w-4 text-text-secondary transition-transform duration-200 ${
+                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
                       isAccountMenuOpen ? 'rotate-180' : ''
                     }`}
                   />
                 </button>
 
                 {isAccountMenuOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-layer-2 border border-layer-3 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
                     {allAccounts.map((acc) => (
                       <button
                         key={acc.id}
                         onClick={() => handleSwitchAccount(acc.id)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-text-primary hover:bg-layer-3 transition-colors"
+                        className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
                       >
                         <span>{acc.name}</span>
-                        <span className="text-sm text-text-secondary">
+                        <span className="text-sm text-muted-foreground">
                           {acc.role === 'owner' ? 'Owner' : 'Member'}
                         </span>
                       </button>
@@ -150,19 +150,19 @@ export function ProfileDropdown() {
           <div className="py-1">
             <button
               onClick={() => navigateTo('/profile')}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-layer-2 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
             >
-              <User className="h-4 w-4 text-text-secondary" />
+              <User className="h-4 w-4 text-muted-foreground" />
               <span>Mi Perfil</span>
             </button>
           </div>
 
           {account?.role !== 'owner' && (
-            <div className="border-t border-layer-3 py-1">
+            <div className="border-t border-border py-1">
               <button
                 onClick={handleLeaveAccount}
                 disabled={isLeaving}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               >
                 <ExternalLink className="h-4 w-4" />
                 <span>{isLeaving ? 'Abandonando...' : 'Abandonar cuenta'}</span>
@@ -170,10 +170,10 @@ export function ProfileDropdown() {
             </div>
           )}
 
-          <div className="border-t border-layer-3 py-1">
+          <div className="border-t border-border py-1">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               <span>Cerrar sesión</span>

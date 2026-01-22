@@ -138,18 +138,18 @@ export function ProfileSidebar() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d] p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex flex-col items-center text-center">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center text-white text-2xl font-bold mb-4">
             {user.name.charAt(0).toUpperCase()}
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+          <h3 className="text-lg font-semibold text-foreground mb-1">
             {user.name}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{user.email}</p>
-          <div className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Cuenta</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
+          <p className="text-sm text-muted-foreground mb-4">{user.email}</p>
+          <div className="w-full px-4 py-3 bg-muted/50 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-1">Cuenta</p>
+            <p className="text-sm font-medium text-foreground">
               {account?.name || 'Sin cuenta'}
             </p>
           </div>
@@ -163,7 +163,7 @@ export function ProfileSidebar() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d] overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export function ProfileSidebar() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d] overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -360,7 +360,7 @@ export function ProfileSidebar() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d] overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <NavButton
           icon={
             <div className={cn(
@@ -400,7 +400,7 @@ function NavButton({
       onClick={onClick}
       className={cn(
         'w-full flex items-center justify-between p-3 transition-colors text-left',
-        active ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-100 dark:hover:bg-[#21262d]'
+        active ? 'bg-primary/5' : 'hover:bg-muted/50'
       )}
     >
       <div className="flex items-center gap-3">
@@ -408,7 +408,7 @@ function NavButton({
         <div>
           <p className={cn(
             'text-sm font-medium',
-            active ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-white'
+            active ? 'text-primary' : 'text-foreground'
           )}>
             {label}
           </p>

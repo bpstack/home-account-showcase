@@ -2,110 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Light Mode Colors - Four-Points Style */
-  --background: #ffffff;
-  --layer-1: #ffffff;
-  --layer-2: #f3f4f6;
-  --layer-3: #e5e7eb;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-border: rgba(37, 99, 235, 0.6);
-  --success: #16a34a;
-  --warning: #ca8a04;
-  --danger: #dc2626;
-}
+@layer base {
+  :root {
+    /* Standard Shadcn/Deep Dark Light Mode */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.75rem;
 
-.dark {
-  /* Dark Mode Colors - Four-Points Style */
-  --background: #010409;
-  --layer-1: #0d1117;
-  --layer-2: #161b22;
-  --layer-3: #30363d;
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --accent: #3b82f6;
-  --accent-hover: #60a5fa;
-  --accent-border: rgba(59, 130, 246, 0.6);
-  --success: #22c55e;
-  --warning: #eab308;
-  --danger: #ef4444;
+    /* Legacy compatibility */
+    --layer-1: #ffffff;
+    --layer-2: #f3f4f6;
+    --layer-3: #e5e7eb;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+  }
+
+  .dark {
+    /* Deep Dark Mode - Zinc/Black Palette */
+    --background: 240 10% 3.9%; /* Zinc 950 */
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%; /* Subtle dark border */
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+
+    /* Legacy compatibility - darker */
+    --layer-1: #09090b; /* Zinc 950 */
+    --layer-2: #18181b; /* Zinc 900 */
+    --layer-3: #27272a; /* Zinc 800 */
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+  }
 }
 
 @layer base {
   * {
-    box-sizing: border-box;
+    @apply border-border;
   }
-
-  html {
-    overflow-x: hidden;
-    width: 100%;
-    max-width: 100%;
-    scroll-behavior: smooth;
-  }
-
   body {
-    background-color: var(--background);
-    color: var(--text-primary);
-    font-family: 'Poppins', system-ui, sans-serif;
-    font-size: 14px;
-    overflow-x: hidden;
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
+    @apply bg-background text-foreground;
   }
 }
 
 @layer components {
-  .nav-link {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
-    @apply text-text-secondary hover:bg-layer-2 hover:text-text-primary;
-  }
-
-  .nav-link-active {
-    @apply bg-layer-2 text-accent;
-  }
-
+  /* Legacy card support */
   .card {
-    @apply bg-layer-1 border border-layer-3 rounded-lg;
+    @apply bg-card text-card-foreground rounded-xl border border-border shadow-sm;
   }
-
   .card-header {
-    @apply px-6 py-4 border-b border-layer-3;
+    @apply flex flex-col space-y-1.5 p-6;
   }
-
   .card-content {
-    @apply p-6;
+    @apply p-6 pt-0;
   }
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--layer-1);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--layer-3);
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-*:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-::selection {
-  background-color: var(--accent);
-  color: white;
 }

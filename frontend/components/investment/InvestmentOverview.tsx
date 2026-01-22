@@ -5,9 +5,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { useInvestmentOverview, useUpdateEmergencyFundMonths, useUpdateLiquidityReserve } from '@/lib/queries/investment'
-import { investmentApi } from '@/lib/api/investment'
-import { formatCurrency } from '@/lib/utils'
-import { TrendingUp, TrendingDown, Minus, AlertCircle, PiggyBank, Wallet, Info } from 'lucide-react'
+import { formatCurrency, cn } from '@/lib/utils'
+import { TrendingUp, TrendingDown, Minus, AlertCircle, PiggyBank, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -30,7 +29,7 @@ const MONTHS_OPTIONS = [
 ]
 
 export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
-  const { data, isLoading, isError, refetch } = useInvestmentOverview(accountId)
+  const { data, isLoading, isError } = useInvestmentOverview(accountId)
   const [selectedMonths, setSelectedMonths] = useState<number | null>(null)
   const [isEditingFund, setIsEditingFund] = useState(false)
   const [fundAmount, setFundAmount] = useState('')
@@ -70,7 +69,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Resumen de Inversión</CardTitle>
+           <CardTitle>Resumen de Inversión</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-4 text-muted-foreground">
@@ -147,41 +146,44 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
   }
 
   return (
-    <Card className="bg-gradient-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/20 dark:to-indigo-950/10 border-blue-200/50 dark:border-blue-800/30">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-blue-700 dark:text-blue-300">Resumen de Inversión</CardTitle>
-        {profile && (
-          <RiskBadge profile={profile.riskProfile} />
-        )}
+    <Card className="h-full border-none shadow-none bg-transparent">
+      <CardHeader className="px-0 pt-0 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-lg font-bold tracking-tight">
+              Resumen
+            </CardTitle>
+          </div>
+          {profile && (
+            <RiskBadge profile={profile.riskProfile} />
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <CardContent className="p-0 space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <MetricCard
-            label="Ingreso mensual"
+            label="Ingresos"
             value={formatCurrency(financialSummary.avgMonthlyIncome)}
             icon={<Wallet className="h-4 w-4 text-blue-500" />}
-            tooltip="Tu promedio de ingresos mensuales basado en los últimos 12 meses"
           />
           <MetricCard
-            label="Gastos mensuales"
+            label="Gastos"
             value={formatCurrency(financialSummary.avgMonthlyExpenses)}
             icon={<TrendingDown className="h-4 w-4 text-red-500" />}
-            tooltip="Tu promedio de gastos mensuales (excluyendo inversiones)"
           />
           <MetricCard
-            label="Capacidad de ahorro"
+            label="Ahorro"
             value={formatCurrency(financialSummary.savingsCapacity)}
+            icon={<PiggyBank className="h-4 w-4 text-emerald-500" />}
             highlight
-            subtitle={`${financialSummary.savingsRate.toFixed(1)}% rate`}
-            tooltip="Lo que te sobra cada mes después de gastos. Esta es la cantidad que puedes invertir."
+            subtitle={`${financialSummary.savingsRate.toFixed(0)}%`}
           />
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-2 mb-1">
-              <PiggyBank className="h-4 w-4 text-green-500" />
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                Fondo de emergencia
-                <InfoTooltip content="Ahorro reservado para imprevistos (pérdida de empleo, reparaciones, etc.). Recomendado: 3-6 meses de gastos." />
+          <div className="p-4 rounded-xl bg-card border border-border/40 dark:border-white/5 dark:bg-zinc-900 flex flex-col justify-between gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground uppercase">
+                Fondo
               </span>
+              <AlertCircle className="h-4 w-4 text-amber-500" />
             </div>
             {isEditingFund ? (
               <div className="flex items-center gap-2">
@@ -189,7 +191,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
                   type="number"
                   value={fundAmount}
                   onChange={(e) => setFundAmount(e.target.value)}
-                  className="h-8 px-2 text-lg font-bold w-24 border rounded"
+                  className="h-8 px-2 text-lg font-bold w-24 border rounded bg-background"
                   min="0"
                   step="0.01"
                 />
@@ -209,7 +211,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
               </div>
             ) : (
               <>
-                <div className="text-lg font-bold cursor-pointer hover:text-green-600" onClick={handleEditFund}>
+                <div className="text-2xl font-bold cursor-pointer hover:text-green-600 transition-colors" onClick={handleEditFund}>
                   {formatCurrency(currentFund)}
                 </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -221,14 +223,14 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Progreso fondo de emergencia</span>
-            <span className="font-medium">{savingsProgress.toFixed(0)}%</span>
+            <span className="text-muted-foreground font-medium">Progreso fondo de emergencia</span>
+            <span className="font-bold text-foreground">{savingsProgress.toFixed(0)}%</span>
           </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
+          <div className="h-3 bg-muted/50 rounded-full overflow-hidden border border-border/20">
             <div
-              className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-green-400 to-emerald-600 rounded-full transition-all duration-1000 ease-out"
               style={{ width: `${savingsProgress}%` }}
             />
           </div>
@@ -238,13 +240,14 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/30 rounded-lg">
-          <span className="text-sm font-medium flex items-center gap-1">
-            Meses de respaldo
-            <InfoTooltip content="¿Cuántos meses de gastos quieres tener reservados en tu fondo de emergencia? Recomendado: 3-6 meses." />
-          </span>
+        <div className="flex items-center gap-4 p-4 bg-card border border-border/40 dark:border-white/5 dark:bg-zinc-900 rounded-xl">
+          <div className="flex-1">
+            <span className="text-sm font-medium flex items-center gap-2">
+              Configuración Fondo Emergencia
+            </span>
+          </div>
           <select
-            className="text-sm border rounded-md px-2 py-1 bg-background"
+            className="text-xs border-none bg-muted/50 rounded-md px-3 py-1.5 cursor-pointer outline-none focus:ring-1 focus:ring-primary/20"
             value={selectedMonths ?? currentMonths}
             onChange={(e) => handleMonthsChange(Number(e.target.value))}
             disabled={updateMonthsMutation.isPending}
@@ -255,29 +258,30 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
               </option>
             ))}
           </select>
-          {updateMonthsMutation.isPending && <span className="text-xs text-muted-foreground">Guardando...</span>}
         </div>
 
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mt-4 pt-4 border-t border-border/40">
+          <div className="flex items-center gap-2 justify-center sm:justify-start">
             {getTrendIcon()}
-            <span className={getTrendColor()}>
-              {financialSummary.trend === 'improving' ? 'Mejorando' :
-               financialSummary.trend === 'declining' ? 'Empeorando' : 'Estable'}
+            <span className={`font-medium ${getTrendColor()}`}>
+              {financialSummary.trend === 'improving' ? 'Tendencia Positiva' :
+               financialSummary.trend === 'declining' ? 'Tendencia Negativa' : 'Tendencia Estable'}
             </span>
           </div>
-          <div className="text-muted-foreground">
-            📊 {financialSummary.historicalMonths} meses analizados
+          <div className="text-muted-foreground text-center">
+            📊 <span className="font-medium text-foreground">{financialSummary.historicalMonths}</span> meses analizados
           </div>
-          <div className="text-muted-foreground">
-            📅 {financialSummary.deficitMonths} mes(es) en déficit
+          <div className="text-muted-foreground text-center sm:text-right">
+            📅 <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span> mes(es) en déficit
           </div>
         </div>
 
         {financialSummary.deficitMonths > 3 && (
-          <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-sm text-yellow-800 dark:text-yellow-200">
-            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span>Tienes {financialSummary.deficitMonths} meses con gastos superiores a ingresos. Considera revisar tu presupuesto.</span>
+          <div className="flex items-start gap-3 p-4 bg-yellow-50/80 dark:bg-yellow-900/20 rounded-xl text-sm border border-yellow-200 dark:border-yellow-800/30">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-yellow-600 dark:text-yellow-500" />
+            <span className="text-yellow-800 dark:text-yellow-200">
+              Atención: Tienes {financialSummary.deficitMonths} meses con gastos superiores a ingresos. Considera revisar tu presupuesto antes de aumentar tus inversiones.
+            </span>
           </div>
         )}
       </CardContent>
@@ -305,19 +309,36 @@ function MetricCard({
   tooltip?: string
 }) {
   return (
-    <div className={`p-3 rounded-lg ${highlight ? 'bg-primary/10' : 'bg-muted/50'}`}>
-      <div className="flex items-center gap-2 mb-1">
-        {icon}
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
+    <div className={cn(
+      "p-4 rounded-xl border flex flex-col relative overflow-hidden",
+      highlight
+        ? "bg-emerald-500/5 border-emerald-500/10 dark:bg-emerald-500/10 dark:border-emerald-500/10"
+        : "bg-card border-border/40 dark:bg-zinc-900 dark:border-white/5"
+    )}>
+      {/* Header: Label + Icon/Tooltip */}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider line-clamp-1">
           {label}
-          {tooltip && <InfoTooltip content={tooltip} />}
         </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {tooltip && <InfoTooltip content={tooltip} className="w-3 h-3" />}
+          <div className={cn("text-muted-foreground", highlight && "text-emerald-500")}>
+            {icon}
+          </div>
+        </div>
       </div>
-      <div className={`text-lg font-bold ${highlight ? 'text-primary' : ''}`}>
+      
+      {/* Body: Value */}
+      <div className="text-xl font-bold tracking-tight text-foreground">
         {value}
       </div>
+
+      {/* Footer: Subtitle (pushed to bottom if exists) */}
       {subtitle && (
-        <div className="text-xs text-muted-foreground">{subtitle}</div>
+        <div className="mt-auto pt-3 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+          <div className="w-1 h-1 rounded-full bg-current" />
+          {subtitle}
+        </div>
       )}
     </div>
   )
@@ -344,7 +365,7 @@ export function RiskBadge({ profile }: { profile: string }) {
 
   return (
     <Tooltip content={descriptions[profile as keyof typeof descriptions]}>
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[profile as keyof typeof colors]} cursor-help`}>
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${colors[profile as keyof typeof colors]} cursor-help border border-current/20`}>
         {labels[profile as keyof typeof labels]}
       </span>
     </Tooltip>

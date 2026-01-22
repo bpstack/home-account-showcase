@@ -29,14 +29,14 @@ export function Sidebar() {
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
           isActive
-            ? 'bg-layer-2 text-accent dark:text-white border-l-4 border-accent'
-            : 'text-text-secondary hover:bg-layer-2 hover:text-text-primary border-l-4 border-transparent'
+            ? 'bg-muted text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground border-l-4 border-transparent'
         )}
       >
         <item.icon
           className={cn(
             'h-5 w-5',
-            isActive ? 'text-accent dark:text-white' : 'text-text-secondary'
+            isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
           )}
         />
         <span>{item.name}</span>
@@ -45,16 +45,16 @@ export function Sidebar() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-layer-1">
-      <div className="flex items-center gap-2 px-6 h-16 bg-background border-b border-layer-3">
-        <Wallet className="h-7 w-7 text-accent" />
-        <span className="text-lg font-semibold text-text-primary">Home Account</span>
+    <div className="flex h-full flex-col bg-background">
+      <div className="flex items-center gap-2 px-6 h-16 bg-background border-b border-border">
+        <Wallet className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+        <span className="text-lg font-semibold text-foreground">Home Account</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <div className="flex flex-col gap-1">{mainLinks.map((item) => renderLink(item))}</div>
 
-        <div className="border-t border-layer-3 my-3" />
+        <div className="border-t border-border my-3" />
 
         <div className="flex flex-col gap-1">
           <Link
@@ -62,14 +62,14 @@ export function Sidebar() {
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
               panel === 'settings'
-                ? 'bg-layer-2 text-accent dark:text-white border-l-4 border-accent'
-                : 'text-text-secondary hover:bg-layer-2 hover:text-text-primary border-l-4 border-transparent'
+                ? 'bg-muted text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground border-l-4 border-transparent'
             )}
           >
             <Settings
               className={cn(
                 'h-5 w-5',
-                panel === 'settings' ? 'text-accent dark:text-white' : 'text-text-secondary'
+                panel === 'settings' ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
               )}
             />
             <span>Configuración</span>

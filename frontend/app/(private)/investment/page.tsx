@@ -68,36 +68,48 @@ export default function InvestmentPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-border/40">
         <div>
-          <h1 className="text-3xl font-bold">Inversión</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Inversión
+          </h1>
+          <p className="text-muted-foreground mt-2 text-lg">
             Análisis financiero y recomendaciones personalizadas
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 bg-muted/30 p-2 rounded-xl border border-border/50 backdrop-blur-sm">
           <MarketPricesWidget accountId={defaultAccountId} compact />
-          <div className="h-6 sm:h-8 w-px bg-border" />
+          <div className="h-8 w-px bg-border/60" />
           <ToggleDisclaimersButton />
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - Investment content */}
-        <div className="lg:col-span-2 space-y-6">
-          <InvestmentOverview accountId={defaultAccountId} />
-          <Recommendations accountId={defaultAccountId} />
-          <Simulator accountId={defaultAccountId} />
+      {/* Main content - New Wide Structure */}
+      <div className="space-y-8">
+        {/* Top Section: Overview & Market - Full Width */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="xl:col-span-2">
+             <InvestmentOverview accountId={defaultAccountId} />
+          </div>
+          <div className="xl:col-span-1 h-full">
+            <MarketSummary accountId={defaultAccountId} />
+          </div>
         </div>
 
-        {/* Right column - Profile, Chat, and Market Summary */}
-        <div className="space-y-6">
-          <AIChat accountId={defaultAccountId} sessionId={sessionId} />
-          <ProfileForm accountId={defaultAccountId} />
-          <MarketSummary accountId={defaultAccountId} />
+        {/* Middle Section: Tools - Horizontal Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+             <Simulator accountId={defaultAccountId} />
+             <div className="space-y-8">
+                <Recommendations accountId={defaultAccountId} />
+                <ProfileForm accountId={defaultAccountId} />
+             </div>
+        </div>
+
+        {/* Bottom Section: Chat - Full Width for better visibility */}
+        <div className="w-full">
+           <AIChat accountId={defaultAccountId} sessionId={sessionId} className="h-[600px] shadow-lg border-border/60" />
         </div>
       </div>
     </div>

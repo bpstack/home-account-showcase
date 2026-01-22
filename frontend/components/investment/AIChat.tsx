@@ -139,8 +139,10 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
+            <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
+              <div className="p-1.5 bg-primary/10 rounded-lg">
+                <Bot className="h-5 w-5 text-primary" />
+              </div>
               Asesor IA
             </CardTitle>
 
@@ -284,8 +286,8 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
         )}
 
         {/* Input area */}
-        <div className="flex-shrink-0 pt-3 border-t">
-          <div className="flex gap-2">
+        <div className="flex-shrink-0 pt-4 pb-2 px-1 border-t border-border/40">
+          <div className="flex gap-2 relative">
             <Input
               ref={inputRef}
               value={input}
@@ -293,12 +295,13 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu pregunta..."
               disabled={isTyping}
-              className="flex-1"
+              className="flex-1 pr-10 rounded-xl border-border/60 focus-visible:ring-primary/20 bg-background/50"
             />
             <Button
               onClick={handleSend}
               disabled={!input.trim() || isTyping}
-              size="default"
+              size="icon"
+              className="absolute right-1 top-1 h-8 w-8 rounded-lg transition-transform active:scale-95"
             >
               {isTyping ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -307,7 +310,7 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
               )}
             </Button>
           </div>
-          <DisclaimerAlert variant="compact" className="mt-2" type="chat" />
+          <DisclaimerAlert variant="compact" className="mt-3 opacity-80" type="chat" />
         </div>
       </CardContent>
     </Card>
@@ -349,15 +352,15 @@ function ChatBubble({
 
   return (
     <div className={cn(
-      'flex flex-col max-w-[85%]',
+      'flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300',
       isUser ? 'ml-auto items-end' : 'mr-auto items-start'
     )}>
       <div
         className={cn(
-          'rounded-2xl px-4 py-2.5 text-sm',
+          'px-4 py-3 text-sm shadow-sm',
           isUser
-            ? 'bg-primary text-primary-foreground rounded-br-md'
-            : 'bg-muted text-foreground rounded-bl-md'
+            ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm'
+            : 'bg-muted/80 backdrop-blur-sm text-foreground rounded-2xl rounded-tl-sm border border-border/50'
         )}
       >
         {content.split('\n').map((paragraph, i) => (
@@ -366,8 +369,8 @@ function ChatBubble({
           </p>
         ))}
       </div>
-      <span className="text-xs text-muted-foreground mt-1 px-1">
-        {isUser ? 'Tú' : 'IA'} • {formatDistanceToNow(timestamp, { addSuffix: true })}
+      <span className="text-[10px] text-muted-foreground mt-1 px-1 font-medium">
+        {isUser ? 'Tú' : 'Asesor'} • {formatDistanceToNow(timestamp, { addSuffix: true })}
       </span>
     </div>
   )

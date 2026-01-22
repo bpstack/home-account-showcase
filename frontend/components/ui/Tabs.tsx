@@ -36,7 +36,7 @@ export function Tabs({
 
   if (variant === 'pills') {
     return (
-      <div className={cn('flex flex-wrap gap-2', className)}>
+      <div className={cn('inline-flex p-1 bg-muted rounded-lg', className)}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
 
@@ -45,10 +45,10 @@ export function Tabs({
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={cn(
-                'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                'px-4 py-2 rounded-md text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-accent text-white'
-                  : 'bg-layer-2 text-text-secondary hover:bg-layer-3 hover:text-text-primary'
+                  ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {tab.label}
@@ -60,7 +60,7 @@ export function Tabs({
   }
 
   return (
-    <div className={cn('border-b border-layer-3', className)}>
+    <div className={cn('border-b border-border', className)}>
       <nav className="flex space-x-4 -mb-px overflow-x-auto">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
@@ -72,8 +72,8 @@ export function Tabs({
               className={cn(
                 'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors',
                 isActive
-                  ? 'border-accent text-accent'
-                  : 'border-transparent text-text-secondary hover:text-text-primary hover:border-layer-3'
+                  ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               )}
             >
               {tab.label}

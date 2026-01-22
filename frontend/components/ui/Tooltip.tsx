@@ -95,9 +95,9 @@ export function Tooltip({
           ref={tooltipRef}
           role="tooltip"
           className={cn(
-            'fixed z-50 px-3 py-2 text-sm bg-popover text-popover-foreground rounded-md shadow-md',
+            'fixed z-[100] px-3 py-2 text-sm bg-popover text-popover-foreground rounded-md shadow-md shadow-black/5',
             'max-w-xs break-words animate-in fade-in-0 zoom-in-95 duration-200',
-            'border border-border',
+            'border border-border/50',
             className
           )}
           style={{

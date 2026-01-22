@@ -60,13 +60,13 @@ export function TransactionsToolbar({
       {/* Row 1: Search + Month + Year + Actions */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-[2] min-w-[220px] relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <input
             type="text"
             placeholder="Buscar..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full h-9 pl-10 pr-3 text-sm rounded-lg border border-layer-3 bg-layer-1 text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full h-9 pl-10 pr-3 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -101,13 +101,13 @@ export function TransactionsToolbar({
 
       {/* Row 2: Type Filter + Category */}
       <div className="flex items-center gap-2">
-        <div className="inline-flex bg-layer-2 rounded-lg p-1">
+        <div className="inline-flex bg-muted rounded-lg p-1">
           <button
             onClick={() => setType('all')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
               selectedType === 'all'
-                ? 'bg-layer-1 text-text-primary shadow-sm'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Todos
@@ -116,8 +116,8 @@ export function TransactionsToolbar({
             onClick={() => setType('income')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
               selectedType === 'income'
-                ? 'bg-success text-white'
-                : 'text-text-secondary hover:text-success'
+                ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Ingresos
@@ -126,8 +126,8 @@ export function TransactionsToolbar({
             onClick={() => setType('expense')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
               selectedType === 'expense'
-                ? 'bg-danger text-white'
-                : 'text-text-secondary hover:text-danger'
+                ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Gastos

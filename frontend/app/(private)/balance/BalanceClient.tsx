@@ -286,7 +286,7 @@ function BalanceContent({
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="inline-flex p-1 bg-layer-2 rounded-lg self-center sm:self-auto">
+          <div className="inline-flex p-1 bg-muted rounded-lg self-center sm:self-auto">
             {[
               { id: 'balance', label: 'Balance', icon: Wallet },
               { id: 'income', label: 'Ingresos', icon: TrendingUp },
@@ -297,8 +297,8 @@ function BalanceContent({
                 onClick={() => updateUrl({ tab: id as TabType })}
                 className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none ${
                   activeTab === id
-                    ? 'bg-layer-1 text-text-primary shadow-sm'
-                    : 'text-text-secondary hover:text-text-primary'
+                    ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -307,7 +307,7 @@ function BalanceContent({
             ))}
           </div>
 
-          <div className="inline-flex p-1 bg-layer-2 rounded-lg self-center sm:self-auto">
+          <div className="inline-flex p-1 bg-muted rounded-lg self-center sm:self-auto">
             {[
               { id: 'monthly', label: 'Mes' },
               { id: 'yearly', label: 'Año' },
@@ -318,8 +318,8 @@ function BalanceContent({
                 onClick={() => updateUrl({ period: id as Period })}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   period === id
-                    ? 'bg-accent text-white'
-                    : 'text-text-secondary hover:text-text-primary'
+                    ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {label}
@@ -330,7 +330,7 @@ function BalanceContent({
 
         <div className="flex items-center justify-center">
           {period === 'monthly' && (
-            <div className="flex items-center gap-2 bg-layer-2 rounded-lg p-1.5">
+            <div className="flex items-center gap-2 bg-muted rounded-lg p-1.5">
               <Button variant="ghost" size="icon" onClick={prevMonth} className="h-9 w-9">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
@@ -353,7 +353,7 @@ function BalanceContent({
           )}
 
           {period === 'yearly' && (
-            <div className="flex items-center gap-2 bg-layer-2 rounded-lg p-1.5">
+            <div className="flex items-center gap-2 bg-muted rounded-lg p-1.5">
               <Button
                 variant="ghost"
                 size="icon"
@@ -380,10 +380,10 @@ function BalanceContent({
           )}
 
           {period === 'custom' && (
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 bg-layer-2 rounded-lg p-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 bg-muted rounded-lg p-2">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-text-secondary hidden sm:block" />
-                <span className="text-xs text-text-secondary sm:hidden">Desde</span>
+                <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                <span className="text-xs text-muted-foreground sm:hidden">Desde</span>
                 <Input
                   type="date"
                   value={customStartDate}
@@ -391,9 +391,9 @@ function BalanceContent({
                   className="h-9 w-36 text-sm"
                 />
               </div>
-              <span className="text-text-secondary hidden sm:block">→</span>
+              <span className="text-muted-foreground hidden sm:block">→</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-text-secondary sm:hidden">Hasta</span>
+                <span className="text-xs text-muted-foreground sm:hidden">Hasta</span>
                 <Input
                   type="date"
                   value={customEndDate}

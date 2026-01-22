@@ -62,49 +62,48 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
   }
 
   return (
-    <Card className="border-emerald-200/50 dark:border-emerald-800/30 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 dark:from-emerald-950/20 dark:to-teal-950/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400/90">
-          <TrendingUp className="h-5 w-5" />
-          Plan de Inversión Mensual ({investmentPercentage}%)
+    <Card className="h-full border-border/50 bg-background/50 dark:bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
+      <CardHeader className="pb-6 border-b border-border/40">
+        <CardTitle className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/10 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">Plan de Inversión</span>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full border border-border/50">
+            {investmentPercentage}% ahorro
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <DisclaimerAlert type="recommendations" />
 
         {/* Resumen */}
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="p-4 rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 bg-white/50 dark:bg-gray-800/50">
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+        {/* Resumen */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          <div className="p-4 rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/50 flex flex-col justify-center">
+            <div className="text-3xl font-bold text-foreground tracking-tight">
               {formatCurrency(investmentAmount)}
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Mensual a invertir
-              <span className="block text-[10px] opacity-70 mt-0.5">
-                ({investmentPercentage}% de {formatCurrency(savingsCapacity)})
-              </span>
+            <div className="text-xs font-semibold text-muted-foreground mt-1 uppercase tracking-wider">
+              Mensual
             </div>
           </div>
-          <div className="p-4 rounded-xl border border-green-200/50 dark:border-green-800/50 bg-green-50/50 dark:bg-green-900/20">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div className="p-4 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-center">
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {data.assetAllocation.stocks + data.assetAllocation.crypto}%
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Acciones/crypto
-              <span className="block text-[10px] opacity-70 mt-0.5">
-                {formatCurrency(investmentAmount * (data.assetAllocation.stocks + data.assetAllocation.crypto) / 100)}
-              </span>
+            <div className="text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80 mt-1">
+              Renta Variable
             </div>
           </div>
-          <div className="p-4 rounded-xl border border-blue-200/50 dark:border-blue-800/50 bg-blue-50/50 dark:bg-blue-900/20">
+          <div className="p-4 rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col justify-center">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {data.assetAllocation.bonds + data.assetAllocation.cash}%
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Bonos/liquidez
-              <span className="block text-[10px] opacity-70 mt-0.5">
-                {formatCurrency(investmentAmount * (data.assetAllocation.bonds + data.assetAllocation.cash) / 100)}
-              </span>
+            <div className="text-xs font-medium text-blue-600/80 dark:text-blue-400/80 mt-1">
+              Renta Fija / Liq.
             </div>
           </div>
         </div>
@@ -179,11 +178,11 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
   }
 
   const typeColors = {
-    ETF: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-    BOND_FUND: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-    CRYPTO: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-    STOCK: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-    SAVINGS: 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300'
+    ETF: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    BOND_FUND: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    CRYPTO: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    STOCK: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    SAVINGS: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400'
   }
 
   const riskColors = {
@@ -195,49 +194,42 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
   const recommendationAmount = (amount * recommendation.percentage) / 100
 
   return (
-    <div className="p-4 border border-border/40 dark:border-border/20 rounded-lg hover:border-primary/30 transition-colors bg-card/50">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
+    <div className="p-3 rounded-lg border border-border/40 dark:bg-zinc-900 dark:border-white/5 hover:bg-muted/10 transition-colors group">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <div className={cn(
-            'p-2 rounded-lg',
-            typeColors[recommendation.type as keyof typeof typeColors]
+            'p-2 rounded-lg shrink-0',
+             typeColors[recommendation.type as keyof typeof typeColors] || 'bg-muted text-muted-foreground'
           )}>
             {typeIcons[recommendation.type as keyof typeof typeIcons]}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-foreground/90">{recommendation.name}</h4>
-              <span className="text-xs text-muted-foreground">
-                ({recommendation.symbol})
+              <h4 className="font-semibold text-foreground text-sm">{recommendation.name}</h4>
+              <span className="text-[10px] uppercase text-muted-foreground">
+                {recommendation.symbol}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground/80 mt-1">
+            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1 max-w-[200px]">
               {recommendation.reason}
             </p>
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="font-bold text-lg text-foreground/90">
+        <div className="text-right shrink-0">
+          <div className="font-semibold text-sm text-foreground">
             {formatCurrency(recommendationAmount)}
           </div>
-          <div className="text-sm text-muted-foreground">
-            {recommendation.percentage}% del mensual
-          </div>
           <div className={cn(
-            'text-xs font-medium mt-1',
-            riskColors[recommendation.risk as keyof typeof riskColors]
+            'text-[9px] font-bold mt-1 inline-flex items-center px-1.5 py-0.5 rounded border',
+            riskColors[recommendation.risk as keyof typeof riskColors] === 'text-green-600' ? 'bg-green-500/5 border-green-500/10 text-green-600 dark:text-green-400' :
+            riskColors[recommendation.risk as keyof typeof riskColors] === 'text-yellow-600' ? 'bg-yellow-500/5 border-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
+            'bg-red-500/5 border-red-500/10 text-red-600 dark:text-red-400'
           )}>
-            Riesgo {recommendation.risk}
+            {recommendation.risk.toUpperCase()}
           </div>
         </div>
       </div>
-
-      {recommendation.units && (
-        <div className="mt-2 text-xs text-muted-foreground/70 text-right">
-          ≈ {recommendation.units.toFixed(4)} unidades a {formatCurrency(recommendation.currentPrice || 0)}
-        </div>
-      )}
     </div>
   )
 }

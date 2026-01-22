@@ -48,11 +48,11 @@ export function SettingsPanel() {
   return (
     <div className="h-full max-w-[1400px]">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Configuración</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Gestiona los ajustes de tu cuenta</p>
+        <h2 className="text-xl font-semibold text-foreground">Configuración</h2>
+        <p className="text-sm text-muted-foreground mt-1">Gestiona los ajustes de tu cuenta</p>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-[#30363d] mb-6">
+      <div className="border-b border-border mb-6">
         <nav className="flex gap-4 overflow-x-auto">
           {tabs.map((tab) => (
             <button
@@ -60,8 +60,8 @@ export function SettingsPanel() {
               onClick={() => handleTabChange(tab.id)}
               className={`px-1 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.label}
@@ -107,10 +107,10 @@ function AccountSettings() {
   }
 
   return (
-    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Nombre de la cuenta</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cambia el nombre de tu cuenta</p>
+    <div className="bg-card rounded-lg border border-border">
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">Nombre de la cuenta</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Cambia el nombre de tu cuenta</p>
       </div>
 
       <div className="p-4">
@@ -195,10 +195,10 @@ function MembersSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Agregar miembro</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Agregar miembro</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Escribe el email y nombre del usuario que quieres agregar
           </p>
         </div>
@@ -241,10 +241,10 @@ function MembersSettings() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Miembros de la cuenta</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Miembros de la cuenta</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             {members.length} {members.length === 1 ? 'miembro' : 'miembros'}
           </p>
         </div>
@@ -266,8 +266,8 @@ function MembersSettings() {
                       {member.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{member.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{member.email}</p>
+                      <p className="text-sm font-medium text-foreground">{member.name}</p>
+                      <p className="text-xs text-muted-foreground">{member.email}</p>
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
