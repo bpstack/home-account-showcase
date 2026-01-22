@@ -5,6 +5,7 @@ import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
 import { Providers } from '@/components/providers/Providers'
+import { Toaster } from 'sonner'
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <Providers>{children}</Providers>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

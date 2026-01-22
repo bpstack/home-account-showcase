@@ -16,6 +16,7 @@ import { useAccount } from '@/lib/queries/accounts'
 import { useDisclaimersStore } from '@/stores/disclaimersStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 
 // Dynamic imports to avoid SSR issues
@@ -138,14 +139,14 @@ function SkeletonCard() {
     <Card>
       <CardHeader>
         <CardTitle>
-          <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+          <Skeleton className="h-6 w-48" />
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="h-20 bg-muted rounded animate-pulse" />
-          <div className="h-32 bg-muted rounded animate-pulse" />
-          <div className="h-16 bg-muted rounded animate-pulse" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-16 w-full" />
         </div>
       </CardContent>
     </Card>

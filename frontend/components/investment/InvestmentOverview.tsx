@@ -10,6 +10,8 @@ import { formatCurrency } from '@/lib/utils'
 import { TrendingUp, TrendingDown, Minus, AlertCircle, PiggyBank, Wallet, Info } from 'lucide-react'
 import { useState } from 'react'
 import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
+import { Skeleton } from '@/components/ui/Skeleton'
+import { toast } from 'sonner'
 
 interface InvestmentOverviewProps {
   accountId: string
@@ -43,10 +45,19 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
           <CardTitle>Resumen de Inversión</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-20 bg-muted rounded-lg" />
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-full rounded-full" />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+               {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-4 w-20" />
               ))}
             </div>
           </div>
@@ -103,8 +114,13 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
   )
 
   const handleMonthsChange = async (months: number) => {
-    setSelectedMonths(months)
-    await updateMonthsMutation.mutateAsync({ accountId, months })
+    try {
+      setSelectedMonths(months)
+      await updateMonthsMutation.mutateAsync({ accountId, months })
+      toast.success('Meses de respaldo actualizados')
+    } catch (error) {
+      toast.error('Error al actualizar meses de respaldo')
+    }
   }
 
   const handleEditFund = () => {
@@ -116,8 +132,13 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
     const amount = parseFloat(fundAmount)
     if (isNaN(amount) || amount < 0) return
 
-    await updateLiquidityMutation.mutateAsync({ accountId, amount })
-    setIsEditingFund(false)
+    try {
+      await updateLiquidityMutation.mutateAsync({ accountId, amount })
+      setIsEditingFund(false)
+      toast.success('Fondo de emergencia actualizado')
+    } catch (error) {
+      toast.error('Error al actualizar fondo de emergencia')
+    }
   }
 
   const handleCancelEdit = () => {
@@ -134,7 +155,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
         )}
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard
             label="Ingreso mensual"
             value={formatCurrency(financialSummary.avgMonthlyIncome)}

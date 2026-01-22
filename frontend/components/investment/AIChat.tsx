@@ -13,6 +13,7 @@ import { investmentApi } from '@/lib/api/investment'
 import { DisclaimerAlert } from './DisclaimerAlert'
 import { Send, MessageCircle, Bot, User, Loader2, Trash2, ChevronDown, History, X } from 'lucide-react'
 import { formatCurrency, formatDistanceToNow, cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface AIChatProps {
   accountId: string
@@ -229,11 +230,19 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
       <CardContent className="flex-1 flex flex-col pt-0 overflow-hidden">
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-          {messages.length === 0 && !isLoading && (
+          {isLoading ? (
+             <div className="space-y-4 p-4">
+               {[...Array(3)].map((_, i) => (
+                 <div key={i} className={`flex flex-col max-w-[85%] ${i % 2 === 0 ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                   <Skeleton className="h-12 w-full rounded-2xl" />
+                   <Skeleton className="h-3 w-20 mt-1" />
+                 </div>
+               ))}
+             </div>
+          ) : messages.length === 0 ? (
             <EmptyState onStart={createSession} />
-          )}
-
-          {messages
+          ) : (
+            messages
             .filter((m) => m.role !== 'system' || messages.length <= 1)
             .map((message, index) => (
               <ChatBubble
@@ -242,7 +251,8 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
                 content={message.content}
                 timestamp={message.timestamp}
               />
-            ))}
+            ))
+          )}
 
           {isTyping && <TypingIndicator />}
 
@@ -367,9 +377,9 @@ function TypingIndicator() {
   return (
     <div className="flex items-center gap-2 text-muted-foreground">
       <div className="flex items-center gap-1">
-        <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
-        <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
       </div>
       <span className="text-sm">Escribiendo...</span>
     </div>
