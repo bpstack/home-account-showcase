@@ -2,347 +2,345 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ThemeToggle } from '@/components/ui'
+import { User, Users, TrendingUp, X, Smartphone, Monitor } from 'lucide-react'
 
 export default function HomePage() {
-  const [scrollY, setScrollY] = useState(0)
+  const [showMobile, setShowMobile] = useState(false)
+  const [showAccountsModal, setShowAccountsModal] = useState(false)
 
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY)
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  const accountTypes = [
+    {
+      icon: User,
+      title: 'Cuenta Individual',
+      description: 'Control personal de tus finanzas',
+      color: 'bg-blue-500/10 text-blue-500',
+      borderColor: 'hover:border-blue-500',
+    },
+    {
+      icon: Users,
+      title: 'Cuenta Familiar',
+      description: 'Gestión compartida del hogar',
+      color: 'bg-emerald-500/10 text-emerald-500',
+      borderColor: 'hover:border-emerald-500',
+    },
+    {
+      icon: TrendingUp,
+      title: 'Cuenta Inversión',
+      description: 'Seguimiento de tu portfolio',
+      color: 'bg-violet-500/10 text-violet-500',
+      borderColor: 'hover:border-violet-500',
+    },
+  ]
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      {/* Fixed Background with Animated Grid */}
-      <div className="fixed inset-0 -z-10 bg-white dark:bg-[#010409]">
-        <div
-          className="absolute inset-0 opacity-[0.15] dark:opacity-[0.08] transition-transform duration-300 ease-out"
-          style={{
-            backgroundImage: `linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px)`,
-            backgroundSize: '50px 50px',
-            transform: `translateY(${scrollY * 0.5}px)`,
-          }}
-        />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-500/20 dark:bg-teal-500/10 rounded-full blur-3xl" />
+    <div className="min-h-[100dvh] lg:h-[100dvh] lg:overflow-hidden bg-background text-foreground">
+      {/* Subtle color accents in background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-40 -left-40 w-80 h-80 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-blue-500/20 dark:bg-blue-500/10 rounded-full blur-[100px]" />
       </div>
 
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-white/80 dark:bg-[#0d1117]/80 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center space-x-2 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center transform group-hover:scale-110 transition-transform">
-                <span className="text-white font-bold text-lg">H</span>
+      {/* Main Grid */}
+      <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr,1.2fr] gap-0">
+
+        {/* LEFT PANEL - Content */}
+        <div className="relative flex flex-col justify-between p-6 sm:p-8 lg:p-12 min-h-[100dvh] lg:min-h-0">
+
+          {/* Header */}
+          <header className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg shadow-emerald-500/20">
+                <span className="text-white font-bold text-sm">HA</span>
               </div>
-              <span className="text-xl font-semibold text-gray-900 dark:text-white hidden sm:block">
+              <span className="font-semibold text-lg tracking-tight hidden sm:block group-hover:tracking-wide transition-all duration-300">
                 Home Account
               </span>
             </Link>
             <ThemeToggle />
-          </div>
-        </div>
-      </header>
+          </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-28 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <div
-            className="inline-block mb-4 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 transition-all duration-700 ease-out"
-            style={{
-              opacity: Math.max(0.5, 1 - scrollY / 400),
-              transform: `translateY(${scrollY * 0.1}px)`,
-            }}
-          >
-            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-              ✨ Control financeiro simplificado
-            </span>
-          </div>
-
-          <h1
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 transition-all duration-700 ease-out"
-            style={{
-              transform: `translateY(${scrollY * 0.2}px)`,
-              opacity: Math.max(0.2, 1 - scrollY / 600),
-            }}
-          >
-            <span className="bg-gradient-to-r from-gray-900 via-emerald-800 to-teal-800 dark:from-white dark:via-emerald-200 dark:to-teal-200 bg-clip-text text-transparent">
-              Contabilidad
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
-              para tu hogar
-            </span>
-          </h1>
-
-          <p
-            className="text-lg md:text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto transition-all duration-700 ease-out"
-            style={{
-              transform: `translateY(${scrollY * 0.15}px)`,
-              opacity: Math.max(0.2, 1 - scrollY / 600),
-            }}
-          >
-            Controla tus gastos, ingresos y ahorros de forma sencilla.
-            Tu economía familiar, bajo control.
-          </p>
-
-          <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-3 transition-all duration-700 ease-out"
-            style={{
-              transform: `translateY(${scrollY * 0.1}px)`,
-              opacity: Math.max(0.2, 1 - scrollY / 600),
-            }}
-          >
-            <Link
-              href="/login"
-              className="group relative px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-lg overflow-hidden transition-all hover:shadow-lg hover:shadow-emerald-500/30 transform hover:scale-105"
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                Empezar ahora
-                <svg
-                  className="w-4 h-4 transform group-hover:translate-x-1 transition-transform"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 7l5 5m0 0l-5 5m5-5H6"
-                  />
-                </svg>
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-600 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
-
-            <Link
-              href="/dashboard"
-              className="px-6 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold rounded-lg border-2 border-gray-300 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all transform hover:scale-105"
-            >
-              Ver demo →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Desktop Preview Section */}
-      <section className="relative py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div
-            className="relative transition-all duration-1000 ease-out"
-            style={{
-              transform: `translateY(${Math.max(0, 20 - scrollY * 0.1)}px)`,
-              opacity: Math.min(1, Math.max(0, (scrollY - 50) / 250)),
-            }}
-          >
-            <div className="absolute -inset-3 bg-gradient-to-r from-emerald-500/15 to-teal-500/15 dark:from-emerald-500/8 dark:to-teal-500/8 rounded-2xl blur-xl" />
-
-            <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-xl p-3 shadow-xl border border-gray-200 dark:border-gray-800">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                <div className="ml-3 text-xs text-gray-500 dark:text-gray-400 font-mono">
-                  Panel Financiero
-                </div>
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col justify-center py-12 lg:py-0">
+            <div className="space-y-6">
+              {/* Tagline with color accent */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full border border-emerald-500/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400 tracking-wide uppercase">
+                  Finanzas del hogar
+                </span>
               </div>
 
-              <div className="relative rounded-lg overflow-hidden shadow-lg">
+              {/* Headline */}
+              <h1 className="text-[clamp(2.5rem,8vw,4.5rem)] font-bold leading-[0.95] tracking-tight">
+                <span className="inline-block hover:translate-x-2 transition-transform duration-300 cursor-default">
+                  Control total
+                </span>
+                <br />
+                <span className="bg-gradient-to-r from-emerald-500 to-blue-500 bg-clip-text text-transparent inline-block hover:from-blue-500 hover:to-emerald-500 transition-all duration-500 cursor-default">
+                  de tu economía
+                </span>
+              </h1>
+
+              {/* Description */}
+              <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
+                Gestiona gastos, ingresos e inversiones de tu familia
+                en un solo lugar. Simple y privado.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <Link
+                  href="/login"
+                  className="group relative inline-flex items-center justify-center h-12 px-6 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-105"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    Comenzar gratis
+                    <svg
+                      className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </span>
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="group inline-flex items-center justify-center h-12 px-6 border-2 border-border font-semibold rounded-lg transition-all duration-300 hover:border-emerald-500 hover:text-emerald-500"
+                >
+                  <span className="transition-transform duration-300 group-hover:scale-105">
+                    Ver demo
+                  </span>
+                </Link>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Footer Stats + Múltiples cuentas */}
+          <div className="flex items-center justify-between pt-5 border-t border-border">
+            {/* Stats */}
+            <div className="flex items-center gap-6 sm:gap-10">
+              {[
+                { value: '100%', label: 'Gratuito', color: 'text-emerald-500' },
+                { value: 'Local', label: 'Privado', color: 'text-blue-500' },
+                { value: 'PWA', label: 'Multiplataforma', color: 'text-violet-500' },
+              ].map((stat, index) => (
+                <div key={index} className="flex items-center gap-6 sm:gap-10">
+                  {index > 0 && <div className="w-px h-6 bg-border -ml-6 sm:-ml-10" />}
+                  <div className="group cursor-default">
+                    <p className={`text-base sm:text-lg font-bold transition-all duration-300 group-hover:scale-105 origin-left ${stat.color}`}>
+                      {stat.value}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">
+                      {stat.label}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Múltiples cuentas */}
+            <button
+              onClick={() => setShowAccountsModal(true)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-blue-500 transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Múltiples cuentas</span>
+              <span className="sm:hidden">Cuentas</span>
+            </button>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL - Visual */}
+        <div className="relative bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 p-6 sm:p-8 lg:p-0 flex items-center justify-center overflow-hidden">
+          {/* Animated gradient orbs */}
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/20 dark:bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+
+          {/* Grid pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px),
+                              linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
+              backgroundSize: '60px 60px',
+            }}
+          />
+
+          {/* Dashboard Preview */}
+          <div className={`relative transition-all duration-700 ease-out ${
+            showMobile
+              ? 'w-[300px] h-[620px]'
+              : 'w-full max-w-2xl lg:max-w-none lg:w-[95%] lg:h-[85%]'
+          }`}>
+            {/* Shadow layer */}
+            <div className={`absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-2xl blur-xl transition-all duration-700 ${
+              showMobile ? 'scale-110' : 'translate-x-4 translate-y-4'
+            }`} />
+
+            {/* Main container */}
+            <div className={`relative bg-card border border-border shadow-2xl overflow-hidden transition-all duration-700 h-full ${
+              showMobile ? 'rounded-[2.5rem]' : 'rounded-2xl'
+            }`}>
+              {/* Chrome */}
+              <div className={`flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/50 transition-all duration-500 ${
+                showMobile ? 'justify-center rounded-t-[2.5rem]' : ''
+              }`}>
+                {showMobile ? (
+                  <div className="w-24 h-6 bg-foreground/90 rounded-full" />
+                ) : (
+                  <>
+                    <div className="flex gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-red-400 hover:bg-red-500 transition-colors cursor-pointer" />
+                      <div className="w-3 h-3 rounded-full bg-yellow-400 hover:bg-yellow-500 transition-colors cursor-pointer" />
+                      <div className="w-3 h-3 rounded-full bg-green-400 hover:bg-green-500 transition-colors cursor-pointer" />
+                    </div>
+                    <div className="flex-1 mx-4">
+                      <div className="max-w-xs mx-auto h-6 bg-background rounded-md flex items-center justify-center">
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          homeaccount.app/dashboard
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Screenshot */}
+              <div className={`relative transition-all duration-700 ${
+                showMobile ? 'h-[calc(100%-52px)]' : 'aspect-[16/10] lg:aspect-auto lg:h-[calc(100%-44px)]'
+              }`}>
+                {/* Desktop image */}
                 <Image
                   src="/hero-desktop.png"
-                  alt="Panel financiero"
-                  width={1200}
-                  height={700}
-                  className="w-full h-auto"
+                  alt="Dashboard de Home Account"
+                  fill
+                  className={`object-cover object-top transition-all duration-500 ${
+                    showMobile ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+                  }`}
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
+                {/* Mobile image - centered and contained */}
+                <Image
+                  src="/hero-mobile.png"
+                  alt="App móvil de Home Account"
+                  fill
+                  className={`object-contain object-center transition-all duration-500 ${
+                    showMobile ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+                  }`}
+                />
               </div>
             </div>
-
-            <div className="mt-6 text-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Panel Financiero Completo
-              </h2>
-              <p className="text-base text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-                Visualiza tus ingresos, gastos y ahorros con gráficos detallados y estadísticas en tiempo real.
-              </p>
-            </div>
           </div>
-        </div>
-      </section>
 
-      {/* Mobile Preview Section */}
-      <section className="relative py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div
-            className="relative transition-all duration-1000 ease-out"
-            style={{
-              transform: `translateY(${Math.max(0, 30 - scrollY * 0.08)}px)`,
-              opacity: Math.min(1, Math.max(0, (scrollY - 200) / 300)),
-            }}
+          {/* Floating pill - Responsive Mode */}
+          <button
+            onClick={() => setShowMobile(!showMobile)}
+            onMouseEnter={() => setShowMobile(true)}
+            onMouseLeave={() => setShowMobile(false)}
+            className={`hidden lg:flex items-center gap-2 absolute top-8 right-8 rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border ${
+              showMobile
+                ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white border-transparent'
+                : 'bg-card border-border hover:border-emerald-500'
+            }`}
           >
-            <div className="absolute -inset-3 bg-gradient-to-r from-teal-500/15 to-emerald-500/15 dark:from-teal-500/8 dark:to-emerald-500/8 rounded-2xl blur-xl" />
+            {showMobile ? (
+              <Smartphone className="w-4 h-4" />
+            ) : (
+              <Monitor className="w-4 h-4" />
+            )}
+            <span className="text-sm font-medium">Modo responsive</span>
+          </button>
 
-            <div className="relative flex justify-center">
-              <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-[2.5rem] p-3 shadow-xl border-8 border-gray-800 dark:border-gray-700 max-w-[280px]">
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-5 bg-gray-800 dark:bg-gray-900 rounded-b-2xl" />
-
-                <div className="relative rounded-[2rem] overflow-hidden shadow-lg">
-                  <Image
-                    src="/hero-mobile.png"
-                    alt="Aplicación móvil"
-                    width={320}
-                    height={640}
-                    className="w-full h-auto"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 text-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Accede Desde Cualquier Lugar
-              </h2>
-              <p className="text-base text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-                Tu información financiera siempre contigo, en cualquier dispositivo.
-              </p>
-            </div>
-          </div>
+          {/* Floating pill - Multiple accounts */}
+          <button
+            onClick={() => setShowAccountsModal(true)}
+            className="hidden lg:flex items-center gap-2 absolute bottom-8 left-8 bg-card border border-border rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl hover:border-blue-500 cursor-pointer group"
+          >
+            <Users className="w-4 h-4 text-blue-500 transition-transform duration-300 group-hover:rotate-12" />
+            <span className="text-sm font-medium">Múltiples cuentas</span>
+            <span className="w-5 h-5 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+              3
+            </span>
+          </button>
         </div>
-      </section>
+      </div>
 
-      {/* Features Grid */}
-      <section className="relative py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              {
-                icon: '💰',
-                title: 'Control de Gastos',
-                description: 'Registra y categoriza todos tus gastos de forma rápida',
-              },
-              {
-                icon: '📈',
-                title: 'Análisis Financiero',
-                description: 'Visualiza ingresos, gastos y ahorros con gráficos detallados',
-              },
-              {
-                icon: '📱',
-                title: 'Multi-dispositivo',
-                description: 'Accede a tus finanzas desde cualquier lugar',
-              },
-              {
-                icon: '🏠',
-                title: 'Para la Familia',
-                description: 'Comparte cuentas con los miembros de tu hogar',
-              },
-              {
-                icon: '🔒',
-                title: 'Privado y Seguro',
-                description: 'Tus datos están protegidos',
-              },
-              {
-                icon: '📊',
-                title: 'Informes',
-                description: 'Genera informes detallados de tu situación',
-              },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="group p-5 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-gray-800 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all duration-500 ease-out hover:shadow-lg transform hover:-translate-y-1"
-                style={{
-                  opacity: Math.min(1, Math.max(0, (scrollY - 400) / 200)),
-                  transform: `translateY(${Math.max(0, 15 - (scrollY - 400) * 0.03)}px)`,
-                }}
+      {/* Accounts Modal */}
+      {showAccountsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowAccountsModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200" />
+
+          {/* Modal */}
+          <div
+            className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-violet-500" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h3 className="text-xl font-bold">Tipos de cuenta</h3>
+                <p className="text-sm text-muted-foreground mt-1">Elige cómo quieres gestionar tus finanzas</p>
+              </div>
+              <button
+                onClick={() => setShowAccountsModal(false)}
+                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-all duration-200"
               >
-                <div className="text-4xl mb-2">{feature.icon}</div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-      {/* Stats Section */}
-      <section className="relative py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div
-            className="relative transition-all duration-1000 ease-out"
-            style={{
-              transform: `translateY(${Math.max(0, 20 - scrollY * 0.1)}px)`,
-              opacity: Math.min(1, Math.max(0, (scrollY - 50) / 200)),
-            }}
-          >
-            <div className="absolute -inset-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/5 dark:to-teal-500/5 rounded-xl blur-lg" />
+            {/* Account options */}
+            <div className="p-4 space-y-3">
+              {accountTypes.map((account, index) => (
+                <Link
+                  key={index}
+                  href="/login"
+                  className={`group flex items-center gap-4 p-4 rounded-xl border border-border ${account.borderColor} hover:bg-muted/50 transition-all duration-300`}
+                >
+                  <div className={`w-12 h-12 rounded-xl ${account.color} flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                    <account.icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold group-hover:text-foreground transition-colors">
+                      {account.title}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {account.description}
+                    </p>
+                  </div>
+                  <svg
+                    className="w-5 h-5 text-muted-foreground transition-all duration-300 group-hover:text-foreground group-hover:translate-x-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
 
-            <div className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-xl p-5 shadow-lg border border-gray-200 dark:border-gray-800">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
-                    100%
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Gratuito</p>
-                </div>
-                <div>
-                  <p className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
-                    Privado
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Tus datos</p>
-                </div>
-                <div>
-                  <p className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
-                    Sencillo
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Fácil uso</p>
-                </div>
-              </div>
+            {/* Footer */}
+            <div className="p-4 pt-0">
+              <p className="text-xs text-center text-muted-foreground">
+                Puedes cambiar o añadir cuentas en cualquier momento
+              </p>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative py-14 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            ¿Listo para organizar tus finanzas?
-          </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
-            Empieza a controlar tu economía familiar hoy mismo.
-          </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-emerald-500/30 transition-all transform hover:scale-105"
-          >
-            Crear cuenta gratis
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              />
-            </svg>
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="relative border-t border-gray-200 dark:border-gray-800 py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center text-gray-600 dark:text-gray-400">
-          <p className="text-sm">© 2025 Home Account. Todos los derechos reservados.</p>
-        </div>
-      </footer>
+      )}
     </div>
   )
 }
