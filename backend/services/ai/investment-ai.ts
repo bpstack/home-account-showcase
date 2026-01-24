@@ -6,30 +6,30 @@ import type { AIProviderType } from './types.js'
 import {
   buildProfileAssessmentPrompt,
   parseProfileAssessmentResponse,
-  ProfileAnswers,
-  ProfileAssessmentResult
+  ProfileAnswers
 } from './prompts/profile-prompt.js'
 import {
   buildRecommendationPrompt,
-  parseRecommendationResponse,
-  RecommendationResult
+  parseRecommendationResponse
 } from './prompts/recommendation-prompt.js'
 import {
   buildChatPrompt,
   parseChatResponse,
-  buildSystemMessage,
-  ChatMessage,
-  ChatResult
+  buildSystemMessage
 } from './prompts/chat-prompt.js'
 import {
   buildEducationPrompt,
-  parseEducationResponse,
-  EducationResult
+  parseEducationResponse
 } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
   MarketDataContext,
-  ChatContext
+  ChatContext,
+  ProfileAssessmentResult,
+  RecommendationResult,
+  ChatResult,
+  ChatMessage,
+  EducationResult
 } from './prompts/types.js'
 import { getMarketData } from '../market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
@@ -157,24 +157,31 @@ export class InvestmentAI {
     userId: string,
     financialContext: InvestmentContext
   ): Promise<ChatResult> {
+    console.log('[InvestmentAI:chatWithSession] Starting...')
+
     // Get or create chat session
     let session = (await InvestmentRepository.getChatSessionsByAccount(accountId))[0]
+    console.log('[InvestmentAI:chatWithSession] Existing session:', session?.id || 'none')
 
     if (!session || this.isSessionExpired(session.last_message_at)) {
-      // Create new session
+      console.log('[InvestmentAI:chatWithSession] Creating new session...')
       session = await InvestmentRepository.createChatSession({
         account_id: accountId,
         user_id: userId,
         provider: getActiveProvider()
       })
+      console.log('[InvestmentAI:chatWithSession] New session created:', session.id)
     }
 
     // Get chat history
-    const history = await InvestmentRepository.getChatMessagesForContext(session.id, 20)
+    const history = await InvestmentRepository.getChatMessagesForContext(session.id, 20) as ChatMessage[]
+    console.log('[InvestmentAI:chatWithSession] History messages:', history.length)
 
     // Build chat context
+    console.log('[InvestmentAI:chatWithSession] Getting market data...')
     const marketData = await getMarketData()
     const investmentProfile = await InvestmentRepository.getProfileByAccountId(accountId)
+    console.log('[InvestmentAI:chatWithSession] Market data ready, profile:', investmentProfile?.risk_profile || 'none')
 
     const chatContext: ChatContext = {
       accountId,
@@ -193,7 +200,9 @@ export class InvestmentAI {
       marketPrices: marketData
     }
 
+    console.log('[InvestmentAI:chatWithSession] Calling chat()...')
     const result = await this.chat(message, chatContext, history, accountId, userId)
+    console.log('[InvestmentAI:chatWithSession] Chat result received')
 
     // Save messages
     await InvestmentRepository.addChatMessage({
@@ -211,6 +220,7 @@ export class InvestmentAI {
     // Update session
     const messageCount = history.length + 2
     await InvestmentRepository.updateChatSession(session.id, messageCount)
+    console.log('[InvestmentAI:chatWithSession] Messages saved, done')
 
     return result
   }

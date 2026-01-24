@@ -9,16 +9,28 @@ import { InvestmentRepository } from '../../repositories/investment/investment-r
 import { TransactionRepository } from '../../repositories/transactions/transaction-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
 import type { ProfileAnswers, InvestmentContext, ChatMessage } from '../../services/ai/prompts/types.js'
+import {
+  ProfileAnswersSchema,
+  UpdateEmergencyFundMonthsSchema,
+  UpdateLiquidityReserveSchema,
+  ChatMessageSchema
+} from './validation.js'
 
 // ========================
 // HELPER: Get account context (all historical transactions)
 // ========================
 
 async function getAccountFinancialContext(accountId: string, userId: string): Promise<InvestmentContext> {
-  // Get all transactions (no limit - all historical)
+  // Get transactions from last 12 months (sufficient for financial metrics)
+  // This is scalable: ~720 tx max per user (60 tx/month * 12 months)
+  const twelveMonthsAgo = new Date()
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+  const startDate = twelveMonthsAgo.toISOString().split('T')[0]
+
   const transactions = await TransactionRepository.getByAccountId({
     account_id: accountId,
-    limit: 10000 // High limit to get all
+    startDate,
+    limit: 1000 // Safety limit: ~83 tx/month for 12 months
   }, userId)
 
   // Get account info
@@ -55,8 +67,8 @@ async function getAccountFinancialContext(accountId: string, userId: string): Pr
   // Emergency fund months (default to 6)
   const emergencyFundMonths = investmentProfile?.emergency_fund_months || 6
   
-  // Emergency fund goal - calculate as N months of savings capacity
-  const emergencyFundGoal = savingsCapacity * emergencyFundMonths
+  // Emergency fund goal - calculate as N months of expenses (safety net)
+  const emergencyFundGoal = avgMonthlyExpenses * emergencyFundMonths
   
   // Emergency fund status - use user's manual input (liquidity_reserve), default to 0
   const emergencyFundCurrent = investmentProfile?.liquidity_reserve || 0
@@ -189,7 +201,6 @@ export const updateEmergencyFundMonths = async (req: Request, res: Response): Pr
   try {
     const { accountId } = req.params
     const userId = (req as any).user?.id
-    const { months } = req.body
 
     if (!userId) {
       res.status(401).json({ success: false, error: 'No autorizado' })
@@ -202,10 +213,13 @@ export const updateEmergencyFundMonths = async (req: Request, res: Response): Pr
       return
     }
 
-    if (!months || months < 1 || months > 60) {
+    const validation = UpdateEmergencyFundMonthsSchema.safeParse(req.body)
+    if (!validation.success) {
       res.status(400).json({ success: false, error: 'Meses debe ser un número entre 1 y 60' })
       return
     }
+
+    const { months } = validation.data
 
     await InvestmentRepository.updateProfile(accountId, {
       emergency_fund_months: months
@@ -229,7 +243,6 @@ export const updateLiquidityReserve = async (req: Request, res: Response): Promi
   try {
     const { accountId } = req.params
     const userId = (req as any).user?.id
-    const { amount } = req.body
 
     if (!userId) {
       res.status(401).json({ success: false, error: 'No autorizado' })
@@ -242,10 +255,13 @@ export const updateLiquidityReserve = async (req: Request, res: Response): Promi
       return
     }
 
-    if (amount === undefined || amount === null || amount < 0) {
+    const validation = UpdateLiquidityReserveSchema.safeParse(req.body)
+    if (!validation.success) {
       res.status(400).json({ success: false, error: 'Monto debe ser un número positivo' })
       return
     }
+
+    const { amount } = validation.data
 
     await InvestmentRepository.updateProfile(accountId, {
       liquidity_reserve: amount
@@ -271,8 +287,17 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
     const userId = (req as any).user?.id
     const answers = req.body as ProfileAnswers
 
+    // Decode HTML entities that might come from frontend (e.g., &gt; -> >)
+    const decodeHtmlEntities = (str: string) =>
+      str.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+
+    // Fix horizonYears if HTML encoded
+    if (answers.horizonYears && typeof answers.horizonYears === 'string') {
+      answers.horizonYears = decodeHtmlEntities(answers.horizonYears) as any
+    }
+
     console.log('[Investment:AnalyzeProfile] Received body:', JSON.stringify(req.body))
-    console.log('[Investment:AnalyzeProfile] Parsed answers:', answers)
+    console.log('[Investment:AnalyzeProfile] Fixed answers:', answers)
 
     if (!userId) {
       res.status(401).json({ success: false, error: 'No autorizado' })
@@ -285,28 +310,36 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
       return
     }
 
-    // Validate answers - be flexible with values
-    const ageValid = answers.age && Number(answers.age) > 0 && Number(answers.age) < 120
-    const incomeValid = answers.monthlyIncome && Number(answers.monthlyIncome) > 0
-    const jobValid = answers.jobStability && ['high', 'medium', 'low'].includes(answers.jobStability)
-    const emergencyValid = answers.hasEmergencyFund && ['yes', 'partial', 'no'].includes(answers.hasEmergencyFund)
-    const horizonValid = answers.horizonYears && ['short', 'medium', 'long'].includes(answers.horizonYears)
-    const reactionValid = answers.reactionToDrop && ['sell', 'hold', 'buy_more'].includes(answers.reactionToDrop)
-    const experienceValid = answers.experienceLevel && ['none', 'basic', 'intermediate', 'advanced'].includes(answers.experienceLevel)
+    // Validate answers with Zod
 
-    console.log('[Investment:AnalyzeProfile] Validation:')
-    console.log('  ageValid:', ageValid, '(value:', answers.age, ')')
-    console.log('  incomeValid:', incomeValid, '(value:', answers.monthlyIncome, ')')
-    console.log('  jobValid:', jobValid, '(value:', answers.jobStability, ')')
-    console.log('  emergencyValid:', emergencyValid, '(value:', answers.hasEmergencyFund, ')')
-    console.log('  horizonValid:', horizonValid, '(value:', answers.horizonYears, ')')
-    console.log('  reactionValid:', reactionValid, '(value:', answers.reactionToDrop, ')')
-    console.log('  experienceValid:', experienceValid, '(value:', answers.experienceLevel, ')')
+    const validation = ProfileAnswersSchema.safeParse(answers)
 
-    if (!ageValid || !incomeValid || !jobValid || !emergencyValid || !horizonValid || !reactionValid || !experienceValid) {
-      res.status(400).json({ success: false, error: 'Faltan respuestas requeridas' })
+    if (!validation.success) {
+      const errors = validation.error.format()
+      console.log('[Investment:AnalyzeProfile] Validation failed:', JSON.stringify(errors, null, 2))
+
+      // Extract specific field errors for better UX
+      const fieldErrors: string[] = []
+      for (const [field, err] of Object.entries(errors)) {
+        if (field !== '_errors' && err && typeof err === 'object' && '_errors' in err) {
+          const messages = (err as any)._errors
+          if (messages?.length) {
+            fieldErrors.push(`${field}: ${messages.join(', ')}`)
+          }
+        }
+      }
+
+      res.status(400).json({
+        success: false,
+        error: fieldErrors.length > 0
+          ? `Campos inválidos: ${fieldErrors.join('; ')}`
+          : 'Datos de perfil inválidos',
+        details: errors
+      })
       return
     }
+
+    const validAnswers = validation.data
 
     // Get financial context
     const financialContext = await getAccountFinancialContext(accountId, userId)
@@ -319,6 +352,7 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
     }
 
     const result = await ai.assessProfile(answers, financialContext)
+    console.log('[Investment:AnalyzeProfile] AI Result:', JSON.stringify(result, null, 2))
 
     // Map Spanish profile names to English for database
     const profileMap: Record<string, 'conservative' | 'balanced' | 'dynamic'> = {
@@ -327,10 +361,22 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
       'equilibrado': 'balanced',
       'balanced': 'balanced',
       'dinámico': 'dynamic',
-      'dynamic': 'dynamic'
+      'dinamico': 'dynamic',
+      'dynamic': 'dynamic',
+      'agresivo': 'dynamic',
+      'aggressive': 'dynamic'
     }
 
-    const dbProfile = profileMap[result.recommendedProfile] || 'balanced'
+    const dbProfile = profileMap[result.recommendedProfile?.toLowerCase()] || 'balanced'
+    console.log('[Investment:AnalyzeProfile] Recommended:', result.recommendedProfile, '-> DB Profile:', dbProfile)
+
+    // Map horizon years string to number
+    const horizonYearsMap: Record<string, number> = {
+      '<3': 2,
+      '3-10': 5,
+      '>10': 15
+    }
+    const horizonYearsNum = horizonYearsMap[answers.horizonYears] || 5
 
     // Save/update profile
     await InvestmentRepository.upsertProfile({
@@ -338,7 +384,8 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
       risk_profile: dbProfile,
       investment_percentage: result.investmentPercentage,
       has_emergency_fund: answers.hasEmergencyFund !== 'no',
-      experience_level: answers.experienceLevel
+      experience_level: answers.experienceLevel,
+      horizon_years: horizonYearsNum
     })
 
     res.status(200).json({
@@ -383,8 +430,8 @@ export const getRecommendations = async (req: Request, res: Response): Promise<v
     const monthlyInvest = monthlyAmount || (financialContext.savingsCapacity * (financialContext.investmentPercentage / 100))
 
     const result = await ai.generateRecommendations(
-      profile || financialContext.investmentPercentage <= 10 ? 'conservative' : 
-               financialContext.investmentPercentage >= 30 ? 'dynamic' : 'balanced',
+      profile || (financialContext.investmentPercentage <= 10 ? 'conservative' : 
+               financialContext.investmentPercentage >= 30 ? 'dynamic' : 'balanced'),
       monthlyInvest,
       financialContext
     )
@@ -479,17 +526,22 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
   try {
     const { accountId, sessionId } = req.params
     const userId = (req as any).user?.id
-    const { message } = req.body
+
+    console.log('[Investment:ChatMessage] Starting...', { accountId, sessionId, userId })
 
     if (!userId) {
       res.status(401).json({ success: false, error: 'No autorizado' })
       return
     }
 
-    if (!message || typeof message !== 'string') {
+    const validation = ChatMessageSchema.safeParse(req.body)
+    if (!validation.success) {
       res.status(400).json({ success: false, error: 'Mensaje requerido' })
       return
     }
+
+    const { message } = validation.data
+    console.log('[Investment:ChatMessage] Message:', message.substring(0, 50))
 
     const hasAccess = await AccountRepository.hasAccess(accountId, userId)
     if (!hasAccess) {
@@ -503,15 +555,20 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
       return
     }
 
+    console.log('[Investment:ChatMessage] Getting financial context...')
     const financialContext = await getAccountFinancialContext(accountId, userId)
+    console.log('[Investment:ChatMessage] Context ready, calling AI...')
 
     const ai = createInvestmentAI()
     if (!ai.isAvailable()) {
-      res.status(503).json({ success: false, error: 'IA no disponible' })
+      console.error('[Investment:ChatMessage] AI not available')
+      res.status(503).json({ success: false, error: 'IA no disponible. Verifica la configuración.' })
       return
     }
 
+    console.log('[Investment:ChatMessage] AI available, sending to chatWithSession...')
     const result = await ai.chatWithSession(message, accountId, userId, financialContext)
+    console.log('[Investment:ChatMessage] AI response received')
 
     res.status(200).json({
       success: true,
@@ -523,7 +580,8 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
     })
   } catch (error) {
     console.error('[Investment:ChatMessage] Error:', error)
-    res.status(500).json({ success: false, error: 'Error interno del servidor' })
+    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor'
+    res.status(500).json({ success: false, error: errorMessage })
   }
 }
 

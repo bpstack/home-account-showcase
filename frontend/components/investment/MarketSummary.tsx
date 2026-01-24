@@ -14,7 +14,7 @@ interface MarketSummaryProps {
 }
 
 export function MarketSummary({ accountId }: MarketSummaryProps) {
-  const { data, isLoading, isError, refetch, isFetching } = useMarketPrices(accountId, false)
+  const { data, isLoading, isError, refetch, isFetching } = useMarketPrices(accountId, { autoRefresh: false, refetchOnMount: false })
   const [showTooltip, setShowTooltip] = useState(false)
 
   if (isError) {
@@ -196,15 +196,15 @@ function MarketRow({
 
   return (
     <div className={cn(
-      'grid grid-cols-[1fr_85px_65px] gap-2 items-center py-1 px-1.5 rounded transition-colors',
+      'grid grid-cols-[1fr_auto_auto] xs:grid-cols-[1fr_75px_55px] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 items-center py-1 px-1 sm:px-1.5 rounded transition-colors',
       'hover:bg-muted/40'
     )}>
-      <span className="text-xs font-medium text-foreground/80 truncate" title={name}>{name}</span>
-      <span className="text-xs font-mono text-foreground/80 text-right">
+      <span className="text-[10px] sm:text-xs font-medium text-foreground/80 truncate" title={name}>{name}</span>
+      <span className="text-[10px] sm:text-xs font-mono text-foreground/80 text-right">
         {prefix}{formatter(valueNumber)}
       </span>
       <span className={cn(
-        'text-xs font-medium px-1.5 py-0.5 rounded text-center',
+        'text-[9px] sm:text-xs font-medium px-1 sm:px-1.5 py-0.5 rounded text-center',
         isNeutral && 'bg-muted/60 text-muted-foreground',
         isPositive && changeValue > 0.1 && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
         !isPositive && changeValue < -0.1 && 'bg-red-500/15 text-red-600 dark:text-red-400'
@@ -221,30 +221,30 @@ function MarketSummarySkeleton() {
       <div className="space-y-0.5">
         <div className="h-4 w-12 bg-muted rounded border-b border-border" />
         {[1, 2, 3].map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_85px_65px] gap-2 py-1 px-1.5">
+          <div key={i} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5">
             <div className="h-3 bg-muted rounded" />
-            <div className="h-3 bg-muted rounded" />
-            <div className="h-3 bg-muted rounded" />
+            <div className="h-3 w-12 sm:w-auto bg-muted rounded" />
+            <div className="h-3 w-10 sm:w-auto bg-muted rounded" />
           </div>
         ))}
       </div>
       <div className="space-y-0.5">
         <div className="h-4 w-16 bg-muted rounded border-b border-border" />
         {[1, 2].map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_85px_65px] gap-2 py-1 px-1.5">
+          <div key={i} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5">
             <div className="h-3 bg-muted rounded" />
-            <div className="h-3 bg-muted rounded" />
-            <div className="h-3 bg-muted rounded" />
+            <div className="h-3 w-12 sm:w-auto bg-muted rounded" />
+            <div className="h-3 w-10 sm:w-auto bg-muted rounded" />
           </div>
         ))}
       </div>
       <div className="space-y-0.5">
         <div className="h-4 w-14 bg-muted rounded border-b border-border" />
         {[1, 2].map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_85px_65px] gap-2 py-1 px-1.5">
+          <div key={i} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5">
             <div className="h-3 bg-muted rounded" />
-            <div className="h-3 bg-muted rounded" />
-            <div className="h-3 bg-muted rounded" />
+            <div className="h-3 w-12 sm:w-auto bg-muted rounded" />
+            <div className="h-3 w-10 sm:w-auto bg-muted rounded" />
           </div>
         ))}
       </div>

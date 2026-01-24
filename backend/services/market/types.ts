@@ -56,7 +56,7 @@ export interface MarketCacheEntry {
 }
 
 export const CRYPTO_COINS = ['bitcoin', 'ethereum'] as const
-export const CURRENCY_PAIRS = ['USD', 'GBP'] as const
+export const CURRENCY_PAIRS = ['USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'] as const
 export const INDEX_SYMBOLS: Record<string, string> = {
   SP500: 'SPY',
   MSCI: 'URTH',

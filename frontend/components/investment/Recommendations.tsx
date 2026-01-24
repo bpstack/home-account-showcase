@@ -31,7 +31,7 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
     profile ? { profile } : undefined
   )
 
-  const { data: overviewData } = useInvestmentOverview(accountId)
+  const { data: overviewData } = useInvestmentOverview(accountId, { refetchOnMount: false })
   const investmentPercentage = overviewData?.profile?.investmentPercentage || 20
   const savingsCapacity = overviewData?.financialSummary?.savingsCapacity || 0
   const investmentAmount = (savingsCapacity * investmentPercentage) / 100
@@ -80,30 +80,29 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
         <DisclaimerAlert type="recommendations" />
 
         {/* Resumen */}
-        {/* Resumen */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-          <div className="p-4 rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/50 flex flex-col justify-center">
-            <div className="text-3xl font-bold text-foreground tracking-tight">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+          <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/50 flex flex-col justify-center">
+            <div className="text-lg sm:text-3xl font-bold text-foreground tracking-tight">
               {formatCurrency(investmentAmount)}
             </div>
-            <div className="text-xs font-semibold text-muted-foreground mt-1 uppercase tracking-wider">
+            <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground mt-1 uppercase tracking-wider">
               Mensual
             </div>
           </div>
-          <div className="p-4 rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-center">
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-center">
+            <div className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {data.assetAllocation.stocks + data.assetAllocation.crypto}%
             </div>
-            <div className="text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80 mt-1">
-              Renta Variable
+            <div className="text-[10px] sm:text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80 mt-1">
+              R. Variable
             </div>
           </div>
-          <div className="p-4 rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col justify-center">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col justify-center">
+            <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
               {data.assetAllocation.bonds + data.assetAllocation.cash}%
             </div>
-            <div className="text-xs font-medium text-blue-600/80 dark:text-blue-400/80 mt-1">
-              Renta Fija / Liq.
+            <div className="text-[10px] sm:text-xs font-medium text-blue-600/80 dark:text-blue-400/80 mt-1">
+              R. Fija
             </div>
           </div>
         </div>
@@ -194,34 +193,34 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
   const recommendationAmount = (amount * recommendation.percentage) / 100
 
   return (
-    <div className="p-3 rounded-lg border border-border/40 dark:bg-zinc-900 dark:border-white/5 hover:bg-muted/10 transition-colors group">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <div className="p-2 sm:p-3 rounded-lg border border-border/40 dark:bg-zinc-900 dark:border-white/5 hover:bg-muted/10 transition-colors group">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <div className={cn(
-            'p-2 rounded-lg shrink-0',
+            'p-1.5 sm:p-2 rounded-lg shrink-0',
              typeColors[recommendation.type as keyof typeof typeColors] || 'bg-muted text-muted-foreground'
           )}>
             {typeIcons[recommendation.type as keyof typeof typeIcons]}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-foreground text-sm">{recommendation.name}</h4>
-              <span className="text-[10px] uppercase text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+              <h4 className="font-semibold text-foreground text-xs sm:text-sm truncate">{recommendation.name}</h4>
+              <span className="text-[9px] sm:text-[10px] uppercase text-muted-foreground">
                 {recommendation.symbol}
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1 max-w-[200px]">
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
               {recommendation.reason}
             </p>
           </div>
         </div>
 
         <div className="text-right shrink-0">
-          <div className="font-semibold text-sm text-foreground">
+          <div className="font-semibold text-xs sm:text-sm text-foreground">
             {formatCurrency(recommendationAmount)}
           </div>
           <div className={cn(
-            'text-[9px] font-bold mt-1 inline-flex items-center px-1.5 py-0.5 rounded border',
+            'text-[8px] sm:text-[9px] font-bold mt-1 inline-flex items-center px-1 sm:px-1.5 py-0.5 rounded border',
             riskColors[recommendation.risk as keyof typeof riskColors] === 'text-green-600' ? 'bg-green-500/5 border-green-500/10 text-green-600 dark:text-green-400' :
             riskColors[recommendation.risk as keyof typeof riskColors] === 'text-yellow-600' ? 'bg-yellow-500/5 border-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
             'bg-red-500/5 border-red-500/10 text-red-600 dark:text-red-400'

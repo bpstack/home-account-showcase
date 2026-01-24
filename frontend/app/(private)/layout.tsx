@@ -116,7 +116,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
 
           {/* Content Area */}
           <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            <div className="max-w-[1400px]">{children}</div>
+            <div className="max-w-[1600px]">{children}</div>
           </main>
         </div>
     </div>

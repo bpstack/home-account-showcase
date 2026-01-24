@@ -71,9 +71,9 @@ const STEPS = [
     type: 'select',
     field: 'horizonYears',
     options: [
-      { value: 'short', label: 'Menos de 3 años' },
-      { value: 'medium', label: 'Entre 3 y 10 años' },
-      { value: 'long', label: 'Más de 10 años' }
+      { value: '<3', label: 'Menos de 3 años' },
+      { value: '3-10', label: 'Entre 3 y 10 años' },
+      { value: '>10', label: 'Más de 10 años' }
     ]
   },
   {
@@ -103,7 +103,7 @@ const STEPS = [
 ]
 
 export function ProfileForm({ accountId }: ProfileFormProps) {
-  const { data: investmentData, isLoading: profileLoading } = useInvestmentOverview(accountId)
+  const { data: investmentData, isLoading: profileLoading } = useInvestmentOverview(accountId, { refetchOnMount: false })
   const [showForm, setShowForm] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -117,19 +117,20 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
     if (profile && !showForm) {
       // Load existing profile data into answers for potential update
       const horizonMap: Record<number, string> = {
-        1: 'short',
-        3: 'medium',
-        5: 'medium',
-        10: 'long',
-        15: 'long',
-        20: 'long'
+        1: '<3',
+        2: '<3',
+        3: '3-10',
+        5: '3-10',
+        10: '>10',
+        15: '>10',
+        20: '>10'
       }
       setAnswers({
         age: 30, // These would come from user's actual data
         monthlyIncome: investmentData?.financialSummary?.avgMonthlyIncome * 1.2 || 1000,
         jobStability: 'medium',
         hasEmergencyFund: profile.hasEmergencyFund ? 'partial' : 'no',
-        horizonYears: horizonMap[profile.horizonYears] || 'medium',
+        horizonYears: horizonMap[profile.horizonYears] || '3-10',
         reactionToDrop: 'hold',
         experienceLevel: 'none'
       })
@@ -161,17 +162,20 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
 
   const submitForm = async () => {
     try {
+      const payload = {
+        age: Number(answers.age),
+        monthlyIncome: Number(answers.monthlyIncome),
+        jobStability: answers.jobStability,
+        hasEmergencyFund: answers.hasEmergencyFund,
+        horizonYears: answers.horizonYears,
+        reactionToDrop: answers.reactionToDrop,
+        experienceLevel: answers.experienceLevel
+      }
+      console.log('[ProfileForm] Submitting:', payload)
+
       const result = await analyzeMutation.mutateAsync({
         accountId,
-        answers: {
-          age: Number(answers.age),
-          monthlyIncome: Number(answers.monthlyIncome),
-          jobStability: answers.jobStability,
-          hasEmergencyFund: answers.hasEmergencyFund,
-          horizonYears: answers.horizonYears,
-          reactionToDrop: answers.reactionToDrop,
-          experienceLevel: answers.experienceLevel
-        }
+        answers: payload
       })
       setResult(result)
       setShowForm(false)

@@ -16,7 +16,7 @@ import {
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
 
-const router = Router()
+const router: Router = Router()
 
 // Todas las rutas requieren autenticación
 router.use(authenticateToken)

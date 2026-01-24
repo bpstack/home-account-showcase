@@ -146,7 +146,7 @@ export interface ProfileAnswers {
   monthlyIncome: number
   jobStability: 'high' | 'medium' | 'low'
   hasEmergencyFund: 'yes' | 'partial' | 'no'
-  horizonYears: 'short' | 'medium' | 'long'
+  horizonYears: '<3' | '3-10' | '>10'
   reactionToDrop: 'sell' | 'hold' | 'buy_more'
   experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
 }

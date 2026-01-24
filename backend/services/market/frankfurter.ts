@@ -104,6 +104,30 @@ function getFallbackCurrencyRates(currencies: CurrencyPair[]): Record<CurrencyPa
       rate: 0.862,
       change24h: -0.08,
       source: 'frankfurter'
+    },
+    JPY: {
+      pair: 'EUR/JPY',
+      rate: 163.5,
+      change24h: 0.1,
+      source: 'frankfurter'
+    },
+    CHF: {
+      pair: 'EUR/CHF',
+      rate: 0.94,
+      change24h: 0.05,
+      source: 'frankfurter'
+    },
+    CAD: {
+      pair: 'EUR/CAD',
+      rate: 1.48,
+      change24h: -0.1,
+      source: 'frankfurter'
+    },
+    AUD: {
+      pair: 'EUR/AUD',
+      rate: 1.62,
+      change24h: 0.2,
+      source: 'frankfurter'
     }
   }
 

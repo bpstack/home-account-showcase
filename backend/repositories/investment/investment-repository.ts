@@ -2,6 +2,7 @@
 // Repository for investment module tables
 
 import db from '../../config/db.js'
+import crypto from 'crypto'
 import type {
   InvestmentProfile,
   InvestmentProfileRow,
@@ -129,11 +130,13 @@ export class InvestmentRepository {
     responseTimeMs?: number
     costEstimate?: number
   }): Promise<string> {
-    const [result] = await db.query(
+    const id = crypto.randomUUID()
+    await db.query(
       `INSERT INTO investment_sessions
-       (account_id, user_id, type, provider_used, prompt_tokens, response_tokens, response_time_ms, cost_estimate)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, account_id, user_id, type, provider_used, prompt_tokens, response_tokens, response_time_ms, cost_estimate)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        id,
         data.accountId,
         data.userId,
         data.type,
@@ -145,7 +148,7 @@ export class InvestmentRepository {
       ]
     )
 
-    return (result as any).insertId as string
+    return id
   }
 
   static async getSessionsByAccount(
@@ -185,13 +188,13 @@ export class InvestmentRepository {
   // ========================
 
   static async createChatSession(data: CreateAIChatSessionDTO): Promise<AIChatSession> {
-    const [result] = await db.query(
-      `INSERT INTO ai_chat_sessions (account_id, user_id, provider)
-       VALUES (?, ?, ?)`,
-      [data.account_id, data.user_id, data.provider]
+    const id = crypto.randomUUID()
+    await db.query(
+      `INSERT INTO ai_chat_sessions (id, account_id, user_id, provider)
+       VALUES (?, ?, ?, ?)`,
+      [id, data.account_id, data.user_id, data.provider]
     )
 
-    const id = (result as any).insertId
     return this.getChatSessionById(id) as Promise<AIChatSession>
   }
 
@@ -239,13 +242,13 @@ export class InvestmentRepository {
   // ========================
 
   static async addChatMessage(data: CreateAIChatMessageDTO): Promise<AIChatMessage> {
-    const [result] = await db.query(
-      `INSERT INTO ai_chat_messages (session_id, role, content, tokens)
-       VALUES (?, ?, ?, ?)`,
-      [data.session_id, data.role, data.content, data.tokens || null]
+    const id = crypto.randomUUID()
+    await db.query(
+      `INSERT INTO ai_chat_messages (id, session_id, role, content, tokens)
+       VALUES (?, ?, ?, ?, ?)`,
+      [id, data.session_id, data.role, data.content, data.tokens || null]
     )
 
-    const id = (result as any).insertId
     return this.getChatMessageById(id) as Promise<AIChatMessage>
   }
 

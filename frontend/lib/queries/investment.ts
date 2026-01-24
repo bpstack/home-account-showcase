@@ -9,22 +9,25 @@ import type { ProfileAnswers } from '@/lib/api/investment'
 // Queries
 // ========================
 
-export function useInvestmentOverview(accountId: string) {
+export function useInvestmentOverview(accountId: string, options?: { refetchOnMount?: boolean }) {
   return useQuery({
     queryKey: ['investment', 'overview', accountId],
     queryFn: () => investmentApi.getOverview(accountId),
-    staleTime: 5 * 60 * 1000, // 5 minutes - market data is cached
+    staleTime: 0, // staleTime = 0 according to architecture for financial data
+    refetchOnMount: options?.refetchOnMount ?? true,
     enabled: !!accountId
   })
 }
 
-export function useMarketPrices(accountId: string, autoRefresh = false) {
+export function useMarketPrices(accountId: string, options?: { autoRefresh?: boolean; refetchOnMount?: boolean }) {
+  const autoRefresh = options?.autoRefresh ?? false
   return useQuery({
     queryKey: ['investment', 'market-prices', accountId],
     queryFn: () => investmentApi.getMarketPrices(accountId),
     staleTime: autoRefresh ? 10 * 1000 : 30 * 1000,
-    refetchInterval: autoRefresh ? 15 * 1000 : undefined, // Solo auto-refresh si está habilitado
-    refetchOnWindowFocus: false, // El usuario controla cuándo actualizar
+    refetchInterval: autoRefresh ? 15 * 1000 : undefined,
+    refetchOnWindowFocus: false,
+    refetchOnMount: options?.refetchOnMount ?? true,
     enabled: !!accountId
   })
 }
@@ -36,7 +39,7 @@ export function useRecommendations(
   return useQuery({
     queryKey: ['investment', 'recommendations', accountId, options],
     queryFn: () => investmentApi.getRecommendations(accountId, options),
-    staleTime: 10 * 60 * 1000, // 10 minutes - recommendations don't change often
+    staleTime: 0, // staleTime = 0 for recommendations
     enabled: !!accountId
   })
 }
@@ -126,7 +129,7 @@ export function useUpdateLiquidityReserve() {
 
 export function useInvestmentData(accountId: string) {
   const overview = useInvestmentOverview(accountId)
-  const marketPrices = useMarketPrices(accountId)
+  const marketPrices = useMarketPrices(accountId, { autoRefresh: false })
 
   return {
     overview,

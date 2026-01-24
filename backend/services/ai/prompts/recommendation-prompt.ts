@@ -3,30 +3,7 @@
 
 import type { RecommendationResult, InvestmentContext, MarketDataContext } from './types.js'
 
-interface RecommendationItem {
-  type: 'ETF' | 'BOND_FUND' | 'CRYPTO' | 'STOCK' | 'SAVINGS'
-  symbol: string
-  name: string
-  percentage: number
-  amount: number
-  currentPrice?: number
-  units?: number
-  reason: string
-  risk: 'low' | 'medium' | 'high'
-}
-
-interface RecommendationResult {
-  recommendations: RecommendationItem[]
-  totalMonthly: number
-  assetAllocation: {
-    stocks: number
-    bonds: number
-    crypto: number
-    cash: number
-  }
-  marketContext: string
-  disclaimer: string
-}
+// Interface definitions removed to use shared types from ./types.js
 
 export function buildRecommendationPrompt(
   profile: 'conservative' | 'balanced' | 'dynamic',

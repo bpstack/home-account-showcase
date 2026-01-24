@@ -82,7 +82,7 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
   // Auto-scroll to bottom only when a new message is added
   useEffect(() => {
     if (messages.length > prevMessagesLength.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
     prevMessagesLength.current = messages.length
   }, [messages.length])
@@ -90,9 +90,9 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
   // Keep input focused
   useEffect(() => {
     if (!isTyping && inputRef.current) {
-      inputRef.current.focus()
+      inputRef.current.focus({ preventScroll: true })
     }
-  }, [isTyping, messages])
+  }, [isTyping, messages.length])
 
   const handleSend = async () => {
     if (!input.trim()) return
@@ -276,8 +276,12 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
                 variant="secondary"
                 size="sm"
                 className="text-xs"
-                onClick={() => sendMessage(question)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  sendMessage(question)
+                }}
                 disabled={isTyping}
+                type="button"
               >
                 {question}
               </Button>

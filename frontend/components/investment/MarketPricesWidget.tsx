@@ -155,7 +155,7 @@ function CompactView({ data, isLoading, isFetching, onRefresh }: any) {
   }
 
   const sp500 = data?.indices?.find((i: any) => i.symbol === 'SP500')
-  const btc = data?.cryptocurrencies?.find((c: any) => c.symbol === 'BTC')
+  const btc = data?.cryptocurrencies?.find((c: any) => c.symbol === 'bitcoin')
 
   return (
     <div className="flex items-center gap-2 text-sm overflow-x-auto no-scrollbar max-w-[calc(100vw-4rem)] md:max-w-none">

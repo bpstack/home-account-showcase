@@ -34,8 +34,8 @@ export async function getMarketData(): Promise<MarketDataContext> {
   ])
 
   // Process results with fallbacks
-  const crypto = cryptoData.status === 'fulfilled' ? cryptoData.value : {}
-  const currencies = currencyData.status === 'fulfilled' ? currencyData.value : {}
+  const crypto = cryptoData.status === 'fulfilled' ? cryptoData.value : {} as Record<string, { price: number; change24h: number }>
+  const currencies = currencyData.status === 'fulfilled' ? currencyData.value : {} as Record<string, { rate: number; change24h?: number}>
 
   const result: MarketDataContext = {
     sp500: {
@@ -77,28 +77,69 @@ export async function getMarketData(): Promise<MarketDataContext> {
 export async function getMarketDataFull(): Promise<MarketData & { marketTrend: 'alcista' | 'bajista' | 'neutral' }> {
   const context = await getMarketData()
 
-  const cryptoData = await getCryptoPrices(['bitcoin', 'ethereum'])
-  const currencyData = await getCurrencyRates(['USD', 'GBP'])
-  const indices = await Promise.all([
-    getSP500(),
-    getMSCIWorld(),
-    getNASDAQ()
-  ])
+  // Reuse data from context to avoid double API calls
+  const cryptoData = [
+    {
+      symbol: 'bitcoin',
+      name: 'Bitcoin',
+      price: context.btc.value,
+      change24h: context.btc.change24h,
+      source: 'coingecko' as const
+    },
+    {
+      symbol: 'ethereum',
+      name: 'Ethereum',
+      price: context.eth.value,
+      change24h: context.eth.change24h,
+      source: 'coingecko' as const
+    }
+  ]
+
+  const currencyData = [
+    {
+      pair: 'USD',
+      rate: context.eurUsd,
+      change24h: 0,
+      source: 'frankfurter' as const
+    },
+    {
+      pair: 'GBP',
+      rate: context.eurGbp,
+      change24h: 0,
+      source: 'frankfurter' as const
+    }
+  ]
+
+  const indices = [
+    {
+      symbol: 'SP500',
+      name: 'S&P 500',
+      value: context.sp500.value,
+      change24h: context.sp500.change24h,
+      source: 'alphavantage' as const
+    },
+    {
+      symbol: 'MSCI',
+      name: 'MSCI World',
+      value: context.msciWorld.value,
+      change24h: context.msciWorld.change24h,
+      source: 'alphavantage' as const
+    },
+    {
+      symbol: 'NDX',
+      name: 'NASDAQ',
+      value: context.nasdaq.value,
+      change24h: context.nasdaq.change24h,
+      source: 'alphavantage' as const
+    }
+  ]
 
   const allChanges: number[] = []
 
-  indices.forEach(i => {
-    if (i && typeof i.change24h === 'number') allChanges.push(i.change24h)
-  })
+  indices.forEach(i => allChanges.push(i.change24h))
+  cryptoData.forEach(c => allChanges.push(c.change24h))
 
-  Object.values(cryptoData).forEach(c => {
-    if (typeof c.change24h === 'number') allChanges.push(c.change24h)
-  })
-
-  Object.values(currencyData).forEach(c => {
-    if (typeof c.change24h === 'number') allChanges.push(c.change24h)
-  })
-
+  // Calculate trend as before...
   const avgChange = allChanges.length > 0
     ? allChanges.reduce((a, b) => a + b, 0) / allChanges.length
     : 0
@@ -108,9 +149,9 @@ export async function getMarketDataFull(): Promise<MarketData & { marketTrend: '
     avgChange < -0.5 ? 'bajista' : 'neutral'
 
   return {
-    cryptocurrencies: Object.values(cryptoData),
-    currencies: Object.values(currencyData),
-    indices: indices.filter((i): i is MarketIndex => i !== null),
+    cryptocurrencies: cryptoData,
+    currencies: currencyData,
+    indices: indices,
     cachedAt: new Date().toISOString(),
     cacheExpiresIn: getCacheDuration().seconds,
     marketTrend
@@ -118,23 +159,18 @@ export async function getMarketDataFull(): Promise<MarketData & { marketTrend: '
 }
 
 export async function getCryptoData(): Promise<CryptoPrice[]> {
-  const prices = await getCryptoPrices(['bitcoin', 'ethereum'])
-  return Object.values(prices)
+  const full = await getMarketDataFull()
+  return full.cryptocurrencies
 }
 
 export async function getCurrencyData(): Promise<CurrencyRate[]> {
-  const rates = await getCurrencyRates(['USD', 'GBP'])
-  return Object.values(rates)
+  const full = await getMarketDataFull()
+  return full.currencies
 }
 
 export async function getIndicesData(): Promise<MarketIndex[]> {
-  const [sp500, msci, nasdaq] = await Promise.all([
-    getSP500(),
-    getMSCIWorld(),
-    getNASDAQ()
-  ])
-
-  return [sp500, msci, nasdaq].filter((i): i is MarketIndex => i !== null)
+  const full = await getMarketDataFull()
+  return full.indices
 }
 
 export async function getQuickSummary(): Promise<{

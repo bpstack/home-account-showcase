@@ -6,7 +6,7 @@ import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
 import { loginRateLimiter } from '../../middlewares/rateLimiter.js'
 
-const router = Router()
+const router: Router = Router()
 
 // Rutas públicas
 router.post('/register', register)

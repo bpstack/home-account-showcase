@@ -183,7 +183,12 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
               <span className="text-xs font-medium text-muted-foreground uppercase">
                 Fondo
               </span>
-              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <Tooltip 
+                content="El fondo de emergencia es un colchón financiero para imprevistos (pérdida de empleo, reparaciones urgentes, gastos médicos). Se calcula como N meses de tus gastos mensuales promedio. Ejemplo: Si gastas 2.000€/mes y configuras 6 meses, tu meta será 12.000€. Este dinero debe estar en cuentas líquidas (ahorro, depósitos a corto plazo), no invertido."
+                side="left"
+              >
+                <AlertCircle className="h-4 w-4 text-amber-500 cursor-help" />
+              </Tooltip>
             </div>
             {isEditingFund ? (
               <div className="flex items-center gap-2">

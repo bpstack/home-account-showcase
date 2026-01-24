@@ -25,7 +25,7 @@ export function buildChatPrompt(
 - Capacidad de ahorro: ${context.financialSummary.savingsCapacity}€/mes (${context.financialSummary.savingsRate}%)
 - Fondo de emergencia: ${context.financialSummary.emergencyFundCurrent}€ / ${context.financialSummary.emergencyFundGoal}€ objetivo
 - Período analizado: ${context.financialSummary.historicalMonths} meses
-- Perfil de riesgo: ${context.investmentProfile?.riskProfile || 'no definido'}
+- Perfil de riesgo: ${context.investmentProfile?.risk_profile || 'no definido'}
 - Tendencia de ahorro: ${context.financialSummary.trend}
 
 # PRECIOS ACTUALES DE MERCADO

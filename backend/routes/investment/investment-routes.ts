@@ -14,10 +14,11 @@ import {
   getChatHistory,
   getChatSessions,
   deleteChatSession,
-  explainConcept
+  explainConcept,
+  updateLiquidityReserve
 } from '../../controllers/investment/investment-controller.js'
 
-const router = Router()
+const router: Router = Router()
 
 // Apply authentication to all routes
 router.use(authenticateToken)
@@ -33,10 +34,7 @@ router.get('/:accountId/overview', getOverview)
 router.patch('/:accountId/emergency-fund-months', updateEmergencyFundMonths)
 
 // PATCH /api/investment/:accountId/liquidity-reserve
-router.patch('/:accountId/liquidity-reserve', async (req, res) => {
-  const { updateLiquidityReserve } = await import('../../controllers/investment/investment-controller.js')
-  updateLiquidityReserve(req, res)
-})
+router.patch('/:accountId/liquidity-reserve', updateLiquidityReserve)
 
 // POST /api/investment/:accountId/analyze-profile
 router.post('/:accountId/analyze-profile', analyzeProfile)

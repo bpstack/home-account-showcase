@@ -128,15 +128,4 @@ export function parseProfileAssessmentResponse(text: string): ProfileAssessmentR
   }
 }
 
-// Types
-export interface ProfileAnswers {
-  age: number
-  monthlyIncome: number
-  jobStability: 'high' | 'medium' | 'low'
-  hasEmergencyFund: 'yes' | 'partial' | 'no'
-  horizonYears: '<3' | '3-10' | '>10'
-  reactionToDrop: 'sell' | 'hold' | 'buy_more'
-  experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
-}
-
 export * from './types.js'
