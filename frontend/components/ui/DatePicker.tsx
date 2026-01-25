@@ -45,6 +45,12 @@ export function DatePicker({ startDate, endDate, onDatesChange, className, compa
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Sincronizar estado interno si cambian las props (ej: al limpiar filtros)
+  useEffect(() => {
+    setDateRange({ start: startDate, end: endDate })
+  }, [startDate, endDate])
+
+
   const getDaysInMonth = useCallback((year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate()
   }, [])
@@ -55,6 +61,12 @@ export function DatePicker({ startDate, endDate, onDatesChange, className, compa
 
   const formatDate = useCallback((date: Date) => {
     return date.toISOString().split('T')[0]
+  }, [])
+
+  const formatDisplayDate = useCallback((dateStr: string) => {
+    if (!dateStr) return ''
+    const [year, month, day] = dateStr.split('-')
+    return `${day}-${month}-${year.slice(2)}`
   }, [])
 
   const handleDateClick = useCallback((day: number) => {
@@ -119,12 +131,13 @@ export function DatePicker({ startDate, endDate, onDatesChange, className, compa
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
   const displayText = dateRange.start && dateRange.end
-    ? `${dateRange.start} - ${dateRange.end}`
+    ? `${formatDisplayDate(dateRange.start)} - ${formatDisplayDate(dateRange.end)}`
     : 'Período'
 
   const shortDisplayText = dateRange.start && dateRange.end
-    ? `${new Date(dateRange.start).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${new Date(dateRange.end).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
+    ? `${formatDisplayDate(dateRange.start)} - ${formatDisplayDate(dateRange.end)}`
     : 'Período'
+
 
   if (variant === 'tab') {
     return (
@@ -236,9 +249,10 @@ export function DatePicker({ startDate, endDate, onDatesChange, className, compa
                 <span className="text-muted-foreground">Seleccionado:</span>
                 <span className="font-medium text-foreground">
                   {dateRange.start && dateRange.end
-                    ? `${dateRange.start} - ${dateRange.end}`
+                    ? `${formatDisplayDate(dateRange.start)} - ${formatDisplayDate(dateRange.end)}`
                     : 'Seleccione un rango'}
                 </span>
+
               </div>
               <div className="flex justify-between mt-2">
                 <span className="text-muted-foreground">Días:</span>
@@ -362,9 +376,10 @@ export function DatePicker({ startDate, endDate, onDatesChange, className, compa
               <span className="text-muted-foreground">Seleccionado:</span>
               <span className="font-medium text-foreground">
                 {dateRange.start && dateRange.end
-                  ? `${dateRange.start} - ${dateRange.end}`
+                  ? `${formatDisplayDate(dateRange.start)} - ${formatDisplayDate(dateRange.end)}`
                   : 'Seleccione un rango'}
               </span>
+
             </div>
             <div className="flex justify-between mt-2">
               <span className="text-muted-foreground">Días:</span>

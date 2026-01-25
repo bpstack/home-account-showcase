@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { transactions as transactionsApi } from '@/lib/apiClient'
 import { useCategories } from '@/lib/queries/categories'
@@ -13,24 +13,22 @@ import {
   CardTitle,
   CardContent,
   Button,
-  Input,
-  FilterSelect,
   Tabs,
+  PageFilters,
 } from '@/components/ui'
 import { ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
 import {
-  ArrowLeft,
-  ArrowRight,
   TrendingUp,
   TrendingDown,
   Wallet,
   PiggyBank,
   ChevronDown,
   ChevronUp,
-  Calendar,
   Loader2,
 } from 'lucide-react'
 import type { Transaction } from '@/lib/apiClient'
+import { useBalanceStore } from '@/stores/balanceStore'
+import { useFiltersStore } from '@/stores/filtersStore'
 
 const monthsFull = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -40,20 +38,11 @@ const monthsFull = [
 const currentYearNow = new Date().getFullYear()
 const availableYears = Array.from({ length: currentYearNow - 2020 + 2 }, (_, i) => 2020 + i)
 
-type Period = 'monthly' | 'yearly' | 'custom'
-type TabType = 'balance' | 'income' | 'expenses'
-
 // Tabs definidos fuera del componente para evitar recrearlos en cada render
-const mainTabs = [
+const balanceTabs = [
   { id: 'balance', label: 'Balance', icon: <Wallet className="h-4 w-4" /> },
   { id: 'income', label: 'Ingresos', icon: <TrendingUp className="h-4 w-4" /> },
   { id: 'expenses', label: 'Gastos', icon: <TrendingDown className="h-4 w-4" /> },
-]
-
-const periodTabs = [
-  { id: 'monthly', label: 'Mes' },
-  { id: 'yearly', label: 'Año' },
-  { id: 'custom', label: 'Rango' },
 ]
 
 const formatLocalDate = (date: Date): string => {
@@ -114,15 +103,44 @@ function BalanceContent({
 }: BalanceClientProps) {
   const { account } = useAuth()
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
 
-  const activeTab = (searchParams.get('tab') as TabType) || 'balance'
-  const period = (searchParams.get('period') as Period) || 'monthly'
-  const currentMonth = parseInt(searchParams.get('month') || String(new Date().getMonth()), 10)
-  const currentYear = parseInt(searchParams.get('year') || String(new Date().getFullYear()), 10)
-  const customStartDate = searchParams.get('start') || ''
-  const customEndDate = searchParams.get('end') || ''
+  // Usar stores de Zustand como fuente de verdad
+  const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
+  const { activeTab, period, customStartDate, customEndDate, setActiveTab, setPeriod, setCustomDates, reset: resetBalance } = useBalanceStore()
+
+
+  const hasActiveFilters = 
+    selectedMonth !== null || 
+    selectedYear !== new Date().getFullYear() || 
+    period !== 'monthly'
+
+  const clearFilters = () => {
+    resetFilters()
+    resetBalance()
+  }
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(value)
+  }
+
+  const getPeriodLabel = () => {
+    switch (period) {
+      case 'monthly':
+        return `${monthsFull[selectedMonth ?? new Date().getMonth()]} ${selectedYear}`
+      case 'yearly':
+        return `Año ${selectedYear}`
+      case 'custom':
+        if (!customStartDate || !customEndDate) return 'Período personalizado'
+        const start = new Date(customStartDate)
+        const end = new Date(customEndDate)
+        return `${start.toLocaleDateString('es-ES')} - ${end.toLocaleDateString('es-ES')}`
+      default:
+        return ''
+    }
+  }
 
   const [page, setPage] = useState(1)
   const [showTransactions, setShowTransactions] = useState(false)
@@ -139,22 +157,32 @@ function BalanceContent({
   const getDateRange = useCallback(() => {
     switch (period) {
       case 'monthly':
-        return {
-          startDate: formatLocalDate(new Date(currentYear, currentMonth, 1)),
-          endDate: formatLocalDate(new Date(currentYear, currentMonth + 1, 0)),
+        const yearToUse = selectedYear ?? new Date().getFullYear()
+        if (selectedMonth === null) {
+          return {
+            startDate: `${yearToUse}-01-01`,
+            endDate: `${yearToUse}-12-31`,
+          }
         }
+        return {
+          startDate: formatLocalDate(new Date(yearToUse, selectedMonth, 1)),
+          endDate: formatLocalDate(new Date(yearToUse, selectedMonth + 1, 0)),
+        }
+
       case 'yearly':
+        const yToUse = selectedYear ?? new Date().getFullYear()
         return {
-          startDate: `${currentYear}-01-01`,
-          endDate: `${currentYear}-12-31`,
+          startDate: `${yToUse}-01-01`,
+          endDate: `${yToUse}-12-31`,
         }
+
       case 'custom':
         return {
           startDate: customStartDate || '',
           endDate: customEndDate || '',
         }
     }
-  }, [period, currentMonth, currentYear, customStartDate, customEndDate])
+  }, [period, selectedYear, selectedMonth, customStartDate, customEndDate])
 
   const getTypeFilter = useCallback((): 'income' | 'expense' | undefined => {
     if (activeTab === 'income') return 'income'
@@ -165,13 +193,13 @@ function BalanceContent({
   const { startDate, endDate } = getDateRange()
   const typeFilter = getTypeFilter()
 
-  const { data: statsData } = useTransactionStats(account?.id || '', startDate, endDate, {
+  const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(account?.id || '', startDate, endDate, {
     initialData: initialStats ? { success: true, stats: initialStats } : undefined,
   })
 
   const { data: summaryData } = useTransactionSummary(account?.id || '', startDate, endDate)
 
-  const { data: txData } = useTransactions({
+  const { data: txData, isLoading: isLoadingTx } = useTransactions({
     account_id: account?.id || '',
     start_date: startDate,
     end_date: endDate,
@@ -180,10 +208,20 @@ function BalanceContent({
     offset: (page - 1) * PAGE_SIZE,
   }, {
     staleTime: 30_000,
-    initialData: initialTransactions && page === 1
+    initialData: initialTransactions && page === 1 && !hasActiveFilters
       ? { transactions: initialTransactions, total: initialTotal || 0, limit: PAGE_SIZE, offset: 0 }
       : undefined,
   })
+
+  const isLoading = isLoadingStats || isLoadingTx || !statsData
+
+  const currentData: PaginatedTransactions = {
+    transactions: txData?.transactions || [],
+    total: txData?.total || 0,
+    page,
+    limit: PAGE_SIZE,
+    totalPages: Math.ceil((txData?.total || 0) / PAGE_SIZE),
+  }
 
   useEffect(() => {
     if (statsData?.stats) {
@@ -233,36 +271,15 @@ function BalanceContent({
 
   useEffect(() => {
     setPage(1)
-  }, [period, currentMonth, currentYear, customStartDate, customEndDate, activeTab])
+  }, [period, selectedMonth, selectedYear, customStartDate, customEndDate, activeTab])
 
-  const updateUrl = useCallback(
-    (updates: { tab?: TabType; period?: Period; month?: number; year?: number; start?: string; end?: string }) => {
-      const params = new URLSearchParams(searchParams.toString())
-      if (updates.tab) params.set('tab', updates.tab)
-      if (updates.period) params.set('period', updates.period)
-      if (updates.month !== undefined) params.set('month', String(updates.month))
-      if (updates.year !== undefined) params.set('year', String(updates.year))
-      if (updates.start !== undefined) params.set('start', updates.start)
-      if (updates.end !== undefined) params.set('end', updates.end)
-      router.push(`${pathname}?${params.toString()}`, { scroll: false })
-    },
-    [searchParams, router, pathname]
-  )
-
-  const prevMonth = () => {
-    if (currentMonth === 0) {
-      updateUrl({ month: 11, year: currentYear - 1 })
-    } else {
-      updateUrl({ month: currentMonth - 1 })
-    }
-  }
-
-  const nextMonth = () => {
-    if (currentMonth === 11) {
-      updateUrl({ month: 0, year: currentYear + 1 })
-    } else {
-      updateUrl({ month: currentMonth + 1 })
-    }
+  // Manejar cambio de periodo personalizado a través del DatePicker
+  const handleDateRangeChange = (startDate: string, endDate: string) => {
+    setCustomDates(startDate, endDate)
+    setPeriod('custom')
+    // Exclusión mutua: al activar periodo, anulamos mes y año
+    setYear(null)
+    setMonth(null)
   }
 
   const handleCategoryClick = (transaction: Transaction) => {
@@ -270,187 +287,99 @@ function BalanceContent({
     setIsCategoryModalOpen(true)
   }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
-  }
-
-  const getPeriodLabel = () => {
-    if (period === 'monthly') return `${monthsFull[currentMonth]} ${currentYear}`
-    if (period === 'yearly') return `Año ${currentYear}`
-    if (customStartDate && customEndDate) {
-      return `${customStartDate} → ${customEndDate}`
-    }
-    return 'Selecciona fechas'
-  }
-
-  const monthOptions = monthsFull.map((month, index) => ({ value: String(index), label: month }))
-  const yearOptions = availableYears.map((year) => ({ value: String(year), label: String(year) }))
-
-  const currentData = {
-    transactions: txData?.transactions || [],
-    total: txData?.total || 0,
-    page,
-    limit: PAGE_SIZE,
-    totalPages: Math.ceil((txData?.total || 0) / PAGE_SIZE),
-  }
-
-  const isLoading = txData === undefined
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <Tabs
-            tabs={mainTabs}
-            activeTab={activeTab}
-            onChange={(id) => updateUrl({ tab: id as TabType })}
-            variant="pills"
-            className="self-center sm:self-auto"
-          />
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
+      {/* Header con Tabs + Filtros integrados */}
+      <div className="relative">
+        <Tabs
+          tabs={balanceTabs}
+          activeTab={activeTab}
+          onChange={(tabId) => setActiveTab(tabId as 'balance' | 'income' | 'expenses')}
+          variant="underline-responsive"
+          rightContent={
+            <PageFilters
+              showMonthSelect
+              selectedMonth={selectedMonth}
+              onMonthChange={setMonth}
+              showYearSelect
+              year={selectedYear}
+              onYearChange={(y) => {
+                setYear(y)
+                if (y !== null) setMonth(null)
+              }}
+              showDatePicker
 
-          <Tabs
-            tabs={periodTabs}
-            activeTab={period}
-            onChange={(id) => updateUrl({ period: id as Period })}
-            variant="pills"
-            className="self-center sm:self-auto"
-          />
-        </div>
+              startDate={period === 'custom' ? customStartDate : undefined}
+              endDate={period === 'custom' ? customEndDate : undefined}
+              onDatesChange={handleDateRangeChange}
+              showClear={hasActiveFilters}
+              onClear={clearFilters}
+              className="ml-auto"
+            />
 
-        <div className="flex items-center justify-center">
-          {period === 'monthly' && (
-            <div className="flex items-center gap-2 bg-muted rounded-lg p-1.5">
-              <Button variant="ghost" size="icon" onClick={prevMonth} className="h-9 w-9">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <FilterSelect
-                value={String(currentMonth)}
-                onChange={(e) => updateUrl({ month: parseInt(e.target.value, 10) })}
-                options={monthOptions}
-                className="w-32"
-              />
-              <FilterSelect
-                value={String(currentYear)}
-                onChange={(e) => updateUrl({ year: parseInt(e.target.value, 10) })}
-                options={yearOptions}
-                className="w-24"
-              />
-              <Button variant="ghost" size="icon" onClick={nextMonth} className="h-9 w-9">
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
 
-          {period === 'yearly' && (
-            <div className="flex items-center gap-2 bg-muted rounded-lg p-1.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => updateUrl({ year: currentYear - 1 })}
-                className="h-9 w-9"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <FilterSelect
-                value={String(currentYear)}
-                onChange={(e) => updateUrl({ year: parseInt(e.target.value, 10) })}
-                options={yearOptions}
-                className="w-24"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => updateUrl({ year: currentYear + 1 })}
-                className="h-9 w-9"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
 
-          {period === 'custom' && (
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 bg-muted rounded-lg p-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
-                <span className="text-xs text-muted-foreground sm:hidden">Desde</span>
-                <Input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => updateUrl({ start: e.target.value })}
-                  className="h-9 w-36 text-sm"
-                />
-              </div>
-              <span className="text-muted-foreground hidden sm:block">→</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground sm:hidden">Hasta</span>
-                <Input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => updateUrl({ end: e.target.value })}
-                  className="h-9 w-36 text-sm"
-                />
-              </div>
-            </div>
-          )}
-        </div>
+
+          }
+        />
       </div>
 
-      <p className="text-center text-sm text-text-secondary">{getPeriodLabel()}</p>
+      <div className="px-4 md:px-6 py-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-accent" />
+          </div>
+        ) : period === 'custom' && (!customStartDate || !customEndDate) ? (
+          <Card>
+            <CardContent className="py-16">
+              <p className="text-center text-text-secondary">
+                Selecciona una fecha de inicio y fin para ver los datos
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {activeTab === 'balance' && (
+              <BalanceTabContent
+                stats={stats}
+                expensesByCategory={expensesByCategory}
+                incomeByCategory={incomeByCategory}
+                formatCurrency={formatCurrency}
+                data={currentData}
+                setPage={setPage}
+                showTransactions={showTransactions}
+                setShowTransactions={setShowTransactions}
+                onCategoryClick={handleCategoryClick}
+              />
+            )}
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-accent" />
-        </div>
-      ) : period === 'custom' && (!customStartDate || !customEndDate) ? (
-        <Card>
-          <CardContent className="py-16">
-            <p className="text-center text-text-secondary">
-              Selecciona una fecha de inicio y fin para ver los datos
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {activeTab === 'balance' && (
-            <BalanceTabContent
-              stats={stats}
-              expensesByCategory={expensesByCategory}
-              incomeByCategory={incomeByCategory}
-              formatCurrency={formatCurrency}
-              data={currentData}
-              setPage={setPage}
-              showTransactions={showTransactions}
-              setShowTransactions={setShowTransactions}
-              onCategoryClick={handleCategoryClick}
-            />
-          )}
+            {activeTab === 'income' && (
+              <IncomeTabContent
+                stats={stats}
+                formatCurrency={formatCurrency}
+                data={currentData}
+                setPage={setPage}
+                showTransactions={showTransactions}
+                setShowTransactions={setShowTransactions}
+                onCategoryClick={handleCategoryClick}
+              />
+            )}
 
-          {activeTab === 'income' && (
-            <IncomeTabContent
-              stats={stats}
-              formatCurrency={formatCurrency}
-              data={currentData}
-              setPage={setPage}
-              showTransactions={showTransactions}
-              setShowTransactions={setShowTransactions}
-              onCategoryClick={handleCategoryClick}
-            />
-          )}
-
-          {activeTab === 'expenses' && (
-            <ExpensesTabContent
-              stats={stats}
-              expensesByCategory={expensesByCategory}
-              formatCurrency={formatCurrency}
-              data={currentData}
-              setPage={setPage}
-              showTransactions={showTransactions}
-              setShowTransactions={setShowTransactions}
-              onCategoryClick={handleCategoryClick}
-            />
-          )}
-        </>
-      )}
+            {activeTab === 'expenses' && (
+              <ExpensesTabContent
+                stats={stats}
+                expensesByCategory={expensesByCategory}
+                formatCurrency={formatCurrency}
+                data={currentData}
+                setPage={setPage}
+                showTransactions={showTransactions}
+                setShowTransactions={setShowTransactions}
+                onCategoryClick={handleCategoryClick}
+              />
+            )}
+          </div>
+        )}
+      </div>
 
       {account && (
         <CategoryChangeModal
@@ -467,6 +396,7 @@ function BalanceContent({
     </div>
   )
 }
+
 
 interface PaginatedTransactions {
   transactions: Transaction[]

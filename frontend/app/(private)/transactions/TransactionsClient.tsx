@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useEffect, Suspense, useCallback, useMemo } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { subcategories as subcategoriesApi, Subcategory, Transaction } from '@/lib/apiClient'
@@ -13,9 +13,10 @@ import {
 } from '@/lib/queries/transactions'
 import { useCategories } from '@/lib/queries/categories'
 import { useFiltersStore } from '@/stores/filtersStore'
-import { Button, Input, Select, Modal, ModalFooter } from '@/components/ui'
-import { Loader2 } from 'lucide-react'
-import { TransactionsToolbar, TransactionsSummary, ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
+import { Button, Input, Select, Modal, ModalFooter, Tabs, PageFilters, FilterSelect } from '@/components/ui'
+import { Loader2, Search, Plus, Upload, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
+import { TransactionsSummary, ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
+import { useTransactionsStore } from '@/stores/transactionsStore'
 
 interface TransactionForm {
   description: string
@@ -47,7 +48,7 @@ function TransactionsPageFallback() {
 interface TransactionsClientProps {
   initialTransactions?: Transaction[]
   initialTotal?: number
-  initialCategories?: { id: string; name: string; color?: string }[]
+  initialCategories?: any[]
 }
 
 export default function TransactionsClient({ initialTransactions, initialTotal, initialCategories }: TransactionsClientProps) {
@@ -70,190 +71,243 @@ function TransactionsContent({
   const { account } = useAuth()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  
+  const { 
+    page, 
+    setPage, 
+    isCreateModalOpen, 
+    setCreateModalOpen, 
+    isCategoryModalOpen, 
+    setCategoryModalOpen,
+    period,
+    setPeriod,
+    customStartDate,
+    customEndDate,
+    setCustomDates,
+    reset: resetTransactions
+  } = useTransactionsStore()
 
+  const { 
+    selectedYear, 
+    selectedMonth, 
+    selectedCategory, 
+    selectedType, 
+    setCategory,
+    setYear,
+    setMonth,
+    setType,
+    reset: resetFilters
+  } = useFiltersStore()
   const searchTerm = searchParams.get('search') || ''
 
-  const { selectedYear, selectedMonth, selectedCategory, selectedType, setCategory } = useFiltersStore()
+  const hasActiveFilters = 
+    selectedMonth !== null || 
+    (selectedYear !== null && selectedYear !== new Date().getFullYear()) || 
+    selectedCategory !== '' || 
+    searchTerm !== '' ||
+    selectedType !== 'all' ||
+    period !== 'monthly'
 
-  const pageParam = searchParams.get('page')
-  const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1
+  const updateUrl = useCallback((updates: { 
+    search?: string;
+  }) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (updates.search !== undefined) {
+      if (updates.search) params.set('search', updates.search)
+      else params.delete('search')
+    }
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  const [localSearch, setLocalSearch] = useState(searchTerm)
+
+  // Sync local search with URL when URL changes (e.g. on clear or back nav)
+  useEffect(() => {
+    setLocalSearch(searchTerm)
+  }, [searchTerm])
+
+  // Debounced update of the URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== searchTerm) {
+        updateUrl({ search: localSearch })
+      }
+    }, 600) // 600ms delay for performance
+
+    return () => clearTimeout(timer)
+  }, [localSearch, searchTerm, updateUrl])
+
+  const clearFilters = () => {
+    resetFilters()
+    resetTransactions()
+    updateUrl({ search: '' })
+  }
+
+  const handleDateRangeChange = (startDate: string, endDate: string) => {
+    setCustomDates(startDate, endDate)
+    setPeriod('custom')
+    // Exclusión mutua
+    setYear(null)
+    setMonth(null)
+  }
+
+
+  const activeTab = selectedType
+
+  const tabsList = [
+    { id: 'all', label: 'Todas', icon: <Wallet className="h-4 w-4" /> },
+    { id: 'income', label: 'Ingresos', icon: <TrendingUp className="h-4 w-4" /> },
+    { id: 'expense', label: 'Gastos', icon: <TrendingDown className="h-4 w-4" /> },
+  ]
+
   const limit = 100
-
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
-
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
 
-  const startDate = selectedMonth !== null
-    ? new Date(selectedYear, selectedMonth, 1).toISOString().split('T')[0]
-    : new Date(selectedYear, 0, 1).toISOString().split('T')[0]
-  const endDate = selectedMonth !== null
-    ? new Date(selectedYear, selectedMonth + 1, 0).toISOString().split('T')[0]
-    : new Date(selectedYear, 11, 31).toISOString().split('T')[0]
+  const startDate = period === 'custom' && customStartDate ? customStartDate : (
+    selectedMonth !== null
+      ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth, 1).toISOString().split('T')[0]
+      : new Date(selectedYear ?? new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+  )
+
+  
+  const endDate = period === 'custom' && customEndDate ? customEndDate : (
+    selectedMonth !== null
+      ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth + 1, 0).toISOString().split('T')[0]
+      : new Date(selectedYear ?? new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+  )
+
 
   const { data: txData, isLoading: isLoadingTx } = useTransactions({
     account_id: account?.id || '',
     start_date: startDate,
     end_date: endDate,
-    search: searchTerm || undefined,
-    type: selectedType !== 'all' ? selectedType : undefined,
+    type: selectedType === 'all' ? undefined : (selectedType as any),
+    search: searchTerm,
+    subcategory_id: selectedCategory || undefined,
     limit,
     offset: (page - 1) * limit,
   }, {
-    initialData: initialTransactions && page === 1
+    initialData: initialTransactions && page === 1 && !hasActiveFilters
       ? { transactions: initialTransactions, total: initialTotal || 0, limit, offset: 0 }
       : undefined,
   })
 
-  const { data: catData } = useCategories(account?.id || '', {
-    initialData: initialCategories
-      ? { categories: initialCategories as any }
-      : undefined,
+  // No local filtering needed anymore as we pass subcategory_id to the API
+  const filteredTransactions = txData?.transactions || []
+
+  const totals = useMemo(() => {
+    const txs = filteredTransactions
+    const income = txs.filter(t => t.amount > 0).reduce((acc, t) => acc + Number(t.amount || 0), 0)
+    const expenses = txs.filter(t => t.amount < 0).reduce((acc, t) => acc + Math.abs(Number(t.amount || 0)), 0)
+
+    return { income, expenses }
+  }, [filteredTransactions])
+
+  const { data: categoriesData } = useCategories(account?.id || '', {
+    initialData: initialCategories ? { categories: initialCategories as any } : undefined,
+    enabled: !!account?.id
   })
 
-  const { data: allTxData } = useTransactions({
-    account_id: account?.id || '',
-    start_date: startDate,
-    end_date: endDate,
-    search: searchTerm || undefined,
-    type: selectedType !== 'all' ? selectedType : undefined,
-  })
+
+
+  
+  const categories: any[] = categoriesData?.categories || []
+
+  const categoryOptions = useMemo(() => {
+    const options: any[] = [{ value: '', label: 'Todas las categorías' }]
+    
+    // Si no hay categorías, no devolvemos nada más que el default
+    if (!categories || categories.length === 0) return options
+
+    categories.forEach(cat => {
+      // Add heading for category
+      options.push({ value: `cat-${cat.id}`, label: cat.name, isHeading: true })
+      
+      const subs = cat.subcategories || []
+      if (subs.length > 0) {
+        subs.forEach((sub: any) => {
+          options.push({ value: sub.id, label: sub.name, level: 1 })
+        })
+      }
+    })
+    
+    return options
+  }, [categories])
+  useEffect(() => {
+    setPage(1)
+  }, [selectedMonth, selectedYear, selectedCategory, searchTerm, selectedType, period, customStartDate, customEndDate])
 
   const createMutation = useCreateTransaction()
   const updateMutation = useUpdateTransaction()
   const deleteMutation = useDeleteTransaction()
 
-  // Invalidate all transactions queries after any mutation
-  const invalidateTransactions = () => {
-    queryClient.invalidateQueries({ queryKey: ['transactions'] })
-  }
-
-  const categoryList = catData?.categories || []
-
-  const categoryOptions = [
-    { value: '', label: 'Todas las categorías' },
-    ...categoryList.map((c) => ({ value: c.name, label: c.name })),
-  ]
-
-  const categoryFormOptions = [
-    { value: '', label: 'Selecciona categoría' },
-    ...categoryList.map((c) => ({ value: c.id, label: c.name })),
-  ]
-
-  const subcategoryFormOptions = [
-    { value: '', label: 'Selecciona subcategoría' },
-    ...subcategoryList.map((s) => ({ value: s.id, label: s.name })),
-  ]
-
   useEffect(() => {
     if (form.category_id) {
-      loadSubcategories(form.category_id)
+      subcategoriesApi.getAll(form.category_id).then(res => {
+        if (res.success) setSubcategoryList(res.subcategories)
+      })
     } else {
       setSubcategoryList([])
     }
   }, [form.category_id])
 
-  async function loadSubcategories(categoryId: string) {
-    try {
-      const res = await subcategoriesApi.getAll(categoryId)
-      setSubcategoryList(res.subcategories)
-    } catch (error) {
-      console.error('Error loading subcategories:', error)
-      setSubcategoryList([])
-    }
-  }
-
-  const transactionList = txData?.transactions || []
-  const filteredTransactions = transactionList.filter((tx) => {
-    const matchesCategory = !selectedCategory || tx.category_name === selectedCategory
-    return matchesCategory
-  })
-
-  const allTransactions = allTxData?.transactions || []
-
-  const totals = allTransactions.reduce(
-    (acc, tx) => {
-      const amount = Number(tx.amount)
-      if (amount >= 0) {
-        acc.income += amount
-      } else {
-        acc.expenses += Math.abs(amount)
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!account) return
+    
+    createMutation.mutate({
+      account_id: account.id,
+      date: form.date,
+      description: form.description,
+      amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
+      subcategory_id: form.subcategory_id || undefined
+    }, {
+      onSuccess: () => {
+        setCreateModalOpen(false)
+        setForm(emptyForm)
+        invalidateTransactions()
       }
-      return acc
-    },
-    { income: 0, expenses: 0 }
-  )
-
-  const handleCategoryClick = (tx: Transaction) => {
-    setSelectedTransaction(tx)
-    setIsCategoryModalOpen(true)
+    })
   }
 
-  const handleCategoryModalClose = () => {
-    setIsCategoryModalOpen(false)
-    setSelectedTransaction(null)
-  }
-
-  const handleCategoryChangeSuccess = () => {
-    invalidateTransactions()
-  }
-
-  const openCreateModal = () => {
-    setEditingId(null)
-    setForm(emptyForm)
-    setIsModalOpen(true)
-  }
-
-  const openEditModal = (tx: Transaction) => {
+  const handleEdit = (tx: Transaction) => {
     setEditingId(tx.id)
     setForm({
       description: tx.description,
       date: tx.date.split('T')[0],
-      amount: Math.abs(Number(tx.amount)).toString(),
-      type: Number(tx.amount) >= 0 ? 'income' : 'expense',
-      category_id: '',
+      amount: Math.abs(tx.amount).toString(),
+      type: tx.amount < 0 ? 'expense' : 'income',
+      category_id: '', // Need to find category from subcategory
       subcategory_id: tx.subcategory_id || '',
     })
-    setIsModalOpen(true)
+    setCreateModalOpen(true)
   }
 
-  const handleSave = async () => {
-    if (!account || !form.description || !form.date || !form.amount) return
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingId) return
 
-    const amount =
-      form.type === 'expense'
-        ? -Math.abs(parseFloat(form.amount))
-        : Math.abs(parseFloat(form.amount))
-
-    try {
-      if (editingId) {
-        await updateMutation.mutateAsync({
-          id: editingId,
-          data: {
-            description: form.description,
-            date: form.date,
-            amount,
-            subcategory_id: form.subcategory_id || null,
-          },
-        })
-      } else {
-        await createMutation.mutateAsync({
-          account_id: account.id,
-          description: form.description,
-          date: form.date,
-          amount,
-          subcategory_id: form.subcategory_id || undefined,
-        })
+    updateMutation.mutate({
+      id: editingId,
+      data: {
+        description: form.description,
+        date: form.date,
+        amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
+        subcategory_id: form.subcategory_id || null
       }
-      setIsModalOpen(false)
-      setForm(emptyForm)
-      await invalidateTransactions()
-    } catch (error) {
-      console.error('Error saving transaction:', error)
-    }
+    }, {
+      onSuccess: () => {
+        setCreateModalOpen(false)
+        setEditingId(null)
+        setForm(emptyForm)
+        invalidateTransactions()
+      }
+    })
   }
 
   const handleDelete = (id: string) => {
@@ -264,142 +318,225 @@ function TransactionsContent({
   }
 
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (newPage <= 1) {
-      params.delete('page')
-    } else {
-      params.set('page', String(newPage))
-    }
-    window.history.pushState(null, '', `?${params.toString()}`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    setPage(newPage)
+  }
+
+  const invalidateTransactions = () => {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+  }
+
+  const handleCategoryClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction)
+    setCategoryModalOpen(true)
   }
 
   return (
-    <div>
-      <TransactionsToolbar
-        categoryOptions={categoryOptions}
-        onOpenCreateModal={openCreateModal}
-      />
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
+      <div className="relative">
+        <Tabs
+          tabs={tabsList}
+          activeTab={activeTab}
+          onChange={(id) => setType(id as any)}
+          variant="underline-responsive"
+          rightContent={
+            <PageFilters
+              showMonthSelect
+              selectedMonth={selectedMonth}
+              onMonthChange={setMonth}
+              showYearSelect
+              year={selectedYear}
+              onYearChange={(y) => {
+                setYear(y)
+                if (y !== null) setMonth(null)
+              }}
+              showDatePicker
 
-      <TransactionsSummary totals={totals} />
+              startDate={period === 'custom' ? customStartDate : undefined}
+              endDate={period === 'custom' ? customEndDate : undefined}
+              onDatesChange={handleDateRangeChange}
+              showClear={hasActiveFilters}
+              onClear={clearFilters}
+              className="ml-auto"
+            />
+          }
+        />
+      </div>
 
-      <ResponsiveTransactionTable
-        transactions={filteredTransactions}
-        isLoading={isLoadingTx}
-        total={txData?.total || 0}
-        page={page}
-        totalPages={Math.ceil((txData?.total || 0) / limit)}
-        onEdit={openEditModal}
-        onDelete={handleDelete}
-        onPageChange={handlePageChange}
-        onCategoryClick={handleCategoryClick}
-        showSubcategory
-      />
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 p-4 border-b border-border bg-layer-1/50 relative z-20">
+        {/* Búsqueda - 50% de ancho en desktop */}
+        <div className="w-full md:w-1/2 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            type="text"
+            placeholder="Buscar por descripción..."
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            className="pl-9 h-10 w-full"
+          />
+        </div>
+
+        
+        {/* Acciones y Filtros - Alineados a la derecha */}
+        <div className="flex flex-wrap items-center justify-end gap-2 flex-1 min-w-0">
+          <FilterSelect
+            options={categoryOptions}
+            value={selectedCategory}
+            onChange={(e) => setCategory(e.target.value)}
+            className="min-w-[200px] max-w-full h-10"
+          />
+
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-10 px-4 shrink-0 flex items-center gap-2"
+              onClick={() => router.push('/import')}
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden lg:inline">Importar</span>
+            </Button>
+
+            
+            <Button 
+              onClick={() => setCreateModalOpen(true)} 
+              size="sm" 
+              className="h-10 px-4 shrink-0 flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden xl:inline">Nueva Transacción</span>
+              <span className="xl:hidden">Nuevo</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 md:p-6 space-y-6">
+        <TransactionsSummary totals={totals} />
+
+        <ResponsiveTransactionTable
+          transactions={filteredTransactions}
+          total={txData?.total || 0}
+          page={page}
+          totalPages={Math.ceil((txData?.total || 0) / limit)}
+          onPageChange={handlePageChange}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onCategoryClick={handleCategoryClick}
+          isLoading={isLoadingTx}
+        />
+      </div>
 
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingId ? 'Editar transacción' : 'Nueva transacción'}
-        size="md"
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setCreateModalOpen(false)
+          setEditingId(null)
+          setForm(emptyForm)
+        }}
+        title={editingId ? 'Editar Transacción' : 'Nueva Transacción'}
       >
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault()
-            handleSave()
-          }}
-        >
-          <Input
-            label="Descripción"
-            placeholder="Ej: Compra supermercado"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            required
-          />
+        <form onSubmit={editingId ? handleUpdate : handleCreate} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tipo</label>
+              <Select
+                options={[
+                  { value: 'expense', label: 'Gasto' },
+                  { value: 'income', label: 'Ingreso' },
+                ]}
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Fecha</label>
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Importe</label>
+            <div className="relative">
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                className="pr-8"
+                required
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Categoría</label>
+              <Select
+                options={[
+                  { value: '', label: 'Seleccionar...' },
+                  ...categories.map(c => ({ value: c.id, label: c.name }))
+                ]}
+                value={form.category_id}
+                onChange={(e) => setForm({ ...form, category_id: e.target.value, subcategory_id: '' })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Subcategoría</label>
+              <Select
+                options={[
+                  { value: '', label: 'Seleccionar...' },
+                  ...subcategoryList.map(s => ({ value: s.id, label: s.name }))
+                ]}
+                value={form.subcategory_id}
+                onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
+                disabled={!form.category_id}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Descripción</label>
             <Input
-              label="Fecha"
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              required
-            />
-            <Input
-              label="Importe"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              placeholder="Ej: Alquiler enero"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
               required
             />
           </div>
 
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="type"
-                checked={form.type === 'expense'}
-                onChange={() => setForm({ ...form, type: 'expense' })}
-                className="w-4 h-4 text-danger"
-              />
-              <span className="text-sm text-text-primary">Gasto</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="type"
-                checked={form.type === 'income'}
-                onChange={() => setForm({ ...form, type: 'income' })}
-                className="w-4 h-4 text-success"
-              />
-              <span className="text-sm text-text-primary">Ingreso</span>
-            </label>
-          </div>
-
-          <Select
-            label="Categoría"
-            options={categoryFormOptions}
-            value={form.category_id}
-            onChange={(e) => setForm({ ...form, category_id: e.target.value, subcategory_id: '' })}
-          />
-
-          {subcategoryList.length > 0 && (
-            <Select
-              label="Subcategoría"
-              options={subcategoryFormOptions}
-              value={form.subcategory_id}
-              onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
-            />
-          )}
+          <ModalFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCreateModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+              {editingId ? 'Guardar Cambios' : 'Crear Transacción'}
+            </Button>
+          </ModalFooter>
         </form>
-
-        <ModalFooter>
-          <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={createMutation.isPending || updateMutation.isPending}
-          >
-            {createMutation.isPending || updateMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            {editingId ? 'Guardar' : 'Crear'}
-          </Button>
-        </ModalFooter>
       </Modal>
 
       {account && (
         <CategoryChangeModal
           isOpen={isCategoryModalOpen}
-          onClose={handleCategoryModalClose}
+          onClose={() => {
+            setCategoryModalOpen(false)
+            setSelectedTransaction(null)
+          }}
           transaction={selectedTransaction}
           accountId={account.id}
-          onSuccess={handleCategoryChangeSuccess}
+          onSuccess={() => invalidateTransactions()}
         />
       )}
     </div>

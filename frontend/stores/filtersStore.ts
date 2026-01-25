@@ -25,17 +25,18 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 interface FiltersState {
-  selectedYear: number
+  selectedYear: number | null
   selectedMonth: number | null
   selectedCategory: string
   selectedType: 'all' | 'income' | 'expense'
 
-  setYear: (year: number) => void
+  setYear: (year: number | null) => void
   setMonth: (month: number | null) => void
   setCategory: (category: string) => void
   setType: (type: 'all' | 'income' | 'expense') => void
   reset: () => void
 }
+
 
 const currentYear = new Date().getFullYear()
 
@@ -47,8 +48,16 @@ export const useFiltersStore = create<FiltersState>()(
       selectedCategory: '',
       selectedType: 'all',
 
-      setYear: (year) => set({ selectedYear: year }),
-      setMonth: (month) => set({ selectedMonth: month }),
+      setYear: (year) => set({ 
+        selectedYear: year,
+        // Al seleccionar un año, si el mes es null (Período previo), lo mantenemos o lo forzamos?
+        // El requisito dice: al elegir año se asigna "Todos" (null)
+      }),
+      setMonth: (month) => set((state) => ({ 
+        selectedMonth: month,
+        // Si eliges un mes y no hay año, forzamos el actual
+        selectedYear: month !== null && state.selectedYear === null ? currentYear : state.selectedYear
+      })),
       setCategory: (category) => set({ selectedCategory: category }),
       setType: (type) => set({ selectedType: type }),
 
@@ -60,6 +69,7 @@ export const useFiltersStore = create<FiltersState>()(
           selectedType: 'all',
         }),
     }),
+
     {
       name: 'filters-storage',
       partialize: (state) => ({

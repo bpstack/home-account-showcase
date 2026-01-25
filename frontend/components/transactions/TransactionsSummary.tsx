@@ -12,20 +12,22 @@ interface TransactionsSummaryProps {
 }
 
 export function TransactionsSummary({ totals }: TransactionsSummaryProps) {
-  const balance = totals.income - totals.expenses
+  const income = Number(totals.income) || 0
+  const expenses = Number(totals.expenses) || 0
+  const balance = income - expenses
 
   return (
     <div className="grid grid-cols-3 gap-4 mb-6">
       <Card>
         <CardContent className="py-4">
           <p className="text-xs text-text-secondary">Ingresos</p>
-          <p className="text-lg font-semibold text-success">+{totals.income.toFixed(2)} €</p>
+          <p className="text-lg font-semibold text-success">+{income.toFixed(2)} €</p>
         </CardContent>
       </Card>
       <Card>
         <CardContent className="py-4">
           <p className="text-xs text-text-secondary">Gastos</p>
-          <p className="text-lg font-semibold text-danger">-{totals.expenses.toFixed(2)} €</p>
+          <p className="text-lg font-semibold text-danger">-{expenses.toFixed(2)} €</p>
         </CardContent>
       </Card>
       <Card>
@@ -41,3 +43,4 @@ export function TransactionsSummary({ totals }: TransactionsSummaryProps) {
     </div>
   )
 }
+

@@ -104,7 +104,8 @@ export function Tabs({
     return (
       <div className={cn('border-b border-gray-200 dark:border-gray-800 bg-background', className)}>
         {/* Mobile: Dropdown + rightContent */}
-        <div className="md:hidden flex items-center justify-between px-4 py-2">
+        <div className="md:hidden flex items-center justify-between px-2.5 py-2">
+
           <div className="relative w-fit" ref={dropdownRef}>
             <button
               onClick={() => setIsOpen(!isOpen)}

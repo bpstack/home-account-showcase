@@ -10,8 +10,15 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: { value: string; label: string }[]
 }
 
+interface FilterOption {
+  value: string
+  label: string
+  isHeading?: boolean
+  level?: number
+}
+
 interface FilterSelectProps {
-  options: { value: string; label: string }[]
+  options: FilterOption[]
   /** Estilo visual como tabs (sin bordes, con subrayado) */
   variant?: 'default' | 'tab'
   /** Icono opcional para mostrar */
@@ -23,6 +30,7 @@ interface FilterSelectProps {
   /** Clases adicionales */
   className?: string
 }
+
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, id, options, ...props }, ref) => {
@@ -87,11 +95,15 @@ function FilterSelect({
   }, [])
 
   const handleSelect = (optionValue: string) => {
+    const option = options.find(opt => opt.value === optionValue)
+    if (option?.isHeading) return
+
     if (onChange) {
       onChange({ target: { value: optionValue } })
     }
     setIsOpen(false)
   }
+
 
   if (variant === 'tab') {
     return (
@@ -123,9 +135,23 @@ function FilterSelect({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute left-0 top-full mt-1 min-w-[120px] max-h-[300px] overflow-y-auto bg-popover border border-border rounded-lg shadow-lg z-50">
-            {options.map((option) => {
+          <div className="absolute left-0 top-full mt-1 min-w-[200px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
+
+            {options.map((option, index) => {
               const isSelected = value === option.value
+              
+              if (option.isHeading) {
+                return (
+                  <div 
+                    key={`heading-${index}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30 sticky top-0 z-10 cursor-default"
+                  >
+                    {option.label}
+                  </div>
+                )
+              }
+
 
               return (
                 <button
@@ -134,18 +160,21 @@ function FilterSelect({
                   onClick={() => handleSelect(option.value)}
                   className={cn(
                     'w-full flex items-center justify-between px-3 py-2 text-sm transition-colors',
+                    option.level === 1 && 'pl-6',
+                    option.level === 2 && 'pl-9',
                     isSelected
                       ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
-                  <span>{option.label}</span>
-                  {isSelected && <Check className="w-4 h-4 ml-2" />}
+                  <span className="truncate">{option.label}</span>
+                  {isSelected && <Check className="w-4 h-4 ml-2 shrink-0" />}
                 </button>
               )
             })}
           </div>
         )}
+
       </div>
     )
   }
@@ -171,9 +200,23 @@ function FilterSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 min-w-full max-h-[300px] overflow-y-auto bg-popover border border-border rounded-lg shadow-lg z-50">
-          {options.map((option) => {
+        <div className="absolute left-0 top-full mt-1 min-w-full lg:min-w-[250px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
+
+          {options.map((option, index) => {
             const isSelected = value === option.value
+
+            if (option.isHeading) {
+              return (
+                <div 
+                  key={`heading-${index}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0 z-10 cursor-default"
+                >
+                  {option.label}
+                </div>
+              )
+            }
+
 
             return (
               <button
@@ -181,18 +224,21 @@ function FilterSelect({
                 type="button"
                 onClick={() => handleSelect(option.value)}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-2 text-sm transition-colors',
+                  'w-full flex items-center justify-between px-3 py-2 text-sm transition-colors text-left',
+                  option.level === 1 && 'pl-6',
+                  option.level === 2 && 'pl-9',
                   isSelected
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
-                <span>{option.label}</span>
-                {isSelected && <Check className="w-4 h-4" />}
+                <span className="truncate">{option.label}</span>
+                {isSelected && <Check className="w-4 h-4 ml-2 shrink-0" />}
               </button>
             )
           })}
         </div>
+
       )}
     </div>
   )

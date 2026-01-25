@@ -11,14 +11,18 @@ export const categoryKeys = {
 
 interface UseCategoriesOptions {
   initialData?: { categories: Category[] }
+  enabled?: boolean
 }
+
 
 export function useCategories(accountId: string, options?: UseCategoriesOptions) {
   return useQuery({
     queryKey: categoryKeys.lists(accountId),
     queryFn: () => categoriesApi.getAll(accountId),
     initialData: options?.initialData,
+    enabled: options?.enabled !== false && !!accountId,
   })
+
 }
 
 export function useCategory(id: string) {
