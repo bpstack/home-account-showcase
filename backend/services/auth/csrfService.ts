@@ -27,7 +27,7 @@ export function createCSRFCookieOptions() {
   return {
     httpOnly: false,
     secure: isProduction,
-    sameSite: 'lax' as const,
+    sameSite: isProduction ? 'none' as const : 'lax' as const,
     maxAge: 8 * 60 * 60 * 1000, // 8 horas
     path: '/',
   }

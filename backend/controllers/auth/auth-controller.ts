@@ -19,7 +19,7 @@ const isProduction = process.env.NODE_ENV === 'production'
 const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'lax' as const,
+  sameSite: isProduction ? 'none' as const : 'lax' as const,
   maxAge: 5 * 60 * 1000, // 5 minutos
   path: '/',
 }
@@ -27,7 +27,7 @@ const accessTokenCookieOptions = {
 const refreshTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'lax' as const,
+  sameSite: isProduction ? 'none' as const : 'lax' as const,
   maxAge: 8 * 60 * 60 * 1000, // 8 horas
   path: '/',
 }
