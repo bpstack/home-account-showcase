@@ -7,6 +7,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://home-account.vercel.app',
   'https://home-account-showcase-etn9.vercel.app',
+  'https://home-account-stackbp.es'
 ]
 
 // Patrones de Vercel preview (incluye cualquier subdomain de home-account-showcase)
