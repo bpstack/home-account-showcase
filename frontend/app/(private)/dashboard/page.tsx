@@ -15,14 +15,35 @@ interface DashboardPageProps {
     tab?: string
     period?: Period
     year?: string
+    month?: string
+    startDate?: string
+    endDate?: string
   }>
 }
 
-function getDateRange(period: Period, selectedYear: number) {
+function getDateRange(period: Period, selectedYear: number, params: any) {
   const now = new Date()
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
 
+  // Check for custom date range first
+  if (params.startDate && params.endDate) {
+    return {
+      startDate: params.startDate,
+      endDate: params.endDate
+    }
+  }
+
+  // Check for specific month filter
+  if (params.month && params.month !== 'all') {
+    const monthNum = parseInt(params.month)
+    return {
+      startDate: new Date(selectedYear, monthNum, 1).toISOString().split('T')[0],
+      endDate: new Date(selectedYear, monthNum + 1, 0).toISOString().split('T')[0],
+    }
+  }
+
+  // Default period-based ranges
   switch (period) {
     case 'month':
       return {
@@ -63,13 +84,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const period = (params.period as Period) || 'month'
   const selectedYear = parseInt(params.year || String(new Date().getFullYear()), 10)
 
-  const { startDate, endDate } = getDateRange(period, selectedYear)
+  const { startDate, endDate } = getDateRange(period, selectedYear, params)
 
   // Fetch inicial basado en el tab activo
   const initialData: DashboardInitialData = {}
 
   try {
-    if (activeTab === 'overview' || activeTab === 'stats' || activeTab === 'savings') {
+    if (activeTab === 'overview' || activeTab === 'stats' || activeTab === 'investment') {
       // Para estos tabs necesitamos stats y summary
       const [statsResult, summaryResult] = await Promise.all([
         getTransactionStats(accountId, startDate, endDate),

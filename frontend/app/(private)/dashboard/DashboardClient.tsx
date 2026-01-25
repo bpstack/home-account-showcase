@@ -3,7 +3,7 @@
 import { Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab, Button } from '@/components/ui'
+import { Card, CardHeader, CardTitle, CardContent, Tabs, useActiveTab, Button, FilterSelect, DatePicker } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { transactions, CategorySummary } from '@/lib/apiClient'
 import { CategoryPieChart, MonthlyBarChart, BalanceLineChart } from '@/components/charts'
@@ -20,6 +20,11 @@ import {
   Sparkles,
   ArrowLeft,
   ArrowRight,
+  LayoutDashboard,
+  History,
+  LineChart,
+  Coins,
+  X,
 } from 'lucide-react'
 import type {
   StatsResponse,
@@ -89,10 +94,10 @@ function HistorySkeleton() {
 }
 
 const tabsList = [
-  { id: 'overview', label: 'Resumen' },
-  { id: 'history', label: 'Histórico' },
-  { id: 'stats', label: 'Estadísticas' },
-  { id: 'savings', label: 'Ahorro e Inversión' },
+  { id: 'overview', label: 'Resumen', icon: <LayoutDashboard className="h-4 w-4" /> },
+  { id: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
+  { id: 'stats', label: 'Estadísticas', icon: <LineChart className="h-4 w-4" /> },
+  { id: 'investment', label: 'Inversión', icon: <Coins className="h-4 w-4" /> },
 ]
 
 const months = [
@@ -110,7 +115,7 @@ const months = [
   'Diciembre',
 ]
 
-type Period = 'month' | 'year' | 'all'
+type Period = 'month' | 'year' | 'all' | 'custom'
 
 interface Stats {
   income: number
@@ -132,17 +137,77 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
 
-  const updateUrl = useCallback((updates: { tab?: string; period?: Period; year?: number }) => {
+  const updateUrl = useCallback((updates: { 
+    tab?: string; 
+    period?: Period; 
+    year?: number;
+    month?: string | undefined;
+    startDate?: string;
+    endDate?: string;
+  }) => {
     const params = new URLSearchParams(searchParams.toString())
 
+    // Rule 1: Cuando se selecciona Periodo (startDate/endDate), limpiar Mes y Año
+    if (updates.startDate && updates.endDate) {
+      params.delete('month')
+      params.delete('year')
+      params.set('startDate', updates.startDate)
+      params.set('endDate', updates.endDate)
+      params.set('period', 'custom')
+    }
+    // Rule 2 & 3: Los filtros Mes y Año pueden usarse complementariamente.
+    // Cuando se selecciona "Todos los meses", se recupera el periodo anual.
+    else {
+      // Si se actualiza el mes (incluyendo ponerlo a undefined/all)
+      if ('month' in updates) {
+        if (updates.month) {
+          params.set('month', updates.month)
+          params.set('period', 'month')
+        } else {
+          params.delete('month')
+          params.set('period', 'year')
+        }
+        // Limpiar periodo personalizado si se vuelve a filtros estándar
+        params.delete('startDate')
+        params.delete('endDate')
+      }
+      
+      // Si se actualiza el año
+      if ('year' in updates) {
+        params.set('year', String(updates.year))
+        // Limpiar periodo personalizado si se vuelve a filtros estándar
+        params.delete('startDate')
+        params.delete('endDate')
+      }
+    }
+    
     if (updates.tab) params.set('tab', updates.tab)
-    if (updates.period) params.set('period', updates.period)
-    if (updates.year !== undefined) params.set('year', String(updates.year))
+    if (updates.period && !updates.startDate) params.set('period', updates.period)
 
     router.push(`${pathname}?${params.toString()}`, { scroll: false })
   }, [searchParams, router, pathname])
 
   const getDateRange = useCallback(() => {
+    const month = searchParams.get('month')
+    const startDateParam = searchParams.get('startDate')
+    const endDateParam = searchParams.get('endDate')
+
+    if (startDateParam && endDateParam) {
+      // Period filter activated
+      return {
+        startDate: startDateParam,
+        endDate: endDateParam
+      }
+    } else if (month && month !== 'all') {
+      // Specific month selected
+      const monthNum = parseInt(month)
+      return {
+        startDate: new Date(selectedYear, monthNum, 1).toISOString().split('T')[0],
+        endDate: new Date(selectedYear, monthNum + 1, 0).toISOString().split('T')[0],
+      }
+    }
+
+    // Default logic based on period param
     switch (period) {
       case 'month':
         return {
@@ -160,14 +225,30 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           endDate: now.toISOString().split('T')[0],
         }
     }
-  }, [period, currentYear, currentMonth, selectedYear, now])
+  }, [period, searchParams, currentYear, currentMonth, selectedYear, now])
 
-  const { startDate, endDate } = getDateRange()
+  // Verificar si hay filtros activos
+  const hasActiveFilters = searchParams.get('month') ||
+    searchParams.get('startDate') ||
+    searchParams.get('endDate') ||
+    (searchParams.get('year') && searchParams.get('year') !== String(currentYear))
+
+  // Limpiar todos los filtros
+  const clearFilters = useCallback(() => {
+    const params = new URLSearchParams()
+    const currentTab = searchParams.get('tab')
+    if (currentTab) params.set('tab', currentTab)
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  const dateRangeResult = getDateRange()
+  const startDate = dateRangeResult?.startDate || ''
+  const endDate = dateRangeResult?.endDate || ''
 
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
     queryKey: ['transactions', 'stats', account?.id, startDate, endDate],
     queryFn: () => transactions.getStats(account!.id, startDate, endDate),
-    enabled: !!account,
+    enabled: !!account && !!startDate && !!endDate,
     initialData: initialData.stats,
   })
 
@@ -183,89 +264,155 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   const isLoading = isLoadingStats && !initialData.stats
 
-  const formatPeriodLabel = () => {
-    switch (period) {
-      case 'month':
-        return `${months[currentMonth]} ${currentYear}`
-      case 'year':
-        return String(selectedYear)
-      case 'all':
-        return 'Todos los datos'
+  // Formato de fecha corto para móvil
+  const getShortDateRange = () => {
+    const startDateParam = searchParams.get('startDate')
+    const endDateParam = searchParams.get('endDate')
+    if (startDateParam && endDateParam) {
+      const start = new Date(startDateParam)
+      const end = new Date(endDateParam)
+      return `${start.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} - ${end.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' })}`
     }
+    return null
+  }
+
+  const dateRangeLabel = getShortDateRange()
+
+  // Filtros para overview/stats/investment
+  const overviewFilters = (
+    <>
+      <FilterSelect
+        variant="tab"
+        options={[
+          { value: 'all', label: 'Todos' },
+          ...months.map((month, index) => ({
+            value: String(index),
+            label: month
+          }))
+        ]}
+        value={searchParams.get('month') || 'all'}
+        onChange={(e) => {
+          const selectedMonth = e.target.value
+          updateUrl({
+            month: selectedMonth === 'all' ? undefined : selectedMonth,
+            period: selectedMonth === 'all' ? 'year' : 'month'
+          })
+        }}
+        icon={<Calendar className="h-4 w-4" />}
+      />
+
+      <FilterSelect
+        variant="tab"
+        options={Array.from({ length: 11 }, (_, i) => {
+          const year = currentYear - i
+          return { value: String(year), label: String(year) }
+        })}
+        value={searchParams.get('year') || String(currentYear)}
+        onChange={(e) => updateUrl({ year: parseInt(e.target.value) })}
+      />
+
+      <DatePicker
+        variant="tab"
+        startDate={searchParams.get('startDate') || undefined}
+        endDate={searchParams.get('endDate') || undefined}
+        onDatesChange={(startDate, endDate) => {
+          const params = new URLSearchParams(searchParams.toString())
+          params.delete('month')
+          params.delete('year')
+          params.set('startDate', startDate)
+          params.set('endDate', endDate)
+          params.set('period', 'custom')
+          router.push(`${pathname}?${params.toString()}`, { scroll: false })
+        }}
+      />
+
+      {hasActiveFilters && (
+        <button
+          onClick={clearFilters}
+          className="py-3 px-2 text-muted-foreground hover:text-destructive transition-colors"
+          title="Limpiar filtros"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </>
+  )
+
+  // Filtros para history
+  const historyFilters = (
+    <div className="flex items-center">
+      <button
+        onClick={() => updateUrl({ year: selectedYear - 1 })}
+        className="py-3 px-2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </button>
+      <span className="py-3 px-1 text-sm font-medium text-foreground min-w-[50px] text-center">
+        {selectedYear}
+      </span>
+      <button
+        onClick={() => updateUrl({ year: selectedYear + 1 })}
+        className="py-3 px-2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowRight className="h-4 w-4" />
+      </button>
+    </div>
+  )
+
+  // Determinar qué filtros mostrar según el tab activo
+  const getRightContent = () => {
+    if (activeTab === 'overview' || activeTab === 'stats' || activeTab === 'investment') {
+      return overviewFilters
+    }
+    if (activeTab === 'history') {
+      return historyFilters
+    }
+    return null
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <Tabs tabs={tabsList} defaultTab="overview" className="mb-0" variant="pills" />
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
+      {/* Tabs con filtros integrados */}
+      <Tabs
+        tabs={tabsList}
+        defaultTab="overview"
+        variant="underline-responsive"
+        rightContent={getRightContent()}
+      />
 
-        <div className="flex items-center gap-2">
-          {(activeTab === 'overview' || activeTab === 'stats' || activeTab === 'savings') && (
-            <>
-              <Button
-                variant={period === 'month' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => updateUrl({ period: 'month' })}
-              >
-                Mes
-              </Button>
-              <Button
-                variant={period === 'year' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => updateUrl({ period: 'year' })}
-              >
-                Año
-              </Button>
-              <Button
-                variant={period === 'all' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => updateUrl({ period: 'all' })}
-              >
-                Todo
-              </Button>
-              {period === 'year' && (
-                <>
-                  <div className="w-px h-6 bg-layer-3 mx-1" />
-                  <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear - 1 })}>
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium text-text-primary min-w-[60px] text-center">
-                    {selectedYear}
-                  </span>
-                  <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear + 1 })}>
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-            </>
-          )}
-
-          {activeTab === 'history' && (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear - 1 })}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium text-text-primary min-w-[100px] text-center">
-                {selectedYear}
-              </span>
-              <Button variant="ghost" size="icon" onClick={() => updateUrl({ year: selectedYear + 1 })}>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+      {/* Date range indicator (mobile) - solo cuando hay rango seleccionado */}
+      {dateRangeLabel && (
+        <div className="md:hidden flex items-center justify-between px-4 py-2 bg-layer-2 border-t border-border">
+          <span className="text-xs text-text-secondary">
+            <Calendar className="h-3 w-3 inline mr-1" />
+            {dateRangeLabel}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={clearFilters}
+            className="h-6 w-6 text-text-secondary hover:text-danger hover:bg-danger/10"
+            title="Limpiar filtros"
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
-      </div>
+      )}
 
-      <p className="text-xs text-text-secondary text-center mb-4">
-        {formatPeriodLabel()}
-      </p>
+      {/* Content area */}
+      <div className="px-4 md:px-6 py-6">
 
       {activeTab === 'overview' && (
         <Suspense fallback={<DashboardSkeleton />}>
           {isLoading ? (
             <DashboardSkeleton />
           ) : (
-            <OverviewTab stats={stats} summary={summary} />
+            <OverviewTab 
+              stats={stats} 
+              summary={summary} 
+              selectedYear={selectedYear}
+              selectedMonth={searchParams.get('month') ? parseInt(searchParams.get('month')!) : null}
+            />
           )}
         </Suspense>
       )}
@@ -283,7 +430,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           )}
         </Suspense>
       )}
-      {activeTab === 'savings' && (
+      {activeTab === 'investment' && (
         <Suspense fallback={<DashboardSkeleton />}>
           {isLoading ? (
             <DashboardSkeleton />
@@ -292,6 +439,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           )}
         </Suspense>
       )}
+      </div>
     </div>
   )
 }
@@ -299,39 +447,48 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 function OverviewTab({
   stats,
   summary,
+  selectedYear,
+  selectedMonth,
 }: {
   stats: Stats
   summary: CategorySummary[]
+  selectedYear: number
+  selectedMonth: number | null
 }) {
   const { account } = useAuth()
   const searchParams = useSearchParams()
   const period = (searchParams.get('period') as Period) || 'month'
-  const currentYear = new Date().getFullYear()
-  const currentMonth = new Date().getMonth()
 
   const getPreviousDateRange = () => {
     switch (period) {
       case 'month':
-        const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
-        const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
+        const sm = selectedMonth ?? new Date().getMonth()
+        const sy = selectedYear
+        const prevMonth = sm === 0 ? 11 : sm - 1
+        const prevYear = sm === 0 ? sy - 1 : sy
         return {
           startDate: new Date(prevYear, prevMonth, 1).toISOString().split('T')[0],
           endDate: new Date(prevYear, prevMonth + 1, 0).toISOString().split('T')[0],
         }
       case 'year':
         return {
-          startDate: `${currentYear - 1}-01-01`,
-          endDate: `${currentYear - 1}-12-31`,
+          startDate: `${selectedYear - 1}-01-01`,
+          endDate: `${selectedYear - 1}-12-31`,
         }
       case 'all':
         return {
           startDate: '2019-01-01',
           endDate: '2019-12-31',
         }
+      case 'custom':
+      default:
+        return undefined
     }
   }
 
-  const { startDate: prevStart, endDate: prevEnd } = getPreviousDateRange()
+  const prevRange = getPreviousDateRange()
+  const prevStart = prevRange?.startDate
+  const prevEnd = prevRange?.endDate
 
   const { data: prevStatsData } = useQuery({
     queryKey: ['transactions', 'stats', account?.id, prevStart, prevEnd],
@@ -628,7 +785,7 @@ function HistoryTab({ selectedYear, initialData }: { selectedYear: number; initi
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-layer-3">
+                  <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-text-secondary font-medium">Mes</th>
                     <th className="text-right py-3 px-4 text-text-secondary font-medium">Ingresos</th>
                     <th className="text-right py-3 px-4 text-text-secondary font-medium">Gastos</th>
