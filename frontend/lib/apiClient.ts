@@ -4,10 +4,9 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
-// Auth usa proxy local de Next.js para manejar cookies correctamente
-// En cliente: /api/auth (mismo origen, cookies first-party)
-// En servidor: directo al backend
-const AUTH_URL = typeof window !== 'undefined' ? '/api/auth' : `${API_URL}/auth`
+// Auth va directo al backend - las cookies cross-site funcionan con:
+// sameSite: 'none', secure: true (configurado en backend para producción)
+const AUTH_URL = `${API_URL}/auth`
 
 
 type RequestOptions = {
