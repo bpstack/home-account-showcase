@@ -6,11 +6,11 @@ export const BACKEND_URL = process.env.API_URL || 'http://localhost:3001/api'
 const allowedOrigins = [
   'http://localhost:3000',
   'https://home-account.vercel.app',
-  // Añadir tu dominio de producción aquí
+  'https://home-account-showcase-etn9.vercel.app',
 ]
 
-// Patrones de Vercel preview
-const vercelPreviewPattern = /^https:\/\/home-account-.*\.vercel\.app$/
+// Patrones de Vercel preview (incluye cualquier subdomain de home-account-showcase)
+const vercelPreviewPattern = /^https:\/\/home-account-showcase-.*\.vercel\.app$/
 
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true // Requests del mismo origen
