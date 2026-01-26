@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express'
-import { sanitizeXSS } from '../utils/sanitize.js'
+import { secureXSS } from '../utils/secure-sanitize.js'
 
 export function sanitizeBody(req: Request, _res: Response, next: NextFunction): void {
   if (req.body && typeof req.body === 'object') {
     for (const key in req.body) {
       if (typeof req.body[key] === 'string') {
-        req.body[key] = sanitizeXSS(req.body[key])
+        req.body[key] = secureXSS(req.body[key])
       }
     }
   }
@@ -17,7 +17,7 @@ export function sanitizeQuery(req: Request, _res: Response, next: NextFunction):
     for (const key in req.query) {
       const value = req.query[key]
       if (typeof value === 'string') {
-        req.query[key] = sanitizeXSS(value) as any
+        req.query[key] = secureXSS(value) as any
       }
     }
   }
@@ -29,7 +29,7 @@ export function sanitizeParams(req: Request, _res: Response, next: NextFunction)
     for (const key in req.params) {
       const value = req.params[key]
       if (typeof value === 'string') {
-        req.params[key] = sanitizeXSS(value)
+        req.params[key] = secureXSS(value)
       }
     }
   }

@@ -20,25 +20,31 @@ const upload = multer({
     const allowedTypes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/octet-stream',
       'text/csv',
       'text/plain',
+      // NOTA: application/octet-stream fue eliminado por seguridad
     ]
     const allowedExtensions = ['.xls', '.xlsx', '.csv']
 
-    if (
-      allowedTypes.includes(file.mimetype) ||
-      allowedExtensions.some((e) => file.originalname.toLowerCase().endsWith(e))
-    ) {
-      cb(null, true)
-    } else {
+    // Verificar ambos: tipo MIME y extensión del archivo
+    const hasValidMimeType = allowedTypes.includes(file.mimetype)
+    const hasValidExtension = allowedExtensions.some((e) => 
+      file.originalname.toLowerCase().endsWith(e))
+    
+    // Siempre verificar que la extensión coincida con el tipo MIME
+    if (!hasValidMimeType || !hasValidExtension) {
       cb(new Error('Solo se permiten archivos Excel (.xls, .xlsx) o CSV (.csv)'))
+      return
     }
+
+    cb(null, true)
   },
 })
 
+import { validateFileContent } from '../../services/import/file-validation.js'
+
 // Parse uploaded file and return preview
-router.post('/parse', authenticateToken, upload.single('file'), parseFile)
+router.post('/parse', authenticateToken, upload.single('file'), validateFileContent, parseFile)
 
 // Confirm import with category mappings
 router.post('/confirm', authenticateToken, checkCSRF, confirmImport)

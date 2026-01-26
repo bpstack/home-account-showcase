@@ -175,20 +175,25 @@ export const me = async (req: Request, res: Response): Promise<void> => {
 /**
  * Refresh access token usando refresh token
  * POST /api/auth/refresh
- * En desarrollo: acepta refresh token del body
- * En producción: debería recibir solo de cookie (más seguro)
+ * SIEMPRE usa refresh token desde cookies httpOnly por seguridad
+ * No acepta refresh token desde body para prevenir ataques XSS
  */
 export const refresh = async (req: Request, res: Response): Promise<void> => {
   try {
-    // El refresh token viene de cookie (más seguro)
+    // Seguridad: Solo aceptar refresh token desde cookies httpOnly
     const refreshTokenFromCookie = req.cookies?.refreshToken
-
-    let refreshToken = refreshTokenFromCookie
-
-    // En desarrollo local, también aceptamos del body para facilitar testing
-    if (!refreshToken && process.env.NODE_ENV !== 'production' && req.body?.refreshToken) {
-      refreshToken = req.body.refreshToken
+    const refreshTokenFromBody = req.body?.refreshToken
+    
+    // Rechazar explícitamente si viene por body
+    if (refreshTokenFromBody) {
+      res.status(400).json({
+        success: false,
+        error: 'Método no permitido. El refresh token debe venir en cookies httpOnly.',
+      })
+      return
     }
+
+    const refreshToken = refreshTokenFromCookie
 
     if (!refreshToken) {
       res.status(401).json({

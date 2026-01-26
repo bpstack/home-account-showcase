@@ -78,33 +78,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// Test DB connection + tables
-app.get('/api/test-db', async (req, res) => {
-  try {
-    // Test connection
-    await db.query('SELECT 1 as test')
-
-    // List tables
-    const [tables] = await db.query('SHOW TABLES')
-
-    // Count tables
-    const tableList = (tables as any[]).map((t) => Object.values(t)[0])
-
-    res.json({
-      status: 'ok',
-      connection: 'success',
-      database: process.env.AIVEN_DB_NAME,
-      tables: tableList,
-      tableCount: tableList.length,
-    })
-  } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: (error as Error).message,
-    })
-  }
-})
-
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
   logAIStatus()
