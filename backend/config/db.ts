@@ -12,7 +12,7 @@ const config = {
   database: process.env.AIVEN_DB_NAME || 'home_account',
   charset: 'utf8mb4',
   ssl: {
-    rejectUnauthorized: true,
+    rejectUnauthorized: false,
   },
 }
 
