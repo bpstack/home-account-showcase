@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch index.ts",
     "build": "echo 'Using tsx - no build needed'",
-    "start": "node test-db-connection.cjs && tsx index.ts",
+    "start": "tsx index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
