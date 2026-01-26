@@ -67,7 +67,7 @@ export default function RegisterPage() {
   const passwordsMatch = password && confirmPassword && password === confirmPassword
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-background text-foreground relative overflow-hidden sm:p-4">
       {/* Background effects */}
       <div className="fixed inset-0 -z-10">
         {/* Gradient orbs */}
@@ -103,7 +103,7 @@ export default function RegisterPage() {
 
       {/* Main content */}
       <main className="min-h-[100dvh] flex items-center justify-center p-6 py-24">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md sm:max-w-sm">
           {/* Card with glow */}
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-emerald-500/10 rounded-3xl blur-xl scale-105" />
@@ -111,7 +111,7 @@ export default function RegisterPage() {
             <div className="relative bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-8 shadow-2xl">
               {/* Welcome text */}
               <div className="text-center mb-6">
-                <h1 className="text-3xl font-bold tracking-tight mb-2">
+                <h1 className="text-2xl sm:text-xl font-bold tracking-tight mb-2">
                   Crear cuenta
                 </h1>
                 <p className="text-muted-foreground">
@@ -312,7 +312,7 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 mt-2"
+                  className="group relative w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 mt-2 sm:h-10"
                 >
                   <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${isLoading ? 'opacity-0' : ''}`}>
                     Crear cuenta

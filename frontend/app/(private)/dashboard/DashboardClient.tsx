@@ -50,7 +50,7 @@ interface DashboardClientProps {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardContent className="pt-6">
@@ -59,7 +59,7 @@ function DashboardSkeleton() {
           </Card>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardContent className="pt-6">
             <div className="h-64 bg-layer-2 rounded" />
@@ -213,7 +213,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
 
   return (
-    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6 sm:px-4">
       {/* Tabs con línea inferior */}
       <div className="relative">
         <Tabs
@@ -451,7 +451,7 @@ function OverviewTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">

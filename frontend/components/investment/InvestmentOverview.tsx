@@ -6,6 +6,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { useInvestmentOverview, useUpdateEmergencyFundMonths, useUpdateLiquidityReserve } from '@/lib/queries/investment'
 import { formatCurrency, cn } from '@/lib/utils'
+import { InvestmentWidget } from './InvestmentWidget'
 import { TrendingUp, TrendingDown, Minus, AlertCircle, PiggyBank, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
@@ -160,7 +161,8 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0 space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          <InvestmentWidget accountId={accountId} compact />
           <MetricCard
             label="Ingresos"
             value={formatCurrency(financialSummary.avgMonthlyIncome)}
@@ -216,7 +218,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold cursor-pointer hover:text-green-600 transition-colors" onClick={handleEditFund}>
+                <div className="text-xl sm:text-2xl font-bold cursor-pointer hover:text-green-600 transition-colors" onClick={handleEditFund}>
                   {formatCurrency(currentFund)}
                 </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -233,7 +235,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
             <span className="text-muted-foreground font-medium">Progreso fondo de emergencia</span>
             <span className="font-bold text-foreground">{savingsProgress.toFixed(0)}%</span>
           </div>
-          <div className="h-3 bg-muted/50 rounded-full overflow-hidden border border-border/20">
+          <div className="h-4 sm:h-3 bg-muted/50 rounded-full overflow-hidden border border-border/20">
             <div
               className="h-full bg-gradient-to-r from-green-400 to-emerald-600 rounded-full transition-all duration-1000 ease-out"
               style={{ width: `${savingsProgress}%` }}
@@ -251,8 +253,8 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
               Configuración Fondo Emergencia
             </span>
           </div>
-          <select
-            className="text-xs border-none bg-muted/50 rounded-md px-3 py-1.5 cursor-pointer outline-none focus:ring-1 focus:ring-primary/20"
+<select
+             className="text-sm sm:text-xs border-none bg-muted/50 rounded-md px-4 py-2 sm:px-3 sm:py-1.5 cursor-pointer outline-none focus:ring-1 focus:ring-primary/20"
             value={selectedMonths ?? currentMonths}
             onChange={(e) => handleMonthsChange(Number(e.target.value))}
             disabled={updateMonthsMutation.isPending}
@@ -282,7 +284,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
         </div>
 
         {financialSummary.deficitMonths > 3 && (
-          <div className="flex items-start gap-3 p-4 bg-yellow-50/80 dark:bg-yellow-900/20 rounded-xl text-sm border border-yellow-200 dark:border-yellow-800/30">
+          <div className="flex flex-col sm:flex-row items-start gap-3 p-3 sm:p-4 bg-yellow-50/80 dark:bg-yellow-900/20 rounded-xl text-xs sm:text-sm border border-yellow-200 dark:border-yellow-800/30">
             <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-yellow-600 dark:text-yellow-500" />
             <span className="text-yellow-800 dark:text-yellow-200">
               Atención: Tienes {financialSummary.deficitMonths} meses con gastos superiores a ingresos. Considera revisar tu presupuesto antes de aumentar tus inversiones.

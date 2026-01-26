@@ -35,7 +35,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-background text-foreground relative overflow-hidden sm:p-4">
       {/* Background effects */}
       <div className="fixed inset-0 -z-10">
         {/* Gradient orbs */}
@@ -71,7 +71,7 @@ export default function LoginPage() {
 
       {/* Main content */}
       <main className="min-h-[100dvh] flex items-center justify-center p-6 pt-20">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md sm:max-w-sm">
           {/* Card with glow */}
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-blue-500/10 rounded-3xl blur-xl scale-105" />
@@ -79,7 +79,7 @@ export default function LoginPage() {
             <div className="relative bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-8 shadow-2xl">
               {/* Welcome text */}
               <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold tracking-tight mb-2">
+                <h1 className="text-2xl sm:text-xl font-bold tracking-tight mb-2">
                   Bienvenido
                 </h1>
                 <p className="text-muted-foreground">
@@ -171,7 +171,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="group relative w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 sm:h-10"
                 >
                   <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${isLoading ? 'opacity-0' : ''}`}>
                     Iniciar sesión

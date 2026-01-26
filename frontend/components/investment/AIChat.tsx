@@ -135,7 +135,7 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
   }
 
   return (
-    <Card className={cn('flex flex-col h-[600px]', className)}>
+    <Card className={cn('flex flex-col min-h-[400px] sm:h-[600px]', className)}>
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
               >
                 <History className="h-4 w-4" />
                 <span className="text-xs">
-                  {messages.length > 0 ? 'Actual' : 'Historial'}
+
                 </span>
                 <ChevronDown className={cn('h-3 w-3 transition-transform', showSessions && 'rotate-180')} />
               </Button>
@@ -223,8 +223,8 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
           </div>
 
           <Button variant="ghost" size="sm" onClick={handleNewChat} className="text-xs">
-            <MessageCircle className="h-4 w-4 mr-1" />
-            Nuevo chat
+            <MessageCircle className="h-4 w-4" />
+            
           </Button>
         </div>
       </CardHeader>
@@ -356,7 +356,7 @@ function ChatBubble({
 
   return (
     <div className={cn(
-      'flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300',
+      'flex flex-col max-w-[90%] sm:max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300',
       isUser ? 'ml-auto items-end' : 'mr-auto items-start'
     )}>
       <div

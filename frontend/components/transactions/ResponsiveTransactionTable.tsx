@@ -130,7 +130,7 @@ export function ResponsiveTransactionTable({
                           <div className="min-w-0">
                             <span
                               className="text-sm block"
-                              style={{ color: tx.category_color || '#6b7280' }}
+                              style={{ color: tx.category_color || '#6b7280', filter: 'contrast(1.2)' }}
                             >
                               {tx.category_name}
                             </span>
@@ -196,7 +196,7 @@ export function ResponsiveTransactionTable({
         {transactions.map((tx) => (
           <div
             key={tx.id}
-            className={`rounded-lg border p-3 transition-shadow ${
+            className={`rounded-lg border p-4 md:p-3 transition-shadow ${
               tx._optimistic
                 ? 'bg-accent/5 border-accent/20 animate-pulse'
                 : 'bg-layer-1 border-layer-3 hover:shadow-md'
@@ -211,7 +211,7 @@ export function ResponsiveTransactionTable({
                     Guardando...
                   </span>
                 )}
-                <p className={`text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}>
+                <p className={`text-base md:text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}>
                   {tx.description}
                 </p>
               </div>
@@ -234,7 +234,7 @@ export function ResponsiveTransactionTable({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-10 w-10 md:h-7 md:w-7"
                         onClick={() => onEdit(tx)}
                       >
                         <Edit2 className="h-3.5 w-3.5" />
@@ -244,7 +244,7 @@ export function ResponsiveTransactionTable({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-danger hover:text-danger"
+                        className="h-10 w-10 md:h-7 md:w-7 text-danger hover:text-danger"
                         onClick={() => onDelete(tx.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -262,7 +262,7 @@ export function ResponsiveTransactionTable({
               <button
                 onClick={() => onCategoryClick?.(tx)}
                 className="hover:underline transition-all"
-                style={{ color: tx.category_color || '#6b7280' }}
+                style={{ color: tx.category_color || '#6b7280', filter: 'contrast(1.2)' }}
               >
                 {tx.category_name || 'Sin categoria'}
               </button>

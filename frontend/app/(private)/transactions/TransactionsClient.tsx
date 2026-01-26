@@ -331,7 +331,7 @@ function TransactionsContent({
   }
 
   return (
-    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6 sm:px-4">
       <div className="relative">
         <Tabs
           tabs={tabsList}
