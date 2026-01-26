@@ -66,16 +66,28 @@ const pool: Pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  connectTimeout: 10000,
+  connectTimeout: 30000,
 })
 
-pool.getConnection()
-  .then((connection) => {
-    console.log('✅ Conexión MySQL exitosa')
-    connection.release()
-  })
-  .catch((err) => {
-    console.error('❌ Error inicial MySQL:', err.message)
-  })
+// Retry connection test for cold starts
+const testConnection = async (retries = 3, delay = 5000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const connection = await pool.getConnection()
+      console.log('✅ Conexión MySQL exitosa')
+      connection.release()
+      return
+    } catch (err: any) {
+      if (i < retries - 1) {
+        console.log(`⏳ MySQL connection attempt ${i + 1}/${retries} failed, retrying in ${delay / 1000}s...`)
+        await new Promise((r) => setTimeout(r, delay))
+      } else {
+        console.error('❌ Error inicial MySQL:', err.message)
+      }
+    }
+  }
+}
+
+testConnection()
 
 export default pool
