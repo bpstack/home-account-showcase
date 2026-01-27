@@ -255,8 +255,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
         </div>
 
-      {/* Content area */}
-      <div className="px-4 md:px-6 py-6">
+       {/* Content area */}
+       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
         {activeTab === 'overview' && (
           <Suspense fallback={<DashboardSkeleton />}>
             {isLoading ? (
@@ -451,55 +451,61 @@ function OverviewTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary">Ingresos</p>
-                <p className="text-2xl font-bold text-success">+{formatCurrency(stats.income)}</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-success" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+       <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
+         <Card className="bg-gradient-to-br from-success/5 to-success/10 border-success/20 hover:border-success/30 transition-all">
+           <CardContent className="pt-6">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm text-text-secondary font-medium">Ingresos</p>
+                 <p className="text-2xl font-bold text-success md:text-3xl">+{formatCurrency(stats.income)}</p>
+               </div>
+               <div className="h-12 w-12 rounded-full bg-success/20 flex items-center justify-center shadow-lg">
+                 <TrendingUp className="h-6 w-6 text-success" />
+               </div>
+             </div>
+           </CardContent>
+         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary">Gastos</p>
-                <p className="text-2xl font-bold text-danger">-{formatCurrency(stats.expenses)}</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-danger/10 flex items-center justify-center">
-                <TrendingDown className="h-6 w-6 text-danger" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+         <Card className="bg-gradient-to-br from-danger/5 to-danger/10 border-danger/20 hover:border-danger/30 transition-all">
+           <CardContent className="pt-6">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm text-text-secondary font-medium">Gastos</p>
+                 <p className="text-2xl font-bold text-danger md:text-3xl">-{formatCurrency(stats.expenses)}</p>
+               </div>
+               <div className="h-12 w-12 rounded-full bg-danger/20 flex items-center justify-center shadow-lg">
+                 <TrendingDown className="h-6 w-6 text-danger" />
+               </div>
+             </div>
+           </CardContent>
+         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary">Balance</p>
-                <p
-                  className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}
-                >
-                  {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                <Wallet className="h-6 w-6 text-accent" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+         <Card className={`bg-gradient-to-br ${
+           stats.balance >= 0 
+             ? 'from-success/5 to-blue-100/50 border-success/20 hover:border-success/30' 
+             : 'from-danger/5 to-red-100/50 border-danger/20 hover:border-danger/30'
+         } transition-all`}>
+           <CardContent className="pt-6">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm text-text-secondary font-medium">Balance</p>
+                 <p
+                   className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'} md:text-3xl`}
+                 >
+                   {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
+                 </p>
+               </div>
+               <div className={`h-12 w-12 rounded-full flex items-center justify-center shadow-lg ${
+                 stats.balance >= 0 ? 'bg-success/20' : 'bg-danger/20'
+               }`}>
+                 <Wallet className={`h-6 w-6 ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`} />
+               </div>
+             </div>
+           </CardContent>
+         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
