@@ -6,7 +6,7 @@ import type { TokenPayload } from '../../models/auth/index.js'
 
 // Fase 3: Sistema de tokens dual
 const ACCESS_TOKEN_EXPIRY = '5m' // 5 minutos
-const REFRESH_TOKEN_EXPIRY = '8h' // 8 horas
+const REFRESH_TOKEN_EXPIRY = '1h' // 1 hora
 
 /**
  * Genera un access token JWT (corta duración - 5 minutos)

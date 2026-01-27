@@ -62,7 +62,7 @@ export function PageFilters({
 
   const yearOptions = [
     { value: 'none', label: '-' },
-    ...Array.from({ length: 11 }, (_, i) => {
+    ...Array.from({ length: 5 }, (_, i) => {
       const y = currentYear - i
       return { value: String(y), label: String(y) }
     })

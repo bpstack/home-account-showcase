@@ -171,7 +171,7 @@ export function Tabs({
                     'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
                     isActive
                       ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300 dark:hover:border-gray-600'
+                      : 'border-transparent text-muted-foreground hover:bg-muted hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-900 dark:hover:border-blue-900/40'
                   )}
                 >
                   {tab.icon}
@@ -206,7 +206,7 @@ export function Tabs({
                 'flex items-center gap-2 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors',
                 isActive
                   ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  : 'border-transparent text-muted-foreground hover:bg-muted hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-blue-900/40'
               )}
             >
               {tab.icon}

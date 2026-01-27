@@ -13,7 +13,11 @@ const mainLinks = [
   { name: 'Categorías', href: '/categories', icon: Tags },
 ]
 
-export function Sidebar() {
+type SidebarProps = {
+  onNavigate?: () => void
+}
+
+export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -26,6 +30,7 @@ export function Sidebar() {
       <Link
         key={item.name}
         href={item.href}
+        onClick={onNavigate}
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
           isActive
@@ -59,6 +64,7 @@ export function Sidebar() {
         <div className="flex flex-col gap-1">
           <Link
             href="/profile?panel=settings"
+            onClick={onNavigate}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
               panel === 'settings'
