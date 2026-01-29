@@ -43,10 +43,11 @@ export function Tabs({
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Determinar tab activo: controlado > URL > default > primer tab
-  const activeTab = controlledActiveTab
-    ?? (!onChange ? searchParams.get(paramName) : null)
-    ?? defaultTab
-    ?? tabs[0]?.id
+  const activeTab =
+    controlledActiveTab ??
+    (!onChange ? searchParams.get(paramName) : null) ??
+    defaultTab ??
+    tabs[0]?.id
 
   const activeTabConfig = tabs.find((tab) => tab.id === activeTab) || tabs[0]
 
@@ -62,16 +63,19 @@ export function Tabs({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleTabChange = useCallback((tabId: string) => {
-    if (onChange) {
-      onChange(tabId)
-    } else {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set(paramName, tabId)
-      router.push(`${pathname}?${params.toString()}`, { scroll: false })
-    }
-    setIsOpen(false)
-  }, [onChange, paramName, searchParams, router, pathname])
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      if (onChange) {
+        onChange(tabId)
+      } else {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set(paramName, tabId)
+        router.push(`${pathname}?${params.toString()}`, { scroll: false })
+      }
+      setIsOpen(false)
+    },
+    [onChange, paramName, searchParams, router, pathname]
+  )
 
   if (variant === 'pills') {
     return (
@@ -103,13 +107,13 @@ export function Tabs({
   if (variant === 'underline-responsive') {
     return (
       <div className={cn('border-b border-gray-200 dark:border-gray-800 bg-background', className)}>
-        {/* Mobile: Dropdown + rightContent */}
-        <div className="md:hidden flex items-center justify-between px-2.5 py-2">
-
+        {/* Mobile: Línea 1 = Tab dropdown, Línea 2 = filtros en fila */}
+        <div className="md:hidden px-3 py-2 space-y-2">
+          {/* Línea 1: Tab selector */}
           <div className="relative w-fit" ref={dropdownRef}>
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent transition-colors"
             >
               {activeTabConfig?.icon}
               <span>{activeTabConfig?.label}</span>
@@ -149,12 +153,8 @@ export function Tabs({
               </div>
             )}
           </div>
-          {/* Mobile rightContent */}
-          {rightContent && (
-            <div className="flex items-center">
-              {rightContent}
-            </div>
-          )}
+          {/* Línea 2: Filtros todos en una fila */}
+          {rightContent && <div>{rightContent}</div>}
         </div>
 
         {/* Desktop: Tabs + rightContent */}
@@ -181,11 +181,7 @@ export function Tabs({
             })}
           </nav>
           {/* Desktop rightContent */}
-          {rightContent && (
-            <div className="flex items-center -mb-px">
-              {rightContent}
-            </div>
-          )}
+          {rightContent && <div className="flex items-center -mb-px">{rightContent}</div>}
         </div>
       </div>
     )

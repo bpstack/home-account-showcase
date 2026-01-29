@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, FilterSelect, DatePicker, Tooltip } from '@/components/ui'
-import { Calendar, X } from 'lucide-react'
+import { Calendar, CalendarDays, X } from 'lucide-react'
 import { MONTHS_ES } from '@/lib/constants'
 
 interface PageFiltersProps {
@@ -9,13 +9,12 @@ interface PageFiltersProps {
   showPeriodFilters?: boolean
   period?: 'month' | 'year' | 'all' | 'custom'
   onPeriodChange?: (period: 'month' | 'year' | 'all' | 'custom') => void
-  
+
   // Year navigation/select
   showYearSelect?: boolean
   year?: number | null
   onYearChange?: (year: number | null) => void
 
-  
   // Date range
   showDatePicker?: boolean
   startDate?: string
@@ -50,14 +49,14 @@ export function PageFilters({
   onMonthChange,
   showClear,
   onClear,
-  className
+  className,
 }: PageFiltersProps) {
   const currentYear = new Date().getFullYear()
 
   const monthOptions = [
     { value: 'none', label: '-' },
     { value: 'all', label: 'Todos' },
-    ...MONTHS_ES.map((m, i) => ({ value: String(i), label: m }))
+    ...MONTHS_ES.map((m, i) => ({ value: String(i), label: m })),
   ]
 
   const yearOptions = [
@@ -65,94 +64,102 @@ export function PageFilters({
     ...Array.from({ length: 5 }, (_, i) => {
       const y = currentYear - i
       return { value: String(y), label: String(y) }
-    })
+    }),
   ]
 
-
   return (
-    <div className={`flex items-center gap-1 sm:gap-1.5 ${className || ''}`}>
-
-      {showPeriodFilters && onPeriodChange && (
-        <div className="flex items-center gap-1 mr-1">
-          <Button
-            variant={period === 'month' ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => onPeriodChange('month')}
-            className="h-8 px-3"
-          >
-            Mes
-          </Button>
-          <Button
-            variant={period === 'year' ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => onPeriodChange('year')}
-            className="h-8 px-3"
-          >
-            Año
-          </Button>
-          <Button
-            variant={period === 'all' ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => onPeriodChange('all')}
-            className="h-8 px-3"
-          >
-            Todo
-          </Button>
-        </div>
-      )}
-
-      {showMonthSelect && onMonthChange && (
-        <FilterSelect
-          variant="tab"
-          options={monthOptions}
-          value={selectedMonth === null ? (
-            // Si el año es null (estamos en modo periodo), mostramos '-'
-            year === null || year === undefined ? 'none' : 'all'
-          ) : String(selectedMonth)}
-          onChange={(e) => {
-            if (e.target.value === 'none') {
-              // Si selecciona '-', forzar null tanto en mes como en año? 
-              // En realidad el '-' es un estado pasivo cuando se usa periodo
-              onMonthChange(null)
-            } else {
-              onMonthChange(e.target.value === 'all' ? null : parseInt(e.target.value))
+    <div className={`flex items-center justify-between w-full ${className || ''}`}>
+      {/* Filtros a la izquierda */}
+      <div className="flex items-center gap-4">
+        {showMonthSelect && onMonthChange && (
+          <FilterSelect
+            variant="tab"
+            options={monthOptions}
+            value={
+              selectedMonth === null
+                ? year === null || year === undefined
+                  ? 'none'
+                  : 'all'
+                : String(selectedMonth)
             }
-          }}
-          icon={<Calendar className="h-4 w-4" />}
-          className="w-32"
-        />
-      )}
+            onChange={(e) => {
+              if (e.target.value === 'none') {
+                onMonthChange(null)
+              } else {
+                onMonthChange(e.target.value === 'all' ? null : parseInt(e.target.value))
+              }
+            }}
+            icon={<Calendar className="h-3.5 w-3.5" />}
+            label="Mes"
+          />
+        )}
 
+        {showYearSelect && onYearChange && (
+          <FilterSelect
+            variant="tab"
+            options={yearOptions}
+            value={year === null || year === undefined ? 'none' : String(year)}
+            onChange={(e) =>
+              onYearChange(e.target.value === 'none' ? null : parseInt(e.target.value))
+            }
+            icon={<CalendarDays className="h-3.5 w-3.5" />}
+            label="Año"
+          />
+        )}
 
-      {showYearSelect && onYearChange && (
-        <FilterSelect
-          variant="tab"
-          options={yearOptions}
-          value={year === null || year === undefined ? 'none' : String(year)}
-          onChange={(e) => onYearChange(e.target.value === 'none' ? null : parseInt(e.target.value))}
-          className="w-24"
-        />
-      )}
+        {showDatePicker && (
+          <div className="flex items-center gap-1">
+            <DatePicker
+              variant="tab"
+              startDate={startDate}
+              endDate={endDate}
+              onDatesChange={onDatesChange}
+              compact
+              label="Periodo"
+            />
+          </div>
+        )}
 
+        {showPeriodFilters && onPeriodChange && (
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            <Button
+              variant={period === 'month' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => onPeriodChange('month')}
+              className="h-6 px-2 text-xs"
+            >
+              Mes
+            </Button>
+            <Button
+              variant={period === 'year' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => onPeriodChange('year')}
+              className="h-6 px-2 text-xs"
+            >
+              Año
+            </Button>
+            <Button
+              variant={period === 'all' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => onPeriodChange('all')}
+              className="h-6 px-2 text-xs"
+            >
+              Todo
+            </Button>
+          </div>
+        )}
+      </div>
 
-      {showDatePicker && (
-        <DatePicker
-          variant="tab"
-          startDate={startDate}
-          endDate={endDate}
-          onDatesChange={onDatesChange}
-        />
-      )}
-
+      {/* Botón X a la derecha */}
       {showClear && onClear && (
         <Tooltip content="Eliminar filtros">
           <Button
             variant="ghost"
             size="icon"
             onClick={onClear}
-            className="h-8 w-8 text-muted-foreground hover:text-danger hover:bg-danger/10 transition-all rounded-full"
+            className="h-6 w-6 text-muted-foreground hover:text-danger hover:bg-danger/10 transition-all rounded-full ml-2 flex-shrink-0"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         </Tooltip>
       )}

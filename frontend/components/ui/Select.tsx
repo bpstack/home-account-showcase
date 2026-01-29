@@ -1,7 +1,14 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { useState, useRef, useEffect, SelectHTMLAttributes, forwardRef, type ReactNode } from 'react'
+import {
+  useState,
+  useRef,
+  useEffect,
+  SelectHTMLAttributes,
+  forwardRef,
+  type ReactNode,
+} from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
@@ -23,6 +30,8 @@ interface FilterSelectProps {
   variant?: 'default' | 'tab'
   /** Icono opcional para mostrar */
   icon?: ReactNode
+  /** Etiqueta fija en lugar de mostrar el valor seleccionado */
+  label?: string
   /** Valor seleccionado */
   value?: string
   /** Callback cuando cambia el valor */
@@ -30,7 +39,6 @@ interface FilterSelectProps {
   /** Clases adicionales */
   className?: string
 }
-
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, id, options, ...props }, ref) => {
@@ -73,14 +81,15 @@ function FilterSelect({
   options,
   variant = 'default',
   icon,
+  label,
   value,
   onChange,
-  className
+  className,
 }: FilterSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const selectedOption = options.find(opt => opt.value === value) || options[0]
+  const selectedOption = options.find((opt) => opt.value === value) || options[0]
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -95,7 +104,7 @@ function FilterSelect({
   }, [])
 
   const handleSelect = (optionValue: string) => {
-    const option = options.find(opt => opt.value === optionValue)
+    const option = options.find((opt) => opt.value === optionValue)
     if (option?.isHeading) return
 
     if (onChange) {
@@ -104,15 +113,14 @@ function FilterSelect({
     setIsOpen(false)
   }
 
-
   if (variant === 'tab') {
     return (
-      <div className="relative group ml-3 first:ml-0" ref={dropdownRef}>
+      <div className="relative group" ref={dropdownRef}>
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'flex items-center gap-1 py-3 px-1 text-sm font-medium',
+            'flex items-center gap-1 py-2 px-1 text-sm font-medium',
             'bg-transparent border-0',
             'text-muted-foreground',
             'hover:text-foreground',
@@ -126,23 +134,24 @@ function FilterSelect({
               {icon}
             </span>
           )}
-          <span>{selectedOption?.label}</span>
-          <ChevronDown className={cn(
-            'h-3 w-3 text-muted-foreground group-hover:text-foreground transition-all duration-200',
-            isOpen && 'rotate-180'
-          )} />
+          <span>{label || selectedOption?.label}</span>
+          <ChevronDown
+            className={cn(
+              'h-3 w-3 text-muted-foreground group-hover:text-foreground transition-all duration-200',
+              isOpen && 'rotate-180'
+            )}
+          />
         </button>
 
         {/* Dropdown Menu */}
         {isOpen && (
           <div className="absolute left-0 top-full mt-1 min-w-[200px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
-
             {options.map((option, index) => {
               const isSelected = value === option.value
-              
+
               if (option.isHeading) {
                 return (
-                  <div 
+                  <div
                     key={`heading-${index}`}
                     onClick={(e) => e.stopPropagation()}
                     className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30 sticky top-0 z-10 cursor-default"
@@ -151,7 +160,6 @@ function FilterSelect({
                   </div>
                 )
               }
-
 
               return (
                 <button
@@ -174,7 +182,6 @@ function FilterSelect({
             })}
           </div>
         )}
-
       </div>
     )
   }
@@ -193,21 +200,22 @@ function FilterSelect({
         )}
       >
         <span>{selectedOption?.label}</span>
-        <ChevronDown className={cn(
-          'h-4 w-4 text-muted-foreground transition-transform duration-200',
-          isOpen && 'rotate-180'
-        )} />
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 text-muted-foreground transition-transform duration-200',
+            isOpen && 'rotate-180'
+          )}
+        />
       </button>
 
       {isOpen && (
         <div className="absolute left-0 top-full mt-1 min-w-full lg:min-w-[250px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
-
           {options.map((option, index) => {
             const isSelected = value === option.value
 
             if (option.isHeading) {
               return (
-                <div 
+                <div
                   key={`heading-${index}`}
                   onClick={(e) => e.stopPropagation()}
                   className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0 z-10 cursor-default"
@@ -216,7 +224,6 @@ function FilterSelect({
                 </div>
               )
             }
-
 
             return (
               <button
@@ -238,7 +245,6 @@ function FilterSelect({
             )
           })}
         </div>
-
       )}
     </div>
   )

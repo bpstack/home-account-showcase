@@ -34,7 +34,6 @@ import { MONTHS_ES } from '@/lib/constants'
 import { Suspense } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-
 // Initial data types from RSC
 export interface DashboardInitialData {
   stats?: StatsResponse
@@ -110,15 +109,15 @@ interface Stats {
 export default function DashboardClient({ initialData }: DashboardClientProps) {
   const { account } = useAuth()
 
-  const { 
-    activeTab, 
-    setActiveTab, 
-    period, 
-    setPeriod, 
-    customStartDate, 
-    customEndDate, 
-    setCustomDates, 
-    reset: resetDashboard 
+  const {
+    activeTab,
+    setActiveTab,
+    period,
+    setPeriod,
+    customStartDate,
+    customEndDate,
+    setCustomDates,
+    reset: resetDashboard,
   } = useDashboardStore()
 
   const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
@@ -141,13 +140,16 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }
 
   const getDateRange = () => {
-    if (period === 'custom') {
+    // Periodo custom tiene prioridad
+    if (period === 'custom' && customStartDate && customEndDate) {
       return {
-        startDate: customStartDate || '',
-        endDate: customEndDate || ''
+        startDate: customStartDate,
+        endDate: customEndDate,
       }
+    }
 
-    } else if (selectedMonth !== null) {
+    // Si hay mes seleccionado, calcular el rango del mes
+    if (selectedMonth !== null) {
       const yearToUse = selectedYear ?? currentYear
       return {
         startDate: new Date(yearToUse, selectedMonth, 1).toISOString().split('T')[0],
@@ -155,6 +157,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       }
     }
 
+    // Si hay año seleccionado (sin mes), mostrar todo el año
+    if (selectedYear !== null) {
+      return {
+        startDate: `${selectedYear}-01-01`,
+        endDate: `${selectedYear}-12-31`,
+      }
+    }
+
+    // Fallback al period
     switch (period) {
       case 'month':
         return {
@@ -162,30 +173,32 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           endDate: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
         }
       case 'year':
-        const yearToUse = selectedYear ?? currentYear
         return {
-          startDate: `${yearToUse}-01-01`,
-          endDate: `${yearToUse}-12-31`,
+          startDate: `${currentYear}-01-01`,
+          endDate: `${currentYear}-12-31`,
         }
-
       case 'all':
         return {
           startDate: '2020-01-01',
           endDate: now.toISOString().split('T')[0],
         }
       default:
-        return { startDate: '', endDate: '' }
+        return {
+          startDate: `${currentYear}-01-01`,
+          endDate: `${currentYear}-12-31`,
+        }
     }
   }
 
-  const hasActiveFilters = 
-    selectedMonth !== null || 
-    selectedYear !== currentYear || 
-    period !== 'year'
+  const hasActiveFilters =
+    selectedMonth !== null ||
+    (selectedYear !== null && selectedYear !== currentYear) ||
+    period === 'custom'
 
   const clearFilters = () => {
-    resetFilters()
-    resetDashboard()
+    resetFilters() // Esto ya resetea a currentYear y month=null
+    setPeriod('year')
+    setCustomDates('', '')
   }
 
   const { startDate, endDate } = getDateRange()
@@ -211,7 +224,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   const dateRangeLabel = null // No more direct short range from URL
 
-
   return (
     <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6 sm:px-4">
       {/* Tabs con línea inferior */}
@@ -222,7 +234,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           onChange={(tabId) => setActiveTab(tabId as any)}
           variant="underline-responsive"
           rightContent={
-
             activeTab !== 'investment' ? (
               <PageFilters
                 showMonthSelect
@@ -243,26 +254,25 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 onClear={clearFilters}
                 className="ml-auto"
               />
-
-
-
             ) : null
           }
         />
 
-
         {/* Mobile secondary filters could go here if needed, but PageFilters handles them in Tabs rightContent */}
+      </div>
 
-        </div>
-
-       {/* Content area */}
-       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+      {/* Content area */}
+      <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
         {activeTab === 'overview' && (
           <Suspense fallback={<DashboardSkeleton />}>
             {isLoading ? (
               <DashboardSkeleton />
             ) : (
-              <OverviewTab stats={stats} summary={summary} incomeByType={statsData?.stats?.incomeByType} />
+              <OverviewTab
+                stats={stats}
+                summary={summary}
+                incomeByType={statsData?.stats?.incomeByType}
+              />
             )}
           </Suspense>
         )}
@@ -274,11 +284,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
         {activeTab === 'stats' && (
           <Suspense fallback={<DashboardSkeleton />}>
-            {isLoading ? (
-              <DashboardSkeleton />
-            ) : (
-              <StatsTab summary={summary} />
-            )}
+            {isLoading ? <DashboardSkeleton /> : <StatsTab summary={summary} />}
           </Suspense>
         )}
         {activeTab === 'investment' && (
@@ -307,10 +313,9 @@ function OverviewTab({
   const { account } = useAuth()
   const { period } = useDashboardStore()
   const { selectedYear, selectedMonth } = useFiltersStore()
-  
+
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
-
 
   const getPreviousDateRange = () => {
     switch (period) {
@@ -365,7 +370,7 @@ function OverviewTab({
   }
 
   const expensesByCategory = summary
-    .filter(item => Number(item.total_amount) < 0)
+    .filter((item) => Number(item.total_amount) < 0)
     .reduce(
       (acc, item) => {
         const catName = item.category_name || 'Sin categoría'
@@ -427,11 +432,16 @@ function OverviewTab({
       <div className="bg-layer-2 rounded-lg p-4">
         <p className="text-sm text-text-secondary mb-2">{title}</p>
         <div className="flex items-baseline gap-2">
-          <span className={`text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}>
-            {type === 'income' ? '+' : '-'}{formatCurrency(current)}
+          <span
+            className={`text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}
+          >
+            {type === 'income' ? '+' : '-'}
+            {formatCurrency(current)}
           </span>
         </div>
-        <div className={`flex items-center gap-1 mt-1 ${change.isPositive ? 'text-success' : 'text-danger'}`}>
+        <div
+          className={`flex items-center gap-1 mt-1 ${change.isPositive ? 'text-success' : 'text-danger'}`}
+        >
           {change.isPositive ? (
             <TrendingUp className="h-4 w-4" />
           ) : (
@@ -442,7 +452,8 @@ function OverviewTab({
             {formatCurrency(Math.abs(change.value))}
           </span>
           <span className="text-xs text-text-secondary">
-            ({change.isPositive ? '+' : '-'}{change.percentage.toFixed(1)}% vs {periodLabel})
+            ({change.isPositive ? '+' : '-'}
+            {change.percentage.toFixed(1)}% vs {periodLabel})
           </span>
         </div>
       </div>
@@ -451,61 +462,72 @@ function OverviewTab({
 
   return (
     <div className="space-y-6">
-       <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
-         <Card className="bg-gradient-to-br from-success/5 to-success/10 border-success/20 hover:border-success/30 transition-all">
-           <CardContent className="pt-6">
-             <div className="flex items-center justify-between">
-               <div>
-                 <p className="text-sm text-text-secondary font-medium">Ingresos</p>
-                 <p className="text-2xl font-bold text-success md:text-3xl">+{formatCurrency(stats.income)}</p>
-               </div>
-               <div className="h-12 w-12 rounded-full bg-success/20 flex items-center justify-center shadow-lg">
-                 <TrendingUp className="h-6 w-6 text-success" />
-               </div>
-             </div>
-           </CardContent>
-         </Card>
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
+        <Card className="bg-gradient-to-br from-success/5 to-success/10 border-success/20 hover:border-success/30 transition-all">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-text-secondary font-medium">Ingresos</p>
+                <p className="text-2xl font-bold text-success md:text-3xl">
+                  +{formatCurrency(stats.income)}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-success/20 flex items-center justify-center shadow-lg">
+                <TrendingUp className="h-6 w-6 text-success" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-         <Card className="bg-gradient-to-br from-danger/5 to-danger/10 border-danger/20 hover:border-danger/30 transition-all">
-           <CardContent className="pt-6">
-             <div className="flex items-center justify-between">
-               <div>
-                 <p className="text-sm text-text-secondary font-medium">Gastos</p>
-                 <p className="text-2xl font-bold text-danger md:text-3xl">-{formatCurrency(stats.expenses)}</p>
-               </div>
-               <div className="h-12 w-12 rounded-full bg-danger/20 flex items-center justify-center shadow-lg">
-                 <TrendingDown className="h-6 w-6 text-danger" />
-               </div>
-             </div>
-           </CardContent>
-         </Card>
+        <Card className="bg-gradient-to-br from-danger/5 to-danger/10 border-danger/20 hover:border-danger/30 transition-all">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-text-secondary font-medium">Gastos</p>
+                <p className="text-2xl font-bold text-danger md:text-3xl">
+                  -{formatCurrency(stats.expenses)}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-danger/20 flex items-center justify-center shadow-lg">
+                <TrendingDown className="h-6 w-6 text-danger" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-         <Card className={`bg-gradient-to-br ${
-           stats.balance >= 0 
-             ? 'from-success/5 to-blue-100/50 border-success/20 hover:border-success/30' 
-             : 'from-danger/5 to-red-100/50 border-danger/20 hover:border-danger/30'
-         } transition-all`}>
-           <CardContent className="pt-6">
-             <div className="flex items-center justify-between">
-               <div>
-                 <p className="text-sm text-text-secondary font-medium">Balance</p>
-                 <p
-                   className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'} md:text-3xl`}
-                 >
-                   {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
-                 </p>
-               </div>
-               <div className={`h-12 w-12 rounded-full flex items-center justify-center shadow-lg ${
-                 stats.balance >= 0 ? 'bg-success/20' : 'bg-danger/20'
-               }`}>
-                 <Wallet className={`h-6 w-6 ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`} />
-               </div>
-             </div>
-           </CardContent>
-         </Card>
+        <Card
+          className={`bg-gradient-to-br ${
+            stats.balance >= 0
+              ? 'from-success/5 to-blue-100/50 border-success/20 hover:border-success/30'
+              : 'from-danger/5 to-red-100/50 border-danger/20 hover:border-danger/30'
+          } transition-all`}
+        >
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-text-secondary font-medium">Balance</p>
+                <p
+                  className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'} md:text-3xl`}
+                >
+                  {stats.balance >= 0 ? '+' : ''}
+                  {formatCurrency(stats.balance)}
+                </p>
+              </div>
+              <div
+                className={`h-12 w-12 rounded-full flex items-center justify-center shadow-lg ${
+                  stats.balance >= 0 ? 'bg-success/20' : 'bg-danger/20'
+                }`}
+              >
+                <Wallet
+                  className={`h-6 w-6 ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -558,7 +580,13 @@ function OverviewTab({
   )
 }
 
-function HistoryTab({ selectedYear, initialData }: { selectedYear: number; initialData: DashboardInitialData }) {
+function HistoryTab({
+  selectedYear,
+  initialData,
+}: {
+  selectedYear: number
+  initialData: DashboardInitialData
+}) {
   const { account } = useAuth()
   const currentYear = new Date().getFullYear()
 
@@ -570,7 +598,6 @@ function HistoryTab({ selectedYear, initialData }: { selectedYear: number; initi
     initialData: selectedYear === currentYear ? initialData.monthlySummary : undefined,
   })
 
-
   const { data: balanceHistoryData, isLoading: isLoadingBalance } = useQuery({
     queryKey: ['transactions', 'balance-history', account?.id, selectedYear],
     queryFn: () => transactions.getBalanceHistory(account!.id, selectedYear),
@@ -578,7 +605,6 @@ function HistoryTab({ selectedYear, initialData }: { selectedYear: number; initi
     staleTime: 5 * 60 * 1000,
     initialData: selectedYear === currentYear ? initialData.balanceHistory : undefined,
   })
-
 
   const chartData = monthlySummaryData?.monthlySummary || []
   const balanceData = balanceHistoryData?.balanceHistory || []
@@ -646,50 +672,103 @@ function HistoryTab({ selectedYear, initialData }: { selectedYear: number; initi
               Cargando datos...
             </div>
           ) : chartData.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-layer-3">
-                    <th className="text-left py-3 px-4 text-text-secondary font-medium">Mes</th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium">Ingresos</th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium">Gastos</th>
-                    <th className="text-right py-3 px-4 text-text-secondary font-medium">Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {chartData.map((item, index) => {
-                    const balance = item.income - item.expenses
-                    const hasData = item.income > 0 || item.expenses > 0
-                    const isCurrentMonth =
-                      index === new Date().getMonth() && selectedYear === currentYear
+            <div className="space-y-3">
+              {/* Desktop Table */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-layer-3">
+                      <th className="text-left py-3 px-4 text-text-secondary font-medium">Mes</th>
+                      <th className="text-right py-3 px-4 text-text-secondary font-medium">
+                        Ingresos
+                      </th>
+                      <th className="text-right py-3 px-4 text-text-secondary font-medium">Gastos</th>
+                      <th className="text-right py-3 px-4 text-text-secondary font-medium">
+                        Balance
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chartData.map((item, index) => {
+                      const balance = item.income - item.expenses
+                      const hasData = item.income > 0 || item.expenses > 0
+                      const isCurrentMonth =
+                        index === new Date().getMonth() && selectedYear === currentYear
 
-                    return (
-                      <tr
-                        key={item.month}
-                        className={`border-b border-layer-2 hover:bg-layer-1 ${isCurrentMonth ? 'bg-accent/5' : ''}`}
-                      >
-                        <td className="py-3 px-4 text-text-primary font-medium">
+                      return (
+                        <tr
+                          key={item.month}
+                          className={`border-b border-layer-2 hover:bg-layer-1 transition-colors ${isCurrentMonth ? 'bg-accent/5' : ''}`}
+                        >
+                          <td className="py-3 px-4 text-text-primary font-medium">
+                            {MONTHS_ES[index]}
+                            {isCurrentMonth && (
+                              <span className="ml-2 text-xs text-accent">(Actual)</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right text-success">
+                            {hasData ? `+${item.income.toFixed(2)} €` : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-right text-danger">
+                            {hasData ? `-${item.expenses.toFixed(2)} €` : '-'}
+                          </td>
+                          <td
+                            className={`py-3 px-4 text-right font-medium ${balance >= 0 ? 'text-success' : 'text-danger'}`}
+                          >
+                            {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)} €` : '-'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="sm:hidden space-y-2">
+                {chartData.map((item, index) => {
+                  const balance = item.income - item.expenses
+                  const hasData = item.income > 0 || item.expenses > 0
+                  const isCurrentMonth =
+                    index === new Date().getMonth() && selectedYear === currentYear
+
+                  return (
+                    <div
+                      key={item.month}
+                      className={`rounded-lg border p-4 transition-colors ${isCurrentMonth ? 'border-accent/50 bg-accent/5' : 'border-layer-2 hover:bg-layer-1'}`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="font-semibold text-text-primary">
                           {MONTHS_ES[index]}
                           {isCurrentMonth && (
-                            <span className="ml-2 text-xs text-accent">(Actual)</span>
+                            <span className="ml-2 text-xs text-accent font-normal">(Actual)</span>
                           )}
-                        </td>
-                        <td className="py-3 px-4 text-right text-success">
-                          {hasData ? `+${item.income.toFixed(2)} €` : '-'}
-                        </td>
-                        <td className="py-3 px-4 text-right text-danger">
-                          {hasData ? `-${item.expenses.toFixed(2)} €` : '-'}
-                        </td>
-                        <td
-                          className={`py-3 px-4 text-right font-medium ${balance >= 0 ? 'text-success' : 'text-danger'}`}
-                        >
-                          {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)} €` : '-'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <p className="text-text-secondary text-xs mb-1">Ingresos</p>
+                          <p className="font-semibold text-success">
+                            {hasData ? `+${item.income.toFixed(2)}` : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-secondary text-xs mb-1">Gastos</p>
+                          <p className="font-semibold text-danger">
+                            {hasData ? `-${item.expenses.toFixed(2)}` : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-secondary text-xs mb-1">Balance</p>
+                          <p className={`font-semibold ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                            {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)}` : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           ) : (
             <div className="py-12 text-center text-text-secondary">No hay datos disponibles</div>
@@ -784,16 +863,43 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
   )
 }
 
-function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period; accountId: string }) {
+function SavingsTab({
+  stats,
+  period,
+  accountId,
+}: {
+  stats: Stats
+  period: Period
+  accountId: string
+}) {
   const formatCurrency = (value: number) => `${value.toFixed(2)} €`
 
   const savingsRate = stats.income > 0 ? (stats.balance / stats.income) * 100 : 0
 
   const getSavingsLevel = (rate: number) => {
-    if (rate >= 50) return { label: 'Excelente', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' }
-    if (rate >= 20) return { label: 'Bueno', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' }
-    if (rate >= 0) return { label: 'Regular', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30' }
-    return { label: 'Alto riesgo', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' }
+    if (rate >= 50)
+      return {
+        label: 'Excelente',
+        color: 'text-green-600 dark:text-green-400',
+        bg: 'bg-green-100 dark:bg-green-900/30',
+      }
+    if (rate >= 20)
+      return {
+        label: 'Bueno',
+        color: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-blue-100 dark:bg-blue-900/30',
+      }
+    if (rate >= 0)
+      return {
+        label: 'Regular',
+        color: 'text-yellow-600 dark:text-yellow-400',
+        bg: 'bg-yellow-100 dark:bg-yellow-900/30',
+      }
+    return {
+      label: 'Alto riesgo',
+      color: 'text-red-600 dark:text-red-400',
+      bg: 'bg-red-100 dark:bg-red-900/30',
+    }
   }
 
   const savingsLevel = getSavingsLevel(savingsRate)
@@ -812,7 +918,8 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
                 <p className="text-xs text-muted-foreground">Ahorro Total</p>
               </div>
               <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
+                {stats.balance >= 0 ? '+' : ''}
+                {formatCurrency(savingsAmount)}
               </p>
             </CardContent>
           </Card>
@@ -823,9 +930,7 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
                 <TrendingUpIcon className="h-4 w-4 text-success" />
                 <p className="text-xs text-muted-foreground">Tasa</p>
               </div>
-              <p className={`text-xl font-bold ${savingsLevel.color}`}>
-                {savingsRate.toFixed(1)}%
-              </p>
+              <p className={`text-xl font-bold ${savingsLevel.color}`}>{savingsRate.toFixed(1)}%</p>
             </CardContent>
           </Card>
 
@@ -835,9 +940,7 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
                 <Sparkles className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Nivel</p>
               </div>
-              <p className={`text-xl font-bold ${savingsLevel.color}`}>
-                {savingsLevel.label}
-              </p>
+              <p className={`text-xl font-bold ${savingsLevel.color}`}>{savingsLevel.label}</p>
             </CardContent>
           </Card>
         </div>
@@ -862,7 +965,8 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
             <div className="flex justify-between items-center py-2 text-sm font-medium">
               <span>Ahorro neto</span>
               <span className="text-blue-600 dark:text-blue-400">
-                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
+                {stats.balance >= 0 ? '+' : ''}
+                {formatCurrency(savingsAmount)}
               </span>
             </div>
           </CardContent>
@@ -880,15 +984,21 @@ function SavingsTab({ stats, period, accountId }: { stats: Stats; period: Period
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Ritmo actual</p>
-                <p className="font-semibold text-blue-600 dark:text-blue-400">+{formatCurrency(savingsAmount * 12)}</p>
+                <p className="font-semibold text-blue-600 dark:text-blue-400">
+                  +{formatCurrency(savingsAmount * 12)}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">30% recomendado</p>
-                <p className="font-semibold text-green-600">+{formatCurrency(stats.income * 0.3 * 12)}</p>
+                <p className="font-semibold text-green-600">
+                  +{formatCurrency(stats.income * 0.3 * 12)}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Con inversión (5%)</p>
-                <p className="font-semibold text-primary">+{formatCurrency(savingsAmount * 12 * 1.05)}</p>
+                <p className="font-semibold text-primary">
+                  +{formatCurrency(savingsAmount * 12 * 1.05)}
+                </p>
               </div>
             </div>
           </CardContent>
