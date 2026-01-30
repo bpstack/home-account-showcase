@@ -62,11 +62,7 @@ export function ResponsiveTransactionTable({
   }
 
   if (transactions.length === 0) {
-    return (
-      <p className="text-sm text-text-secondary text-center py-8">
-        {emptyMessage}
-      </p>
-    )
+    return <p className="text-sm text-text-secondary text-center py-8">{emptyMessage}</p>
   }
 
   return (
@@ -101,18 +97,16 @@ export function ResponsiveTransactionTable({
                 <tr
                   key={tx.id}
                   className={`border-b border-layer-2 transition-colors ${
-                    tx._optimistic
-                      ? 'bg-accent/5 animate-pulse'
-                      : 'hover:bg-layer-2/50'
+                    tx._optimistic ? 'bg-accent/5 animate-pulse' : 'hover:bg-layer-2/50'
                   }`}
                 >
                   <td className="py-3 px-2 text-text-secondary text-sm">
-                    {tx._optimistic && (
-                      <Clock className="h-3 w-3 inline-block mr-1 text-accent" />
-                    )}
+                    {tx._optimistic && <Clock className="h-3 w-3 inline-block mr-1 text-accent" />}
                     {formatDate(tx.date)}
                   </td>
-                  <td className={`py-3 px-2 font-medium text-sm ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}>
+                  <td
+                    className={`py-3 px-2 font-medium text-sm ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}
+                  >
                     {tx.description}
                   </td>
                   <td className="py-3 px-2">
@@ -130,7 +124,10 @@ export function ResponsiveTransactionTable({
                           <div className="min-w-0">
                             <span
                               className="text-sm block"
-                              style={{ color: tx.category_color || '#6b7280', filter: 'contrast(1.2)' }}
+                              style={{
+                                color: tx.category_color || '#6b7280',
+                                filter: 'contrast(1.2)',
+                              }}
                             >
                               {tx.category_name}
                             </span>
@@ -211,51 +208,27 @@ export function ResponsiveTransactionTable({
                     Guardando...
                   </span>
                 )}
-                <p className={`text-base md:text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}>
+                <p
+                  className={`text-base md:text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}
+                >
                   {tx.description}
                 </p>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span
-                  className={`text-sm font-semibold ${
-                    tx._optimistic
-                      ? 'text-text-secondary'
-                      : Number(tx.amount) >= 0
-                        ? 'text-success'
-                        : 'text-danger'
-                  }`}
-                >
-                  {Number(tx.amount) >= 0 ? '+' : ''}
-                  {formatCurrency(Number(tx.amount))}
-                </span>
-                {hasActions && !tx._optimistic && (
-                  <div className="flex gap-0.5 ml-1">
-                    {onEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 md:h-7 md:w-7"
-                        onClick={() => onEdit(tx)}
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    {onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 md:h-7 md:w-7 text-danger hover:text-danger"
-                        onClick={() => onDelete(tx.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+              <span
+                className={`text-sm font-semibold shrink-0 ${
+                  tx._optimistic
+                    ? 'text-text-secondary'
+                    : Number(tx.amount) >= 0
+                      ? 'text-success'
+                      : 'text-danger'
+                }`}
+              >
+                {Number(tx.amount) >= 0 ? '+' : ''}
+                {formatCurrency(Number(tx.amount))}
+              </span>
             </div>
 
-            {/* Footer: Fecha + Categoria */}
+            {/* Footer: Fecha + Categoria + Actions */}
             <div className="flex items-center gap-2 text-xs text-text-secondary">
               <span>{formatDateShort(tx.date)}</span>
               <span>·</span>
@@ -272,6 +245,33 @@ export function ResponsiveTransactionTable({
                   <span style={{ color: tx.category_color ? `${tx.category_color}99` : '#9ca3af' }}>
                     {tx.subcategory_name}
                   </span>
+                </>
+              )}
+              {hasActions && !tx._optimistic && (
+                <>
+                  <span>·</span>
+                  <div className="flex gap-0.5">
+                    {onEdit && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 p-0"
+                        onClick={() => onEdit(tx)}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                    {onDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 p-0 text-danger hover:text-danger"
+                        onClick={() => onDelete(tx.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </>
               )}
             </div>

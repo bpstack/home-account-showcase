@@ -32,7 +32,7 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
     return <RecommendationsSkeleton />
   }
 
-  if (isError || !data) {
+  if (isError || !data || !data.assetAllocation) {
     return (
       <Card className="border-emerald-200 dark:border-emerald-800/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/30 dark:from-gray-900 dark:to-gray-800/30">
         <CardHeader>
@@ -52,6 +52,12 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
       </Card>
     )
   }
+
+  // Asegurar que los valores del asset allocation son números válidos
+  const stocks = Number(data.assetAllocation?.stocks) || 0
+  const bonds = Number(data.assetAllocation?.bonds) || 0
+  const crypto = Number(data.assetAllocation?.crypto) || 0
+  const cash = Number(data.assetAllocation?.cash) || 0
 
   return (
     <Card className="h-full border-border/50 bg-background/50 dark:bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
@@ -83,7 +89,7 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
           </div>
           <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-center">
             <div className="text-sm sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {data.assetAllocation.stocks + data.assetAllocation.crypto}%
+              {stocks + crypto}%
             </div>
             <div className="text-[9px] sm:text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80 mt-0.5 sm:mt-1">
               R. Variable
@@ -91,7 +97,7 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
           </div>
           <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col justify-center">
             <div className="text-sm sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {data.assetAllocation.bonds + data.assetAllocation.cash}%
+              {bonds + cash}%
             </div>
             <div className="text-[9px] sm:text-xs font-medium text-blue-600/80 dark:text-blue-400/80 mt-0.5 sm:mt-1">
               R. Fija
@@ -106,10 +112,10 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Acciones', value: data.assetAllocation.stocks, color: '#22c55e' },
-                    { name: 'Bonos', value: data.assetAllocation.bonds, color: '#3b82f6' },
-                    { name: 'Crypto', value: data.assetAllocation.crypto, color: '#f59e0b' },
-                    { name: 'Liquidez', value: data.assetAllocation.cash, color: '#6b7280' },
+                    { name: 'Acciones', value: stocks, color: '#22c55e' },
+                    { name: 'Bonos', value: bonds, color: '#3b82f6' },
+                    { name: 'Crypto', value: crypto, color: '#f59e0b' },
+                    { name: 'Liquidez', value: cash, color: '#6b7280' },
                   ]}
                   cx="50%"
                   cy="50%"
@@ -139,10 +145,22 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
           </div>
           {/* Leyenda horizontal compacta */}
           <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] sm:text-xs">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#22c55e]" />Acciones</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#3b82f6]" />Bonos</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#f59e0b]" />Crypto</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#6b7280]" />Liquidez</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
+              Acciones
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm bg-[#3b82f6]" />
+              Bonos
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm bg-[#f59e0b]" />
+              Crypto
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm bg-[#6b7280]" />
+              Liquidez
+            </span>
           </div>
         </div>
 

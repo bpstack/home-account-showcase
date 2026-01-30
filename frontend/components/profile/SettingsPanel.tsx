@@ -21,8 +21,16 @@ const tabs: { id: SettingsTab; label: string; description: string }[] = [
   { id: 'account', label: 'Cuenta', description: 'Gestiona tu cuenta' },
   { id: 'members', label: 'Miembros', description: 'Administra los miembros de tu cuenta' },
   { id: 'ia', label: 'IA', description: 'Configura los proveedores de IA para el parsing' },
-  { id: 'budget', label: 'Presupuesto', description: 'Establecer los límites de gastos dependiendo la categoría seleccionada' },
-  { id: 'savings', label: 'Ahorro e Inversión', description: 'Qué parte destinaremos al ahorro y qué parte a Inversión' },
+  {
+    id: 'budget',
+    label: 'Presupuesto',
+    description: 'Establecer los límites de gastos dependiendo la categoría seleccionada',
+  },
+  {
+    id: 'savings',
+    label: 'Ahorro e Inversión',
+    description: 'Qué parte destinaremos al ahorro y qué parte a Inversión',
+  },
   { id: 'security', label: 'Seguridad', description: 'Aumentar la seguridad de mi cuenta' },
 ]
 
@@ -53,12 +61,12 @@ export function SettingsPanel() {
       </div>
 
       <div className="border-b border-border mb-6">
-        <nav className="flex gap-4 overflow-x-auto">
+        <nav className="flex flex-wrap gap-2 md:gap-4 md:overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`px-1 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              className={`px-2 md:px-3 py-2 md:py-3 text-xs md:text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -115,11 +123,13 @@ function AccountSettings() {
 
       <div className="p-4">
         {message && (
-          <div className={`mb-4 p-3 rounded-lg text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-          }`}>
+          <div
+            className={`mb-4 p-3 rounded-lg text-sm ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            }`}
+          >
             {message.text}
           </div>
         )}
@@ -205,11 +215,13 @@ function MembersSettings() {
 
         <div className="p-4">
           {message && (
-            <div className={`mb-4 p-3 rounded-lg text-sm ${
-              message.type === 'success'
-                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-            }`}>
+            <div
+              className={`mb-4 p-3 rounded-lg text-sm ${
+                message.type === 'success'
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+              }`}
+            >
               {message.text}
             </div>
           )}
@@ -253,7 +265,9 @@ function MembersSettings() {
           {isLoadingMembers ? (
             <div className="text-center py-4 text-sm text-gray-500">Cargando...</div>
           ) : members.length === 0 ? (
-            <div className="text-center py-4 text-sm text-gray-500">No hay miembros en esta cuenta</div>
+            <div className="text-center py-4 text-sm text-gray-500">
+              No hay miembros en esta cuenta
+            </div>
           ) : (
             <div className="space-y-3">
               {members.map((member) => (
@@ -270,11 +284,13 @@ function MembersSettings() {
                       <p className="text-xs text-muted-foreground">{member.email}</p>
                     </div>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    member.role === 'owner'
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      member.role === 'owner'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    }`}
+                  >
                     {member.role === 'owner' ? 'Propietario' : 'Miembro'}
                   </span>
                 </div>
@@ -324,7 +340,9 @@ function SecuritySettings() {
     <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
       <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Seguridad</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Aumentar la seguridad de mi cuenta</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          Aumentar la seguridad de mi cuenta
+        </p>
       </div>
       <div className="p-4">
         <p className="text-sm text-gray-500 dark:text-gray-400">Próximamente...</p>
