@@ -24,7 +24,9 @@ export async function getCachedMarketData(): Promise<MarketDataContext | null> {
       return null
     }
 
-    const cached = JSON.parse(rows[0].data)
+    // Handle both string and object (MySQL JSON column returns object directly)
+    const rawData = rows[0].data
+    const cached = typeof rawData === 'string' ? JSON.parse(rawData) : rawData
     console.log(`[Market:Cache] Using cached data from ${rows[0].cached_at}`)
 
     return {
@@ -77,8 +79,10 @@ export async function getCachedSymbol(
 
     if (rows.length === 0) return null
 
+    // Handle both string and object (MySQL JSON column returns object directly)
+    const rawData = rows[0].data
     return {
-      data: JSON.parse(rows[0].data),
+      data: typeof rawData === 'string' ? JSON.parse(rawData) : rawData,
       cachedAt: rows[0].cached_at
     }
   } catch (error) {

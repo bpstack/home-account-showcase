@@ -83,7 +83,7 @@ export const PROVIDER_DEFAULTS: Record<AIProviderType, Partial<AIProviderConfig>
   },
   ollama: {
     provider: 'ollama',
-    model: 'llama2:latest',
+    model: 'llama3:latest',
     temperature: 0.1,
     maxTokens: 4000,
     timeout: 180000,

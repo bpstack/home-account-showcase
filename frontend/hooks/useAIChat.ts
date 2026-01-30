@@ -182,6 +182,9 @@ export function useAIChat({
           console.error('[AIChat] Error al crear nueva sesión:', createErr)
           setError('Error al crear sesión de chat')
         }
+      } else if (err.message?.includes('Límite de peticiones') || err.message?.includes('rate limit')) {
+        console.warn('[AIChat] Rate limit exceeded:', err.message)
+        setError(err.message)
       } else {
         console.error('Error sending message:', err)
         setError('Error al enviar el mensaje. Por favor, inténtalo de nuevo.')

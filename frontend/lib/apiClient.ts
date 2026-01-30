@@ -6,9 +6,10 @@
 // Esto evita problemas de cookies cross-site en producción
 const isClient = typeof window !== 'undefined'
 
-const API_URL = isClient ? '/api/proxy' : (process.env.API_URL || 'http://localhost:3001/api')
-const AUTH_URL = isClient ? '/api/proxy/auth' : (process.env.API_URL || 'http://localhost:3001/api') + '/auth'
-
+const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
+const AUTH_URL = isClient
+  ? '/api/proxy/auth'
+  : (process.env.API_URL || 'http://localhost:3001/api') + '/auth'
 
 type RequestOptions = {
   method?: string
@@ -248,11 +249,9 @@ export const auth = {
 
 // Users
 export const users = {
-  getAll: () =>
-    request<{ success: boolean; users: User[] }>('/users'),
+  getAll: () => request<{ success: boolean; users: User[] }>('/users'),
 
-  getById: (id: string) =>
-    request<{ success: boolean; user: User }>(`/users/${id}`),
+  getById: (id: string) => request<{ success: boolean; user: User }>(`/users/${id}`),
 
   update: (id: string, data: { name?: string; email?: string }) =>
     request<{ success: boolean; user: User }>(`/users/${id}`, {
@@ -576,7 +575,13 @@ export interface ParsedTransaction {
 
 export interface ParseResult {
   success: boolean
-  file_type: 'control_gastos' | 'movimientos_cc' | 'csv_revolut' | 'csv_generic' | 'ai_parsed' | 'unknown'
+  file_type:
+    | 'control_gastos'
+    | 'movimientos_cc'
+    | 'csv_revolut'
+    | 'csv_generic'
+    | 'ai_parsed'
+    | 'unknown'
   sheet_name?: string
   available_sheets?: string[]
   transactions: ParsedTransaction[]
@@ -650,6 +655,14 @@ export interface AIStatus {
   enabled: boolean
   activeProvider: string
   providers: Record<string, AIProviderInfo>
+  rateLimit?: {
+    provider: string
+    remaining: number
+    resetTime: number | null
+    maxRequests: number
+    isUnlimited: boolean
+  }
+  providerLimits?: Record<string, number | 'unlimited'>
 }
 
 export interface AITestResult {
@@ -699,13 +712,14 @@ export const ai = {
     }),
 
   categorize: (transactions: Array<{ description: string; date?: string; amount?: number }>) =>
-    request<{ success: boolean; categories: Array<{ category: string; subcategory: string }>; responseTime: number }>(
-      '/ai/categorize',
-      {
-        method: 'POST',
-        body: JSON.stringify({ transactions }),
-      }
-    ),
+    request<{
+      success: boolean
+      categories: Array<{ category: string; subcategory: string }>
+      responseTime: number
+    }>('/ai/categorize', {
+      method: 'POST',
+      body: JSON.stringify({ transactions }),
+    }),
 }
 
 export { ApiError }

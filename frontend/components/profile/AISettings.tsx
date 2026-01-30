@@ -114,7 +114,9 @@ export function AISettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Inteligencia Artificial</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Inteligencia Artificial
+        </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           Configura los proveedores de IA para el parsing de transacciones
         </p>
@@ -130,9 +132,7 @@ export function AISettings() {
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                status?.enabled
-                  ? 'bg-success/10 text-success'
-                  : 'bg-danger/10 text-danger'
+                status?.enabled ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
               }`}
             >
               <span
@@ -162,19 +162,10 @@ export function AISettings() {
                   />
                   {hasChanges && (
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCancel}
-                        disabled={saving}
-                      >
+                      <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
                         Cancelar
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleSave}
-                        isLoading={saving}
-                      >
+                      <Button size="sm" onClick={handleSave} isLoading={saving}>
                         Guardar
                       </Button>
                     </div>
@@ -228,7 +219,10 @@ export function AISettings() {
                   <div className="flex items-center gap-2 text-sm">
                     <Zap className="h-4 w-4 text-text-secondary" />
                     <span className="text-text-secondary">
-                      Proveedor: <span className="text-text-primary font-medium capitalize">{selectedProvider}</span>
+                      Proveedor:{' '}
+                      <span className="text-text-primary font-medium capitalize">
+                        {selectedProvider}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -249,6 +243,62 @@ export function AISettings() {
                       </div>
                     ) : (
                       <span>{testResult.error}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Rate Limit Info - shows for current provider */}
+                {status?.rateLimit && (
+                  <div
+                    className={`p-3 rounded-lg border ${
+                      status.rateLimit.isUnlimited
+                        ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'
+                        : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Zap
+                          className={`h-4 w-4 ${
+                            status.rateLimit.isUnlimited
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-blue-600 dark:text-blue-400'
+                          }`}
+                        />
+                        <span
+                          className={`text-sm font-medium ${
+                            status.rateLimit.isUnlimited
+                              ? 'text-green-900 dark:text-green-100'
+                              : 'text-blue-900 dark:text-blue-100'
+                          }`}
+                        >
+                          {status.rateLimit.isUnlimited ? (
+                            'Peticiones ilimitadas (local)'
+                          ) : (
+                            <>
+                              Peticiones restantes: {status.rateLimit.remaining}/
+                              {status.rateLimit.maxRequests} por hora
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      {!status.rateLimit.isUnlimited &&
+                        status.rateLimit.resetTime &&
+                        status.rateLimit.remaining < status.rateLimit.maxRequests && (
+                          <span className="text-xs text-blue-700 dark:text-blue-300">
+                            Resetea a las{' '}
+                            {new Date(status.rateLimit.resetTime).toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        )}
+                    </div>
+                    {!status.rateLimit.isUnlimited && status.rateLimit.remaining === 0 && (
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        Has alcanzado el límite. Espera a que se reinicie o cambia a Ollama (local,
+                        ilimitado).
+                      </p>
                     )}
                   </div>
                 )}

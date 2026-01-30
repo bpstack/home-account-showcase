@@ -4,9 +4,10 @@
 import type { AIProviderConfig, AIProviderType, IAIProvider, AIStatus } from './types.js'
 import { PROVIDER_DEFAULTS } from './types.js'
 import { createProvider, getProviderConfigFromEnv } from './providers/index.js'
+import { getPersistedProvider, setPersistedProvider, initializeAISettings, hasPersistedSettings } from './ai-settings.js'
 
-// Runtime active provider (can be changed via API)
-let activeProviderOverride: AIProviderType | null = null
+// Initialize settings on module load
+initializeAISettings()
 
 /**
  * Check if AI is enabled via environment variable
@@ -37,26 +38,30 @@ export function isProviderEnabled(provider: AIProviderType): boolean {
 }
 
 /**
- * Get the configured provider from environment or runtime override
+ * Get the configured provider (from persisted settings or env)
+ * Persisted settings have absolute priority (including 'none')
  */
 export function getConfiguredProvider(): AIProviderType {
-  // Check runtime override first
-  if (activeProviderOverride && activeProviderOverride !== 'none') {
-    return activeProviderOverride
+  // If user has made a selection (file exists), use it - even if 'none'
+  if (hasPersistedSettings()) {
+    return getPersistedProvider()
   }
 
-  const provider = process.env.AI_PROVIDER as AIProviderType
-  if (provider && ['claude', 'gemini', 'groq', 'ollama'].includes(provider)) {
-    return provider
+  // Otherwise use environment variable as default
+  const envProvider = process.env.AI_PROVIDER as AIProviderType
+  if (envProvider && ['claude', 'gemini', 'groq', 'ollama', 'none'].includes(envProvider)) {
+    return envProvider
   }
+
+  // Default to none
   return 'none'
 }
 
 /**
- * Set the active provider at runtime
+ * Set the active provider (persists to file)
  */
 export function setActiveProvider(provider: AIProviderType): void {
-  activeProviderOverride = provider
+  setPersistedProvider(provider)
   console.log(`[AI] Active provider changed to: ${provider}`)
 }
 
@@ -64,7 +69,7 @@ export function setActiveProvider(provider: AIProviderType): void {
  * Get the current active provider
  */
 export function getActiveProvider(): AIProviderType {
-  return activeProviderOverride || getConfiguredProvider()
+  return getConfiguredProvider()
 }
 
 /**
@@ -94,20 +99,18 @@ export class AIClient {
   }
 
   /**
-   * Get default provider type from environment
+   * Get default provider type
+   * Respects user selection - NO automatic fallback
    */
   private getDefaultProviderType(): AIProviderType {
-    // First check configured provider
     const configured = getConfiguredProvider()
+
+    // Only use if configured AND enabled
     if (configured !== 'none' && isProviderEnabled(configured)) {
       return configured
     }
 
-    // Fallback: check API keys
-    if (process.env.GROQ_API_KEY && isProviderEnabled('groq')) return 'groq'
-    if (process.env.GEMINI_API_KEY && isProviderEnabled('gemini')) return 'gemini'
-    if (process.env.CLAUDE_API_KEY && isProviderEnabled('claude')) return 'claude'
-    if (isProviderEnabled('ollama')) return 'ollama'
+    // No fallback - return none if nothing explicitly configured
     return 'none'
   }
 

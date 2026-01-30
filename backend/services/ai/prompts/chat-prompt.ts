@@ -2,6 +2,11 @@
 // Prompt para chat conversacional con contexto de conversación
 
 import type { ChatContext, ChatResult } from './types.js'
+import {
+  SECURITY_INSTRUCTIONS,
+  wrapUserInput,
+  ANTI_JAILBREAK_SUFFIX,
+} from '../security/secure-prompts.js'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -18,7 +23,14 @@ export function buildChatPrompt(
     .map(m => `${m.role}: ${m.content}`)
     .join('\n')
 
-  return `Eres un asistente financiero educativo. Tienes acceso al contexto de la conversación y a datos financieros reales del usuario.
+  // Wrap user question for safety
+  const safeQuestion = wrapUserInput(currentQuestion)
+
+  return `${SECURITY_INSTRUCTIONS}
+
+---
+
+Eres un asistente financiero educativo de Home Account. Tienes acceso al contexto de la conversación y a datos financieros reales del usuario.
 
 # CONTEXTO FINANCIERO DEL USUARIO
 - Ingreso mensual promedio: ${context.financialSummary.avgMonthlyIncome}€
@@ -38,9 +50,9 @@ export function buildChatPrompt(
 ${historyText}
 
 # NUEVA PREGUNTA DEL USUARIO
-${currentQuestion}
+${safeQuestion}
 
-# INSTRUCCIONES
+# INSTRUCCIONES DE RESPUESTA
 
 1. **Responde en español**, de forma clara, concisa y educativa
 2. **Mantén coherencia** con respuestas anteriores en el historial
@@ -72,7 +84,8 @@ Responde **EXCLUSIVAMENTE** con JSON válido:
 }
 \`\`\`
 
-No incluyas markdown, solo JSON puro.`
+No incluyas markdown, solo JSON puro.
+${ANTI_JAILBREAK_SUFFIX}`
 }
 
 export function parseChatResponse(text: string): ChatResult {

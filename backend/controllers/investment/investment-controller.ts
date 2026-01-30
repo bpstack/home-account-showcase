@@ -15,6 +15,7 @@ import {
   UpdateLiquidityReserveSchema,
   ChatMessageSchema
 } from './validation.js'
+import { checkInputSecurity, checkOutputSecurity } from '../../services/ai/security/index.js'
 
 // ========================
 // HELPER: Get account context (all historical transactions)
@@ -543,6 +544,24 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
     const { message } = validation.data
     console.log('[Investment:ChatMessage] Message:', message.substring(0, 50))
 
+    // Security check on user input
+    const securityCheck = await checkInputSecurity(userId, message, {
+      endpoint: '/chat/message',
+      sessionId,
+    })
+
+    if (!securityCheck.allowed) {
+      console.warn('[Investment:ChatMessage] Security blocked:', securityCheck.blockReason)
+      res.status(400).json({
+        success: false,
+        error: securityCheck.blockReason || 'Mensaje no permitido',
+      })
+      return
+    }
+
+    // Use sanitized message
+    const safeMessage = securityCheck.sanitizedInput
+
     const hasAccess = await AccountRepository.hasAccess(accountId, userId)
     if (!hasAccess) {
       res.status(403).json({ success: false, error: 'No tienes acceso a esta cuenta' })
@@ -567,13 +586,17 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
     }
 
     console.log('[Investment:ChatMessage] AI available, sending to chatWithSession...')
-    const result = await ai.chatWithSession(message, accountId, userId, financialContext)
+    const result = await ai.chatWithSession(safeMessage, accountId, userId, financialContext)
     console.log('[Investment:ChatMessage] AI response received')
+
+    // Validate AI output
+    const outputCheck = await checkOutputSecurity(userId, result.answer)
+    const safeReply = outputCheck.safe ? result.answer : outputCheck.sanitizedOutput
 
     res.status(200).json({
       success: true,
       data: {
-        reply: result.answer,
+        reply: safeReply,
         relatedConcepts: result.relatedConcepts,
         needsDisclaimer: result.needsDisclaimer
       }
@@ -659,17 +682,37 @@ export const explainConcept = async (req: Request, res: Response): Promise<void>
       return
     }
 
+    // Security check on user input
+    const securityCheck = await checkInputSecurity(userId, q, {
+      endpoint: '/education',
+    })
+
+    if (!securityCheck.allowed) {
+      console.warn('[Investment:Education] Security blocked:', securityCheck.blockReason)
+      res.status(400).json({
+        success: false,
+        error: securityCheck.blockReason || 'Consulta no permitida',
+      })
+      return
+    }
+
     const ai = createInvestmentAI()
     if (!ai.isAvailable()) {
       res.status(503).json({ success: false, error: 'IA no disponible' })
       return
     }
 
-    const result = await ai.explainConcept(q, 'beginner')
+    const result = await ai.explainConcept(securityCheck.sanitizedInput, 'beginner')
+
+    // Validate output
+    const outputCheck = await checkOutputSecurity(userId, result.explanation || '')
 
     res.status(200).json({
       success: true,
-      data: result
+      data: {
+        ...result,
+        explanation: outputCheck.safe ? result.explanation : outputCheck.sanitizedOutput
+      }
     })
   } catch (error) {
     console.error('[Investment:Education] Error:', error)
