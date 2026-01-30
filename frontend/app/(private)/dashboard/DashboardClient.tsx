@@ -909,60 +909,48 @@ function SavingsTab({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left column - Savings info (compact) */}
       <div className="lg:col-span-2 space-y-4">
-        {/* Quick stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <PiggyBank className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <p className="text-xs text-muted-foreground">Ahorro Total</p>
-              </div>
-              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                {stats.balance >= 0 ? '+' : ''}
-                {formatCurrency(savingsAmount)}
+        {/* Quick stats - Ahorro principal + badges secundarios */}
+        <Card className="bg-gradient-to-br from-blue-50/80 to-emerald-50/50 dark:from-blue-950/30 dark:to-emerald-950/20 border-blue-200/50 dark:border-blue-800/30">
+          <CardContent className="py-4 px-4 text-center">
+            {/* Ahorro principal */}
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground mb-1">Ahorro mensual</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
               </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-success/5 border-success/20">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUpIcon className="h-4 w-4 text-success" />
-                <p className="text-xs text-muted-foreground">Tasa</p>
-              </div>
-              <p className={`text-xl font-bold ${savingsLevel.color}`}>{savingsRate.toFixed(1)}%</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Nivel</p>
-              </div>
-              <p className={`text-xl font-bold ${savingsLevel.color}`}>{savingsLevel.label}</p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            {/* Tasa y Nivel en línea */}
+            <div className="flex items-center justify-center gap-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+                <TrendingUpIcon className="h-3 w-3 text-success" />
+                <span className={savingsLevel.color}>{savingsRate.toFixed(1)}%</span>
+              </span>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 ${savingsLevel.color}`}>
+                <Sparkles className="h-3 w-3" />
+                {savingsLevel.label}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Compact breakdown */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+          <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+              <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Desglose
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between items-center py-2 border-b border-layer-2 text-sm">
+          <CardContent className="space-y-1 sm:space-y-2 px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="flex justify-between items-center py-1.5 sm:py-2 border-b border-layer-2 text-xs sm:text-sm">
               <span className="text-muted-foreground">Ingresos</span>
               <span className="font-medium text-green-600">+{formatCurrency(stats.income)}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-layer-2 text-sm">
+            <div className="flex justify-between items-center py-1.5 sm:py-2 border-b border-layer-2 text-xs sm:text-sm">
               <span className="text-muted-foreground">Gastos</span>
               <span className="font-medium text-red-600">-{formatCurrency(stats.expenses)}</span>
             </div>
-            <div className="flex justify-between items-center py-2 text-sm font-medium">
+            <div className="flex justify-between items-center py-1.5 sm:py-2 text-xs sm:text-sm font-medium">
               <span>Ahorro neto</span>
               <span className="text-blue-600 dark:text-blue-400">
                 {stats.balance >= 0 ? '+' : ''}
@@ -972,33 +960,34 @@ function SavingsTab({
           </CardContent>
         </Card>
 
-        {/* Compact projections */}
+        {/* Compact projections - Vertical on mobile, horizontal on desktop */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="pb-2 px-4">
+            <CardTitle className="text-sm flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Proyección (año)
+              Proyección anual
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Ritmo actual</p>
-                <p className="font-semibold text-blue-600 dark:text-blue-400">
+          <CardContent className="px-4 pb-4 space-y-2">
+            {/* Mobile: vertical list, Desktop: horizontal */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+              <div className="flex items-center justify-between sm:flex-col sm:text-center">
+                <span className="text-xs text-muted-foreground">Ritmo actual</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400">
                   +{formatCurrency(savingsAmount * 12)}
-                </p>
+                </span>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">30% recomendado</p>
-                <p className="font-semibold text-green-600">
+              <div className="flex items-center justify-between sm:flex-col sm:text-center">
+                <span className="text-xs text-muted-foreground">Meta 30%</span>
+                <span className="font-semibold text-green-600">
                   +{formatCurrency(stats.income * 0.3 * 12)}
-                </p>
+                </span>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Con inversión (5%)</p>
-                <p className="font-semibold text-primary">
+              <div className="flex items-center justify-between sm:flex-col sm:text-center">
+                <span className="text-xs text-muted-foreground">Con inversión 5%</span>
+                <span className="font-semibold text-primary">
                   +{formatCurrency(savingsAmount * 12 * 1.05)}
-                </p>
+                </span>
               </div>
             </div>
           </CardContent>

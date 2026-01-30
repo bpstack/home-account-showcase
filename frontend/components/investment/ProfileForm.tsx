@@ -195,19 +195,19 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
     return (
       <Card className="bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
-              <User className="h-5 w-5" />
-              Evaluación de Perfil de Riesgo
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300 text-sm sm:text-base min-w-0">
+              <User className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              <span className="truncate">Perfil de Riesgo</span>
             </CardTitle>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleUpdateProfile}
-              className="gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+              className="gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-100 shrink-0 px-2 sm:px-3"
             >
-              <RefreshCw className="h-3 w-3" />
-              Actualizar
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Actualizar</span>
             </Button>
           </div>
         </CardHeader>

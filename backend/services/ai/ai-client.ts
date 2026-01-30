@@ -236,7 +236,13 @@ export async function testProviderConnection(providerType: AIProviderType): Prom
   }
 
   if (!isProviderEnabled(providerType)) {
-    return { success: false, error: `Provider ${providerType} is disabled` }
+    if (providerType === 'ollama') {
+      return {
+        success: false,
+        error: 'Ollama solo está disponible en entorno local. En producción, selecciona otro proveedor (Groq, Claude o Gemini).'
+      }
+    }
+    return { success: false, error: `El proveedor ${providerType} no está habilitado en este entorno` }
   }
 
   const config = getProviderConfigFromEnv(providerType)

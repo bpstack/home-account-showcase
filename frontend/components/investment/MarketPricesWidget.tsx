@@ -36,7 +36,9 @@ export function MarketPricesWidget({ accountId, compact = false }: MarketPricesW
   }
 
   if (compact) {
-    return <CompactView data={data} isLoading={isLoading} isFetching={isFetching} onRefresh={refetch} />
+    return (
+      <CompactView data={data} isLoading={isLoading} isFetching={isFetching} onRefresh={refetch} />
+    )
   }
 
   return (
@@ -58,13 +60,7 @@ export function MarketPricesWidget({ accountId, compact = false }: MarketPricesW
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <CompactSkeleton />
-        ) : (
-          <FullView data={data} />
-        )}
-      </CardContent>
+      <CardContent>{isLoading ? <CompactSkeleton /> : <FullView data={data} />}</CardContent>
     </Card>
   )
 }
@@ -110,7 +106,9 @@ function FullView({ data }: { data: any }) {
               value={crypto.price}
               change={crypto.change24h}
               prefix="€"
-              formatter={(v) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              formatter={(v) =>
+                v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              }
             />
           ))}
         </div>
@@ -146,7 +144,7 @@ function FullView({ data }: { data: any }) {
 }
 
 // ========================
-// Compact View - Solo S&P 500 y Bitcoin
+// Compact View - Solo S&P 500 y Bitcoin - Optimized for no horizontal scroll
 // ========================
 
 function CompactView({ data, isLoading, isFetching, onRefresh }: any) {
@@ -158,18 +156,25 @@ function CompactView({ data, isLoading, isFetching, onRefresh }: any) {
   const btc = data?.cryptocurrencies?.find((c: any) => c.symbol === 'bitcoin')
 
   return (
-    <div className="flex items-center gap-2 text-sm overflow-x-auto no-scrollbar max-w-[calc(100vw-4rem)] md:max-w-none">
+    <div className="flex items-center gap-2 text-sm">
       {sp500 ? (
-        <div className="flex items-center gap-2 bg-background/50 hover:bg-background/80 transition-colors px-3 py-1.5 rounded-full border border-border/50 shadow-sm cursor-default group">
-          <span className="text-muted-foreground text-xs font-semibold group-hover:text-foreground transition-colors">S&P</span>
-          <span className="font-mono font-medium">{sp500.value.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+        <div className="flex items-center gap-1.5 bg-background/50 hover:bg-background/80 transition-colors px-2.5 py-1.5 rounded-full border border-border/50 shadow-sm cursor-default group">
+          <span className="text-muted-foreground text-xs font-semibold group-hover:text-foreground transition-colors">
+            S&P
+          </span>
+          <span className="font-mono font-medium text-xs">
+            {sp500.value.toLocaleString('es-ES', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })}
+          </span>
           <ChangeBadge change={sp500.change24h} variant="pill" />
         </div>
       ) : null}
       {btc ? (
-        <div className="flex items-center gap-2 bg-background/50 hover:bg-background/80 transition-colors px-3 py-1.5 rounded-full border border-border/50 shadow-sm cursor-default group">
-          <Bitcoin className="h-3.5 w-3.5 text-muted-foreground group-hover:text-amber-500 transition-colors" />
-          <span className="font-mono font-medium">€{btc.price.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+        <div className="flex items-center gap-1.5 bg-background/50 hover:bg-background/80 transition-colors px-2.5 py-1.5 rounded-full border border-border/50 shadow-sm cursor-default group">
+          <Bitcoin className="h-3 w-3 text-muted-foreground group-hover:text-amber-500 transition-colors" />
+          <span className="font-mono font-medium text-xs">€{(btc.price / 1000).toFixed(0)}K</span>
           <ChangeBadge change={btc.change24h} variant="pill" />
         </div>
       ) : null}
@@ -178,9 +183,9 @@ function CompactView({ data, isLoading, isFetching, onRefresh }: any) {
         size="icon"
         onClick={() => onRefresh()}
         disabled={isFetching}
-        className="h-8 w-8 rounded-full hover:bg-background/80 text-muted-foreground hover:text-primary transition-colors"
+        className="h-7 w-7 rounded-full hover:bg-background/80 text-muted-foreground hover:text-primary transition-colors"
       >
-        <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+        <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
       </Button>
     </div>
   )
@@ -210,7 +215,7 @@ function MarketRow({
   value,
   change,
   prefix = '',
-  formatter = (v: number) => v.toLocaleString()
+  formatter = (v: number) => v.toLocaleString(),
 }: {
   name: string
   value?: number | null
@@ -226,7 +231,8 @@ function MarketRow({
       <span className="text-sm text-foreground">{name}</span>
       <div className="flex items-center gap-2">
         <span className="text-sm font-mono">
-          {prefix}{formatter(valueNumber)}
+          {prefix}
+          {formatter(valueNumber)}
         </span>
         <ChangeBadge change={changeValue} />
       </div>
@@ -234,16 +240,24 @@ function MarketRow({
   )
 }
 
-function ChangeBadge({ change, variant = 'default' }: { change: number, variant?: 'default' | 'pill' }) {
+function ChangeBadge({
+  change,
+  variant = 'default',
+}: {
+  change: number
+  variant?: 'default' | 'pill'
+}) {
   const isPositive = (change || 0) >= 0
   const isNeutral = Math.abs(change || 0) < 0.1
 
   if (isNeutral) {
     return (
-      <span className={cn(
-        "text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs",
-        variant === 'pill' && "bg-transparent px-0"
-      )}>
+      <span
+        className={cn(
+          'text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs',
+          variant === 'pill' && 'bg-transparent px-0'
+        )}
+      >
         0%
       </span>
     )
@@ -259,7 +273,7 @@ function ChangeBadge({ change, variant = 'default' }: { change: number, variant?
 
   if (variant === 'pill') {
     return (
-      <span className={cn("text-xs font-bold flex items-center gap-0.5", colorClass)}>
+      <span className={cn('text-xs font-bold flex items-center gap-0.5', colorClass)}>
         {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
         {Math.abs(change).toFixed(2)}%
       </span>
@@ -267,12 +281,15 @@ function ChangeBadge({ change, variant = 'default' }: { change: number, variant?
   }
 
   return (
-    <span className={cn(
-      "text-xs font-medium px-1.5 py-0.5 rounded backdrop-blur-sm",
-      colorClass,
-      bgClass
-    )}>
-      {isPositive ? '+' : ''}{change?.toFixed(2)}%
+    <span
+      className={cn(
+        'text-xs font-medium px-1.5 py-0.5 rounded backdrop-blur-sm',
+        colorClass,
+        bgClass
+      )}
+    >
+      {isPositive ? '+' : ''}
+      {change?.toFixed(2)}%
     </span>
   )
 }

@@ -8,15 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { useRecommendations, useInvestmentOverview } from '@/lib/queries/investment'
 import { DisclaimerAlert } from './DisclaimerAlert'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import {
-  TrendingUp,
-  TrendingDown,
-  PiggyBank,
-  ArrowRight,
-  Wallet,
-  Coins,
-  Info
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, PiggyBank, ArrowRight, Wallet, Coins, Info } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 
 interface RecommendationsProps {
@@ -79,67 +71,79 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
       <CardContent className="space-y-6">
         <DisclaimerAlert type="recommendations" />
 
-        {/* Resumen */}
+        {/* Resumen - Mobile optimized */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-          <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/50 flex flex-col justify-center">
-            <div className="text-lg sm:text-3xl font-bold text-foreground tracking-tight">
+          <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-muted/30 dark:bg-muted/10 border border-border/50 flex flex-col justify-center min-w-0">
+            <div className="text-sm sm:text-3xl font-bold text-foreground tracking-tight truncate">
               {formatCurrency(investmentAmount)}
             </div>
-            <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground mt-1 uppercase tracking-wider">
+            <div className="text-[9px] sm:text-xs font-semibold text-muted-foreground mt-0.5 sm:mt-1 uppercase tracking-wider">
               Mensual
             </div>
           </div>
           <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-center">
-            <div className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="text-sm sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {data.assetAllocation.stocks + data.assetAllocation.crypto}%
             </div>
-            <div className="text-[10px] sm:text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80 mt-1">
+            <div className="text-[9px] sm:text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80 mt-0.5 sm:mt-1">
               R. Variable
             </div>
           </div>
           <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col justify-center">
-            <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-sm sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
               {data.assetAllocation.bonds + data.assetAllocation.cash}%
             </div>
-            <div className="text-[10px] sm:text-xs font-medium text-blue-600/80 dark:text-blue-400/80 mt-1">
+            <div className="text-[9px] sm:text-xs font-medium text-blue-600/80 dark:text-blue-400/80 mt-0.5 sm:mt-1">
               R. Fija
             </div>
           </div>
         </div>
 
-        {/* Gráfico de distribución */}
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={[
-                  { name: 'Acciones', value: data.assetAllocation.stocks, color: '#22c55e' },
-                  { name: 'Bonos', value: data.assetAllocation.bonds, color: '#3b82f6' },
-                  { name: 'Crypto', value: data.assetAllocation.crypto, color: '#f59e0b' },
-                  { name: 'Liquidez', value: data.assetAllocation.cash, color: '#6b7280' }
-                ]}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {data.recommendations.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={['#22c55e', '#3b82f6', '#f59e0b', '#6b7280'][index % 4]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number | undefined) => `${value ?? 0}%`}
-                contentStyle={{
-                  backgroundColor: 'var(--background)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px'
-                }}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        {/* Gráfico de distribución - Responsive como CategoryPieChart */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-[160px] h-[160px] sm:w-[200px] sm:h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Acciones', value: data.assetAllocation.stocks, color: '#22c55e' },
+                    { name: 'Bonos', value: data.assetAllocation.bonds, color: '#3b82f6' },
+                    { name: 'Crypto', value: data.assetAllocation.crypto, color: '#f59e0b' },
+                    { name: 'Liquidez', value: data.assetAllocation.cash, color: '#6b7280' },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="50%"
+                  outerRadius="85%"
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {[0, 1, 2, 3].map((index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={['#22c55e', '#3b82f6', '#f59e0b', '#6b7280'][index]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number | undefined) => `${value ?? 0}%`}
+                  contentStyle={{
+                    backgroundColor: 'var(--background)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Leyenda horizontal compacta */}
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] sm:text-xs">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#22c55e]" />Acciones</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#3b82f6]" />Bonos</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#f59e0b]" />Crypto</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#6b7280]" />Liquidez</span>
+          </div>
         </div>
 
         {/* Lista de recomendaciones */}
@@ -173,7 +177,7 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
     BOND_FUND: <Wallet className="h-4 w-4" />,
     CRYPTO: <Coins className="h-4 w-4" />,
     STOCK: <TrendingUp className="h-4 w-4" />,
-    SAVINGS: <PiggyBank className="h-4 w-4" />
+    SAVINGS: <PiggyBank className="h-4 w-4" />,
   }
 
   const typeColors = {
@@ -181,13 +185,13 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
     BOND_FUND: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
     CRYPTO: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
     STOCK: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    SAVINGS: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400'
+    SAVINGS: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400',
   }
 
   const riskColors = {
     low: 'text-green-600',
     medium: 'text-yellow-600',
-    high: 'text-red-600'
+    high: 'text-red-600',
   }
 
   const recommendationAmount = (amount * recommendation.percentage) / 100
@@ -196,15 +200,20 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
     <div className="p-2 sm:p-3 rounded-lg border border-border/40 dark:bg-zinc-900 dark:border-white/5 hover:bg-muted/10 transition-colors group">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-          <div className={cn(
-            'p-1.5 sm:p-2 rounded-lg shrink-0',
-             typeColors[recommendation.type as keyof typeof typeColors] || 'bg-muted text-muted-foreground'
-          )}>
+          <div
+            className={cn(
+              'p-1.5 sm:p-2 rounded-lg shrink-0',
+              typeColors[recommendation.type as keyof typeof typeColors] ||
+                'bg-muted text-muted-foreground'
+            )}
+          >
             {typeIcons[recommendation.type as keyof typeof typeIcons]}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-              <h4 className="font-semibold text-foreground text-xs sm:text-sm truncate">{recommendation.name}</h4>
+              <h4 className="font-semibold text-foreground text-xs sm:text-sm truncate">
+                {recommendation.name}
+              </h4>
               <span className="text-[9px] sm:text-[10px] uppercase text-muted-foreground">
                 {recommendation.symbol}
               </span>
@@ -219,12 +228,16 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
           <div className="font-semibold text-xs sm:text-sm text-foreground">
             {formatCurrency(recommendationAmount)}
           </div>
-          <div className={cn(
-            'text-[8px] sm:text-[9px] font-bold mt-1 inline-flex items-center px-1 sm:px-1.5 py-0.5 rounded border',
-            riskColors[recommendation.risk as keyof typeof riskColors] === 'text-green-600' ? 'bg-green-500/5 border-green-500/10 text-green-600 dark:text-green-400' :
-            riskColors[recommendation.risk as keyof typeof riskColors] === 'text-yellow-600' ? 'bg-yellow-500/5 border-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
-            'bg-red-500/5 border-red-500/10 text-red-600 dark:text-red-400'
-          )}>
+          <div
+            className={cn(
+              'text-[8px] sm:text-[9px] font-bold mt-1 inline-flex items-center px-1 sm:px-1.5 py-0.5 rounded border',
+              riskColors[recommendation.risk as keyof typeof riskColors] === 'text-green-600'
+                ? 'bg-green-500/5 border-green-500/10 text-green-600 dark:text-green-400'
+                : riskColors[recommendation.risk as keyof typeof riskColors] === 'text-yellow-600'
+                  ? 'bg-yellow-500/5 border-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                  : 'bg-red-500/5 border-red-500/10 text-red-600 dark:text-red-400'
+            )}
+          >
             {recommendation.risk.toUpperCase()}
           </div>
         </div>
