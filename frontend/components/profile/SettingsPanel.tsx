@@ -15,6 +15,15 @@ interface Member {
   joined_at: string
 }
 
+interface Invitation {
+  id: string
+  email: string
+  token: string
+  status: string
+  expires_at: string
+  created_at: string
+}
+
 type SettingsTab = 'account' | 'members' | 'budget' | 'savings' | 'security' | 'ia'
 
 const tabs: { id: SettingsTab; label: string; description: string }[] = [
@@ -154,15 +163,18 @@ function AccountSettings() {
 function MembersSettings() {
   const { account } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
+  const [invitations, setInvitations] = useState<Invitation[]>([])
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
-  const [newMemberEmail, setNewMemberEmail] = useState('')
-  const [newMemberName, setNewMemberName] = useState('')
-  const [isAddingMember, setIsAddingMember] = useState(false)
+  const [isLoadingInvitations, setIsLoadingInvitations] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [isInviting, setIsInviting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
   useEffect(() => {
     if (account?.id) {
       loadMembers()
+      loadInvitations()
     }
   }, [account?.id])
 
@@ -179,80 +191,159 @@ function MembersSettings() {
     }
   }
 
-  const handleAddMember = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMemberEmail.trim() || !newMemberName.trim() || !account?.id) return
+  const loadInvitations = async () => {
+    if (!account?.id) return
+    setIsLoadingInvitations(true)
+    try {
+      const { invitations: invitationsData } = await accounts.getInvitations(account.id)
+      setInvitations(invitationsData.filter((inv) => inv.status === 'pending'))
+    } catch (error) {
+      console.error('Error loading invitations:', error)
+    } finally {
+      setIsLoadingInvitations(false)
+    }
+  }
 
-    setIsAddingMember(true)
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inviteEmail.trim() || !account?.id) return
+
+    setIsInviting(true)
     setMessage(null)
 
     try {
-      await accounts.addMember(account.id, newMemberEmail.trim(), newMemberName.trim())
-      setMessage({ type: 'success', text: 'Miembro agregado correctamente' })
-      setNewMemberEmail('')
-      setNewMemberName('')
-      loadMembers()
+      const { inviteLink } = await accounts.createInvitation(account.id, inviteEmail.trim())
+      setMessage({
+        type: 'success',
+        text: `Invitación creada. Comparte este enlace: ${window.location.origin}${inviteLink}`,
+      })
+      setInviteEmail('')
+      loadInvitations()
     } catch (error: unknown) {
       const apiError = error as { message?: string }
       setMessage({
         type: 'error',
-        text: apiError.message || 'Error al agregar miembro',
+        text: apiError.message || 'Error al crear invitación',
       })
     } finally {
-      setIsAddingMember(false)
+      setIsInviting(false)
     }
   }
 
+  const handleCopyLink = async (token: string) => {
+    const link = `${window.location.origin}/invite/${token}`
+    await navigator.clipboard.writeText(link)
+    setCopiedLink(token)
+    setTimeout(() => setCopiedLink(null), 2000)
+  }
+
+  const handleRevokeInvitation = async (invitationId: string) => {
+    if (!account?.id) return
+    try {
+      await accounts.revokeInvitation(account.id, invitationId)
+      loadInvitations()
+    } catch (error) {
+      console.error('Error revoking invitation:', error)
+    }
+  }
+
+  // Verificar si el usuario actual es owner
+  const currentMember = members.find((m) => m.role === 'owner')
+  const isOwner = currentMember !== undefined
+
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-lg border border-border">
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Agregar miembro</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Escribe el email y nombre del usuario que quieres agregar
-          </p>
-        </div>
+      {/* Invitar miembro - solo visible para owner */}
+      {isOwner && (
+        <div className="bg-card rounded-lg border border-border">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground">Invitar miembro</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Envía una invitación por email. El usuario recibirá un enlace para unirse.
+            </p>
+          </div>
 
-        <div className="p-4">
-          {message && (
-            <div
-              className={`mb-4 p-3 rounded-lg text-sm ${
-                message.type === 'success'
-                  ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-              }`}
-            >
-              {message.text}
-            </div>
-          )}
-          <form onSubmit={handleAddMember} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4">
+            {message && (
+              <div
+                className={`mb-4 p-3 rounded-lg text-sm ${
+                  message.type === 'success'
+                    ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                    : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                }`}
+              >
+                {message.text}
+              </div>
+            )}
+            <form onSubmit={handleInvite} className="space-y-4">
               <Input
-                id="memberEmail"
+                id="inviteEmail"
                 type="email"
                 label="Email del usuario"
                 placeholder="juan@email.com"
-                value={newMemberEmail}
-                onChange={(e) => setNewMemberEmail(e.target.value)}
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
                 required
               />
-              <Input
-                id="memberName"
-                type="text"
-                label="Nombre del usuario"
-                placeholder="Juan"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={isAddingMember}>
-              {isAddingMember ? 'Agregando...' : 'Agregar miembro'}
-            </Button>
-          </form>
+              <p className="text-xs text-muted-foreground">
+                💡 No enviamos emails automáticamente. Copia el enlace y compártelo manualmente.
+              </p>
+              <Button type="submit" disabled={isInviting}>
+                {isInviting ? 'Creando invitación...' : 'Crear invitación'}
+              </Button>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* Invitaciones pendientes - solo visible para owner */}
+      {isOwner && invitations.length > 0 && (
+        <div className="bg-card rounded-lg border border-border">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground">Invitaciones pendientes</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {invitations.length} {invitations.length === 1 ? 'invitación' : 'invitaciones'} sin
+              aceptar
+            </p>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {invitations.map((inv) => (
+              <div
+                key={inv.id}
+                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">{inv.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Expira: {new Date(inv.expires_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopyLink(inv.token)}
+                    className="text-xs"
+                  >
+                    {copiedLink === inv.token ? '✓ Copiado' : 'Copiar enlace'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRevokeInvitation(inv.id)}
+                    className="text-xs text-red-500 hover:text-red-600"
+                  >
+                    Revocar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lista de miembros */}
       <div className="bg-card rounded-lg border border-border">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">Miembros de la cuenta</h3>

@@ -3,11 +3,17 @@
 import { useState } from 'react'
 import React from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Wallet, Check } from 'lucide-react'
 
 export default function RegisterPage() {
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect')
+  // Si viene de una invitación, no crear cuenta por defecto
+  const isFromInvite = redirect?.startsWith('/invite/')
+
   const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState('')
@@ -37,7 +43,10 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      await register(email, password, name, accountName || undefined)
+      await register(email, password, name, accountName || undefined, {
+        skipDefaultAccount: isFromInvite,
+        redirectTo: redirect || undefined,
+      })
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -57,7 +66,12 @@ export default function RegisterPage() {
     if (password.length < 10 && /[A-Z]/.test(password) && /[0-9]/.test(password)) {
       return { level: 3, text: 'Buena', color: 'bg-yellow-500' }
     }
-    if (password.length >= 10 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) {
+    if (
+      password.length >= 10 &&
+      /[A-Z]/.test(password) &&
+      /[0-9]/.test(password) &&
+      /[^A-Za-z0-9]/.test(password)
+    ) {
       return { level: 4, text: 'Fuerte', color: 'bg-emerald-500' }
     }
     return { level: 2, text: 'Débil', color: 'bg-orange-500' }
@@ -72,7 +86,10 @@ export default function RegisterPage() {
       <div className="fixed inset-0 -z-10">
         {/* Gradient orbs */}
         <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-blue-500/20 dark:bg-blue-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div
+          className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-[120px] animate-pulse"
+          style={{ animationDelay: '1s' }}
+        />
 
         {/* Grid pattern */}
         <div
@@ -111,12 +128,8 @@ export default function RegisterPage() {
             <div className="relative bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-8 shadow-2xl">
               {/* Welcome text */}
               <div className="text-center mb-6">
-                <h1 className="text-2xl sm:text-xl font-bold tracking-tight mb-2">
-                  Crear cuenta
-                </h1>
-                <p className="text-muted-foreground">
-                  Empieza a controlar tus finanzas hoy
-                </p>
+                <h1 className="text-2xl sm:text-xl font-bold tracking-tight mb-2">Crear cuenta</h1>
+                <p className="text-muted-foreground">Empieza a controlar tus finanzas hoy</p>
               </div>
 
               {/* Form */}
@@ -133,9 +146,13 @@ export default function RegisterPage() {
                   <label htmlFor="name" className="text-sm font-medium">
                     Tu nombre
                   </label>
-                  <div className={`relative transition-all duration-300 ${focusedField === 'name' ? 'scale-[1.02]' : ''}`}>
+                  <div
+                    className={`relative transition-all duration-300 ${focusedField === 'name' ? 'scale-[1.02]' : ''}`}
+                  >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <User className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'name' ? 'text-emerald-500' : ''}`} />
+                      <User
+                        className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'name' ? 'text-emerald-500' : ''}`}
+                      />
                     </div>
                     <input
                       id="name"
@@ -158,11 +175,16 @@ export default function RegisterPage() {
                 {/* Account name field */}
                 <div className="space-y-1.5">
                   <label htmlFor="accountName" className="text-sm font-medium">
-                    Nombre de la cuenta <span className="text-muted-foreground font-normal">(opcional)</span>
+                    Nombre de la cuenta{' '}
+                    <span className="text-muted-foreground font-normal">(opcional)</span>
                   </label>
-                  <div className={`relative transition-all duration-300 ${focusedField === 'accountName' ? 'scale-[1.02]' : ''}`}>
+                  <div
+                    className={`relative transition-all duration-300 ${focusedField === 'accountName' ? 'scale-[1.02]' : ''}`}
+                  >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <Wallet className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'accountName' ? 'text-violet-500' : ''}`} />
+                      <Wallet
+                        className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'accountName' ? 'text-violet-500' : ''}`}
+                      />
                     </div>
                     <input
                       id="accountName"
@@ -186,9 +208,13 @@ export default function RegisterPage() {
                   <label htmlFor="email" className="text-sm font-medium">
                     Email
                   </label>
-                  <div className={`relative transition-all duration-300 ${focusedField === 'email' ? 'scale-[1.02]' : ''}`}>
+                  <div
+                    className={`relative transition-all duration-300 ${focusedField === 'email' ? 'scale-[1.02]' : ''}`}
+                  >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <Mail className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'email' ? 'text-blue-500' : ''}`} />
+                      <Mail
+                        className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'email' ? 'text-blue-500' : ''}`}
+                      />
                     </div>
                     <input
                       id="email"
@@ -213,9 +239,13 @@ export default function RegisterPage() {
                   <label htmlFor="password" className="text-sm font-medium">
                     Contraseña
                   </label>
-                  <div className={`relative transition-all duration-300 ${focusedField === 'password' ? 'scale-[1.02]' : ''}`}>
+                  <div
+                    className={`relative transition-all duration-300 ${focusedField === 'password' ? 'scale-[1.02]' : ''}`}
+                  >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <Lock className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'password' ? 'text-emerald-500' : ''}`} />
+                      <Lock
+                        className={`w-4 h-4 transition-colors duration-300 ${focusedField === 'password' ? 'text-emerald-500' : ''}`}
+                      />
                     </div>
                     <input
                       id="password"
@@ -248,12 +278,16 @@ export default function RegisterPage() {
                           <div
                             key={level}
                             className={`flex-1 rounded-full transition-all duration-300 ${
-                              level <= passwordStrength.level ? passwordStrength.color : 'bg-transparent'
+                              level <= passwordStrength.level
+                                ? passwordStrength.color
+                                : 'bg-transparent'
                             }`}
                           />
                         ))}
                       </div>
-                      <span className={`text-xs font-medium ${passwordStrength.color.replace('bg-', 'text-')}`}>
+                      <span
+                        className={`text-xs font-medium ${passwordStrength.color.replace('bg-', 'text-')}`}
+                      >
                         {passwordStrength.text}
                       </span>
                     </div>
@@ -265,15 +299,19 @@ export default function RegisterPage() {
                   <label htmlFor="confirmPassword" className="text-sm font-medium">
                     Confirmar contraseña
                   </label>
-                  <div className={`relative transition-all duration-300 ${focusedField === 'confirmPassword' ? 'scale-[1.02]' : ''}`}>
+                  <div
+                    className={`relative transition-all duration-300 ${focusedField === 'confirmPassword' ? 'scale-[1.02]' : ''}`}
+                  >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <Lock className={`w-4 h-4 transition-colors duration-300 ${
-                        focusedField === 'confirmPassword'
-                          ? 'text-blue-500'
-                          : passwordsMatch
-                            ? 'text-emerald-500'
-                            : ''
-                      }`} />
+                      <Lock
+                        className={`w-4 h-4 transition-colors duration-300 ${
+                          focusedField === 'confirmPassword'
+                            ? 'text-blue-500'
+                            : passwordsMatch
+                              ? 'text-emerald-500'
+                              : ''
+                        }`}
+                      />
                     </div>
                     <input
                       id="confirmPassword"
@@ -314,7 +352,9 @@ export default function RegisterPage() {
                   disabled={isLoading}
                   className="group relative w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 mt-2 sm:h-10"
                 >
-                  <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${isLoading ? 'opacity-0' : ''}`}>
+                  <span
+                    className={`flex items-center justify-center gap-2 transition-all duration-300 ${isLoading ? 'opacity-0' : ''}`}
+                  >
                     Crear cuenta
                     <svg
                       className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"
@@ -322,7 +362,12 @@ export default function RegisterPage() {
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 8l4 4m0 0l-4 4m4-4H3"
+                      />
                     </svg>
                   </span>
                   {isLoading && (
