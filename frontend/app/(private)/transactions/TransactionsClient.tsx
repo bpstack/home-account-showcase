@@ -168,17 +168,23 @@ function TransactionsContent({
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
 
+  // Calculate date range based on filters
+  // When selectedYear is null and no month selected, show ALL transactions (no date filter)
   const startDate = period === 'custom' && customStartDate ? customStartDate : (
     selectedMonth !== null
       ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth, 1).toISOString().split('T')[0]
-      : new Date(selectedYear ?? new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+      : selectedYear !== null
+        ? new Date(selectedYear, 0, 1).toISOString().split('T')[0]
+        : '2020-01-01' // Show all when no year selected
   )
 
   
   const endDate = period === 'custom' && customEndDate ? customEndDate : (
     selectedMonth !== null
       ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth + 1, 0).toISOString().split('T')[0]
-      : new Date(selectedYear ?? new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+      : selectedYear !== null
+        ? new Date(selectedYear, 11, 31).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0] // Today when no year selected
   )
 
 
