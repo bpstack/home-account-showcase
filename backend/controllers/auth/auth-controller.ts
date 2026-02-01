@@ -70,8 +70,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       encryptedAccountKey,
     })
 
-    const accessToken = generateAccessToken({ id: result.id, email: result.email })
-    const refreshToken = generateRefreshToken({ id: result.id, email: result.email })
+    const accessToken = await generateAccessToken({ id: result.id, email: result.email })
+    const refreshToken = await generateRefreshToken({ id: result.id, email: result.email })
     const csrfToken = generateCSRFToken()
 
     // Establecer cookies httpOnly
@@ -140,8 +140,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Get encrypted account keys for this user
     const encryptedKeys = await AccountKeyRepository.getByUserId(userWithSalt.id)
 
-    const accessToken = generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
-    const refreshToken = generateRefreshToken({ id: userWithSalt.id, email: userWithSalt.email })
+    const accessToken = await generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
+    const refreshToken = await generateRefreshToken({ id: userWithSalt.id, email: userWithSalt.email })
     const csrfToken = generateCSRFToken()
 
     // Establecer cookies httpOnly
@@ -246,7 +246,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Verificar el refresh token
-    const decoded = verifyToken(refreshToken)
+    const decoded = await verifyToken(refreshToken)
 
     // Verificar que el usuario existe
     const user = await UserRepository.getById(decoded.id)
@@ -259,7 +259,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Generar nuevo access token
-    const newAccessToken = generateAccessToken({ id: user.id, email: user.email })
+    const newAccessToken = await generateAccessToken({ id: user.id, email: user.email })
     const newCSRFToken = generateCSRFToken()
 
     // Establecer nueva cookie httpOnly
@@ -333,6 +333,86 @@ export const getKeys = async (req: Request, res: Response): Promise<void> => {
  * Para invalidación inmediata, se usaría una blacklist en BD/Redis.
  * Por ahora, el frontend simplemente borra los tokens.
  */
+/**
+ * Cambiar contraseña con re-cifrado de claves
+ * POST /api/auth/change-password
+ *
+ * Body: { currentPassword, newPassword, newKeySalt?, reEncryptedKeys? }
+ * Si se proporciona newKeySalt y reEncryptedKeys, se re-cifran las claves de cuenta
+ */
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { currentPassword, newPassword, newKeySalt, reEncryptedKeys } = req.body
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({
+        success: false,
+        error: 'Se requiere contraseña actual y nueva contraseña',
+      })
+      return
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({
+        success: false,
+        error: 'La nueva contraseña debe tener al menos 6 caracteres',
+      })
+      return
+    }
+
+    // Si se proporciona newKeySalt, también deben venir las claves re-cifradas
+    if (newKeySalt && (!reEncryptedKeys || reEncryptedKeys.length === 0)) {
+      res.status(400).json({
+        success: false,
+        error: 'Si se cambia el salt, deben proporcionarse las claves re-cifradas',
+      })
+      return
+    }
+
+    await UserRepository.changePassword(
+      req.user!.id,
+      currentPassword,
+      newPassword,
+      newKeySalt,
+      reEncryptedKeys
+    )
+
+    // Limpiar cookies para forzar re-login
+    res.clearCookie('accessToken', { path: '/' })
+    res.clearCookie('refreshToken', { path: '/' })
+    res.clearCookie('csrfToken', { path: '/' })
+
+    res.status(200).json({
+      success: true,
+      message: 'Contraseña cambiada correctamente. Por favor, vuelve a iniciar sesión.',
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'Contraseña actual incorrecta') {
+      res.status(401).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    if (err.message === 'Usuario no encontrado') {
+      res.status(404).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en changePassword:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     // Limpiar cookies httpOnly
