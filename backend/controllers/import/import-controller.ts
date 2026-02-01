@@ -91,6 +91,9 @@ export const confirmImport = async (
       }
     }
 
+    // Detect if transactions are encrypted (check first one)
+    const isEncrypted = transactions.length > 0 && !!(transactions[0] as any).description_encrypted
+
     // Normalization functions (used for both existing and new transactions)
     const normalizeDesc = (desc: string) =>
       desc
@@ -104,7 +107,8 @@ export const confirmImport = async (
     const normalizeDate = (date: string) => date.split('T')[0] || date
 
     // Check for existing transactions to avoid duplicates
-    // Fetch raw data and normalize in JS to ensure consistency
+    // For encrypted transactions, we can only check by date + amount_sign (description is encrypted)
+    // For legacy, we use the full normalized description
     const existingTxQuery = await db.query<any[]>(
       `SELECT
          DATE_FORMAT(date, '%Y-%m-%d') as tx_date,
@@ -117,7 +121,7 @@ export const confirmImport = async (
     const existingSet = new Set(
       existingTxQuery[0].map(
         (tx) =>
-          `${tx.tx_date}|${normalizeDesc(tx.tx_desc)}|${normalizeAmount(parseFloat(tx.tx_amount))}`
+          `${tx.tx_date}|${normalizeDesc(tx.tx_desc || '')}|${normalizeAmount(parseFloat(tx.tx_amount))}`
       )
     )
 
@@ -135,8 +139,10 @@ export const confirmImport = async (
       const batchKeys: string[] = []
 
       for (const tx of batch) {
+        const txAny = tx as any
         const txAmount = normalizeAmount(parseFloat(String(tx.amount)))
-        const txDesc = normalizeDesc(tx.description)
+        // For encrypted transactions, use description for dedup key (it's still sent for mapping)
+        const txDesc = normalizeDesc(tx.description || '')
         const txKey = `${normalizeDate(tx.date)}|${txDesc}|${txAmount}`
 
         // Check both DB and already inserted in this batch
@@ -149,17 +155,41 @@ export const confirmImport = async (
         const mappingKey = `${tx.bank_category}|${tx.bank_subcategory}`
         const subcategoryId = mappingLookup.get(mappingKey) || null
 
-        placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?)')
-        values.push(
-          id,
-          account_id,
-          subcategoryId,
-          tx.date,
-          tx.description,
-          tx.amount,
-          tx.bank_category,
-          tx.bank_subcategory
-        )
+        if (isEncrypted) {
+          // Encrypted transaction: use encrypted fields
+          placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          values.push(
+            id,
+            account_id,
+            subcategoryId,
+            tx.date,
+            null, // description (legacy) - null for encrypted
+            null, // amount (legacy) - null for encrypted
+            txAny.description_encrypted,
+            txAny.amount_encrypted,
+            txAny.amount_sign,
+            txAny.bank_category_encrypted,
+            txAny.bank_subcategory_encrypted,
+            tx.bank_category // Keep original for mapping lookups
+          )
+        } else {
+          // Legacy transaction: use plain fields
+          placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          values.push(
+            id,
+            account_id,
+            subcategoryId,
+            tx.date,
+            tx.description,
+            tx.amount,
+            null, // description_encrypted
+            null, // amount_encrypted
+            null, // amount_sign
+            null, // bank_category_encrypted
+            null, // bank_subcategory_encrypted
+            tx.bank_category
+          )
+        }
         batchKeys.push(txKey)
       }
 
@@ -167,7 +197,7 @@ export const confirmImport = async (
 
       try {
         await db.query(
-          `INSERT INTO transactions (id, account_id, subcategory_id, date, description, amount, bank_category, bank_subcategory)
+          `INSERT INTO transactions (id, account_id, subcategory_id, date, description, amount, description_encrypted, amount_encrypted, amount_sign, bank_category_encrypted, bank_subcategory_encrypted, bank_category)
            VALUES ${placeholders.join(', ')}`,
           values
         )

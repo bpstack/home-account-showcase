@@ -3,6 +3,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { importApi, ParsedTransaction, CategoryMapping } from '../apiClient'
 import { transactionKeys } from './transactions'
+import { useCryptoStore } from '@/stores/cryptoStore'
+import { encrypt, getAmountSign } from '../crypto'
 
 export interface OptimisticTransaction {
   id: string
@@ -44,9 +46,37 @@ interface TransactionsCache {
 
 export function useImportTransactions() {
   const queryClient = useQueryClient()
+  const getAccountKey = useCryptoStore((s) => s.getAccountKey)
 
   return useMutation({
-    mutationFn: (data: ImportConfirmData) => importApi.confirm(data),
+    mutationFn: async (data: ImportConfirmData) => {
+      const accountKey = getAccountKey(data.account_id)
+
+      // If account is unlocked, encrypt all transactions before sending
+      if (accountKey) {
+        const encryptedTransactions = await Promise.all(
+          data.transactions.map(async (tx) => ({
+            ...tx,
+            description_encrypted: await encrypt(tx.description, accountKey),
+            amount_encrypted: await encrypt(tx.amount.toString(), accountKey),
+            amount_sign: getAmountSign(tx.amount),
+            bank_category_encrypted: tx.bank_category
+              ? await encrypt(tx.bank_category, accountKey)
+              : null,
+            bank_subcategory_encrypted: tx.bank_subcategory
+              ? await encrypt(tx.bank_subcategory, accountKey)
+              : null,
+          }))
+        )
+        return importApi.confirm({
+          ...data,
+          transactions: encryptedTransactions as any,
+        })
+      }
+
+      // Fallback: send unencrypted (legacy mode)
+      return importApi.confirm(data)
+    },
 
     // Optimistic update: mostrar transacciones inmediatamente
     onMutate: async (newData) => {
