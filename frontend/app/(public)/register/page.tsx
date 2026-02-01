@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Wallet, Check } from 'lucide-react'
 
-export default function RegisterPage() {
+function RegisterForm() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect')
   // Si viene de una invitación, no crear cuenta por defecto
@@ -404,6 +404,22 @@ export default function RegisterPage() {
           </div>
         </div>
       </main>
+    </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<RegisterSkeleton />}>
+      <RegisterForm />
+    </Suspense>
+  )
+}
+
+function RegisterSkeleton() {
+  return (
+    <div className="min-h-[100dvh] bg-background flex items-center justify-center">
+      <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
 import { Eye, EyeOff, ArrowLeft, Mail, Lock } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect')
 
@@ -271,6 +271,22 @@ export default function LoginPage() {
           </div>
         </div>
       </main>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginSkeleton />}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginSkeleton() {
+  return (
+    <div className="min-h-[100dvh] bg-background flex items-center justify-center">
+      <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
     </div>
   )
 }
