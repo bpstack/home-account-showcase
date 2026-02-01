@@ -13,9 +13,22 @@ import {
 } from '@/lib/queries/transactions'
 import { useCategories } from '@/lib/queries/categories'
 import { useFiltersStore } from '@/stores/filtersStore'
-import { Button, Input, Select, Modal, ModalFooter, Tabs, PageFilters, FilterSelect } from '@/components/ui'
+import {
+  Button,
+  Input,
+  Select,
+  Modal,
+  ModalFooter,
+  Tabs,
+  PageFilters,
+  FilterSelect,
+} from '@/components/ui'
 import { Loader2, Search, Plus, Upload, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
-import { TransactionsSummary, ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
+import {
+  TransactionsSummary,
+  ResponsiveTransactionTable,
+  CategoryChangeModal,
+} from '@/components/transactions'
 import { useTransactionsStore } from '@/stores/transactionsStore'
 
 interface TransactionForm {
@@ -51,7 +64,11 @@ interface TransactionsClientProps {
   initialCategories?: any[]
 }
 
-export default function TransactionsClient({ initialTransactions, initialTotal, initialCategories }: TransactionsClientProps) {
+export default function TransactionsClient({
+  initialTransactions,
+  initialTotal,
+  initialCategories,
+}: TransactionsClientProps) {
   return (
     <Suspense fallback={<TransactionsPageFallback />}>
       <TransactionsContent
@@ -73,53 +90,54 @@ function TransactionsContent({
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  
-  const { 
-    page, 
-    setPage, 
-    isCreateModalOpen, 
-    setCreateModalOpen, 
-    isCategoryModalOpen, 
+
+  const {
+    page,
+    setPage,
+    isCreateModalOpen,
+    setCreateModalOpen,
+    isCategoryModalOpen,
     setCategoryModalOpen,
     period,
     setPeriod,
     customStartDate,
     customEndDate,
     setCustomDates,
-    reset: resetTransactions
+    reset: resetTransactions,
   } = useTransactionsStore()
 
-  const { 
-    selectedYear, 
-    selectedMonth, 
-    selectedCategory, 
-    selectedType, 
+  const {
+    selectedYear,
+    selectedMonth,
+    selectedCategory,
+    selectedType,
     setCategory,
     setYear,
     setMonth,
     setType,
-    reset: resetFilters
+    reset: resetFilters,
   } = useFiltersStore()
   const searchTerm = searchParams.get('search') || ''
 
-  const hasActiveFilters = 
-    selectedMonth !== null || 
-    (selectedYear !== null && selectedYear !== new Date().getFullYear()) || 
-    selectedCategory !== '' || 
+  const hasActiveFilters =
+    selectedMonth !== null ||
+    (selectedYear !== null && selectedYear !== new Date().getFullYear()) ||
+    selectedCategory !== '' ||
     searchTerm !== '' ||
     selectedType !== 'all' ||
     period !== 'monthly'
 
-  const updateUrl = useCallback((updates: { 
-    search?: string;
-  }) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (updates.search !== undefined) {
-      if (updates.search) params.set('search', updates.search)
-      else params.delete('search')
-    }
-    router.push(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [searchParams, router, pathname])
+  const updateUrl = useCallback(
+    (updates: { search?: string }) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (updates.search !== undefined) {
+        if (updates.search) params.set('search', updates.search)
+        else params.delete('search')
+      }
+      router.push(`${pathname}?${params.toString()}`, { scroll: false })
+    },
+    [searchParams, router, pathname]
+  )
 
   const [localSearch, setLocalSearch] = useState(searchTerm)
 
@@ -153,7 +171,6 @@ function TransactionsContent({
     setMonth(null)
   }
 
-
   const activeTab = selectedType
 
   const tabsList = [
@@ -170,70 +187,79 @@ function TransactionsContent({
 
   // Calculate date range based on filters
   // When selectedYear is null and no month selected, show ALL transactions (no date filter)
-  const startDate = period === 'custom' && customStartDate ? customStartDate : (
-    selectedMonth !== null
-      ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth, 1).toISOString().split('T')[0]
-      : selectedYear !== null
-        ? new Date(selectedYear, 0, 1).toISOString().split('T')[0]
-        : '2020-01-01' // Show all when no year selected
+  const startDate =
+    period === 'custom' && customStartDate
+      ? customStartDate
+      : selectedMonth !== null
+        ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth, 1)
+            .toISOString()
+            .split('T')[0]
+        : selectedYear !== null
+          ? new Date(selectedYear, 0, 1).toISOString().split('T')[0]
+          : '2020-01-01' // Show all when no year selected
+
+  const endDate =
+    period === 'custom' && customEndDate
+      ? customEndDate
+      : selectedMonth !== null
+        ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth + 1, 0)
+            .toISOString()
+            .split('T')[0]
+        : selectedYear !== null
+          ? new Date(selectedYear, 11, 31).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0] // Today when no year selected
+
+  const { data: txData, isLoading: isLoadingTx } = useTransactions(
+    {
+      account_id: account?.id || '',
+      start_date: startDate,
+      end_date: endDate,
+      type: selectedType === 'all' ? undefined : (selectedType as any),
+      search: searchTerm,
+      subcategory_id: selectedCategory || undefined,
+      limit,
+      offset: (page - 1) * limit,
+    },
+    {
+      initialData:
+        initialTransactions && page === 1 && !hasActiveFilters
+          ? { transactions: initialTransactions, total: initialTotal || 0, limit, offset: 0 }
+          : undefined,
+    }
   )
-
-  
-  const endDate = period === 'custom' && customEndDate ? customEndDate : (
-    selectedMonth !== null
-      ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth + 1, 0).toISOString().split('T')[0]
-      : selectedYear !== null
-        ? new Date(selectedYear, 11, 31).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0] // Today when no year selected
-  )
-
-
-  const { data: txData, isLoading: isLoadingTx } = useTransactions({
-    account_id: account?.id || '',
-    start_date: startDate,
-    end_date: endDate,
-    type: selectedType === 'all' ? undefined : (selectedType as any),
-    search: searchTerm,
-    subcategory_id: selectedCategory || undefined,
-    limit,
-    offset: (page - 1) * limit,
-  }, {
-    initialData: initialTransactions && page === 1 && !hasActiveFilters
-      ? { transactions: initialTransactions, total: initialTotal || 0, limit, offset: 0 }
-      : undefined,
-  })
 
   // No local filtering needed anymore as we pass subcategory_id to the API
   const filteredTransactions = txData?.transactions || []
 
   const totals = useMemo(() => {
     const txs = filteredTransactions
-    const income = txs.filter(t => t.amount > 0).reduce((acc, t) => acc + Number(t.amount || 0), 0)
-    const expenses = txs.filter(t => t.amount < 0).reduce((acc, t) => acc + Math.abs(Number(t.amount || 0)), 0)
+    const income = txs
+      .filter((t) => t.amount > 0)
+      .reduce((acc, t) => acc + Number(t.amount || 0), 0)
+    const expenses = txs
+      .filter((t) => t.amount < 0)
+      .reduce((acc, t) => acc + Math.abs(Number(t.amount || 0)), 0)
 
     return { income, expenses }
   }, [filteredTransactions])
 
   const { data: categoriesData } = useCategories(account?.id || '', {
     initialData: initialCategories ? { categories: initialCategories as any } : undefined,
-    enabled: !!account?.id
+    enabled: !!account?.id,
   })
 
-
-
-  
   const categories: any[] = categoriesData?.categories || []
 
   const categoryOptions = useMemo(() => {
     const options: any[] = [{ value: '', label: 'Todas las categorías' }]
-    
+
     // Si no hay categorías, no devolvemos nada más que el default
     if (!categories || categories.length === 0) return options
 
-    categories.forEach(cat => {
+    categories.forEach((cat) => {
       // Add heading for category
       options.push({ value: `cat-${cat.id}`, label: cat.name, isHeading: true })
-      
+
       const subs = cat.subcategories || []
       if (subs.length > 0) {
         subs.forEach((sub: any) => {
@@ -241,12 +267,21 @@ function TransactionsContent({
         })
       }
     })
-    
+
     return options
   }, [categories])
   useEffect(() => {
     setPage(1)
-  }, [selectedMonth, selectedYear, selectedCategory, searchTerm, selectedType, period, customStartDate, customEndDate])
+  }, [
+    selectedMonth,
+    selectedYear,
+    selectedCategory,
+    searchTerm,
+    selectedType,
+    period,
+    customStartDate,
+    customEndDate,
+  ])
 
   const createMutation = useCreateTransaction()
   const updateMutation = useUpdateTransaction()
@@ -254,7 +289,7 @@ function TransactionsContent({
 
   useEffect(() => {
     if (form.category_id) {
-      subcategoriesApi.getAll(form.category_id).then(res => {
+      subcategoriesApi.getAll(form.category_id).then((res) => {
         if (res.success) setSubcategoryList(res.subcategories)
       })
     } else {
@@ -265,20 +300,23 @@ function TransactionsContent({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!account) return
-    
-    createMutation.mutate({
-      account_id: account.id,
-      date: form.date,
-      description: form.description,
-      amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
-      subcategory_id: form.subcategory_id || undefined
-    }, {
-      onSuccess: () => {
-        setCreateModalOpen(false)
-        setForm(emptyForm)
-        invalidateTransactions()
+
+    createMutation.mutate(
+      {
+        account_id: account.id,
+        date: form.date,
+        description: form.description,
+        amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
+        subcategory_id: form.subcategory_id || undefined,
+      },
+      {
+        onSuccess: () => {
+          setCreateModalOpen(false)
+          setForm(emptyForm)
+          invalidateTransactions()
+        },
       }
-    })
+    )
   }
 
   const handleEdit = (tx: Transaction) => {
@@ -298,23 +336,26 @@ function TransactionsContent({
     e.preventDefault()
     if (!editingId) return
 
-    updateMutation.mutate({
-      id: editingId,
-      accountId: account!.id,
-      data: {
-        description: form.description,
-        date: form.date,
-        amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
-        subcategory_id: form.subcategory_id || null
+    updateMutation.mutate(
+      {
+        id: editingId,
+        accountId: account!.id,
+        data: {
+          description: form.description,
+          date: form.date,
+          amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
+          subcategory_id: form.subcategory_id || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          setCreateModalOpen(false)
+          setEditingId(null)
+          setForm(emptyForm)
+          invalidateTransactions()
+        },
       }
-    }, {
-      onSuccess: () => {
-        setCreateModalOpen(false)
-        setEditingId(null)
-        setForm(emptyForm)
-        invalidateTransactions()
-      }
-    })
+    )
   }
 
   const handleDelete = (id: string) => {
@@ -357,7 +398,6 @@ function TransactionsContent({
                 if (y !== null) setMonth(null)
               }}
               showDatePicker
-
               startDate={period === 'custom' ? customStartDate : undefined}
               endDate={period === 'custom' ? customEndDate : undefined}
               onDatesChange={handleDateRangeChange}
@@ -382,7 +422,6 @@ function TransactionsContent({
           />
         </div>
 
-        
         {/* Acciones y Filtros - Alineados a la derecha */}
         <div className="flex flex-wrap items-center justify-end gap-2 flex-1 min-w-0">
           <FilterSelect
@@ -393,9 +432,9 @@ function TransactionsContent({
           />
 
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="h-10 px-4 shrink-0 flex items-center gap-2"
               onClick={() => router.push('/import')}
             >
@@ -403,10 +442,9 @@ function TransactionsContent({
               <span className="hidden lg:inline">Importar</span>
             </Button>
 
-            
-            <Button 
-              onClick={() => setCreateModalOpen(true)} 
-              size="sm" 
+            <Button
+              onClick={() => setCreateModalOpen(true)}
+              size="sm"
               className="h-10 px-4 shrink-0 flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
@@ -478,7 +516,9 @@ function TransactionsContent({
                 className="pr-8"
                 required
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                €
+              </span>
             </div>
           </div>
 
@@ -488,10 +528,12 @@ function TransactionsContent({
               <Select
                 options={[
                   { value: '', label: 'Seleccionar...' },
-                  ...categories.map(c => ({ value: c.id, label: c.name }))
+                  ...categories.map((c) => ({ value: c.id, label: c.name })),
                 ]}
                 value={form.category_id}
-                onChange={(e) => setForm({ ...form, category_id: e.target.value, subcategory_id: '' })}
+                onChange={(e) =>
+                  setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
+                }
                 required
               />
             </div>
@@ -500,7 +542,7 @@ function TransactionsContent({
               <Select
                 options={[
                   { value: '', label: 'Seleccionar...' },
-                  ...subcategoryList.map(s => ({ value: s.id, label: s.name }))
+                  ...subcategoryList.map((s) => ({ value: s.id, label: s.name })),
                 ]}
                 value={form.subcategory_id}
                 onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
@@ -520,11 +562,7 @@ function TransactionsContent({
           </div>
 
           <ModalFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setCreateModalOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
