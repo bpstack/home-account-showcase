@@ -15,6 +15,7 @@ import {
   getMonthlySummarySchema,
   bulkUpdatePreviewSchema,
   bulkUpdateCategorySchema,
+  bulkUpdateByIdsSchema,
 } from '../../validators/transaction-validators.js'
 
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
@@ -707,6 +708,58 @@ export const bulkUpdateCategory = async (req: Request, res: Response): Promise<v
     }
 
     console.error('Error en bulkUpdateCategory:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+/**
+ * Actualizar categoría de múltiples transacciones por lista de IDs
+ * PUT /api/transactions/bulk-update-by-ids
+ * Body: account_id, transaction_ids, subcategory_id
+ * Works with encrypted data - client filters decrypted transactions and sends IDs
+ */
+export const bulkUpdateByIds = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const validationResult = bulkUpdateByIdsSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const firstError = validationResult.error.issues[0]
+      res.status(400).json({
+        success: false,
+        error: firstError?.message || 'Datos inválidos',
+      })
+      return
+    }
+
+    const { account_id, transaction_ids, subcategory_id } = validationResult.data
+
+    const updatedCount = await TransactionRepository.bulkUpdateByIds(
+      account_id,
+      req.user!.id,
+      transaction_ids,
+      subcategory_id
+    )
+
+    res.status(200).json({
+      success: true,
+      updatedCount,
+      transaction_ids,
+      subcategory_id,
+    })
+  } catch (error) {
+    const err = error as Error
+
+    if (err.message === 'No tienes acceso a esta cuenta') {
+      res.status(403).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
+    console.error('Error en bulkUpdateByIds:', error)
     res.status(500).json({
       success: false,
       error: 'Error interno del servidor',

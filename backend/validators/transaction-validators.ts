@@ -151,12 +151,23 @@ export const bulkUpdatePreviewSchema = z.object({
 
 /**
  * Schema para bulk update de categoría (body)
+ * @deprecated Use bulkUpdateByIdsSchema for encrypted data support
  */
 export const bulkUpdateCategorySchema = z.object({
   account_id: z.string().uuid('account_id debe ser un UUID válido'),
   description_pattern: z.string().min(1, 'description_pattern es requerido'),
   subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').nullable(),
   save_mapping: z.boolean().optional().default(false),
+})
+
+/**
+ * Schema para bulk update por IDs (body)
+ * Works with encrypted data - client sends specific IDs after filtering decrypted data
+ */
+export const bulkUpdateByIdsSchema = z.object({
+  account_id: z.string().uuid('account_id debe ser un UUID válido'),
+  transaction_ids: z.array(z.string().uuid('Cada ID debe ser un UUID válido')).min(1, 'Se requiere al menos un ID'),
+  subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').nullable(),
 })
 
 // Tipos inferidos
@@ -171,3 +182,4 @@ export type GetBalanceHistoryInput = z.infer<typeof getBalanceHistorySchema>
 export type GetMonthlySummaryInput = z.infer<typeof getMonthlySummarySchema>
 export type BulkUpdatePreviewInput = z.infer<typeof bulkUpdatePreviewSchema>
 export type BulkUpdateCategoryInput = z.infer<typeof bulkUpdateCategorySchema>
+export type BulkUpdateByIdsInput = z.infer<typeof bulkUpdateByIdsSchema>

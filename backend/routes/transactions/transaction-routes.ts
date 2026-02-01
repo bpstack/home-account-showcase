@@ -13,6 +13,7 @@ import {
   getMonthlySummary,
   bulkUpdatePreview,
   bulkUpdateCategory,
+  bulkUpdateByIds,
 } from '../../controllers/transactions/transaction-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
@@ -33,6 +34,7 @@ router.get('/:id', getTransactionById)
 // Mutaciones necesitan CSRF
 router.post('/', checkCSRF, createTransaction)
 router.put('/bulk-update-category', checkCSRF, bulkUpdateCategory)
+router.put('/bulk-update-by-ids', checkCSRF, bulkUpdateByIds)
 router.put('/:id', checkCSRF, updateTransaction)
 router.delete('/:id', checkCSRF, deleteTransaction)
 

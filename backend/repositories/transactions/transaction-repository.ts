@@ -359,8 +359,8 @@ export class TransactionRepository {
     if (data.description_encrypted !== undefined) {
       updates.push('description_encrypted = ?')
       values.push(data.description_encrypted)
-      // Clear unencrypted field
-      updates.push('description = NULL')
+      // Use placeholder for legacy field (NOT NULL constraint)
+      updates.push("description = '[encrypted]'")
     }
 
     if (data.amount_encrypted !== undefined) {
@@ -368,8 +368,9 @@ export class TransactionRepository {
       values.push(data.amount_encrypted)
       updates.push('amount_sign = ?')
       values.push(data.amount_sign)
-      // Clear unencrypted field
-      updates.push('amount = NULL')
+      // Use placeholder with correct sign for legacy field (NOT NULL constraint)
+      updates.push('amount = ?')
+      values.push(data.amount_sign === 'negative' ? -0.01 : 0.01)
     }
 
     if (data.subcategory_id !== undefined) {
@@ -515,6 +516,7 @@ export class TransactionRepository {
 
   /**
    * Actualizar categoría de transacciones por patrón de descripción
+   * @deprecated Use bulkUpdateByIds for encrypted data support
    */
   static async bulkUpdateCategory(
     accountId: string,
@@ -532,6 +534,38 @@ export class TransactionRepository {
        SET subcategory_id = ?
        WHERE account_id = ? AND description LIKE ?`,
       [subcategoryId, accountId, `%${descriptionPattern}%`]
+    )
+
+    return result.affectedRows || 0
+  }
+
+  /**
+   * Actualizar categoría de transacciones por lista de IDs
+   * Works with encrypted data (client filters by decrypted description, sends IDs)
+   */
+  static async bulkUpdateByIds(
+    accountId: string,
+    userId: string,
+    transactionIds: string[],
+    subcategoryId: string | null
+  ): Promise<number> {
+    if (transactionIds.length === 0) {
+      return 0
+    }
+
+    const hasAccess = await AccountRepository.hasAccess(accountId, userId)
+    if (!hasAccess) {
+      throw new Error('No tienes acceso a esta cuenta')
+    }
+
+    // Create placeholders for the IN clause
+    const placeholders = transactionIds.map(() => '?').join(',')
+
+    const [result] = await db.query<any>(
+      `UPDATE transactions
+       SET subcategory_id = ?
+       WHERE account_id = ? AND id IN (${placeholders})`,
+      [subcategoryId, accountId, ...transactionIds]
     )
 
     return result.affectedRows || 0
