@@ -37,6 +37,11 @@ export function generateSalt(): string {
 }
 
 /**
+ * Alias for generateSalt - generates key_salt for password derivation
+ */
+export const generateKeySalt = generateSalt
+
+/**
  * Derive User Key from password using Argon2id
  * This key is used to encrypt/decrypt Account Keys
  */

@@ -16,26 +16,40 @@ interface UseCategoriesOptions {
   enabled?: boolean
 }
 
+// Extended types for encrypted data from API
+interface EncryptedSubcategory {
+  id: string
+  category_id: string
+  name: string
+  name_encrypted?: string
+  created_at: string
+}
+
+interface EncryptedCategory extends Omit<Category, 'subcategories'> {
+  name_encrypted?: string
+  subcategories?: EncryptedSubcategory[]
+}
+
 // Helper to decrypt category and its subcategories
 async function decryptCategoryData(
-  category: Category & {
-    name_encrypted?: string
-    subcategories?: Array<{ name_encrypted?: string; [key: string]: any }>
-  },
+  category: EncryptedCategory,
   accountKey: CryptoKey
 ): Promise<Category> {
-  const decryptedCategory = {
+  const decryptedCategory: Category = {
     ...category,
     name: category.name_encrypted
       ? await decrypt(category.name_encrypted, accountKey)
       : category.name,
+    subcategories: undefined,
   }
 
   if (category.subcategories) {
     decryptedCategory.subcategories = await Promise.all(
       category.subcategories.map(async (sub) => ({
-        ...sub,
+        id: sub.id,
+        category_id: sub.category_id,
         name: sub.name_encrypted ? await decrypt(sub.name_encrypted, accountKey) : sub.name,
+        created_at: sub.created_at,
       }))
     )
   }
