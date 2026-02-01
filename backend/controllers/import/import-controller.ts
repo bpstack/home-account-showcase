@@ -42,10 +42,7 @@ export const parseFile = async (req: Request, res: Response): Promise<void> => {
   }
 }
 
-export const confirmImport = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const confirmImport = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       account_id,
@@ -204,7 +201,9 @@ export const confirmImport = async (
         inserted += placeholders.length
         batchKeys.forEach((k) => insertedKeys.add(k))
       } catch (err) {
-        errors.push(`Error insertando lote ${Math.floor(i / BATCH_SIZE) + 1}: ${(err as Error).message}`)
+        errors.push(
+          `Error insertando lote ${Math.floor(i / BATCH_SIZE) + 1}: ${(err as Error).message}`
+        )
         skipped += placeholders.length
       }
     }
@@ -258,10 +257,7 @@ export const confirmImport = async (
   }
 }
 
-export const getExistingCategories = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getExistingCategories = async (req: Request, res: Response): Promise<void> => {
   try {
     const { account_id } = req.query
 
@@ -297,10 +293,7 @@ export const getExistingCategories = async (
   }
 }
 
-export const getSavedMappings = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getSavedMappings = async (req: Request, res: Response): Promise<void> => {
   try {
     const { account_id } = req.query
 
