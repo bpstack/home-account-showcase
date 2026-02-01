@@ -13,11 +13,29 @@ import type {
   AccountRole,
 } from '../../models/accounts/index.js'
 
+const MAX_OWNED_ACCOUNTS = 3
+
 export class AccountRepository {
+  /**
+   * Contar cuentas donde el usuario es owner
+   */
+  static async countOwnedAccounts(userId: string): Promise<number> {
+    const [rows] = await db.query<any[]>(
+      `SELECT COUNT(*) as count FROM accounts WHERE owner_id = ?`,
+      [userId]
+    )
+    return rows[0]?.count || 0
+  }
+
   /**
    * Crear account con owner
    */
   static async create({ name, userId }: CreateAccountDTO): Promise<Account> {
+    // Validar límite de cuentas como owner
+    const ownedCount = await this.countOwnedAccounts(userId)
+    if (ownedCount >= MAX_OWNED_ACCOUNTS) {
+      throw new Error(`Has alcanzado el límite de ${MAX_OWNED_ACCOUNTS} cuentas como propietario`)
+    }
     const connection = await db.getConnection()
 
     try {
@@ -258,10 +276,16 @@ export class AccountRepository {
   /**
    * Crear account con owner Y copiar categorías por defecto
    */
-  static async createWithDefaults({ name, userId }: CreateAccountDTO): Promise<{
+  static async createWithDefaults({ name, userId, encryptedAccountKey }: CreateAccountDTO): Promise<{
     account: Account
     categoriesCopied: { categories: number; subcategories: number }
   }> {
+    // Validar límite de cuentas como owner
+    const ownedCount = await this.countOwnedAccounts(userId)
+    if (ownedCount >= MAX_OWNED_ACCOUNTS) {
+      throw new Error(`Has alcanzado el límite de ${MAX_OWNED_ACCOUNTS} cuentas como propietario`)
+    }
+
     const connection = await db.getConnection()
 
     try {
@@ -283,6 +307,16 @@ export class AccountRepository {
          VALUES (?, ?, ?, 'owner')`,
         [accountUserId, accountId, userId]
       )
+
+      // Guardar encrypted account key si se proporciona
+      if (encryptedAccountKey) {
+        const accountKeyId = crypto.randomUUID()
+        await connection.query(
+          `INSERT INTO account_keys (id, account_id, user_id, encrypted_key, key_version)
+           VALUES (?, ?, ?, ?, 1)`,
+          [accountKeyId, accountId, userId, encryptedAccountKey]
+        )
+      }
 
       // Copiar categorías por defecto
       const [defaultCategories] = await connection.query<any[]>(

@@ -49,6 +49,7 @@ export interface AccountWithRoleRow extends AccountWithRole, RowDataPacket {}
 export interface CreateAccountDTO {
   name: string
   userId: string // owner
+  encryptedAccountKey?: string // encrypted AK for envelope encryption
 }
 
 export interface UpdateAccountDTO {

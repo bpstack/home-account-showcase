@@ -60,7 +60,7 @@ export const getAccountById = async (req: Request, res: Response): Promise<void>
  */
 export const createAccount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name } = req.body
+    const { name, encryptedAccountKey } = req.body
 
     if (!name) {
       res.status(400).json({
@@ -73,6 +73,7 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
     const result = await AccountRepository.createWithDefaults({
       name,
       userId: req.user!.id,
+      encryptedAccountKey,
     })
 
     res.status(201).json({
@@ -81,6 +82,17 @@ export const createAccount = async (req: Request, res: Response): Promise<void> 
       categoriesCopied: result.categoriesCopied,
     })
   } catch (error) {
+    const err = error as Error
+
+    // Error de límite de cuentas
+    if (err.message.includes('límite de')) {
+      res.status(400).json({
+        success: false,
+        error: err.message,
+      })
+      return
+    }
+
     console.error('Error en createAccount:', error)
     res.status(500).json({
       success: false,
