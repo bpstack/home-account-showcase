@@ -278,12 +278,15 @@ export function useAuth() {
     }
   }
 
+  // Solo consideramos autenticado si la query terminó exitosamente Y hay datos
+  const isAuthenticated = userQuery.isSuccess && !!userQuery.data
+
   return {
     user: userQuery.data as User | null,
     account: account as Account | null,
     accounts: (accountsQuery.data as Account[]) || [],
     isLoading: userQuery.isLoading || (!!userQuery.data && accountsQuery.isLoading),
-    isAuthenticated: !!userQuery.data,
+    isAuthenticated,
     isLoggingIn,
     isRegistering,
     isLoggingOut,
