@@ -37,27 +37,29 @@ interface FiltersState {
   reset: () => void
 }
 
-
 const currentYear = new Date().getFullYear()
 
 export const useFiltersStore = create<FiltersState>()(
   persist(
     (set) => ({
-      selectedYear: currentYear,
+      selectedYear: null,
       selectedMonth: null,
       selectedCategory: '',
       selectedType: 'all',
 
-      setYear: (year) => set({ 
-        selectedYear: year,
-        // Al seleccionar un año, si el mes es null (Período previo), lo mantenemos o lo forzamos?
-        // El requisito dice: al elegir año se asigna "Todos" (null)
-      }),
-      setMonth: (month) => set((state) => ({ 
-        selectedMonth: month,
-        // Si eliges un mes y no hay año, forzamos el actual
-        selectedYear: month !== null && state.selectedYear === null ? currentYear : state.selectedYear
-      })),
+      setYear: (year) =>
+        set({
+          selectedYear: year,
+          // Al seleccionar un año, si el mes es null (Período previo), lo mantenemos o lo forzamos?
+          // El requisito dice: al elegir año se asigna "Todos" (null)
+        }),
+      setMonth: (month) =>
+        set((state) => ({
+          selectedMonth: month,
+          // Si eliges un mes y no hay año, forzamos el actual
+          selectedYear:
+            month !== null && state.selectedYear === null ? currentYear : state.selectedYear,
+        })),
       setCategory: (category) => set({ selectedCategory: category }),
       setType: (type) => set({ selectedType: type }),
 
