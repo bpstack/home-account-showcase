@@ -7,12 +7,14 @@ import { PORT } from './config/config.js'
 import authRoutes from './routes/auth/auth-routes.js'
 import userRoutes from './routes/auth/user-routes.js'
 import accountRoutes from './routes/accounts/account-routes.js'
+import invitationRoutes from './routes/invitations/invitation-routes.js'
 import categoryRoutes from './routes/categories/category-routes.js'
 import subcategoryRoutes from './routes/subcategories/subcategory-routes.js'
 import transactionRoutes from './routes/transactions/transaction-routes.js'
 import importRoutes from './routes/import/import-routes.js'
 import aiRoutes from './routes/ai/ai-routes.js'
 import investmentRoutes from './routes/investment/investment-routes.js'
+import cryptoRoutes from './routes/crypto/crypto-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
 import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
 
@@ -32,25 +34,26 @@ app.use((req, res, next) => {
   next()
 })
 // CORS con credentials para cookies stackbp
-const allowedOrigins = [
-  'http://localhost:3000',
-  process.env.FRONTEND_URL,
-].filter(Boolean).map(url => url?.replace(/\/$/, ''))
+const allowedOrigins = ['http://localhost:3000', process.env.FRONTEND_URL]
+  .filter(Boolean)
+  .map((url) => url?.replace(/\/$/, ''))
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Permitir requests sin origin (Postman, SSR, health checks)
-    if (!origin) return callback(null, true)
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Permitir requests sin origin (Postman, SSR, health checks)
+      if (!origin) return callback(null, true)
 
-    const normalizedOrigin = origin.replace(/\/$/, '')
-    if (allowedOrigins.includes(normalizedOrigin)) {
-      return callback(null, true)
-    }
+      const normalizedOrigin = origin.replace(/\/$/, '')
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true)
+      }
 
-    return callback(new Error(`Not allowed by CORS: ${origin}`))
-  },
-  credentials: true,
-}))
+      return callback(new Error(`Not allowed by CORS: ${origin}`))
+    },
+    credentials: true,
+  })
+)
 
 // CORS con credentials para cookies
 // app.use(cors({
@@ -67,8 +70,10 @@ app.use(sanitizeQuery)
 
 // Routes
 app.use('/api/auth', authRoutes)
+app.use('/api/auth', cryptoRoutes) // GET/PUT /api/auth/keys
 app.use('/api/users', userRoutes)
 app.use('/api/accounts', accountRoutes)
+app.use('/api/invitations', invitationRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/subcategories', subcategoryRoutes)
 app.use('/api/transactions', transactionRoutes)

@@ -1,8 +1,8 @@
-import mysql from 'mysql2/promise'
+import * as mysql from 'mysql2/promise'
 import type { Pool } from 'mysql2/promise'
-import dotenv from 'dotenv'
-import fs from 'fs'
-import path from 'path'
+import * as dotenv from 'dotenv'
+import * as fs from 'fs'
+import * as path from 'path'
 import { fileURLToPath } from 'url'
 
 dotenv.config()
@@ -79,7 +79,9 @@ const testConnection = async (retries = 3, delay = 5000) => {
       return
     } catch (err: any) {
       if (i < retries - 1) {
-        console.log(`⏳ MySQL connection attempt ${i + 1}/${retries} failed, retrying in ${delay / 1000}s...`)
+        console.log(
+          `⏳ MySQL connection attempt ${i + 1}/${retries} failed, retrying in ${delay / 1000}s...`
+        )
         await new Promise((r) => setTimeout(r, delay))
       } else {
         console.error('❌ Error inicial MySQL:', err.message)
