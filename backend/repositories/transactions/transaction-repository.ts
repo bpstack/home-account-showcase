@@ -8,13 +8,15 @@ import type {
   TransactionWithDetails,
   TransactionWithDetailsRow,
   CreateTransactionDTO,
+  CreateEncryptedTransactionDTO,
   UpdateTransactionDTO,
+  UpdateEncryptedTransactionDTO,
   TransactionFilters,
 } from '../../models/transactions/index.js'
 
 export class TransactionRepository {
   /**
-   * Crear transacción
+   * Crear transacción (sin encriptar - legacy)
    */
   static async create(userId: string, data: CreateTransactionDTO): Promise<Transaction> {
     const hasAccess = await AccountRepository.hasAccess(data.account_id, userId)
@@ -53,6 +55,64 @@ export class TransactionRepository {
   }
 
   /**
+   * Crear transacción encriptada
+   */
+  static async createEncrypted(
+    userId: string,
+    data: CreateEncryptedTransactionDTO
+  ): Promise<Transaction> {
+    const hasAccess = await AccountRepository.hasAccess(data.account_id, userId)
+    if (!hasAccess) {
+      throw new Error('No tienes acceso a esta cuenta')
+    }
+
+    const id = crypto.randomUUID()
+
+    // Use placeholder values for legacy fields (actual data is encrypted)
+    // amount uses sign to allow sorting/filtering by type
+    const placeholderAmount = data.amount_sign === 'negative' ? -0.01 : 0.01
+
+    await db.query(
+      `INSERT INTO transactions (
+        id, account_id, subcategory_id, date,
+        description, amount,
+        description_encrypted, amount_encrypted, amount_sign,
+        bank_category_encrypted, bank_subcategory_encrypted
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.account_id,
+        data.subcategory_id || null,
+        data.date,
+        '[encrypted]', // Placeholder for legacy field
+        placeholderAmount, // Placeholder with correct sign
+        data.description_encrypted,
+        data.amount_encrypted,
+        data.amount_sign,
+        data.bank_category_encrypted || null,
+        data.bank_subcategory_encrypted || null,
+      ]
+    )
+
+    return {
+      id,
+      account_id: data.account_id,
+      subcategory_id: data.subcategory_id || null,
+      date: new Date(data.date),
+      description: '', // Not available - encrypted
+      amount: 0, // Not available - encrypted
+      bank_category: null,
+      bank_subcategory: null,
+      description_encrypted: data.description_encrypted,
+      amount_encrypted: data.amount_encrypted,
+      amount_sign: data.amount_sign,
+      bank_category_encrypted: data.bank_category_encrypted,
+      bank_subcategory_encrypted: data.bank_subcategory_encrypted,
+      created_at: new Date(),
+    }
+  }
+
+  /**
    * Obtener transacciones con filtros
    */
   static async getByAccountId(
@@ -68,6 +128,8 @@ export class TransactionRepository {
       SELECT 
         t.id, t.account_id, t.subcategory_id, t.date, t.description, t.amount,
         t.bank_category, t.bank_subcategory, t.created_at, t.updated_at,
+        t.description_encrypted, t.amount_encrypted, t.amount_sign,
+        t.bank_category_encrypted, t.bank_subcategory_encrypted,
         s.name as subcategory_name,
         c.name as category_name, c.color as category_color
       FROM transactions t
@@ -135,10 +197,7 @@ export class TransactionRepository {
    * https://nextjs.org/docs/app/building-your-application/routing/linking-and-navigating
    * Usar URL params para pagination state en vez de client-only state
    */
-  static async getCountByAccountId(
-    filters: TransactionFilters,
-    userId: string
-  ): Promise<number> {
+  static async getCountByAccountId(filters: TransactionFilters, userId: string): Promise<number> {
     const hasAccess = await AccountRepository.hasAccess(filters.account_id, userId)
     if (!hasAccess) {
       throw new Error('No tienes acceso a esta cuenta')
@@ -214,6 +273,8 @@ export class TransactionRepository {
       `SELECT 
         t.id, t.account_id, t.subcategory_id, t.date, t.description, t.amount,
         t.bank_category, t.bank_subcategory, t.created_at, t.updated_at,
+        t.description_encrypted, t.amount_encrypted, t.amount_sign,
+        t.bank_category_encrypted, t.bank_subcategory_encrypted,
         s.name as subcategory_name,
         c.name as category_name, c.color as category_color
        FROM transactions t
@@ -228,7 +289,7 @@ export class TransactionRepository {
   }
 
   /**
-   * Actualizar transacción
+   * Actualizar transacción (legacy - sin encriptar)
    */
   static async update(
     transactionId: string,
@@ -261,6 +322,71 @@ export class TransactionRepository {
     if (data.subcategory_id !== undefined) {
       updates.push('subcategory_id = ?')
       values.push(data.subcategory_id)
+    }
+
+    if (updates.length === 0) {
+      return transaction
+    }
+
+    values.push(transactionId)
+
+    await db.query(`UPDATE transactions SET ${updates.join(', ')} WHERE id = ?`, values)
+
+    return this.getById(transactionId, userId)
+  }
+
+  /**
+   * Actualizar transacción encriptada
+   */
+  static async updateEncrypted(
+    transactionId: string,
+    userId: string,
+    data: UpdateEncryptedTransactionDTO
+  ): Promise<TransactionWithDetails | null> {
+    const transaction = await this.getById(transactionId, userId)
+    if (!transaction) {
+      return null
+    }
+
+    const updates: string[] = []
+    const values: any[] = []
+
+    if (data.date !== undefined) {
+      updates.push('date = ?')
+      values.push(data.date)
+    }
+
+    if (data.description_encrypted !== undefined) {
+      updates.push('description_encrypted = ?')
+      values.push(data.description_encrypted)
+      // Clear unencrypted field
+      updates.push('description = NULL')
+    }
+
+    if (data.amount_encrypted !== undefined) {
+      updates.push('amount_encrypted = ?')
+      values.push(data.amount_encrypted)
+      updates.push('amount_sign = ?')
+      values.push(data.amount_sign)
+      // Clear unencrypted field
+      updates.push('amount = NULL')
+    }
+
+    if (data.subcategory_id !== undefined) {
+      updates.push('subcategory_id = ?')
+      values.push(data.subcategory_id)
+    }
+
+    if (data.bank_category_encrypted !== undefined) {
+      updates.push('bank_category_encrypted = ?')
+      values.push(data.bank_category_encrypted)
+      updates.push('bank_category = NULL')
+    }
+
+    if (data.bank_subcategory_encrypted !== undefined) {
+      updates.push('bank_subcategory_encrypted = ?')
+      values.push(data.bank_subcategory_encrypted)
+      updates.push('bank_subcategory = NULL')
     }
 
     if (updates.length === 0) {

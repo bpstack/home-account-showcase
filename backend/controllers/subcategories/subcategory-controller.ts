@@ -81,7 +81,7 @@ export const getSubcategoryById = async (req: Request, res: Response): Promise<v
  */
 export const createSubcategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category_id, name } = req.body
+    const { category_id, name, name_encrypted } = req.body
 
     if (!category_id || !name) {
       res.status(400).json({
@@ -97,6 +97,7 @@ export const createSubcategory = async (req: Request, res: Response): Promise<vo
     const subcategory = await SubcategoryRepository.create(req.user!.id, {
       category_id,
       name: safeName,
+      name_encrypted, // Pass encrypted version if provided
     })
 
     res.status(201).json({
@@ -137,12 +138,15 @@ export const createSubcategory = async (req: Request, res: Response): Promise<vo
 export const updateSubcategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params
-    const { name } = req.body
+    const { name, name_encrypted } = req.body
 
     // Sanitize text fields to prevent XSS attacks
     const safeName = name ? sanitizeForStorage(name) : undefined
 
-    const subcategory = await SubcategoryRepository.update(id, req.user!.id, { name: safeName })
+    const subcategory = await SubcategoryRepository.update(id, req.user!.id, {
+      name: safeName,
+      name_encrypted, // Pass encrypted version if provided
+    })
 
     if (!subcategory) {
       res.status(404).json({

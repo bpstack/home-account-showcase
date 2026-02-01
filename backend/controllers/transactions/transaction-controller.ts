@@ -6,7 +6,9 @@ import { sanitizeForStorage } from '../../utils/sanitize.js'
 import {
   getTransactionsSchema,
   createTransactionSchema,
+  createEncryptedTransactionSchema,
   updateTransactionSchema,
+  updateEncryptedTransactionSchema,
   getSummarySchema,
   getStatsSchema,
   getBalanceHistorySchema,
@@ -110,7 +112,34 @@ export const getTransactionById = async (req: Request, res: Response): Promise<v
 
 export const createTransaction = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validación con Zod
+    // Check if encrypted transaction
+    const isEncrypted = 'description_encrypted' in req.body
+
+    if (isEncrypted) {
+      // Validate encrypted schema
+      const validationResult = createEncryptedTransactionSchema.safeParse(req.body)
+      if (!validationResult.success) {
+        const firstError = validationResult.error.issues[0]
+        res.status(400).json({
+          success: false,
+          error: firstError?.message || 'Datos inválidos',
+        })
+        return
+      }
+
+      const transaction = await TransactionRepository.createEncrypted(
+        req.user!.id,
+        validationResult.data
+      )
+
+      res.status(201).json({
+        success: true,
+        transaction,
+      })
+      return
+    }
+
+    // Legacy: unencrypted transaction
     const validationResult = createTransactionSchema.safeParse(req.body)
     if (!validationResult.success) {
       const firstError = validationResult.error.issues[0]
@@ -166,7 +195,43 @@ export const updateTransaction = async (req: Request, res: Response): Promise<vo
   try {
     const { id } = req.params
 
-    // Validación con Zod
+    // Check if encrypted update
+    const isEncrypted = 'description_encrypted' in req.body || 'amount_encrypted' in req.body
+
+    if (isEncrypted) {
+      // Validate encrypted schema
+      const validationResult = updateEncryptedTransactionSchema.safeParse(req.body)
+      if (!validationResult.success) {
+        const firstError = validationResult.error.issues[0]
+        res.status(400).json({
+          success: false,
+          error: firstError?.message || 'Datos inválidos',
+        })
+        return
+      }
+
+      const transaction = await TransactionRepository.updateEncrypted(
+        id,
+        req.user!.id,
+        validationResult.data
+      )
+
+      if (!transaction) {
+        res.status(404).json({
+          success: false,
+          error: 'Transacción no encontrada',
+        })
+        return
+      }
+
+      res.status(200).json({
+        success: true,
+        transaction,
+      })
+      return
+    }
+
+    // Legacy: unencrypted update
     const validationResult = updateTransactionSchema.safeParse(req.body)
     if (!validationResult.success) {
       const firstError = validationResult.error.issues[0]

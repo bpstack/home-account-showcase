@@ -22,7 +22,10 @@ export class SubcategoryRepository {
   /**
    * Crear subcategoría
    */
-  static async create(userId: string, data: CreateSubcategoryDTO): Promise<Subcategory> {
+  static async create(
+    userId: string,
+    data: CreateSubcategoryDTO & { name_encrypted?: string }
+  ): Promise<Subcategory> {
     const hasAccess = await this.verifyCategoryAccess(data.category_id, userId)
     if (!hasAccess) {
       throw new Error('No tienes acceso a esta categoría')
@@ -32,15 +35,16 @@ export class SubcategoryRepository {
 
     try {
       await db.query(
-        `INSERT INTO subcategories (id, category_id, name)
-         VALUES (?, ?, ?)`,
-        [id, data.category_id, data.name]
+        `INSERT INTO subcategories (id, category_id, name, name_encrypted)
+         VALUES (?, ?, ?, ?)`,
+        [id, data.category_id, data.name, data.name_encrypted || null]
       )
 
       return {
         id,
         category_id: data.category_id,
         name: data.name,
+        name_encrypted: data.name_encrypted,
         created_at: new Date(),
       }
     } catch (error: any) {
@@ -94,19 +98,33 @@ export class SubcategoryRepository {
   static async update(
     subcategoryId: string,
     userId: string,
-    data: UpdateSubcategoryDTO
+    data: UpdateSubcategoryDTO & { name_encrypted?: string }
   ): Promise<Subcategory | null> {
     const subcategory = await this.getById(subcategoryId, userId)
     if (!subcategory) {
       return null
     }
 
-    if (data.name === undefined) {
+    const updates: string[] = []
+    const values: any[] = []
+
+    if (data.name !== undefined) {
+      updates.push('name = ?')
+      values.push(data.name)
+    }
+    if (data.name_encrypted !== undefined) {
+      updates.push('name_encrypted = ?')
+      values.push(data.name_encrypted)
+    }
+
+    if (updates.length === 0) {
       return subcategory
     }
 
+    values.push(subcategoryId)
+
     try {
-      await db.query(`UPDATE subcategories SET name = ? WHERE id = ?`, [data.name, subcategoryId])
+      await db.query(`UPDATE subcategories SET ${updates.join(', ')} WHERE id = ?`, values)
 
       return this.getById(subcategoryId, userId)
     } catch (error: any) {

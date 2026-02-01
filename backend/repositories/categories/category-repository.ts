@@ -16,7 +16,10 @@ export class CategoryRepository {
   /**
    * Crear categoría
    */
-  static async create(userId: string, data: CreateCategoryDTO): Promise<Category> {
+  static async create(
+    userId: string,
+    data: CreateCategoryDTO & { name_encrypted?: string }
+  ): Promise<Category> {
     // Verificar acceso al account
     const hasAccess = await AccountRepository.hasAccess(data.account_id, userId)
     if (!hasAccess) {
@@ -28,15 +31,16 @@ export class CategoryRepository {
 
     try {
       await db.query(
-        `INSERT INTO categories (id, account_id, name, color, icon)
-         VALUES (?, ?, ?, ?, ?)`,
-        [id, data.account_id, data.name, color, data.icon || null]
+        `INSERT INTO categories (id, account_id, name, name_encrypted, color, icon)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [id, data.account_id, data.name, data.name_encrypted || null, color, data.icon || null]
       )
 
       return {
         id,
         account_id: data.account_id,
         name: data.name,
+        name_encrypted: data.name_encrypted,
         color,
         icon: data.icon || null,
         created_at: new Date(),
@@ -60,18 +64,18 @@ export class CategoryRepository {
       throw new Error('No tienes acceso a esta cuenta')
     }
 
-    // Obtener categorías
+    // Obtener categorías (incluir campos encriptados)
     const [categories] = await db.query<CategoryRow[]>(
-      `SELECT id, account_id, name, color, icon, created_at, updated_at
+      `SELECT id, account_id, name, name_encrypted, color, icon, created_at, updated_at
        FROM categories
        WHERE account_id = ?
        ORDER BY name ASC`,
       [accountId]
     )
 
-    // Obtener subcategorías para cada categoría
+    // Obtener subcategorías para cada categoría (incluir campos encriptados)
     const [subcategories] = await db.query<SubcategoryRow[]>(
-      `SELECT id, category_id, name, created_at, updated_at
+      `SELECT id, category_id, name, name_encrypted, created_at, updated_at
        FROM subcategories
        WHERE category_id IN (SELECT id FROM categories WHERE account_id = ?)
        ORDER BY name ASC`,
@@ -114,7 +118,7 @@ export class CategoryRepository {
   static async update(
     categoryId: string,
     userId: string,
-    data: UpdateCategoryDTO
+    data: UpdateCategoryDTO & { name_encrypted?: string }
   ): Promise<Category | null> {
     // Verificar acceso
     const category = await this.getById(categoryId, userId)
@@ -128,6 +132,10 @@ export class CategoryRepository {
     if (data.name !== undefined) {
       updates.push('name = ?')
       values.push(data.name)
+    }
+    if (data.name_encrypted !== undefined) {
+      updates.push('name_encrypted = ?')
+      values.push(data.name_encrypted)
     }
     if (data.color !== undefined) {
       updates.push('color = ?')

@@ -81,7 +81,7 @@ export const getCategoryById = async (req: Request, res: Response): Promise<void
  */
 export const createCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { account_id, name, color, icon } = req.body
+    const { account_id, name, name_encrypted, color, icon } = req.body
 
     if (!account_id || !name) {
       res.status(400).json({
@@ -97,6 +97,7 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
     const category = await CategoryRepository.create(req.user!.id, {
       account_id,
       name: safeName,
+      name_encrypted, // Pass encrypted version if provided
       color,
       icon,
     })
@@ -139,13 +140,14 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
 export const updateCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params
-    const { name, color, icon } = req.body
+    const { name, name_encrypted, color, icon } = req.body
 
     // Sanitize text fields to prevent XSS attacks
     const safeName = name ? sanitizeForStorage(name) : undefined
 
     const category = await CategoryRepository.update(id, req.user!.id, {
       name: safeName,
+      name_encrypted, // Pass encrypted version if provided
       color,
       icon,
     })
