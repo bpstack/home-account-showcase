@@ -256,35 +256,76 @@ export class UserRepository {
   }
 
   /**
-   * Cambiar contraseña propia (验证 contraseña actual)
+   * Cambiar contraseña propia con re-cifrado de claves
+   * @param id - User ID
+   * @param currentPassword - Password actual para verificación
+   * @param newPassword - Nueva contraseña
+   * @param newKeySalt - Nuevo salt para derivar UK (generado en cliente)
+   * @param reEncryptedKeys - Claves de cuenta re-cifradas con la nueva UK
    */
   static async changePassword(
     id: string,
     currentPassword: string,
-    newPassword: string
+    newPassword: string,
+    newKeySalt?: string,
+    reEncryptedKeys?: Array<{ accountId: string; encryptedKey: string }>
   ): Promise<boolean> {
-    const [rows] = await db.query<UserRow[]>(`SELECT password_hash FROM users WHERE id = ?`, [id])
+    const connection = await db.getConnection()
 
-    const user = rows[0]
-    if (!user) {
-      throw new Error('Usuario no encontrado')
+    try {
+      // Verificar password actual
+      const [rows] = await connection.query<UserRow[]>(
+        `SELECT password_hash FROM users WHERE id = ?`,
+        [id]
+      )
+
+      const user = rows[0]
+      if (!user) {
+        throw new Error('Usuario no encontrado')
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash!)
+      if (!isCurrentPasswordValid) {
+        throw new Error('Contraseña actual incorrecta')
+      }
+
+      await connection.beginTransaction()
+
+      const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
+
+      // Actualizar password y opcionalmente key_salt
+      if (newKeySalt) {
+        await connection.query(
+          `UPDATE users SET password_hash = ?, key_salt = ?, updated_at = NOW() WHERE id = ?`,
+          [hashedPassword, newKeySalt, id]
+        )
+      } else {
+        await connection.query(
+          `UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?`,
+          [hashedPassword, id]
+        )
+      }
+
+      // Actualizar claves re-cifradas si se proporcionan
+      if (reEncryptedKeys && reEncryptedKeys.length > 0) {
+        for (const key of reEncryptedKeys) {
+          await connection.query(
+            `UPDATE account_keys
+             SET encrypted_key = ?, key_version = key_version + 1
+             WHERE account_id = ? AND user_id = ?`,
+            [key.encryptedKey, key.accountId, id]
+          )
+        }
+      }
+
+      await connection.commit()
+      return true
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
     }
-
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash!)
-    if (!isCurrentPasswordValid) {
-      throw new Error('Contraseña actual incorrecta')
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
-
-    const [result] = await db.query(
-      `UPDATE users
-       SET password_hash = ?, updated_at = NOW()
-       WHERE id = ?`,
-      [hashedPassword, id]
-    )
-
-    return (result as any).affectedRows > 0
   }
 
   /**
