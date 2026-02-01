@@ -12,6 +12,8 @@ export interface Subcategory {
   name: string
   created_at: Date
   updated_at?: Date
+  // Encrypted fields (optional during transition)
+  name_encrypted?: string
 }
 
 export interface SubcategoryRow extends Subcategory, RowDataPacket {}
@@ -29,6 +31,8 @@ export interface Category {
   created_at: Date
   updated_at?: Date
   subcategories?: Subcategory[]
+  // Encrypted fields (optional during transition)
+  name_encrypted?: string
 }
 
 export interface CategoryRow extends Category, RowDataPacket {}
@@ -44,8 +48,21 @@ export interface CreateCategoryDTO {
   icon?: string
 }
 
+export interface CreateEncryptedCategoryDTO {
+  account_id: string
+  name_encrypted: string
+  color?: string
+  icon?: string
+}
+
 export interface UpdateCategoryDTO {
   name?: string
+  color?: string
+  icon?: string
+}
+
+export interface UpdateEncryptedCategoryDTO {
+  name_encrypted?: string
   color?: string
   icon?: string
 }

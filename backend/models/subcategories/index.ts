@@ -12,6 +12,8 @@ export interface Subcategory {
   name: string
   created_at: Date
   updated_at?: Date
+  // Encrypted fields (optional during transition)
+  name_encrypted?: string
 }
 
 export interface SubcategoryRow extends Subcategory, RowDataPacket {}
@@ -25,6 +27,15 @@ export interface CreateSubcategoryDTO {
   name: string
 }
 
+export interface CreateEncryptedSubcategoryDTO {
+  category_id: string
+  name_encrypted: string
+}
+
 export interface UpdateSubcategoryDTO {
   name?: string
+}
+
+export interface UpdateEncryptedSubcategoryDTO {
+  name_encrypted?: string
 }

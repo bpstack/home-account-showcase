@@ -17,6 +17,12 @@ export interface Transaction {
   bank_subcategory: string | null
   created_at: Date
   updated_at?: Date
+  // Encrypted fields (optional during transition)
+  description_encrypted?: string
+  amount_encrypted?: string
+  amount_sign?: 'positive' | 'negative' | 'zero'
+  bank_category_encrypted?: string | null
+  bank_subcategory_encrypted?: string | null
 }
 
 export interface TransactionRow extends Transaction, RowDataPacket {}
@@ -48,11 +54,35 @@ export interface CreateTransactionDTO {
   bank_subcategory?: string
 }
 
+// DTO for encrypted transactions
+export interface CreateEncryptedTransactionDTO {
+  account_id: string
+  date: string
+  subcategory_id?: string | null
+  // Encrypted fields
+  description_encrypted: string
+  amount_encrypted: string
+  amount_sign: 'positive' | 'negative' | 'zero'
+  bank_category_encrypted?: string | null
+  bank_subcategory_encrypted?: string | null
+}
+
 export interface UpdateTransactionDTO {
   date?: string
   description?: string
   amount?: number
   subcategory_id?: string | null
+}
+
+// DTO for encrypted updates
+export interface UpdateEncryptedTransactionDTO {
+  date?: string
+  subcategory_id?: string | null
+  description_encrypted?: string
+  amount_encrypted?: string
+  amount_sign?: 'positive' | 'negative' | 'zero'
+  bank_category_encrypted?: string | null
+  bank_subcategory_encrypted?: string | null
 }
 
 export interface TransactionFilters {

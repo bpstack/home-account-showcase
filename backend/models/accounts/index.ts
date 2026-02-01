@@ -9,6 +9,7 @@ import { RowDataPacket } from 'mysql2'
 export interface Account {
   id: string
   name: string
+  owner_id: string
   created_at: Date
   updated_at?: Date
 }
@@ -54,7 +55,4 @@ export interface UpdateAccountDTO {
   name: string
 }
 
-export interface AddMemberDTO {
-  accountId: string
-  identifier: string // email o nombre del usuario
-}
+// AddMemberDTO eliminado - ahora se usa el sistema de invitaciones

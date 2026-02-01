@@ -10,12 +10,14 @@ export interface User {
   id: string
   email: string
   name: string
+  key_salt?: string // For encryption - only returned when needed
   created_at: Date
   updated_at?: Date
 }
 
 export interface UserRow extends User, RowDataPacket {
   password_hash?: string
+  key_salt: string
 }
 
 // ============================================
@@ -27,6 +29,8 @@ export interface RegisterDTO {
   password: string
   name: string
   accountName?: string
+  skipDefaultAccount?: boolean // Para usuarios que vienen de invitación
+  encryptedAccountKey?: string // Encrypted AK for the new account
 }
 
 export interface LoginDTO {
