@@ -70,7 +70,22 @@ Content-Type: application/json
   "name": "Otro User"
 }
 
+### ----------------------------------------
+### REGISTER CON skipDefaultAccount (para invitaciones)
+### No crea cuenta por defecto, solo el usuario
+### ----------------------------------------
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "invitado-nuevo@test.com",
+  "password": "123456",
+  "name": "Usuario Invitado",
+  "skipDefaultAccount": true
+}
+
 ### ME sin cookies (debe fallar - no hay sesión)
+GET {{baseUrl}}/auth/me
 GET {{baseUrl}}/auth/me
 
 ### ----------------------------------------

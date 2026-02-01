@@ -1,0 +1,79 @@
+### Variables
+@baseUrl = http://localhost:3001/api
+# Credenciales: admin@admin.com / 123456
+# User ID: 0d839527-0260-494d-b3e7-c0f332311d14
+# Account ID donde admin@admin.com es owner:
+@accountId = c8099f30-a281-4444-9c22-bf0b2a6150f2
+# Tokens de cookies (copiar del login response headers)
+@accessToken = TU_ACCESS_TOKEN
+@refreshToken = TU_REFRESH_TOKEN
+@csrfToken = TU_CSRF_TOKEN
+
+### ========================================
+### INVITATIONS ENDPOINTS
+### ========================================
+
+### ----------------------------------------
+### CREATE INVITATION - Crear invitación (solo owner)
+### POST /accounts/:id/invitations
+### ----------------------------------------
+POST {{baseUrl}}/accounts/{{accountId}}/invitations
+Cookie: accessToken={{accessToken}}; refreshToken={{refreshToken}}; csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+Content-Type: application/json
+
+{
+  "email": "invitado@example.com"
+}
+
+### ----------------------------------------
+### LIST INVITATIONS - Listar invitaciones de cuenta
+### GET /accounts/:id/invitations
+### ----------------------------------------
+GET {{baseUrl}}/accounts/{{accountId}}/invitations
+Cookie: accessToken={{accessToken}}; refreshToken={{refreshToken}}; csrfToken={{csrfToken}}
+
+### ----------------------------------------
+### GET INVITATION BY TOKEN - Ver info (público, sin auth)
+### GET /invitations/:token
+### ----------------------------------------
+@invitationToken = YOUR_INVITATION_TOKEN
+GET {{baseUrl}}/invitations/{{invitationToken}}
+
+### ----------------------------------------
+### ACCEPT INVITATION - Aceptar invitación (requiere auth)
+### POST /invitations/:token/accept
+### ----------------------------------------
+POST {{baseUrl}}/invitations/{{invitationToken}}/accept
+Cookie: accessToken={{accessToken}}; refreshToken={{refreshToken}}; csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+### ----------------------------------------
+### REVOKE INVITATION - Revocar invitación (solo owner)
+### DELETE /accounts/:id/invitations/:invitationId
+### ----------------------------------------
+@invitationId = YOUR_INVITATION_ID
+DELETE {{baseUrl}}/accounts/{{accountId}}/invitations/{{invitationId}}
+Cookie: accessToken={{accessToken}}; refreshToken={{refreshToken}}; csrfToken={{csrfToken}}
+X-CSRF-Token: {{csrfToken}}
+
+### ========================================
+### TEST SCENARIOS
+### ========================================
+
+### Scenario 1: Crear invitación y copiar token de respuesta
+# 1. Ejecutar CREATE INVITATION
+# 2. Copiar "token" de la respuesta
+# 3. Pegar en @invitationToken
+# 4. Probar GET INVITATION BY TOKEN
+
+### Scenario 2: Probar invitación expirada
+# El token inválido debería devolver 404
+
+### Scenario 3: Usuario ya es miembro
+# Intentar invitar email que ya está en la cuenta
+# Debería devolver 400 "Este usuario ya es miembro de la cuenta"
+
+### Scenario 4: Re-invitar mismo email
+# Si ya hay invitación pending para ese email,
+# debería actualizar expires_at en lugar de crear nueva
