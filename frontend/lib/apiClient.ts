@@ -178,14 +178,37 @@ export const auth = {
       document.cookie = `csrfToken=${data.csrfToken}; path=/; max-age=${8 * 60 * 60}`
     }
 
-    return data as { success: boolean; user: { id: string; email: string; name: string } }
+    return data as {
+      success: boolean
+      user: { id: string; email: string; name: string }
+      key_salt: string
+      encrypted_keys: Array<{
+        account_id: string
+        encrypted_key: string
+        key_version: number
+      }>
+    }
   },
 
-  register: async (email: string, password: string, name: string, accountName?: string) => {
+  register: async (
+    email: string,
+    password: string,
+    name: string,
+    accountName?: string,
+    skipDefaultAccount?: boolean,
+    encryptedAccountKey?: string
+  ) => {
     const response = await fetch(`${AUTH_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, accountName }),
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        accountName,
+        skipDefaultAccount,
+        encryptedAccountKey,
+      }),
       credentials: 'include',
     })
     const data = await response.json()
@@ -197,7 +220,12 @@ export const auth = {
       document.cookie = `csrfToken=${data.csrfToken}; path=/; max-age=${8 * 60 * 60}`
     }
 
-    return data as { success: boolean; user: { id: string; email: string; name: string } }
+    return data as {
+      success: boolean
+      user: { id: string; email: string; name: string }
+      key_salt: string
+      accountId?: string
+    }
   },
 
   me: async () => {
@@ -245,6 +273,28 @@ export const auth = {
 
     return data as { success: boolean }
   },
+
+
+  getKeys: async () => {
+    const response = await fetch(`${AUTH_URL}/keys`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al obtener claves')
+    }
+
+    return data as {
+      success: boolean
+      key_salt: string
+      encrypted_keys: Array<{
+        account_id: string
+        encrypted_key: string
+        key_version: number
+      }>
+    }
+  },
 }
 
 // Users
@@ -290,15 +340,86 @@ export const accounts = {
       success: boolean
       members: { id: string; email: string; name: string; role: string; joined_at: string }[]
     }>(`/accounts/${id}/members`),
-  addMember: (id: string, email: string, name: string) =>
-    request<{ success: boolean; message: string }>(`/accounts/${id}/members`, {
-      method: 'POST',
-      body: JSON.stringify({ email, name }),
-    }),
+  // addMember eliminado - usar invitations
   leaveAccount: (id: string) =>
     request<{ success: boolean; message: string }>(`/accounts/${id}/leave`, {
       method: 'POST',
     }),
+  // Invitations
+  createInvitation: (accountId: string, email: string) =>
+    request<{
+      invitation: {
+        id: string
+        token: string
+        email: string
+        status: string
+        expires_at: string
+      }
+      inviteLink: string
+    }>(`/accounts/${accountId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  getInvitations: (accountId: string) =>
+    request<{
+      invitations: {
+        id: string
+        email: string
+        token: string
+        status: string
+        expires_at: string
+        created_at: string
+      }[]
+    }>(`/accounts/${accountId}/invitations`),
+  revokeInvitation: (accountId: string, invitationId: string) =>
+    request<{ message: string }>(`/accounts/${accountId}/invitations/${invitationId}`, {
+      method: 'DELETE',
+    }),
+
+  // Encryption keys
+  saveAccountKey: (accountId: string, encryptedKey: string) =>
+    request<{ success: boolean; message: string }>(`/accounts/${accountId}/keys`, {
+      method: 'POST',
+      body: JSON.stringify({ encryptedKey }),
+    }),
+
+  getKeys: () =>
+    request<{
+      success: boolean
+      keys: Array<{
+        account_id: string
+        encrypted_key: string
+        key_version: number
+      }>
+    }>('/auth/keys'),
+
+  updateAllKeys: (keys: Array<{ accountId: string; encryptedKey: string }>) =>
+    request<{ success: boolean; message: string }>('/auth/keys', {
+      method: 'PUT',
+      body: JSON.stringify({ keys }),
+    }),
+}
+
+// Invitations (endpoints públicos y de aceptación)
+export const invitations = {
+  // Obtener info de invitación por token (público, sin auth)
+  getByToken: (token: string) =>
+    request<{
+      invitation: {
+        status: string
+        account_name: string
+        invited_by_name: string
+        expires_at: string
+      }
+      isExpired: boolean
+    }>(`/invitations/${token}`),
+
+  // Aceptar invitación (requiere auth)
+  accept: (token: string) =>
+    request<{ message: string; account: { id: string; name: string } }>(
+      `/invitations/${token}/accept`,
+      { method: 'POST' }
+    ),
 }
 
 // Categories
@@ -314,7 +435,30 @@ export const categories = {
       body: JSON.stringify(data),
     }),
 
+  // Encrypted version - name is already encrypted by caller
+  createEncrypted: (data: {
+    account_id: string
+    name: string // plain for backward compat
+    name_encrypted: string
+    color?: string
+    icon?: string
+  }) =>
+    request<{ success: boolean; category: Category }>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   update: (id: string, data: { name?: string; color?: string; icon?: string }) =>
+    request<{ success: boolean; category: Category }>(`/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Encrypted version - name is already encrypted by caller
+  updateEncrypted: (
+    id: string,
+    data: { name?: string; name_encrypted?: string; color?: string; icon?: string }
+  ) =>
     request<{ success: boolean; category: Category }>(`/categories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -354,7 +498,21 @@ export const subcategories = {
       body: JSON.stringify(data),
     }),
 
+  // Encrypted version - name is already encrypted by caller
+  createEncrypted: (data: { category_id: string; name: string; name_encrypted: string }) =>
+    request<{ success: boolean; subcategory: Subcategory }>('/subcategories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   update: (id: string, data: { name?: string }) =>
+    request<{ success: boolean; subcategory: Subcategory }>(`/subcategories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Encrypted version
+  updateEncrypted: (id: string, data: { name?: string; name_encrypted?: string }) =>
     request<{ success: boolean; subcategory: Subcategory }>(`/subcategories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -399,7 +557,30 @@ export const transactions = {
       body: JSON.stringify(data),
     }),
 
+  // Encrypted version for new transactions
+  createEncrypted: (data: {
+    account_id: string
+    date: string
+    subcategory_id?: string
+    description_encrypted: string
+    amount_encrypted: string
+    amount_sign: 'positive' | 'negative' | 'zero'
+    bank_category_encrypted?: string | null
+    bank_subcategory_encrypted?: string | null
+  }) =>
+    request<{ success: boolean; transaction: Transaction }>('/transactions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   update: (id: string, data: UpdateTransactionData) =>
+    request<{ success: boolean; transaction: Transaction }>(`/transactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Encrypted version for updates
+  updateEncrypted: (id: string, data: Record<string, unknown>) =>
     request<{ success: boolean; transaction: Transaction }>(`/transactions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

@@ -1,12 +1,15 @@
 // lib/queries/transactions.ts - React Query hooks for transactions
+// Architecture: React Query manages remote data, encryption is transparent
 
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   transactions as transactionsApi,
   TransactionParams,
   CreateTransactionData,
   UpdateTransactionData,
 } from '../apiClient'
+import { useCryptoStore } from '@/stores/cryptoStore'
+import { encrypt, decrypt, getAmountSign, type EncryptedTransaction } from '../crypto'
 
 export const transactionKeys = {
   all: ['transactions'] as const,
@@ -24,10 +27,56 @@ interface UseTransactionsOptions {
   initialData?: { transactions: Transaction[]; total: number; limit: number; offset: number }
 }
 
+// Helper to decrypt a single transaction if encrypted
+async function decryptTransaction(
+  t: Transaction & Partial<EncryptedTransaction>,
+  accountKey: CryptoKey
+): Promise<Transaction> {
+  // If encrypted fields exist, decrypt them
+  if (t.description_encrypted) {
+    return {
+      ...t,
+      description: await decrypt(t.description_encrypted, accountKey),
+      amount: t.amount_encrypted
+        ? parseFloat(await decrypt(t.amount_encrypted, accountKey))
+        : t.amount,
+      bank_category: t.bank_category_encrypted
+        ? await decrypt(t.bank_category_encrypted, accountKey)
+        : t.bank_category,
+      bank_subcategory: t.bank_subcategory_encrypted
+        ? await decrypt(t.bank_subcategory_encrypted, accountKey)
+        : t.bank_subcategory,
+    }
+  }
+  // Not encrypted, return as-is
+  return t
+}
+
 export function useTransactions(params: TransactionParams, options?: UseTransactionsOptions) {
+  const getAccountKey = useCryptoStore((s) => s.getAccountKey)
+  const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
+
   return useQuery({
     queryKey: transactionKeys.list(params),
-    queryFn: () => transactionsApi.getAll(params),
+    queryFn: async () => {
+      const response = await transactionsApi.getAll(params)
+
+      // Decrypt if account is unlocked and data is encrypted
+      const accountKey = getAccountKey(params.account_id)
+      if (accountKey && response.transactions.length > 0) {
+        const firstTx = response.transactions[0] as Transaction & Partial<EncryptedTransaction>
+        if (firstTx.description_encrypted) {
+          const decryptedTxs = await Promise.all(
+            response.transactions.map((t) =>
+              decryptTransaction(t as Transaction & Partial<EncryptedTransaction>, accountKey)
+            )
+          )
+          return { ...response, transactions: decryptedTxs }
+        }
+      }
+
+      return response
+    },
     staleTime: options?.staleTime ?? 0,
     initialData: options?.initialData,
   })
@@ -100,15 +149,84 @@ export function useTransactionById(id: string) {
 }
 
 export function useCreateTransaction() {
+  const getAccountKey = useCryptoStore((s) => s.getAccountKey)
+
   return useMutation({
-    mutationFn: (data: CreateTransactionData) => transactionsApi.create(data),
+    mutationFn: async (data: CreateTransactionData) => {
+      const accountKey = getAccountKey(data.account_id)
+
+      // If encryption is enabled (account unlocked), encrypt the data
+      if (accountKey) {
+        const encryptedData = {
+          account_id: data.account_id,
+          date: data.date,
+          subcategory_id: data.subcategory_id,
+          // Encrypted fields
+          description_encrypted: await encrypt(data.description, accountKey),
+          amount_encrypted: await encrypt(data.amount.toString(), accountKey),
+          amount_sign: getAmountSign(data.amount),
+          bank_category_encrypted: data.bank_category
+            ? await encrypt(data.bank_category, accountKey)
+            : null,
+          bank_subcategory_encrypted: data.bank_subcategory
+            ? await encrypt(data.bank_subcategory, accountKey)
+            : null,
+        }
+        return transactionsApi.createEncrypted(encryptedData)
+      }
+
+      // Fallback: send unencrypted (for migration period)
+      return transactionsApi.create(data)
+    },
   })
 }
 
 export function useUpdateTransaction() {
+  const getAccountKey = useCryptoStore((s) => s.getAccountKey)
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTransactionData }) =>
-      transactionsApi.update(id, data),
+    mutationFn: async ({
+      id,
+      data,
+      accountId,
+    }: {
+      id: string
+      data: UpdateTransactionData
+      accountId: string
+    }) => {
+      const accountKey = getAccountKey(accountId)
+
+      // If encryption is enabled, encrypt the data
+      if (accountKey && data.description !== undefined) {
+        const encryptedData: Record<string, unknown> = {
+          date: data.date,
+          subcategory_id: data.subcategory_id,
+        }
+
+        if (data.description !== undefined) {
+          encryptedData.description_encrypted = await encrypt(data.description, accountKey)
+        }
+        if (data.amount !== undefined) {
+          encryptedData.amount_encrypted = await encrypt(data.amount.toString(), accountKey)
+          encryptedData.amount_sign = getAmountSign(data.amount)
+        }
+        if (data.bank_category !== undefined) {
+          encryptedData.bank_category_encrypted = data.bank_category
+            ? await encrypt(data.bank_category, accountKey)
+            : null
+        }
+        if (data.bank_subcategory !== undefined) {
+          encryptedData.bank_subcategory_encrypted = data.bank_subcategory
+            ? await encrypt(data.bank_subcategory, accountKey)
+            : null
+        }
+
+        return transactionsApi.updateEncrypted(id, encryptedData)
+      }
+
+      // Fallback: send unencrypted
+      return transactionsApi.update(id, data)
+    },
   })
 }
 

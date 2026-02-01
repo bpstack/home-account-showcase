@@ -174,6 +174,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
       ? updateCategoryMutation.mutateAsync({
           id: editingCategory.id,
           data: { name: categoryForm.name, color: categoryForm.color },
+          accountId: account.id, // For encryption
         })
       : createCategoryMutation.mutateAsync({
           account_id: account.id,
@@ -200,16 +201,18 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   }
 
   function handleSaveSubcategory() {
-    if (!parentCategoryId || !subcategoryForm.name.trim()) return
+    if (!parentCategoryId || !subcategoryForm.name.trim() || !account) return
 
     const mutation = editingSubcategory
       ? updateSubcategoryMutation.mutateAsync({
           id: editingSubcategory.id,
           data: { name: subcategoryForm.name },
+          accountId: account.id, // For encryption
         })
       : createSubcategoryMutation.mutateAsync({
           category_id: parentCategoryId,
           name: subcategoryForm.name,
+          accountId: account.id, // For encryption
         })
 
     mutation.then(() => {
@@ -418,7 +421,10 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
 
       <Modal
         isOpen={isCategoryModalOpen}
-        onClose={() => { setEditingCategory(null); setShowCategoryModal(false) }}
+        onClose={() => {
+          setEditingCategory(null)
+          setShowCategoryModal(false)
+        }}
         title={editingCategory ? 'Editar categoría' : 'Nueva categoría'}
       >
         <div className="space-y-4">
@@ -448,7 +454,13 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
           </div>
         </div>
         <ModalFooter>
-          <Button variant="outline" onClick={() => { setEditingCategory(null); setShowCategoryModal(false) }}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setEditingCategory(null)
+              setShowCategoryModal(false)
+            }}
+          >
             Cancelar
           </Button>
           <Button
