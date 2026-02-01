@@ -256,63 +256,8 @@ export const getMembers = async (req: Request, res: Response): Promise<void> => 
   }
 }
 
-/**
- * Agregar miembro al account por email Y nombre
- * POST /api/accounts/:id/members
- */
-export const addMember = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const { email, name } = req.body
-
-    if (!email || !name) {
-      res.status(400).json({
-        success: false,
-        error: 'Email y nombre son requeridos',
-      })
-      return
-    }
-
-    await AccountRepository.addMember(id, req.user!.id, email, name)
-
-    res.status(201).json({
-      success: true,
-      message: 'Miembro agregado correctamente',
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'Solo el owner puede agregar miembros') {
-      res.status(403).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    if (err.message === 'Usuario no encontrado: el email y nombre no coinciden') {
-      res.status(404).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    if (err.message === 'El usuario ya es miembro de esta cuenta') {
-      res.status(409).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en addMember:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
-  }
-}
+// addMember eliminado - ahora se usa el sistema de invitaciones
+// Ver: controllers/invitations/invitation-controller.ts
 
 /**
  * Remover miembro de account (solo owner puede remover a otros)

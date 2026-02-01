@@ -2,7 +2,12 @@
 
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
-import { generateAccessToken, generateRefreshToken, verifyToken } from '../../services/auth/tokenService.js'
+import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken,
+} from '../../services/auth/tokenService.js'
 import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
 import type { RegisterDTO, LoginDTO } from '../../models/auth/index.js'
 import {
@@ -19,7 +24,7 @@ const isProduction = process.env.NODE_ENV === 'production'
 const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? 'none' as const : 'lax' as const,
+  sameSite: isProduction ? ('none' as const) : ('lax' as const),
   maxAge: 5 * 60 * 1000, // 5 minutos
   path: '/',
 }
@@ -27,7 +32,7 @@ const accessTokenCookieOptions = {
 const refreshTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? 'none' as const : 'lax' as const,
+  sameSite: isProduction ? ('none' as const) : ('lax' as const),
   maxAge: 8 * 60 * 60 * 1000, // 8 horas
   path: '/',
 }
@@ -37,6 +42,8 @@ const csrfCookieOptions = createCSRFCookieOptions()
 /**
  * Registro de nuevo usuario
  * POST /api/auth/register
+ *
+ * Body includes encryptedAccountKey for envelope encryption
  */
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -51,11 +58,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    const { email, password, name, accountName } = validationResult.data as RegisterInput
+    const { email, password, name, accountName, skipDefaultAccount, encryptedAccountKey } =
+      validationResult.data as RegisterInput
 
-    const user = await UserRepository.create({ email, password, name, accountName })
-    const accessToken = generateAccessToken({ id: user.id, email: user.email })
-    const refreshToken = generateRefreshToken({ id: user.id, email: user.email })
+    const result = await UserRepository.create({
+      email,
+      password,
+      name,
+      accountName,
+      skipDefaultAccount,
+      encryptedAccountKey,
+    })
+
+    const accessToken = generateAccessToken({ id: result.id, email: result.email })
+    const refreshToken = generateRefreshToken({ id: result.id, email: result.email })
     const csrfToken = generateCSRFToken()
 
     // Establecer cookies httpOnly
@@ -63,11 +79,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
     res.cookie('csrfToken', csrfToken, csrfCookieOptions)
 
-    // Respuesta sin tokens (ya están en cookies)
-    // Enviamos el CSRF token en el body para que el frontend lo pueda leer
+    // User object without key_salt (will be derived client-side)
+    const user = {
+      id: result.id,
+      email: result.email,
+      name: result.name,
+      created_at: result.created_at,
+    }
+
+    // Response includes key_salt for client to derive User Key
     res.status(201).json({
       success: true,
       user,
+      key_salt: result.key_salt,
+      accountId: result.accountId,
       csrfToken,
     })
   } catch (error) {
@@ -92,6 +117,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 /**
  * Login de usuario
  * POST /api/auth/login
+ *
+ * Returns key_salt and encrypted_keys for envelope encryption
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -108,9 +135,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const { email, password } = validationResult.data as LoginInput
 
-    const user = await UserRepository.login({ email, password })
-    const accessToken = generateAccessToken({ id: user.id, email: user.email })
-    const refreshToken = generateRefreshToken({ id: user.id, email: user.email })
+    const userWithSalt = await UserRepository.login({ email, password })
+
+    // Get encrypted account keys for this user
+    const encryptedKeys = await AccountKeyRepository.getByUserId(userWithSalt.id)
+
+    const accessToken = generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
+    const refreshToken = generateRefreshToken({ id: userWithSalt.id, email: userWithSalt.email })
     const csrfToken = generateCSRFToken()
 
     // Establecer cookies httpOnly
@@ -118,10 +149,21 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
     res.cookie('csrfToken', csrfToken, csrfCookieOptions)
 
-    // Respuesta sin tokens (ya están en cookies)
+    // User object without key_salt in the user object
+    const user = {
+      id: userWithSalt.id,
+      email: userWithSalt.email,
+      name: userWithSalt.name,
+      created_at: userWithSalt.created_at,
+      updated_at: userWithSalt.updated_at,
+    }
+
+    // Response includes key_salt and encrypted_keys for client-side decryption
     res.status(200).json({
       success: true,
       user,
+      key_salt: userWithSalt.key_salt,
+      encrypted_keys: encryptedKeys,
       csrfToken,
     })
   } catch (error) {
@@ -183,7 +225,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     // Seguridad: Solo aceptar refresh token desde cookies httpOnly
     const refreshTokenFromCookie = req.cookies?.refreshToken
     const refreshTokenFromBody = req.body?.refreshToken
-    
+
     // Rechazar explícitamente si viene por body
     if (refreshTokenFromBody) {
       res.status(400).json({
@@ -248,9 +290,45 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
 }
 
 /**
+ * Get encryption keys for authenticated user
+ * GET /api/auth/keys
+ *
+ * Used after page refresh to re-derive User Key and unlock accounts
+ * Returns key_salt and encrypted_keys for the current user
+ */
+export const getKeys = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get user with key_salt
+    const user = await UserRepository.getByIdWithKeySalt(req.user!.id)
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado',
+      })
+      return
+    }
+
+    // Get encrypted account keys
+    const encryptedKeys = await AccountKeyRepository.getByUserId(req.user!.id)
+
+    res.status(200).json({
+      success: true,
+      key_salt: user.key_salt,
+      encrypted_keys: encryptedKeys,
+    })
+  } catch (error) {
+    console.error('Error en getKeys:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+    })
+  }
+}
+
+/**
  * Logout (invalida el refresh token)
  * POST /api/auth/logout
- * 
+ *
  * Nota: Los JWT son stateless, no se pueden invalidar directamente.
  * Para invalidación inmediata, se usaría una blacklist en BD/Redis.
  * Por ahora, el frontend simplemente borra los tokens.
