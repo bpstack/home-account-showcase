@@ -3,6 +3,12 @@
 import { Card, CardHeader, CardTitle, CardContent, Tabs, PageFilters } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { transactions, CategorySummary } from '@/lib/apiClient'
+import {
+  useTransactionStats,
+  useTransactionSummary,
+  useMonthlySummary,
+  useBalanceHistory,
+} from '@/lib/queries/transactions'
 import { CategoryPieChart, MonthlyBarChart, BalanceLineChart } from '@/components/charts'
 import {
   TrendingDown,
@@ -32,7 +38,6 @@ import { useDashboardStore } from '@/stores/dashboardStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import { MONTHS_ES } from '@/lib/constants'
 import { Suspense } from 'react'
-import { useQuery } from '@tanstack/react-query'
 
 // Initial data types from RSC
 export interface DashboardInitialData {
@@ -203,17 +208,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   const { startDate, endDate } = getDateRange()
 
-  const { data: statsData, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['transactions', 'stats', account?.id, startDate, endDate],
-    queryFn: () => transactions.getStats(account!.id, startDate, endDate),
-    enabled: !!account && !!startDate && !!endDate,
-    initialData: initialData.stats,
-  })
+  // Use client-side calculation hooks (work with encrypted data)
+  const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(
+    account?.id || '',
+    startDate,
+    endDate,
+    { initialData: initialData.stats }
+  )
 
-  const { data: summaryData } = useQuery({
-    queryKey: ['transactions', 'summary', account?.id, startDate, endDate],
-    queryFn: () => transactions.getSummary(account!.id, startDate, endDate),
-    enabled: !!account,
+  const { data: summaryData } = useTransactionSummary(account?.id || '', startDate, endDate, {
     initialData: initialData.summary,
   })
 
@@ -345,14 +348,11 @@ function OverviewTab({
   }
 
   const prevRange = getPreviousDateRange()
-  const prevStart = prevRange?.startDate
-  const prevEnd = prevRange?.endDate
+  const prevStart = prevRange?.startDate || ''
+  const prevEnd = prevRange?.endDate || ''
 
-  const { data: prevStatsData } = useQuery({
-    queryKey: ['transactions', 'stats', account?.id, prevStart, prevEnd],
-    queryFn: () => transactions.getStats(account!.id, prevStart, prevEnd),
-    enabled: !!account,
-  })
+  // Use client-side calculation hook (works with encrypted data)
+  const { data: prevStatsData } = useTransactionStats(account?.id || '', prevStart, prevEnd)
 
   const prevStats = prevStatsData?.stats || { income: 0, expenses: 0, balance: 0 }
 
@@ -590,21 +590,13 @@ function HistoryTab({
   const { account } = useAuth()
   const currentYear = new Date().getFullYear()
 
-  const { data: monthlySummaryData, isLoading } = useQuery({
-    queryKey: ['transactions', 'monthly-summary', account?.id, selectedYear],
-    queryFn: () => transactions.getMonthlySummary(account!.id, selectedYear),
-    enabled: !!account,
-    staleTime: 5 * 60 * 1000,
-    initialData: selectedYear === currentYear ? initialData.monthlySummary : undefined,
-  })
+  // Use client-side calculation hooks (work with encrypted data)
+  const { data: monthlySummaryData, isLoading } = useMonthlySummary(account?.id || '', selectedYear)
 
-  const { data: balanceHistoryData, isLoading: isLoadingBalance } = useQuery({
-    queryKey: ['transactions', 'balance-history', account?.id, selectedYear],
-    queryFn: () => transactions.getBalanceHistory(account!.id, selectedYear),
-    enabled: !!account,
-    staleTime: 5 * 60 * 1000,
-    initialData: selectedYear === currentYear ? initialData.balanceHistory : undefined,
-  })
+  const { data: balanceHistoryData, isLoading: isLoadingBalance } = useBalanceHistory(
+    account?.id || '',
+    selectedYear
+  )
 
   const chartData = monthlySummaryData?.monthlySummary || []
   const balanceData = balanceHistoryData?.balanceHistory || []
@@ -682,7 +674,9 @@ function HistoryTab({
                       <th className="text-right py-3 px-4 text-text-secondary font-medium">
                         Ingresos
                       </th>
-                      <th className="text-right py-3 px-4 text-text-secondary font-medium">Gastos</th>
+                      <th className="text-right py-3 px-4 text-text-secondary font-medium">
+                        Gastos
+                      </th>
                       <th className="text-right py-3 px-4 text-text-secondary font-medium">
                         Balance
                       </th>
@@ -760,7 +754,9 @@ function HistoryTab({
                         </div>
                         <div>
                           <p className="text-text-secondary text-xs mb-1">Balance</p>
-                          <p className={`font-semibold ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                          <p
+                            className={`font-semibold ${balance >= 0 ? 'text-success' : 'text-danger'}`}
+                          >
                             {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)}` : '-'}
                           </p>
                         </div>
@@ -916,7 +912,8 @@ function SavingsTab({
             <div className="mb-3">
               <p className="text-xs text-muted-foreground mb-1">Ahorro mensual</p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {stats.balance >= 0 ? '+' : ''}{formatCurrency(savingsAmount)}
+                {stats.balance >= 0 ? '+' : ''}
+                {formatCurrency(savingsAmount)}
               </p>
             </div>
             {/* Tasa y Nivel en línea */}
@@ -925,7 +922,9 @@ function SavingsTab({
                 <TrendingUpIcon className="h-3 w-3 text-success" />
                 <span className={savingsLevel.color}>{savingsRate.toFixed(1)}%</span>
               </span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 ${savingsLevel.color}`}>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 ${savingsLevel.color}`}
+              >
                 <Sparkles className="h-3 w-3" />
                 {savingsLevel.label}
               </span>

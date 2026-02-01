@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { transactions as transactionsApi } from '@/lib/apiClient'
@@ -31,8 +31,18 @@ import { useBalanceStore } from '@/stores/balanceStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 
 const monthsFull = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ]
 
 const currentYearNow = new Date().getFullYear()
@@ -106,13 +116,19 @@ function BalanceContent({
 
   // Usar stores de Zustand como fuente de verdad
   const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
-  const { activeTab, period, customStartDate, customEndDate, setActiveTab, setPeriod, setCustomDates, reset: resetBalance } = useBalanceStore()
+  const {
+    activeTab,
+    period,
+    customStartDate,
+    customEndDate,
+    setActiveTab,
+    setPeriod,
+    setCustomDates,
+    reset: resetBalance,
+  } = useBalanceStore()
 
-
-  const hasActiveFilters = 
-    selectedMonth !== null || 
-    selectedYear !== new Date().getFullYear() || 
-    period !== 'monthly'
+  const hasActiveFilters =
+    selectedMonth !== null || selectedYear !== new Date().getFullYear() || period !== 'monthly'
 
   const clearFilters = () => {
     resetFilters()
@@ -146,13 +162,6 @@ function BalanceContent({
   const [showTransactions, setShowTransactions] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
-  const [stats, setStats] = useState<PeriodStats>(initialStats || emptyStats)
-  const [expensesByCategory, setExpensesByCategory] = useState(
-    initialExpensesByCategory || []
-  )
-  const [incomeByCategory, setIncomeByCategory] = useState(
-    initialIncomeByCategory || []
-  )
 
   const getDateRange = useCallback(() => {
     switch (period) {
@@ -190,28 +199,45 @@ function BalanceContent({
     return undefined
   }, [activeTab])
 
-  const { startDate, endDate } = getDateRange()
+  const { startDate, endDate } = useMemo(() => getDateRange(), [getDateRange])
   const typeFilter = getTypeFilter()
 
-  const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(account?.id || '', startDate, endDate, {
-    initialData: initialStats ? { success: true, stats: initialStats } : undefined,
-  })
+  const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(
+    account?.id || '',
+    startDate,
+    endDate,
+    {
+      initialData: initialStats ? { success: true, stats: initialStats } : undefined,
+    }
+  )
+
+  // Derive stats directly from hook data (avoids infinite loop from useEffect)
+  const stats = statsData?.stats || initialStats || emptyStats
 
   const { data: summaryData } = useTransactionSummary(account?.id || '', startDate, endDate)
 
-  const { data: txData, isLoading: isLoadingTx } = useTransactions({
-    account_id: account?.id || '',
-    start_date: startDate,
-    end_date: endDate,
-    type: typeFilter,
-    limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
-  }, {
-    staleTime: 30_000,
-    initialData: initialTransactions && page === 1 && !hasActiveFilters
-      ? { transactions: initialTransactions, total: initialTotal || 0, limit: PAGE_SIZE, offset: 0 }
-      : undefined,
-  })
+  const { data: txData, isLoading: isLoadingTx } = useTransactions(
+    {
+      account_id: account?.id || '',
+      start_date: startDate,
+      end_date: endDate,
+      type: typeFilter,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    },
+    {
+      staleTime: 30_000,
+      initialData:
+        initialTransactions && page === 1 && !hasActiveFilters
+          ? {
+              transactions: initialTransactions,
+              total: initialTotal || 0,
+              limit: PAGE_SIZE,
+              offset: 0,
+            }
+          : undefined,
+    }
+  )
 
   const isLoading = isLoadingStats || isLoadingTx || !statsData
 
@@ -223,51 +249,53 @@ function BalanceContent({
     totalPages: Math.ceil((txData?.total || 0) / PAGE_SIZE),
   }
 
-  useEffect(() => {
-    if (statsData?.stats) {
-      setStats(statsData.stats)
+  const { expensesByCategory, incomeByCategory } = useMemo(() => {
+    if (!summaryData?.summary) {
+      return {
+        expensesByCategory: initialExpensesByCategory || [],
+        incomeByCategory: initialIncomeByCategory || [],
+      }
     }
-  }, [statsData])
 
-  useEffect(() => {
-    if (summaryData?.summary) {
-      const expenseMap = new Map<string, { color: string; amount: number }>()
-      const incomeMap = new Map<string, { color: string; amount: number }>()
+    const expenseMap = new Map<string, { color: string; amount: number }>()
+    const incomeMap = new Map<string, { color: string; amount: number }>()
 
-      summaryData.summary.forEach((item) => {
-        const rawAmount = Number(item.total_amount)
-        const catName = item.category_name || 'Sin categoría'
-        const color = item.category_color || '#6B7280'
+    summaryData.summary.forEach((item) => {
+      const rawAmount = Number(item.total_amount)
+      const catName = item.category_name || 'Sin categoría'
+      const color = item.category_color || '#6B7280'
 
-        if (rawAmount < 0) {
-          const amount = Math.abs(rawAmount)
-          const existing = expenseMap.get(catName)
-          if (existing) {
-            existing.amount += amount
-          } else {
-            expenseMap.set(catName, { color, amount })
-          }
-        } else if (rawAmount > 0) {
-          const existing = incomeMap.get(catName)
-          if (existing) {
-            existing.amount += rawAmount
-          } else {
-            incomeMap.set(catName, { color, amount: rawAmount })
-          }
+      if (rawAmount < 0) {
+        const amount = Math.abs(rawAmount)
+        const existing = expenseMap.get(catName)
+        if (existing) {
+          existing.amount += amount
+        } else {
+          expenseMap.set(catName, { color, amount })
         }
-      })
+      } else if (rawAmount > 0) {
+        const existing = incomeMap.get(catName)
+        if (existing) {
+          existing.amount += rawAmount
+        } else {
+          incomeMap.set(catName, { color, amount: rawAmount })
+        }
+      }
+    })
 
-      const sortedExpenses = Array.from(expenseMap.entries())
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a, b) => b.amount - a.amount)
-      setExpensesByCategory(sortedExpenses)
+    const sortedExpenses = Array.from(expenseMap.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.amount - a.amount)
 
-      const sortedIncome = Array.from(incomeMap.entries())
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a, b) => b.amount - a.amount)
-      setIncomeByCategory(sortedIncome)
+    const sortedIncome = Array.from(incomeMap.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.amount - a.amount)
+
+    return {
+      expensesByCategory: sortedExpenses,
+      incomeByCategory: sortedIncome,
     }
-  }, [summaryData])
+  }, [summaryData?.summary, initialExpensesByCategory, initialIncomeByCategory])
 
   useEffect(() => {
     setPage(1)
@@ -308,7 +336,6 @@ function BalanceContent({
                 if (y !== null) setMonth(null)
               }}
               showDatePicker
-
               startDate={period === 'custom' ? customStartDate : undefined}
               endDate={period === 'custom' ? customEndDate : undefined}
               onDatesChange={handleDateRangeChange}
@@ -316,10 +343,6 @@ function BalanceContent({
               onClear={clearFilters}
               className="ml-auto"
             />
-
-
-
-
           }
         />
       </div>
@@ -397,7 +420,6 @@ function BalanceContent({
   )
 }
 
-
 interface PaginatedTransactions {
   transactions: Transaction[]
   total: number
@@ -470,8 +492,11 @@ function BalanceTabContent({
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-text-secondary uppercase tracking-wide">Ahorro</p>
-                <p className={`text-lg font-bold truncate ${stats.balance >= 0 ? 'text-accent' : 'text-danger'}`}>
-                  {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
+                <p
+                  className={`text-lg font-bold truncate ${stats.balance >= 0 ? 'text-accent' : 'text-danger'}`}
+                >
+                  {stats.balance >= 0 ? '+' : ''}
+                  {formatCurrency(stats.balance)}
                 </p>
               </div>
             </div>
@@ -518,7 +543,10 @@ function BalanceTabContent({
                       <div key={cat.name}>
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: cat.color }}
+                            />
                             <span className="text-sm text-text-primary truncate">{cat.name}</span>
                           </div>
                           <span className="text-sm font-medium text-text-primary ml-3 shrink-0">
@@ -526,7 +554,10 @@ function BalanceTabContent({
                           </span>
                         </div>
                         <div className="h-2 bg-layer-2 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${percentage}%`, backgroundColor: cat.color }} />
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{ width: `${percentage}%`, backgroundColor: cat.color }}
+                          />
                         </div>
                       </div>
                     )
@@ -559,7 +590,10 @@ function BalanceTabContent({
                       <div key={cat.name}>
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: cat.color }}
+                            />
                             <span className="text-sm text-text-primary truncate">{cat.name}</span>
                           </div>
                           <div className="flex items-center gap-3 ml-3 shrink-0">
@@ -572,7 +606,10 @@ function BalanceTabContent({
                           </div>
                         </div>
                         <div className="h-2 bg-layer-2 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${percentage}%`, backgroundColor: cat.color }} />
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{ width: `${percentage}%`, backgroundColor: cat.color }}
+                          />
                         </div>
                       </div>
                     )
@@ -657,7 +694,9 @@ function IncomeTabContent({
       ) : (
         <Card>
           <CardContent className="py-12">
-            <p className="text-center text-text-secondary">No hay ingresos registrados en este período</p>
+            <p className="text-center text-text-secondary">
+              No hay ingresos registrados en este período
+            </p>
           </CardContent>
         </Card>
       )}
@@ -719,12 +758,20 @@ function ExpensesTabContent({
               <Card key={cat.name} className="hover:border-layer-3 transition-colors">
                 <CardContent className="py-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: cat.color }}
+                    />
                     <p className="text-xs text-text-secondary truncate">{cat.name}</p>
                   </div>
-                  <p className="text-base font-bold text-text-primary">{formatCurrency(cat.amount)}</p>
+                  <p className="text-base font-bold text-text-primary">
+                    {formatCurrency(cat.amount)}
+                  </p>
                   <div className="mt-2 h-1 bg-layer-2 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: cat.color }} />
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${percentage}%`, backgroundColor: cat.color }}
+                    />
                   </div>
                   <p className="text-xs text-text-secondary mt-1">{percentage.toFixed(1)}%</p>
                 </CardContent>
@@ -735,7 +782,9 @@ function ExpensesTabContent({
       ) : (
         <Card>
           <CardContent className="py-12">
-            <p className="text-center text-text-secondary">No hay gastos registrados en este período</p>
+            <p className="text-center text-text-secondary">
+              No hay gastos registrados en este período
+            </p>
           </CardContent>
         </Card>
       )}
@@ -769,14 +818,23 @@ function TransactionsSection({
 }) {
   return (
     <Card>
-      <div className="px-6 py-4 cursor-pointer hover:bg-layer-2/50 transition-colors" onClick={() => setShowTransactions(!showTransactions)}>
+      <div
+        className="px-6 py-4 cursor-pointer hover:bg-layer-2/50 transition-colors"
+        onClick={() => setShowTransactions(!showTransactions)}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h3 className="text-base font-semibold text-text-primary">{title}</h3>
-            <span className="text-xs text-text-secondary bg-layer-2 px-2 py-0.5 rounded-full">{data.total}</span>
+            <span className="text-xs text-text-secondary bg-layer-2 px-2 py-0.5 rounded-full">
+              {data.total}
+            </span>
           </div>
           <Button variant="ghost" size="sm">
-            {showTransactions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {showTransactions ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </div>

@@ -294,6 +294,7 @@ function TransactionsContent({
 
     updateMutation.mutate({
       id: editingId,
+      accountId: account!.id,
       data: {
         description: form.description,
         date: form.date,
