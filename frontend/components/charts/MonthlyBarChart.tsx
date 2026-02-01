@@ -48,12 +48,7 @@ export function MonthlyBarChart({ data }: Props) {
           <BarChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
             <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
-            <YAxis
-              tickFormatter={formatYAxis}
-              stroke="#9CA3AF"
-              fontSize={12}
-              width={40}
-            />
+            <YAxis tickFormatter={formatYAxis} stroke="#9CA3AF" fontSize={12} width={40} />
             <Tooltip
               cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
               formatter={(value: number | undefined) => formatCurrency(value)}
