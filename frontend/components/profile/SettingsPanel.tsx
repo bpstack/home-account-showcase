@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { accounts } from '@/lib/apiClient'
+import { accounts, auth } from '@/lib/apiClient'
 import { Button, Input } from '@/components/ui'
 import { AISettings } from './AISettings'
+import { useCryptoStore } from '@/stores/cryptoStore'
+import { deriveUserKey, encryptAccountKey, decryptAccountKey, generateKeySalt } from '@/lib/crypto'
 
 interface Member {
   id: string
@@ -427,16 +429,160 @@ function SavingsSettings() {
 }
 
 function SecuritySettings() {
+  const router = useRouter()
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage(null)
+
+    // Validaciones
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: 'error', text: 'Las contraseñas no coinciden' })
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setMessage({ type: 'error', text: 'La nueva contraseña debe tener al menos 6 caracteres' })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Obtener datos necesarios para re-cifrado
+      const keysData = await auth.getKeys()
+      const { key_salt: currentKeySalt, encrypted_keys } = keysData
+
+      // Si hay claves encriptadas, necesitamos re-cifrarlas
+      if (encrypted_keys && encrypted_keys.length > 0) {
+        // Generar nuevo salt
+        const newKeySalt = generateKeySalt()
+
+        // Derivar UK actual y nueva
+        const currentUK = await deriveUserKey(currentPassword, currentKeySalt)
+        const newUK = await deriveUserKey(newPassword, newKeySalt)
+
+        // Re-cifrar todas las Account Keys
+        const reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }> = []
+
+        for (const key of encrypted_keys) {
+          try {
+            // Descifrar con UK actual
+            const decryptedAK = await decryptAccountKey(key.encrypted_key, currentUK)
+            // Re-cifrar con nueva UK
+            const reEncryptedAK = await encryptAccountKey(decryptedAK, newUK)
+            reEncryptedKeys.push({
+              accountId: key.account_id,
+              encryptedKey: reEncryptedAK,
+            })
+          } catch (decryptError) {
+            console.error('Error re-encrypting key for account:', key.account_id, decryptError)
+            setMessage({
+              type: 'error',
+              text: 'Error al re-cifrar las claves. Verifica que la contraseña actual es correcta.',
+            })
+            setIsLoading(false)
+            return
+          }
+        }
+
+        // Enviar al backend con re-cifrado
+        await auth.changePassword(currentPassword, newPassword, newKeySalt, reEncryptedKeys)
+      } else {
+        // Sin claves encriptadas, solo cambiar password
+        await auth.changePassword(currentPassword, newPassword)
+      }
+
+      // Limpiar crypto store
+      useCryptoStore.getState().lock()
+
+      setMessage({
+        type: 'success',
+        text: 'Contraseña cambiada correctamente. Redirigiendo a login...',
+      })
+
+      // Redirigir a login después de 2 segundos
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
+    } catch (error) {
+      const err = error as Error
+      setMessage({ type: 'error', text: err.message || 'Error al cambiar la contraseña' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
-    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Seguridad</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Aumentar la seguridad de mi cuenta
+    <div className="bg-card rounded-lg border border-border">
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">Cambiar contraseña</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Actualiza tu contraseña. Esto re-cifrará todas tus claves de cuenta.
         </p>
       </div>
+
       <div className="p-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Próximamente...</p>
+        {message && (
+          <div
+            className={`mb-4 p-3 rounded-lg text-sm ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <Input
+            id="currentPassword"
+            type="password"
+            label="Contraseña actual"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+
+          <Input
+            id="newPassword"
+            type="password"
+            label="Nueva contraseña"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+            minLength={6}
+          />
+
+          <Input
+            id="confirmPassword"
+            type="password"
+            label="Confirmar nueva contraseña"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+          />
+
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              <strong>Importante:</strong> Al cambiar tu contraseña, se cerrarán todas tus sesiones y
+              deberás volver a iniciar sesión.
+            </p>
+          </div>
+
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Cambiando contraseña...' : 'Cambiar contraseña'}
+          </Button>
+        </form>
       </div>
     </div>
   )
