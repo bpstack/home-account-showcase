@@ -1,6 +1,6 @@
 // services/auth/tokenService.ts
 
-import jwt from 'jsonwebtoken'
+import * as jwt from 'jsonwebtoken'
 import { SECRET_JWT_KEY } from '../../config/config.js'
 import type { TokenPayload } from '../../models/auth/index.js'
 

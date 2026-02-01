@@ -10,6 +10,8 @@ export const registerSchema = z.object({
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
   name: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
   accountName: z.string().max(100, 'El nombre de la cuenta es muy largo').optional(),
+  skipDefaultAccount: z.boolean().optional(), // Para usuarios que vienen de invitación
+  encryptedAccountKey: z.string().optional(), // Encrypted AK for envelope encryption
 })
 
 /**

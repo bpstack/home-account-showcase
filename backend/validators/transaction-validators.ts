@@ -35,7 +35,7 @@ export const getTransactionsSchema = z.object({
 })
 
 /**
- * Schema para crear transacción
+ * Schema para crear transacción (legacy - sin encriptar)
  */
 export const createTransactionSchema = z.object({
   account_id: z.string().uuid('account_id debe ser un UUID válido'),
@@ -51,7 +51,22 @@ export const createTransactionSchema = z.object({
 })
 
 /**
- * Schema para actualizar transacción
+ * Schema para crear transacción encriptada
+ */
+export const createEncryptedTransactionSchema = z.object({
+  account_id: z.string().uuid('account_id debe ser un UUID válido'),
+  date: z.string().date('date debe ser fecha válida (YYYY-MM-DD)'),
+  subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
+  // Encrypted fields (base64 encoded)
+  description_encrypted: z.string().min(1, 'description_encrypted es requerida'),
+  amount_encrypted: z.string().min(1, 'amount_encrypted es requerido'),
+  amount_sign: z.enum(['positive', 'negative', 'zero']),
+  bank_category_encrypted: z.string().optional().nullable(),
+  bank_subcategory_encrypted: z.string().optional().nullable(),
+})
+
+/**
+ * Schema para actualizar transacción (legacy - sin encriptar)
  */
 export const updateTransactionSchema = z
   .object({
@@ -63,6 +78,24 @@ export const updateTransactionSchema = z
       .optional(),
     amount: z.number().finite('amount debe ser un número válido').optional(),
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Debe proporcionar al menos un campo para actualizar',
+  })
+
+/**
+ * Schema para actualizar transacción encriptada
+ */
+export const updateEncryptedTransactionSchema = z
+  .object({
+    date: z.string().date('date debe ser fecha válida (YYYY-MM-DD)').optional(),
+    subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
+    // Encrypted fields
+    description_encrypted: z.string().optional(),
+    amount_encrypted: z.string().optional(),
+    amount_sign: z.enum(['positive', 'negative', 'zero']).optional(),
+    bank_category_encrypted: z.string().optional().nullable(),
+    bank_subcategory_encrypted: z.string().optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Debe proporcionar al menos un campo para actualizar',
@@ -129,7 +162,9 @@ export const bulkUpdateCategorySchema = z.object({
 // Tipos inferidos
 export type GetTransactionsInput = z.infer<typeof getTransactionsSchema>
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>
+export type CreateEncryptedTransactionInput = z.infer<typeof createEncryptedTransactionSchema>
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>
+export type UpdateEncryptedTransactionInput = z.infer<typeof updateEncryptedTransactionSchema>
 export type GetSummaryInput = z.infer<typeof getSummarySchema>
 export type GetStatsInput = z.infer<typeof getStatsSchema>
 export type GetBalanceHistoryInput = z.infer<typeof getBalanceHistorySchema>
