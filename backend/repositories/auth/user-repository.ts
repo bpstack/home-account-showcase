@@ -1,47 +1,79 @@
 // repositories/auth/user-repository.ts
 
-import bcrypt from 'bcrypt'
-import crypto from 'crypto'
+import * as bcrypt from 'bcrypt'
+import * as crypto from 'crypto'
 import { SALT_ROUNDS } from '../../config/config.js'
 import db from '../../config/db.js'
-import type { User, UserRow, RegisterDTO, LoginDTO, UpdateUserDTO } from '../../models/auth/index.js'
+import type {
+  User,
+  UserRow,
+  RegisterDTO,
+  LoginDTO,
+  UpdateUserDTO,
+} from '../../models/auth/index.js'
 
 export class UserRepository {
   /**
-   * Crear nuevo usuario + account automática
+   * Crear nuevo usuario + account automática (opcional)
+   * @param skipDefaultAccount - Si true, no crea cuenta por defecto (para usuarios de invitación)
+   * @param encryptedAccountKey - Encrypted AK for the new account (required if !skipDefaultAccount)
    */
-  static async create({ email, password, name, accountName }: RegisterDTO): Promise<User> {
+  static async create({
+    email,
+    password,
+    name,
+    accountName,
+    skipDefaultAccount,
+    encryptedAccountKey,
+  }: RegisterDTO): Promise<User & { key_salt: string; accountId?: string }> {
     const connection = await db.getConnection()
 
     try {
       await connection.beginTransaction()
 
       const userId = crypto.randomUUID()
-      const accountId = crypto.randomUUID()
-      const accountUserId = crypto.randomUUID()
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
+      // Generate key_salt for encryption (64 hex chars = 32 bytes)
+      const keySalt = crypto.randomBytes(32).toString('hex')
 
-      // 1. Crear usuario
+      // 1. Crear usuario con key_salt
       await connection.query(
-        `INSERT INTO users (id, email, password_hash, name)
-         VALUES (?, ?, ?, ?)`,
-        [userId, email, hashedPassword, name]
+        `INSERT INTO users (id, email, password_hash, key_salt, name)
+         VALUES (?, ?, ?, ?, ?)`,
+        [userId, email, hashedPassword, keySalt, name]
       )
 
-      // 2. Crear account personal
-      const finalAccountName = accountName || `Cuenta de ${name}`
-      await connection.query(
-        `INSERT INTO accounts (id, name)
-         VALUES (?, ?)`,
-        [accountId, finalAccountName]
-      )
+      let accountId: string | undefined
 
-      // 3. Asignar usuario como owner
-      await connection.query(
-        `INSERT INTO account_users (id, account_id, user_id, role)
-         VALUES (?, ?, ?, 'owner')`,
-        [accountUserId, accountId, userId]
-      )
+      // 2. Crear account personal (solo si no viene de invitación)
+      if (!skipDefaultAccount) {
+        accountId = crypto.randomUUID()
+        const accountUserId = crypto.randomUUID()
+        const finalAccountName = accountName || `Cuenta de ${name}`
+
+        await connection.query(
+          `INSERT INTO accounts (id, name, owner_id)
+           VALUES (?, ?, ?)`,
+          [accountId, finalAccountName, userId]
+        )
+
+        // 3. Asignar usuario como owner
+        await connection.query(
+          `INSERT INTO account_users (id, account_id, user_id, role)
+           VALUES (?, ?, ?, 'owner')`,
+          [accountUserId, accountId, userId]
+        )
+
+        // 4. Guardar encrypted account key si se proporciona
+        if (encryptedAccountKey) {
+          const accountKeyId = crypto.randomUUID()
+          await connection.query(
+            `INSERT INTO account_keys (id, account_id, user_id, encrypted_key, key_version)
+             VALUES (?, ?, ?, ?, 1)`,
+            [accountKeyId, accountId, userId, encryptedAccountKey]
+          )
+        }
+      }
 
       await connection.commit()
 
@@ -49,6 +81,8 @@ export class UserRepository {
         id: userId,
         email,
         name,
+        key_salt: keySalt,
+        accountId,
         created_at: new Date(),
       }
     } catch (error: any) {
@@ -66,10 +100,11 @@ export class UserRepository {
 
   /**
    * Login con email y password
+   * Devuelve key_salt para que el cliente derive la User Key
    */
-  static async login({ email, password }: LoginDTO): Promise<User> {
+  static async login({ email, password }: LoginDTO): Promise<User & { key_salt: string }> {
     const [rows] = await db.query<UserRow[]>(
-      `SELECT id, email, name, password_hash, created_at, updated_at
+      `SELECT id, email, name, password_hash, key_salt, created_at, updated_at
        FROM users
        WHERE email = ?`,
       [email]
@@ -90,9 +125,15 @@ export class UserRepository {
       throw new Error('Credenciales inválidas')
     }
 
-    // Retornar sin password_hash
-    const { password_hash: _, ...userWithoutPassword } = user
-    return userWithoutPassword as User
+    // Retornar con key_salt pero sin password_hash
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      key_salt: user.key_salt,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    }
   }
 
   /**
@@ -101,6 +142,20 @@ export class UserRepository {
   static async getById(id: string): Promise<User | null> {
     const [rows] = await db.query<UserRow[]>(
       `SELECT id, email, name, created_at, updated_at
+       FROM users
+       WHERE id = ?`,
+      [id]
+    )
+
+    return rows[0] || null
+  }
+
+  /**
+   * Obtener usuario por ID con key_salt (para recuperación de claves)
+   */
+  static async getByIdWithKeySalt(id: string): Promise<(User & { key_salt: string }) | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, name, key_salt, created_at, updated_at
        FROM users
        WHERE id = ?`,
       [id]
@@ -203,11 +258,12 @@ export class UserRepository {
   /**
    * Cambiar contraseña propia (验证 contraseña actual)
    */
-  static async changePassword(id: string, currentPassword: string, newPassword: string): Promise<boolean> {
-    const [rows] = await db.query<UserRow[]>(
-      `SELECT password_hash FROM users WHERE id = ?`,
-      [id]
-    )
+  static async changePassword(
+    id: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<boolean> {
+    const [rows] = await db.query<UserRow[]>(`SELECT password_hash FROM users WHERE id = ?`, [id])
 
     const user = rows[0]
     if (!user) {

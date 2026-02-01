@@ -1,6 +1,6 @@
 // repositories/accounts/account-repository.ts
 
-import crypto from 'crypto'
+import * as crypto from 'crypto'
 import db from '../../config/db.js'
 import type {
   Account,
@@ -26,10 +26,14 @@ export class AccountRepository {
       const accountId = crypto.randomUUID()
       const accountUserId = crypto.randomUUID()
 
-      // Crear account
-      await connection.query(`INSERT INTO accounts (id, name) VALUES (?, ?)`, [accountId, name])
+      // Crear account con owner_id
+      await connection.query(`INSERT INTO accounts (id, name, owner_id) VALUES (?, ?, ?)`, [
+        accountId,
+        name,
+        userId,
+      ])
 
-      // Asignar usuario como owner
+      // Asignar usuario como owner en account_users (redundancia intencional)
       await connection.query(
         `INSERT INTO account_users (id, account_id, user_id, role)
          VALUES (?, ?, ?, 'owner')`,
@@ -41,6 +45,7 @@ export class AccountRepository {
       return {
         id: accountId,
         name,
+        owner_id: userId,
         created_at: new Date(),
       }
     } catch (error) {
@@ -57,7 +62,7 @@ export class AccountRepository {
    */
   static async getByUserId(userId: string): Promise<AccountWithRole[]> {
     const [rows] = await db.query<AccountWithRoleRow[]>(
-      `SELECT a.id, a.name, a.created_at, a.updated_at, au.role
+      `SELECT a.id, a.name, a.owner_id, a.created_at, a.updated_at, au.role
        FROM accounts a
        INNER JOIN account_users au ON au.account_id = a.id
        WHERE au.user_id = ?
@@ -73,7 +78,7 @@ export class AccountRepository {
    */
   static async getById(accountId: string, userId: string): Promise<AccountWithRole | null> {
     const [rows] = await db.query<AccountWithRoleRow[]>(
-      `SELECT a.id, a.name, a.created_at, a.updated_at, au.role
+      `SELECT a.id, a.name, a.owner_id, a.created_at, a.updated_at, au.role
        FROM accounts a
        INNER JOIN account_users au ON au.account_id = a.id
        WHERE a.id = ? AND au.user_id = ?`,
@@ -101,7 +106,7 @@ export class AccountRepository {
     await db.query(`UPDATE accounts SET name = ? WHERE id = ?`, [name, accountId])
 
     const [rows] = await db.query<AccountRow[]>(
-      `SELECT id, name, created_at, updated_at FROM accounts WHERE id = ?`,
+      `SELECT id, name, owner_id, created_at, updated_at FROM accounts WHERE id = ?`,
       [accountId]
     )
 
@@ -143,43 +148,8 @@ export class AccountRepository {
     return role !== null
   }
 
-  /**
-   * Agregar miembro al account por email Y nombre (solo owner)
-   */
-  static async addMember(
-    accountId: string,
-    ownerId: string,
-    email: string,
-    name: string
-  ): Promise<void> {
-    const role = await this.getUserRole(accountId, ownerId)
-
-    if (role !== 'owner') {
-      throw new Error('Solo el owner puede agregar miembros')
-    }
-
-    const { UserRepository } = await import('../../repositories/auth/user-repository.js')
-    const user = await UserRepository.findByEmailAndName(email, name)
-
-    if (!user) {
-      throw new Error('Usuario no encontrado: el email y nombre no coinciden')
-    }
-
-    const accountUserId = crypto.randomUUID()
-
-    try {
-      await db.query(
-        `INSERT INTO account_users (id, account_id, user_id, role)
-         VALUES (?, ?, ?, 'member')`,
-        [accountUserId, accountId, user.id]
-      )
-    } catch (error: any) {
-      if (error.code === 'ER_DUP_ENTRY') {
-        throw new Error('El usuario ya es miembro de esta cuenta')
-      }
-      throw error
-    }
-  }
+  // addMember eliminado - ahora se usa el sistema de invitaciones
+  // Ver: repositories/invitations/invitation-repository.ts
 
   /**
    * Remover miembro del account (solo owner)
@@ -300,10 +270,14 @@ export class AccountRepository {
       const accountId = crypto.randomUUID()
       const accountUserId = crypto.randomUUID()
 
-      // Crear account
-      await connection.query(`INSERT INTO accounts (id, name) VALUES (?, ?)`, [accountId, name])
+      // Crear account con owner_id
+      await connection.query(`INSERT INTO accounts (id, name, owner_id) VALUES (?, ?, ?)`, [
+        accountId,
+        name,
+        userId,
+      ])
 
-      // Asignar usuario como owner
+      // Asignar usuario como owner (redundancia intencional)
       await connection.query(
         `INSERT INTO account_users (id, account_id, user_id, role)
          VALUES (?, ?, ?, 'owner')`,
@@ -347,6 +321,7 @@ export class AccountRepository {
         account: {
           id: accountId,
           name,
+          owner_id: userId,
           created_at: new Date(),
         },
         categoriesCopied: { categories: categoriesCount, subcategories: subcategoriesCount },
