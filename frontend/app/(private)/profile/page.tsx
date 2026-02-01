@@ -3,7 +3,6 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ProfileSidebar, SettingsPanel } from '@/components/profile'
-import { SettingsPanelMockup } from '@/components/profile/SettingsPanelMockup'
 
 function ProfileSkeleton() {
   return (
@@ -27,13 +26,6 @@ function ProfileContent() {
         {activePanel === 'settings' && (
           <main className="flex-1 min-w-0">
             <SettingsPanel />
-          </main>
-        )}
-
-        {/* MOCKUP: Pre-visualización del nuevo diseño */}
-        {activePanel === 'mockup' && (
-          <main className="flex-1 min-w-0">
-            <SettingsPanelMockup />
           </main>
         )}
       </div>
