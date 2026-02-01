@@ -274,7 +274,6 @@ export const auth = {
     return data as { success: boolean }
   },
 
-
   getKeys: async () => {
     const response = await fetch(`${AUTH_URL}/keys`, {
       method: 'GET',
@@ -294,6 +293,35 @@ export const auth = {
         key_version: number
       }>
     }
+  },
+
+  changePassword: async (
+    currentPassword: string,
+    newPassword: string,
+    newKeySalt?: string,
+    reEncryptedKeys?: Array<{ accountId: string; encryptedKey: string }>
+  ) => {
+    const csrfToken = getCSRFToken()
+    const response = await fetch(`${AUTH_URL}/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+      body: JSON.stringify({ currentPassword, newPassword, newKeySalt, reEncryptedKeys }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al cambiar contraseña')
+    }
+
+    // Limpiar cookie CSRF ya que la sesión fue invalidada
+    if (typeof window !== 'undefined') {
+      document.cookie = 'csrfToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    }
+
+    return data as { success: boolean; message: string }
   },
 }
 
@@ -330,6 +358,15 @@ export const users = {
 // Accounts
 export const accounts = {
   getAll: () => request<{ success: boolean; accounts: Account[] }>('/accounts'),
+  create: (name: string, encryptedAccountKey?: string) =>
+    request<{
+      success: boolean
+      account: Account
+      categoriesCopied: { categories: number; subcategories: number }
+    }>('/accounts', {
+      method: 'POST',
+      body: JSON.stringify({ name, encryptedAccountKey }),
+    }),
   update: (id: string, data: { name: string }) =>
     request<{ success: boolean; account: Account }>(`/accounts/${id}`, {
       method: 'PUT',
@@ -381,22 +418,6 @@ export const accounts = {
     request<{ success: boolean; message: string }>(`/accounts/${accountId}/keys`, {
       method: 'POST',
       body: JSON.stringify({ encryptedKey }),
-    }),
-
-  getKeys: () =>
-    request<{
-      success: boolean
-      keys: Array<{
-        account_id: string
-        encrypted_key: string
-        key_version: number
-      }>
-    }>('/auth/keys'),
-
-  updateAllKeys: (keys: Array<{ accountId: string; encryptedKey: string }>) =>
-    request<{ success: boolean; message: string }>('/auth/keys', {
-      method: 'PUT',
-      body: JSON.stringify({ keys }),
     }),
 }
 
@@ -657,6 +678,25 @@ export const transactions = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  /**
+   * Bulk update by IDs - works with encrypted data
+   * Client filters decrypted transactions and sends specific IDs
+   */
+  bulkUpdateByIds: (data: {
+    account_id: string
+    transaction_ids: string[]
+    subcategory_id: string | null
+  }) =>
+    request<{
+      success: boolean
+      updatedCount: number
+      transaction_ids: string[]
+      subcategory_id: string | null
+    }>('/transactions/bulk-update-by-ids', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Types
@@ -735,6 +775,8 @@ export interface UpdateTransactionData {
   description?: string
   amount?: number
   subcategory_id?: string | null
+  bank_category?: string | null
+  bank_subcategory?: string | null
 }
 
 export interface CategorySummary {
