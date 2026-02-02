@@ -215,21 +215,34 @@ function TransactionsContent({
       start_date: startDate,
       end_date: endDate,
       type: selectedType === 'all' ? undefined : (selectedType as any),
-      search: searchTerm,
       subcategory_id: selectedCategory || undefined,
       limit,
       offset: (page - 1) * limit,
     },
     {
+      // Only use initialData when there are no active filters
       initialData:
-        initialTransactions && page === 1 && !hasActiveFilters
+        initialTransactions && page === 1 && !hasActiveFilters && !searchTerm
           ? { transactions: initialTransactions, total: initialTotal || 0, limit, offset: 0 }
           : undefined,
     }
   )
 
-  // No local filtering needed anymore as we pass subcategory_id to the API
-  const filteredTransactions = txData?.transactions || []
+  // Client-side search filtering for encrypted data
+  // When data is encrypted, backend search doesn't work, so we filter here
+  const filteredTransactions = useMemo(() => {
+    let txs = txData?.transactions || []
+
+    // Client-side search filtering (needed for encrypted data)
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase()
+      txs = txs.filter((t) =>
+        t.description.toLowerCase().includes(lowerSearch)
+      )
+    }
+
+    return txs
+  }, [txData?.transactions, searchTerm])
 
   const totals = useMemo(() => {
     const txs = filteredTransactions
