@@ -169,10 +169,11 @@ export class TransactionRepository {
       params.push(`%${filters.search}%`)
     }
 
+    // Use amount_sign for E2E encrypted data (amount field has placeholder)
     if (filters.type === 'income') {
-      query += ' AND t.amount > 0'
+      query += " AND (t.amount_sign = 'positive' OR (t.amount_sign IS NULL AND t.amount > 0))"
     } else if (filters.type === 'expense') {
-      query += ' AND t.amount < 0'
+      query += " AND (t.amount_sign = 'negative' OR (t.amount_sign IS NULL AND t.amount < 0))"
     }
 
     query += ' ORDER BY t.date DESC, t.created_at DESC'
@@ -236,10 +237,11 @@ export class TransactionRepository {
       params.push(`%${filters.search}%`)
     }
 
+    // Use amount_sign for E2E encrypted data (amount field has placeholder)
     if (filters.type === 'income') {
-      query += ' AND t.amount > 0'
+      query += " AND (t.amount_sign = 'positive' OR (t.amount_sign IS NULL AND t.amount > 0))"
     } else if (filters.type === 'expense') {
-      query += ' AND t.amount < 0'
+      query += " AND (t.amount_sign = 'negative' OR (t.amount_sign IS NULL AND t.amount < 0))"
     }
 
     const [rows] = await db.query<any[]>(query, params)

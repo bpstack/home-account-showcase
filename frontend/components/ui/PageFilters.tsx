@@ -90,7 +90,7 @@ export function PageFilters({
               }
             }}
             icon={<Calendar className="h-3.5 w-3.5" />}
-            label="Mes"
+            label={selectedMonth !== null && selectedMonth !== undefined ? MONTHS_ES[selectedMonth] ?? 'Mes' : 'Mes'}
           />
         )}
 
@@ -103,7 +103,7 @@ export function PageFilters({
               onYearChange(e.target.value === 'none' ? null : parseInt(e.target.value))
             }
             icon={<CalendarDays className="h-3.5 w-3.5" />}
-            label="Año"
+            label={year !== null && year !== undefined ? String(year) : 'Año'}
           />
         )}
 
@@ -115,7 +115,6 @@ export function PageFilters({
               endDate={endDate}
               onDatesChange={onDatesChange}
               compact
-              label="Periodo"
             />
           </div>
         )}

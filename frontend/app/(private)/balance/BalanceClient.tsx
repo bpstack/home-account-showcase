@@ -128,7 +128,7 @@ function BalanceContent({
   } = useBalanceStore()
 
   const hasActiveFilters =
-    selectedMonth !== null || selectedYear !== new Date().getFullYear() || period !== 'monthly'
+    selectedMonth !== null || selectedYear !== new Date().getFullYear() || period !== 'monthly' || activeTab !== 'balance'
 
   const clearFilters = () => {
     resetFilters()
@@ -193,14 +193,14 @@ function BalanceContent({
     }
   }, [period, selectedYear, selectedMonth, customStartDate, customEndDate])
 
-  const getTypeFilter = useCallback((): 'income' | 'expense' | undefined => {
-    if (activeTab === 'income') return 'income'
-    if (activeTab === 'expenses') return 'expense'
-    return undefined
-  }, [activeTab])
-
   const { startDate, endDate } = useMemo(() => getDateRange(), [getDateRange])
-  const typeFilter = getTypeFilter()
+
+  // Calculate type filter directly based on activeTab
+  const typeFilter: 'income' | 'expense' | undefined =
+    activeTab === 'income' ? 'income' :
+    activeTab === 'expenses' ? 'expense' :
+    undefined
+
 
   const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(
     account?.id || '',
@@ -216,6 +216,8 @@ function BalanceContent({
 
   const { data: summaryData } = useTransactionSummary(account?.id || '', startDate, endDate)
 
+  // Server filters by amount_sign (metadata, not encrypted)
+  // This works with E2E encryption because amount_sign is stored unencrypted
   const { data: txData, isLoading: isLoadingTx } = useTransactions(
     {
       account_id: account?.id || '',
@@ -373,6 +375,7 @@ function BalanceContent({
                 showTransactions={showTransactions}
                 setShowTransactions={setShowTransactions}
                 onCategoryClick={handleCategoryClick}
+                periodLabel={getPeriodLabel()}
               />
             )}
 
@@ -385,6 +388,7 @@ function BalanceContent({
                 showTransactions={showTransactions}
                 setShowTransactions={setShowTransactions}
                 onCategoryClick={handleCategoryClick}
+                periodLabel={getPeriodLabel()}
               />
             )}
 
@@ -398,6 +402,7 @@ function BalanceContent({
                 showTransactions={showTransactions}
                 setShowTransactions={setShowTransactions}
                 onCategoryClick={handleCategoryClick}
+                periodLabel={getPeriodLabel()}
               />
             )}
           </div>
@@ -438,6 +443,7 @@ function BalanceTabContent({
   showTransactions,
   setShowTransactions,
   onCategoryClick,
+  periodLabel,
 }: {
   stats: PeriodStats
   expensesByCategory: { name: string; color: string; amount: number }[]
@@ -448,73 +454,81 @@ function BalanceTabContent({
   showTransactions: boolean
   setShowTransactions: (s: boolean) => void
   onCategoryClick: (tx: Transaction) => void
+  periodLabel: string
 }) {
+  const savingsRate = stats.income > 0 ? ((stats.balance / stats.income) * 100).toFixed(1) : '0'
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-success">
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                <TrendingUp className="h-5 w-5 text-success" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-text-secondary uppercase tracking-wide">Ingresos</p>
-                <p className="text-lg font-bold text-success truncate">
-                  +{formatCurrency(stats.income)}
-                </p>
-              </div>
+        {/* Ingresos */}
+        <Card className="bg-gradient-to-br from-emerald-50/80 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/20 border-emerald-200/50 dark:border-emerald-800/30">
+          <CardContent className="py-4 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Ingresos</p>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              +{formatCurrency(stats.income)}
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+                <TrendingUp className="h-3 w-3 text-emerald-500" />
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+                {periodLabel}
+              </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-danger">
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
-                <TrendingDown className="h-5 w-5 text-danger" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-text-secondary uppercase tracking-wide">Gastos</p>
-                <p className="text-lg font-bold text-danger truncate">
-                  -{formatCurrency(stats.expenses)}
-                </p>
-              </div>
+        {/* Gastos */}
+        <Card className="bg-gradient-to-br from-rose-50/80 to-red-50/50 dark:from-rose-950/30 dark:to-red-950/20 border-rose-200/50 dark:border-rose-800/30">
+          <CardContent className="py-4 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Gastos</p>
+            <p className="text-xl sm:text-2xl font-bold text-rose-600 dark:text-rose-400">
+              -{formatCurrency(stats.expenses)}
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+                <TrendingDown className="h-3 w-3 text-rose-500" />
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+                {periodLabel}
+              </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-accent">
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                <PiggyBank className="h-5 w-5 text-accent" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-text-secondary uppercase tracking-wide">Ahorro</p>
-                <p
-                  className={`text-lg font-bold truncate ${stats.balance >= 0 ? 'text-accent' : 'text-danger'}`}
-                >
-                  {stats.balance >= 0 ? '+' : ''}
-                  {formatCurrency(stats.balance)}
-                </p>
-              </div>
+        {/* Ahorro */}
+        <Card className={`bg-gradient-to-br ${stats.balance >= 0 ? 'from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20 border-blue-200/50 dark:border-blue-800/30' : 'from-orange-50/80 to-amber-50/50 dark:from-orange-950/30 dark:to-amber-950/20 border-orange-200/50 dark:border-orange-800/30'}`}>
+          <CardContent className="py-4 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Ahorro</p>
+            <p className={`text-xl sm:text-2xl font-bold ${stats.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+              {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+                <PiggyBank className={`h-3 w-3 ${stats.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`} />
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+                {periodLabel}
+              </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-layer-2 flex items-center justify-center shrink-0">
-                <Wallet className="h-5 w-5 text-text-secondary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-text-secondary uppercase tracking-wide">Tasa ahorro</p>
-                <p className="text-lg font-bold text-text-primary truncate">
-                  {stats.income > 0 ? ((stats.balance / stats.income) * 100).toFixed(1) : '0'}%
-                </p>
-              </div>
+        {/* Tasa de ahorro */}
+        <Card className="bg-gradient-to-br from-violet-50/80 to-purple-50/50 dark:from-violet-950/30 dark:to-purple-950/20 border-violet-200/50 dark:border-violet-800/30">
+          <CardContent className="py-4 px-4 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Tasa ahorro</p>
+            <p className="text-xl sm:text-2xl font-bold text-violet-600 dark:text-violet-400">
+              {savingsRate}%
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+                <Wallet className="h-3 w-3 text-violet-500" />
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+                {periodLabel}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -643,6 +657,7 @@ function IncomeTabContent({
   showTransactions,
   setShowTransactions,
   onCategoryClick,
+  periodLabel,
 }: {
   stats: PeriodStats
   formatCurrency: (v: number) => string
@@ -651,6 +666,7 @@ function IncomeTabContent({
   showTransactions: boolean
   setShowTransactions: (s: boolean) => void
   onCategoryClick: (tx: Transaction) => void
+  periodLabel: string
 }) {
   const incomeTypes = [
     { key: 'Nómina', label: 'Nómina', icon: '💼' },
@@ -664,11 +680,19 @@ function IncomeTabContent({
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gradient-to-r from-success/5 to-transparent border-success/20">
-        <CardContent className="py-8">
-          <div className="text-center">
-            <p className="text-sm text-text-secondary mb-1">Total Ingresos</p>
-            <p className="text-4xl font-bold text-success">+{formatCurrency(stats.income)}</p>
+      <Card className="bg-gradient-to-br from-emerald-50/80 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/20 border-emerald-200/50 dark:border-emerald-800/30">
+        <CardContent className="py-6 px-4 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Total Ingresos</p>
+          <p className="text-3xl sm:text-4xl font-bold text-emerald-600 dark:text-emerald-400">
+            +{formatCurrency(stats.income)}
+          </p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+              <TrendingUp className="h-3 w-3 text-emerald-500" />
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+              {periodLabel}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -722,6 +746,7 @@ function ExpensesTabContent({
   showTransactions,
   setShowTransactions,
   onCategoryClick,
+  periodLabel,
 }: {
   stats: PeriodStats
   expensesByCategory: { name: string; color: string; amount: number }[]
@@ -731,21 +756,31 @@ function ExpensesTabContent({
   showTransactions: boolean
   setShowTransactions: (s: boolean) => void
   onCategoryClick: (tx: Transaction) => void
+  periodLabel: string
 }) {
   const hasExpenses = stats.expenses > 0
+  const expensePercentage = stats.income > 0 ? ((stats.expenses / stats.income) * 100).toFixed(1) : null
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gradient-to-r from-danger/5 to-transparent border-danger/20">
-        <CardContent className="py-8">
-          <div className="text-center">
-            <p className="text-sm text-text-secondary mb-1">Total Gastos</p>
-            <p className="text-4xl font-bold text-danger">-{formatCurrency(stats.expenses)}</p>
-            {stats.income > 0 && (
-              <p className="text-sm text-text-secondary mt-2">
-                {((stats.expenses / stats.income) * 100).toFixed(1)}% de los ingresos
-              </p>
+      <Card className="bg-gradient-to-br from-rose-50/80 to-red-50/50 dark:from-rose-950/30 dark:to-red-950/20 border-rose-200/50 dark:border-rose-800/30">
+        <CardContent className="py-6 px-4 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Total Gastos</p>
+          <p className="text-3xl sm:text-4xl font-bold text-rose-600 dark:text-rose-400">
+            -{formatCurrency(stats.expenses)}
+          </p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+              <TrendingDown className="h-3 w-3 text-rose-500" />
+            </span>
+            {expensePercentage && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+                {expensePercentage}% de ingresos
+              </span>
             )}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+              {periodLabel}
+            </span>
           </div>
         </CardContent>
       </Card>

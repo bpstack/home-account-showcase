@@ -450,10 +450,10 @@ export default function ImportClient() {
           <div className="lg:col-span-8 space-y-6">
             {activeTab === 'individual' ? (
               <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                <CardHeader className="bg-gradient-to-r from-blue-100 dark:from-accent/10 via-blue-50 dark:via-accent/5 to-transparent pb-8 pt-8">
+                <CardHeader className="pb-6 pt-6">
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-blue-200 dark:bg-accent/20 flex items-center justify-center shadow-sm">
-                      <User className="h-6 w-6 text-blue-700 dark:text-accent" />
+                    <div className="h-12 w-12 rounded-2xl bg-blue-100 dark:bg-accent/20 flex items-center justify-center">
+                      <User className="h-6 w-6 text-blue-600 dark:text-accent" />
                     </div>
                     <div>
                       <CardTitle className="text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
@@ -559,10 +559,10 @@ export default function ImportClient() {
               </Card>
             ) : activeTab === 'batch' ? (
               <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                <CardHeader className="bg-gradient-to-r from-orange-100 dark:from-orange-500/10 via-orange-50 dark:via-orange-500/5 to-transparent pb-8 pt-8">
+                <CardHeader className="pb-6 pt-6">
                   <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-orange-200 dark:bg-orange-500/20 flex items-center justify-center shadow-sm">
-                      <Layers className="h-6 w-6 text-orange-700 dark:text-orange-400" />
+                    <div className="h-12 w-12 rounded-2xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center">
+                      <Layers className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                     </div>
                     <div>
                       <CardTitle className="text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
@@ -635,10 +635,10 @@ export default function ImportClient() {
 
                 {step === 'upload' && (
                   <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                    <CardHeader className="bg-gradient-to-r from-emerald-100 dark:from-emerald-500/10 via-emerald-50 dark:via-emerald-500/5 to-transparent pb-8 pt-8">
+                    <CardHeader className="pb-6 pt-6">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-emerald-200 dark:bg-emerald-500/20 flex items-center justify-center shadow-sm">
-                          <Database className="h-6 w-6 text-emerald-700 dark:text-emerald-400" />
+                        <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+                          <Database className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div>
                           <CardTitle className="text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
