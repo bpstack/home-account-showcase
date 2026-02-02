@@ -133,11 +133,12 @@ export function DatePickerSimple({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center gap-2 w-full px-3 py-2 text-sm',
-          'bg-background border border-border rounded-lg',
+          'flex items-center gap-2 w-full h-11 px-4 py-2 text-sm',
+          'bg-background border border-input rounded-md',
           'text-left justify-between',
-          'hover:border-ring transition-colors cursor-pointer',
-          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
+          'hover:bg-accent/5 transition-all cursor-pointer',
+          'focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background',
+          'disabled:cursor-not-allowed disabled:opacity-50'
         )}
       >
         <div className="flex items-center gap-2">
@@ -150,7 +151,7 @@ export function DatePickerSimple({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-72 bg-popover border border-border rounded-lg shadow-lg p-3">
+        <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:right-0 left-2 sm:left-auto mt-1 z-50 w-[calc(100vw-16px)] sm:w-72 bg-popover border border-border rounded-lg shadow-lg p-3">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1">

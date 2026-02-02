@@ -82,6 +82,14 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Remove default browser outline, but allow custom focus rings */
+  button:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+  }
 }
 
 @layer components {
