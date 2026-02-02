@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { useCallback, type ReactNode } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ChevronDown, Check } from 'lucide-react'
+import { MobileTabSelector } from './MobileTabSelector'
 
 export interface Tab {
   id: string
@@ -39,8 +39,6 @@ export function Tabs({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Determinar tab activo: controlado > URL > default > primer tab
   const activeTab =
@@ -51,18 +49,6 @@ export function Tabs({
 
   const activeTabConfig = tabs.find((tab) => tab.id === activeTab) || tabs[0]
 
-  // Cerrar dropdown al hacer click fuera
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const handleTabChange = useCallback(
     (tabId: string) => {
       if (onChange) {
@@ -72,7 +58,6 @@ export function Tabs({
         params.set(paramName, tabId)
         router.push(`${pathname}?${params.toString()}`, { scroll: false })
       }
-      setIsOpen(false)
     },
     [onChange, paramName, searchParams, router, pathname]
   )
@@ -103,62 +88,26 @@ export function Tabs({
     )
   }
 
-  // Underline responsive variant (dropdown mobile + tabs desktop like FourPoints)
+  // Underline responsive variant (modal mobile + tabs desktop)
   if (variant === 'underline-responsive') {
     return (
       <div className={cn('border-b border-gray-200 dark:border-gray-800 bg-background', className)}>
-        {/* Mobile: Línea 1 = Tab dropdown, Línea 2 = filtros en fila */}
-        <div className="md:hidden px-3 py-2 space-y-2">
-          {/* Línea 1: Tab selector */}
-          <div className="relative w-fit" ref={dropdownRef}>
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-accent transition-colors"
-            >
-              {activeTabConfig?.icon}
-              <span>{activeTabConfig?.label}</span>
-              <ChevronDown
-                className={cn(
-                  'w-4 h-4 text-muted-foreground transition-transform duration-200',
-                  isOpen && 'rotate-180'
-                )}
-              />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isOpen && (
-              <div className="absolute left-0 mt-1 w-44 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {tabs.map((tab) => {
-                  const isActive = activeTab === tab.id
-
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabChange(tab.id)}
-                      className={cn(
-                        'w-full flex items-center justify-between px-3 py-2 text-sm transition-colors',
-                        isActive
-                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        {tab.icon}
-                        {tab.label}
-                      </span>
-                      {isActive && <Check className="w-4 h-4" />}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+        {/* Mobile: Tab selector con modal + filtros */}
+        <div className="md:hidden px-3 py-2 space-y-2 pb-6">
+          {/* Mobile Tab Selector con Modal */}
+          <div className="flex justify-center">
+            <MobileTabSelector
+              tabs={tabs}
+              activeTabId={activeTab}
+              onTabChange={handleTabChange}
+            />
           </div>
-          {/* Línea 2: Filtros todos en una fila */}
+          {/* Filtros */}
           {rightContent && <div>{rightContent}</div>}
         </div>
 
         {/* Desktop: Tabs + rightContent */}
-        <div className="hidden md:flex items-center justify-between px-4 md:px-6">
+        <div className="hidden md:flex items-center justify-between px-4 md:px-6 pb-6">
           <nav className="flex space-x-4 -mb-px">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id

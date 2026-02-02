@@ -42,14 +42,18 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center animate-in fade-in duration-200">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
 
       {/* Modal */}
       <div
         className={cn(
           'relative w-full mx-4 bg-background border border-border rounded-lg shadow-2xl',
+          'animate-in zoom-in-95 slide-in-from-bottom-4 duration-300',
           sizes[size],
           className
         )}

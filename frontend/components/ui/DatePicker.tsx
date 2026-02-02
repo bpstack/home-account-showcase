@@ -177,21 +177,29 @@ export function DatePicker({
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'flex items-center gap-1 py-2 px-1 font-medium text-sm',
-            'border-0 transition-all duration-200 cursor-pointer',
+            'flex items-center gap-1 py-2 px-1 text-sm font-medium',
+            'bg-transparent border-0',
+            'text-muted-foreground hover:text-foreground',
             'focus:outline-none focus:ring-0',
-            isOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+            'transition-all duration-200 cursor-pointer',
             className
           )}
           style={{ boxShadow: 'none', outline: 'none' }}
           title={displayText}
         >
           <CalendarRange className="h-4 w-4 flex-shrink-0" />
-          <span>{label || shortDisplayText}</span>
+          <span>Período</span>
           <ChevronDown
-            className={cn('h-3 w-3 transition-transform duration-200', isOpen && 'rotate-180')}
+            className={cn(
+              'h-3 w-3 transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
           />
         </button>
+        {/* Segunda línea con la fecha - posicionada debajo */}
+        <div className="absolute top-full left-1 text-xs font-medium text-foreground leading-tight pointer-events-none whitespace-nowrap mt-0.5">
+          {dateRange.start && dateRange.end ? shortDisplayText : '-'}
+        </div>
 
         {isOpen && (
           <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto top-auto sm:top-full sm:right-0 mt-1 z-50 sm:w-80 bg-popover border border-border rounded-lg shadow-lg p-3 sm:p-4">
@@ -276,18 +284,22 @@ export function DatePicker({
             </div>
 
             {/* Selection info */}
-            <div className="mt-4 p-3 bg-muted rounded text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Seleccionado:</span>
-                <span className="font-medium text-foreground">
-                  {dateRange.start && dateRange.end
-                    ? `${formatDisplayDate(dateRange.start)} - ${formatDisplayDate(dateRange.end)}`
-                    : 'Seleccione un rango'}
+            <div className="mt-4 p-3 bg-muted rounded text-sm space-y-1.5">
+              <div className="flex">
+                <span className="text-muted-foreground w-12">Inicio:</span>
+                <span className="font-medium text-foreground ml-auto">
+                  {dateRange.start ? formatDisplayDate(dateRange.start) : '-'}
                 </span>
               </div>
-              <div className="flex justify-between mt-2">
-                <span className="text-muted-foreground">Días:</span>
-                <span className="font-medium text-foreground">
+              <div className="flex">
+                <span className="text-muted-foreground w-12">Fin:</span>
+                <span className="font-medium text-foreground ml-auto">
+                  {dateRange.end ? formatDisplayDate(dateRange.end) : '-'}
+                </span>
+              </div>
+              <div className="flex pt-1.5 border-t border-border">
+                <span className="text-muted-foreground w-12">Días:</span>
+                <span className="font-medium text-foreground ml-auto">
                   {dateRange.start && dateRange.end
                     ? Math.ceil(
                         (new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) /
