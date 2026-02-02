@@ -6,9 +6,9 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
 import { Providers } from '@/components/providers/Providers'
 import { Toaster } from 'sonner'
-import ServiceWorkerRegister from './components/ServiceWorkerRegister'
-import UpdateNotification from './components/UpdateNotification'
-import InstallPrompt from './components/InstallPrompt'
+import ServiceWorkerRegister from '@/components/service-worker/ServiceWorkerRegister'
+import UpdateNotification from '@/components/service-worker/UpdateNotification'
+import InstallPrompt from '@/components/service-worker/InstallPrompt'
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],

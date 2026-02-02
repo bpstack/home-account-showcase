@@ -11,6 +11,11 @@ import {
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
+    addEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+    ): void;
+    skipWaiting(): void;
   }
 }
 
@@ -114,3 +119,10 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+(self as unknown as { addEventListener(type: string, listener: (event: Event) => void): void }).addEventListener("message", (event: Event) => {
+  const messageEvent = event as MessageEvent;
+  if (messageEvent.data && messageEvent.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});

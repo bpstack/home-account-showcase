@@ -1,7 +1,9 @@
 {
   "name": "Home Account",
   "short_name": "Home Account",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1a7f37",
@@ -9,6 +11,7 @@
   "lang": "es",
   "orientation": "portrait",
   "categories": ["finance", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/apple-touch-icon.png",

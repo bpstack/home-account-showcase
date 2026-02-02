@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -9,19 +9,23 @@ interface BeforeInstallPromptEvent extends Event {
 
 interface NavigatorWithStandalone extends Navigator {
   standalone?: boolean;
+  getInstalledRelatedApps?: () => Promise<{ platform: string; url?: string; id?: string }[]>;
 }
 
 interface WindowWithMSStream extends Window {
   MSStream?: unknown;
 }
 
-const STORAGE_KEY_HIDDEN = "home-account-install-prompt-hidden";
+const STORAGE_KEY_DISMISSED = "home-account-install-prompt-dismissed";
 const STORAGE_KEY_IOS_SHOWN = "home-account-ios-instructions-shown";
+const STORAGE_KEY_INSTALLED = "home-account-already-installed";
 
-function isAppInstalled(): boolean {
+function isRunningAsStandalone(): boolean {
   if (typeof window === "undefined") return false;
   if (window.matchMedia("(display-mode: standalone)").matches) return true;
   if ((window.navigator as NavigatorWithStandalone).standalone === true) return true;
+  if (window.matchMedia("(display-mode: fullscreen)").matches) return true;
+  if (window.matchMedia("(display-mode: minimal-ui)").matches) return true;
   return false;
 }
 
@@ -33,48 +37,125 @@ function isIOSDevice(): boolean {
   return isIOS && notMSStream;
 }
 
+async function checkInstalledRelatedApps(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const nav = window.navigator as NavigatorWithStandalone;
+  if (!nav.getInstalledRelatedApps) return false;
+
+  try {
+    const relatedApps = await nav.getInstalledRelatedApps();
+    return relatedApps.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export default function InstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState(true); // Start true to prevent flash
 
   const isIOS = isIOSDevice();
 
-  /* -------- initial decision -------- */
+  const checkInstallationStatus = useCallback(async () => {
+    // If running as standalone app, it's definitely installed
+    if (isRunningAsStandalone()) {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
+      return true;
+    }
+
+    // Check localStorage for previous installation
+    if (localStorage.getItem(STORAGE_KEY_INSTALLED) === "true") {
+      return true;
+    }
+
+    // Use getInstalledRelatedApps API if available (Chrome/Edge)
+    const hasRelatedApp = await checkInstalledRelatedApps();
+    if (hasRelatedApp) {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
+      return true;
+    }
+
+    return false;
+  }, []);
+
+  /* -------- initial check -------- */
   useEffect(() => {
-    if (isAppInstalled()) return;
-    if (localStorage.getItem(STORAGE_KEY_HIDDEN) && !isIOS) return;
+    const init = async () => {
+      const installed = await checkInstallationStatus();
+      setIsInstalled(installed);
 
-    const timer = setTimeout(() => {
-      setShowPrompt(true);
-    }, isIOS ? 5000 : 0);
+      if (installed) {
+        setShowPrompt(false);
+        return;
+      }
 
-    return () => clearTimeout(timer);
-  }, [isIOS]);
+      // Check if user previously dismissed the prompt
+      const dismissed = localStorage.getItem(STORAGE_KEY_DISMISSED);
+      if (dismissed && !isIOS) {
+        setShowPrompt(false);
+        return;
+      }
+
+      // For iOS, show after delay; for others, wait for beforeinstallprompt
+      if (isIOS) {
+        const iosShown = localStorage.getItem(STORAGE_KEY_IOS_SHOWN);
+        if (!iosShown) {
+          setTimeout(() => setShowPrompt(true), 3000);
+        }
+      }
+    };
+
+    init();
+  }, [isIOS, checkInstallationStatus]);
 
   useEffect(() => {
-    if (isIOS) return;
+    if (isIOS || isInstalled) return;
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowPrompt(true);
+      // Only show if not dismissed and not installed
+      const dismissed = localStorage.getItem(STORAGE_KEY_DISMISSED);
+      if (!dismissed) {
+        setShowPrompt(true);
+      }
     };
 
     const handleAppInstalled = () => {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
+      setIsInstalled(true);
       setShowPrompt(false);
       setDeferredPrompt(null);
     };
 
+    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
+        setIsInstalled(true);
+        setShowPrompt(false);
+      }
+    };
+
+    if (mediaQuery.matches) {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
+      setIsInstalled(true);
+      setShowPrompt(false);
+    }
+
+    mediaQuery.addEventListener("change", handleMediaChange);
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
+      mediaQuery.removeEventListener("change", handleMediaChange);
     };
-  }, [isIOS]);
+  }, [isIOS, isInstalled]);
 
   const handleInstallClick = async () => {
     if (isIOS) {
@@ -86,7 +167,11 @@ export default function InstallPrompt() {
     if (!deferredPrompt) return;
 
     deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === "accepted") {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
+    }
 
     setDeferredPrompt(null);
     setShowPrompt(false);
@@ -96,26 +181,19 @@ export default function InstallPrompt() {
     if (isIOS) {
       setShowIOSInstructions(false);
       localStorage.setItem(STORAGE_KEY_IOS_SHOWN, "true");
+    } else {
+      // Save dismissal for non-iOS so prompt doesn't reappear
+      localStorage.setItem(STORAGE_KEY_DISMISSED, "true");
     }
     setShowPrompt(false);
   };
 
-  const handleResetInstructions = () => {
-    setShowIOSInstructions(true);
-  };
+  // Don't render anything if installed
+  if (isInstalled) {
+    return null;
+  }
 
   if (!showPrompt) {
-    if (isIOS && !localStorage.getItem(STORAGE_KEY_IOS_SHOWN)) {
-      return (
-        <button
-          onClick={handleResetInstructions}
-          className="fixed bottom-6 left-6 z-50 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-3 py-2 rounded-full shadow-lg text-xs hover:bg-green-200 dark:hover:bg-green-900 transition-colors"
-          aria-label="Ver cómo instalar"
-        >
-          📲 ¿Cómo instalar?
-        </button>
-      );
-    }
     return null;
   }
 
