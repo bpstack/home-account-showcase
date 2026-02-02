@@ -10,6 +10,8 @@ import {
   useBalanceHistory,
 } from '@/lib/queries/transactions'
 import { CategoryPieChart, MonthlyBarChart, BalanceLineChart } from '@/components/charts'
+import { HistoryInfoAlert } from '@/components/dashboard/HistoryInfoAlert'
+import { OverviewInfoAlert } from '@/components/dashboard/OverviewInfoAlert'
 import {
   TrendingDown,
   TrendingUp,
@@ -237,7 +239,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           onChange={(tabId) => setActiveTab(tabId as any)}
           variant="underline-responsive"
           rightContent={
-            activeTab !== 'investment' ? (
+            activeTab === 'overview' ? (
               <PageFilters
                 showMonthSelect
                 selectedMonth={selectedMonth}
@@ -246,7 +248,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 year={selectedYear}
                 onYearChange={(y) => {
                   setYear(y)
-                  // El requisito dice: al elegir año se asigna "Todos" (null)
                   if (y !== null) setMonth(null)
                 }}
                 showDatePicker
@@ -257,12 +258,33 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 onClear={clearFilters}
                 className="ml-auto"
               />
+            ) : activeTab === 'history' ? (
+              <PageFilters
+                showYearSelect
+                year={selectedYear}
+                onYearChange={(y) => setYear(y)}
+                showClear={selectedYear !== null && selectedYear !== currentYear}
+                onClear={() => setYear(null)}
+                className="ml-auto"
+              />
             ) : null
           }
         />
 
         {/* Mobile secondary filters could go here if needed, but PageFilters handles them in Tabs rightContent */}
       </div>
+
+      {activeTab === 'overview' && (
+        <div className="px-3 sm:px-4 mt-2">
+          <OverviewInfoAlert />
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="px-3 sm:px-4 mt-2">
+          <HistoryInfoAlert />
+        </div>
+      )}
 
       {/* Content area */}
       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
@@ -314,7 +336,7 @@ function OverviewTab({
   incomeByType?: Record<string, number>
 }) {
   const { account } = useAuth()
-  const { period } = useDashboardStore()
+  const { period, customStartDate, customEndDate } = useDashboardStore()
   const { selectedYear, selectedMonth } = useFiltersStore()
 
   const currentYear = new Date().getFullYear()
@@ -358,15 +380,116 @@ function OverviewTab({
 
   const formatCurrency = (value: number) => `${value.toFixed(2)} €`
 
-  const calculateChange = (current: number, previous: number) => {
-    if (previous === 0) return { value: 0, percentage: 0, isPositive: current > 0 }
-    const change = current - previous
-    const percentage = (change / Math.abs(previous)) * 100
-    return {
-      value: change,
-      percentage: Math.abs(percentage),
-      isPositive: change >= 0,
+  const formatPeriodLabel = () => {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth()
+
+    if (period === 'custom' && customStartDate && customEndDate) {
+      const start = new Date(customStartDate)
+      const end = new Date(customEndDate)
+      if (start.getTime() === end.getTime()) {
+        return start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+      }
+      const startStr = start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+      const endStr = end.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+      return startStr + ' - ' + endStr
     }
+
+    if (period === 'all') return 'Todos los tiempos'
+
+    if (selectedMonth !== null) {
+      return MONTHS_ES[selectedMonth] + ' ' + (selectedYear ?? currentYear)
+    }
+
+    if (selectedYear !== null) {
+      return selectedYear === currentYear ? 'Año actual' : 'Año ' + selectedYear
+    }
+
+    if (period === 'year') {
+      return 'Año actual'
+    }
+
+    return MONTHS_ES[currentMonth] + ' ' + currentYear
+  }
+
+  const StatCard = ({
+    title,
+    amount,
+    type,
+    icon: Icon,
+  }: {
+    title: string
+    amount: number
+    type: 'income' | 'expense' | 'balance'
+    icon: React.ElementType
+  }) => {
+    const gradientClass =
+      type === 'income'
+        ? 'from-emerald-50/80 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/20'
+        : type === 'expense'
+          ? 'from-rose-50/80 to-red-50/50 dark:from-rose-950/30 dark:to-red-950/20'
+          : amount >= 0
+            ? 'from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20'
+            : 'from-orange-50/80 to-amber-50/50 dark:from-orange-950/30 dark:to-amber-950/20'
+
+    const borderColor =
+      type === 'income'
+        ? 'border-emerald-200/50 dark:border-emerald-800/30'
+        : type === 'expense'
+          ? 'border-rose-200/50 dark:border-rose-800/30'
+          : amount >= 0
+            ? 'border-blue-200/50 dark:border-blue-800/30'
+            : 'border-orange-200/50 dark:border-orange-800/30'
+
+    const textClass =
+      type === 'income'
+        ? 'text-emerald-600 dark:text-emerald-400'
+        : type === 'expense'
+          ? 'text-rose-600 dark:text-rose-400'
+          : amount >= 0
+            ? 'text-blue-600 dark:text-blue-400'
+            : 'text-orange-600 dark:text-orange-400'
+
+    const iconClass =
+      type === 'income'
+        ? 'text-emerald-500'
+        : type === 'expense'
+          ? 'text-rose-500'
+          : amount >= 0
+            ? 'text-blue-500'
+            : 'text-orange-500'
+
+    const formattedAmount = Math.abs(amount).toLocaleString('es-ES', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+
+    const sign = type === 'expense' ? '-' : amount >= 0 ? '+' : ''
+
+    return (
+      <Card className={`bg-gradient-to-br ${gradientClass} ${borderColor}`}>
+        <CardContent className="py-4 px-4 text-center">
+          {/* Title */}
+          <p className="text-xs text-muted-foreground mb-1">{title}</p>
+
+          {/* Amount */}
+          <p className={`text-2xl font-bold ${textClass}`}>
+            {sign}{formattedAmount} €
+          </p>
+
+          {/* Footer: Icon + Period */}
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+              <Icon className={`h-3 w-3 ${iconClass}`} />
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+              {formatPeriodLabel()}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   const expensesByCategory = summary
@@ -390,19 +513,17 @@ function OverviewTab({
     )
     .sort((a, b) => b.value - a.value)
 
-  // Paleta de colores para ingresos (subcategorias)
   const incomeColors = [
-    '#22C55E', // green
-    '#10B981', // emerald
-    '#06B6D4', // cyan
-    '#3B82F6', // blue
-    '#8B5CF6', // violet
-    '#F59E0B', // amber
-    '#EC4899', // pink
-    '#14B8A6', // teal
+    '#22C55E',
+    '#10B981',
+    '#06B6D4',
+    '#3B82F6',
+    '#8B5CF6',
+    '#F59E0B',
+    '#EC4899',
+    '#14B8A6',
   ]
 
-  // Ingresos por tipo (usando datos detallados del endpoint stats)
   const incomeByCategory = incomeByType
     ? Object.entries(incomeByType)
         .filter(([, value]) => value > 0)
@@ -413,6 +534,17 @@ function OverviewTab({
           color: incomeColors[index % incomeColors.length],
         }))
     : []
+
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return { value: 0, percentage: 0, isPositive: current > 0 }
+    const change = current - previous
+    const percentage = (change / Math.abs(previous)) * 100
+    return {
+      value: change,
+      percentage: Math.abs(percentage),
+      isPositive: change >= 0,
+    }
+  }
 
   const ComparisonCard = ({
     title,
@@ -426,35 +558,38 @@ function OverviewTab({
     type: 'income' | 'expense'
   }) => {
     const change = calculateChange(current, previous)
-    const periodLabel = period === 'month' ? 'mes anterior' : 'año anterior'
+    const periodLabel = period === 'month' ? 'vs mes ant.' : 'vs año ant.'
 
     return (
-      <div className="bg-layer-2 rounded-lg p-4">
-        <p className="text-sm text-text-secondary mb-2">{title}</p>
-        <div className="flex items-baseline gap-2">
-          <span
-            className={`text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}
-          >
-            {type === 'income' ? '+' : '-'}
-            {formatCurrency(current)}
-          </span>
-        </div>
-        <div
-          className={`flex items-center gap-1 mt-1 ${change.isPositive ? 'text-success' : 'text-danger'}`}
-        >
-          {change.isPositive ? (
-            <TrendingUp className="h-4 w-4" />
-          ) : (
-            <TrendingDown className="h-4 w-4" />
-          )}
-          <span className="text-sm font-medium">
-            {change.isPositive ? '+' : '-'}
-            {formatCurrency(Math.abs(change.value))}
-          </span>
-          <span className="text-xs text-text-secondary">
-            ({change.isPositive ? '+' : '-'}
-            {change.percentage.toFixed(1)}% vs {periodLabel})
-          </span>
+      <div className="bg-layer-2 rounded-lg p-3 sm:p-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 items-center">
+          <div className="text-left">
+            <p className="text-base sm:text-lg font-semibold text-text-secondary">{title}</p>
+            <p className="text-xs text-text-secondary hidden sm:block">Período</p>
+            <p className="text-xs sm:text-sm font-medium text-accent">{formatPeriodLabel()}</p>
+          </div>
+
+          <div className="text-right">
+            <p className={`text-xl sm:text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}>
+              {type === 'income' ? '+' : '-'}
+              {formatCurrency(current)}
+            </p>
+            <div className={`flex items-center justify-end gap-1 mt-0.5 ${change.isPositive ? 'text-success' : 'text-danger'}`}>
+              {change.isPositive ? (
+                <TrendingUp className="h-3 w-3" />
+              ) : (
+                <TrendingDown className="h-3 w-3" />
+              )}
+              <span className="text-xs sm:text-sm font-medium">
+                {change.isPositive ? '+' : '-'}
+                {formatCurrency(Math.abs(change.value))}
+              </span>
+            </div>
+            <span className="text-xs text-text-secondary">
+              ({change.isPositive ? '+' : '-'}
+              {change.percentage.toFixed(0)}% {periodLabel})
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -462,96 +597,13 @@ function OverviewTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-success/5 to-success/10 border-success/20 hover:border-success/30 transition-all">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary font-medium">Ingresos</p>
-                <p className="text-2xl font-bold text-success md:text-3xl">
-                  +{formatCurrency(stats.income)}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-success/20 flex items-center justify-center shadow-lg">
-                <TrendingUp className="h-6 w-6 text-success" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-danger/5 to-danger/10 border-danger/20 hover:border-danger/30 transition-all">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary font-medium">Gastos</p>
-                <p className="text-2xl font-bold text-danger md:text-3xl">
-                  -{formatCurrency(stats.expenses)}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-danger/20 flex items-center justify-center shadow-lg">
-                <TrendingDown className="h-6 w-6 text-danger" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          className={`bg-gradient-to-br ${
-            stats.balance >= 0
-              ? 'from-success/5 to-blue-100/50 border-success/20 hover:border-success/30'
-              : 'from-danger/5 to-red-100/50 border-danger/20 hover:border-danger/30'
-          } transition-all`}
-        >
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-text-secondary font-medium">Balance</p>
-                <p
-                  className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-success' : 'text-danger'} md:text-3xl`}
-                >
-                  {stats.balance >= 0 ? '+' : ''}
-                  {formatCurrency(stats.balance)}
-                </p>
-              </div>
-              <div
-                className={`h-12 w-12 rounded-full flex items-center justify-center shadow-lg ${
-                  stats.balance >= 0 ? 'bg-success/20' : 'bg-danger/20'
-                }`}
-              >
-                <Wallet
-                  className={`h-6 w-6 ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
+        <StatCard title="Ingresos" amount={stats.income} type="income" icon={TrendingUp} />
+        <StatCard title="Gastos" amount={stats.expenses} type="expense" icon={TrendingDown} />
+        <StatCard title="Balance" amount={stats.balance} type="balance" icon={Wallet} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5" />
-              Gastos por categoría
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <ComparisonCard
-                title="Total Gastos"
-                current={stats.expenses}
-                previous={prevStats.expenses}
-                type="expense"
-              />
-            </div>
-            {expensesByCategory.length === 0 ? (
-              <p className="text-text-secondary text-center py-4">No hay gastos</p>
-            ) : (
-              <CategoryPieChart data={expensesByCategory} />
-            )}
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -572,6 +624,30 @@ function OverviewTab({
               <p className="text-text-secondary text-center py-4">No hay ingresos</p>
             ) : (
               <CategoryPieChart data={incomeByCategory} />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5" />
+              Gastos por categoría
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <ComparisonCard
+                title="Total Gastos"
+                current={stats.expenses}
+                previous={prevStats.expenses}
+                type="expense"
+              />
+            </div>
+            {expensesByCategory.length === 0 ? (
+              <p className="text-text-secondary text-center py-4">No hay gastos</p>
+            ) : (
+              <CategoryPieChart data={expensesByCategory} />
             )}
           </CardContent>
         </Card>
@@ -626,12 +702,6 @@ function HistoryTab({
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Evolución del balance - {selectedYear}
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           {isLoadingBalanceHistory ? (
             <div className="py-12 flex items-center justify-center gap-2 text-text-secondary">
@@ -639,7 +709,7 @@ function HistoryTab({
               Cargando datos...
             </div>
           ) : balanceData && balanceData.length > 0 ? (
-            <BalanceLineChart data={balanceData} />
+            <BalanceLineChart data={balanceData} year={selectedYear} />
           ) : (
             <div className="py-12 text-center text-text-secondary">
               No hay transacciones suficientes para mostrar
