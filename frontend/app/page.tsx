@@ -288,7 +288,7 @@ export default function HomePage() {
 
                 {/* 2. SCREENSHOTS (Visible when not in accounts view) */}
                 <div className={cn(
-                  "relative h-full transition-all duration-500",
+                  "relative h-full transition-all duration-500 bg-black",
                   showAccounts ? "opacity-0 scale-95 blur-sm" : "opacity-100 scale-100 blur-0"
                 )}>
                   {/* Desktop image */}
@@ -297,9 +297,10 @@ export default function HomePage() {
                     alt="Dashboard de Home Account"
                     fill
                     className={cn(
-                      "object-cover object-top transition-all duration-500",
+                      "object-contain transition-all duration-500",
                       showMobile ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
                     )}
+                    style={{ transform: 'scaleY(1.05)', transformOrigin: 'top center' }}
                     priority
                   />
                   {/* Mobile image */}

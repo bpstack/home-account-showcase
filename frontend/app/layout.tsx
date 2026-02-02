@@ -6,6 +6,9 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
 import { Providers } from '@/components/providers/Providers'
 import { Toaster } from 'sonner'
+import ServiceWorkerRegister from './components/ServiceWorkerRegister'
+import UpdateNotification from './components/UpdateNotification'
+import InstallPrompt from './components/InstallPrompt'
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -24,19 +27,20 @@ export const metadata: Metadata = {
   keywords: ['contabilidad', 'gastos', 'ingresos', 'control financiero', 'presupuesto'],
   authors: [{ name: 'Home Account Team' }],
   creator: 'Home Account',
+  manifest: '/manifest.json',
   icons: {
     icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: '32x32' },
     ],
-    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
-  openGraph: {
-    type: 'website',
-    siteName: 'Home Account',
-    title: 'Home Account - Contabilidad Doméstica',
-    description: 'Control de gastos domésticos - Tu contabilidad personal y familiar',
-    locale: 'es_ES',
+  appleWebApp: {
+    capable: true,
+    title: 'Home Account',
+    statusBarStyle: 'black-translucent',
   },
 }
 
@@ -56,6 +60,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" suppressHydrationWarning className={poppins.variable}>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <Script
           id="theme-script"
           strategy="beforeInteractive"
@@ -79,6 +86,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Providers>{children}</Providers>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
+        <ServiceWorkerRegister />
+        <UpdateNotification />
+        <InstallPrompt />
       </body>
     </html>
   )
