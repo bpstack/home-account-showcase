@@ -301,19 +301,22 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         </div>
       )}
 
-      <div className="flex justify-end gap-2 mb-6">
-        <Button
-          variant="outline"
+      <div className="flex justify-center gap-8 mb-6">
+        <button
           onClick={handleAddDefaultCategories}
-          isLoading={addDefaultsMutation.isPending}
+          disabled={addDefaultsMutation.isPending}
+          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="h-4 w-4 text-accent stroke-[2.5]" />
           Restablecer categorías
-        </Button>
-        <Button onClick={openCreateCategoryModal}>
-          <Plus className="h-4 w-4" />
+        </button>
+        <button
+          onClick={openCreateCategoryModal}
+          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        >
+          <Plus className="h-4 w-4 text-accent stroke-[2.5]" />
           Nueva categoría
-        </Button>
+        </button>
       </div>
 
       {isLoadingCategories ? (
