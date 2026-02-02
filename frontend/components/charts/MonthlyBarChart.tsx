@@ -37,7 +37,6 @@ export function MonthlyBarChart({ data }: Props) {
     return thousands.toFixed(1)
   }
 
-  // En móvil, calcular ancho dinámico para scroll horizontal
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   const minWidth = isMobile ? Math.max(data.length * 60, 600) : '100%'
 

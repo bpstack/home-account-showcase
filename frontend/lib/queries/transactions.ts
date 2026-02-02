@@ -77,6 +77,7 @@ export function useTransactions(params: TransactionParams, options?: UseTransact
 
       return response
     },
+    enabled: !!params.account_id,
     staleTime: options?.staleTime ?? 0,
     initialData: options?.initialData,
   })
@@ -451,14 +452,13 @@ export function useMonthlySummary(accountId: string, year: number) {
 }
 
 // ============================================
-// BALANCE HISTORY - Client-side calculation
+// BALANCE HISTORY - Client-side calculation (Monthly)
 // ============================================
 
 interface BalanceHistoryItem {
   date: string
-  fullDate: string
   balance: number
-  [key: string]: string | number // Index signature for chart compatibility
+  [key: string]: string | number
 }
 
 interface BalanceHistoryResponse {
@@ -467,39 +467,40 @@ interface BalanceHistoryResponse {
 }
 
 /**
- * Calculate balance history from transactions (client-side)
+ * Calculate balance history from transactions (client-side) - Monthly aggregation
  */
 function calculateBalanceHistoryFromTransactions(
   transactions: Transaction[],
   year: number
 ): BalanceHistoryItem[] {
+  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
   const today = new Date()
-  const endDate = year === today.getFullYear()
-    ? today
-    : new Date(year, 11, 31)
+  const currentMonth = today.getMonth()
+  const currentYear = today.getFullYear()
 
   // Sort transactions by date
   const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date))
 
-  // Group transactions by date
-  const transactionsByDate: Record<string, number> = {}
+  // Group transactions by month
+  const transactionsByMonth: Record<number, number> = {}
   for (const tx of sortedTxs) {
-    const date = tx.date.split('T')[0]
-    transactionsByDate[date] = (transactionsByDate[date] || 0) + Number(tx.amount)
+    const date = new Date(tx.date)
+    if (date.getFullYear() !== year) continue
+
+    const month = date.getMonth()
+    transactionsByMonth[month] = (transactionsByMonth[month] || 0) + Number(tx.amount)
   }
 
-  // Generate daily balance history
+  // Generate monthly balance history
+  const monthsToShow = year === currentYear ? currentMonth + 1 : 12
   const result: BalanceHistoryItem[] = []
   let cumulative = 0
-  const start = new Date(year, 0, 1)
 
-  for (let d = new Date(start); d <= endDate; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0]
-    cumulative += transactionsByDate[dateStr] || 0
+  for (let m = 0; m < monthsToShow; m++) {
+    cumulative += transactionsByMonth[m] || 0
 
     result.push({
-      date: dateStr.substring(5), // MM-DD format
-      fullDate: dateStr,
+      date: monthNames[m],
       balance: Math.round(cumulative * 100) / 100,
     })
   }
