@@ -179,6 +179,9 @@ function TransactionsContent({
     { id: 'expense', label: 'Gastos', icon: <TrendingDown className="h-4 w-4" /> },
   ]
 
+  // When searching, load all transactions to search client-side (encrypted data)
+  // Otherwise use pagination with limit of 100
+  const isSearching = searchTerm.length > 0
   const limit = 100
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
@@ -216,8 +219,10 @@ function TransactionsContent({
       end_date: endDate,
       type: selectedType === 'all' ? undefined : (selectedType as any),
       subcategory_id: selectedCategory || undefined,
-      limit,
-      offset: (page - 1) * limit,
+      // When searching, fetch all transactions (no limit/offset) to search client-side
+      // This is necessary because descriptions are encrypted and can't be searched on backend
+      limit: isSearching ? 10000 : limit,
+      offset: isSearching ? 0 : (page - 1) * limit,
     },
     {
       // Only use initialData when there are no active filters
@@ -230,22 +235,36 @@ function TransactionsContent({
 
   // Client-side search filtering for encrypted data
   // When data is encrypted, backend search doesn't work, so we filter here
-  const filteredTransactions = useMemo(() => {
+  const allFilteredTransactions = useMemo(() => {
     let txs = txData?.transactions || []
 
     // Client-side search filtering (needed for encrypted data)
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase()
-      txs = txs.filter((t) =>
-        t.description.toLowerCase().includes(lowerSearch)
-      )
+      txs = txs.filter((t) => t.description.toLowerCase().includes(lowerSearch))
     }
 
     return txs
   }, [txData?.transactions, searchTerm])
 
+  // When searching, we paginate the filtered results client-side
+  // Otherwise, pagination is handled by the backend
+  const filteredTransactions = useMemo(() => {
+    if (!isSearching) return allFilteredTransactions
+
+    // Client-side pagination of search results
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    return allFilteredTransactions.slice(startIndex, endIndex)
+  }, [allFilteredTransactions, isSearching, page, limit])
+
+  // Total count for pagination - use filtered count when searching
+  const totalCount = isSearching ? allFilteredTransactions.length : txData?.total || 0
+  const totalPages = Math.ceil(totalCount / limit)
+
   const totals = useMemo(() => {
-    const txs = filteredTransactions
+    // Use all filtered transactions for totals (not just current page)
+    const txs = isSearching ? allFilteredTransactions : filteredTransactions
     const income = txs
       .filter((t) => t.amount > 0)
       .reduce((acc, t) => acc + Number(t.amount || 0), 0)
@@ -254,7 +273,7 @@ function TransactionsContent({
       .reduce((acc, t) => acc + Math.abs(Number(t.amount || 0)), 0)
 
     return { income, expenses }
-  }, [filteredTransactions])
+  }, [filteredTransactions, allFilteredTransactions, isSearching])
 
   const { data: categoriesData } = useCategories(account?.id || '', {
     initialData: initialCategories ? { categories: initialCategories as any } : undefined,
@@ -473,9 +492,9 @@ function TransactionsContent({
 
         <ResponsiveTransactionTable
           transactions={filteredTransactions}
-          total={txData?.total || 0}
+          total={totalCount}
           page={page}
-          totalPages={Math.ceil((txData?.total || 0) / limit)}
+          totalPages={totalPages}
           onPageChange={handlePageChange}
           onEdit={handleEdit}
           onDelete={handleDelete}
