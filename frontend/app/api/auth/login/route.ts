@@ -38,11 +38,13 @@ export async function POST(req: NextRequest) {
     const setCookieHeader = backendRes.headers.get('set-cookie')
     const cookies = parseCookies(setCookieHeader)
 
-    // Crear respuesta con datos del usuario
+    // Crear respuesta con datos del usuario y claves de cifrado
     const response = NextResponse.json({
       success: true,
       user: data.user,
       csrfToken: data.csrfToken,
+      key_salt: data.key_salt,
+      encrypted_keys: data.encrypted_keys,
     })
 
     // Setear cookies httpOnly en la respuesta de Next.js
