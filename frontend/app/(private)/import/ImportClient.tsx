@@ -24,7 +24,8 @@ import {
   CardContent,
   Button,
   Input,
-  Select
+  Select,
+  DatePickerSimple
 } from '@/components/ui'
 
 import { 
@@ -482,11 +483,9 @@ export default function ImportClient() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700 dark:text-text-primary">Fecha</label>
-                        <Input
-                          type="date"
+                        <DatePickerSimple
                           value={form.date}
-                          onChange={(e) => setForm({ ...form, date: e.target.value })}
-                          required
+                          onChange={(date) => setForm({ ...form, date })}
                         />
                       </div>
                     </div>
