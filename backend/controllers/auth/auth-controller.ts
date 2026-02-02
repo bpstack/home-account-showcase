@@ -25,7 +25,7 @@ const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  maxAge: 5 * 60 * 1000, // 5 minutos
+  maxAge: 15 * 60 * 1000, // 15 minutos
   path: '/',
 }
 

@@ -7,7 +7,12 @@
 const isClient = typeof window !== 'undefined'
 
 const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
+// Auth endpoints with dedicated routes (login, logout, me, refresh) - have built-in refresh logic
 const AUTH_URL = isClient
+  ? '/api/auth'
+  : (process.env.API_URL || 'http://localhost:3001/api') + '/auth'
+// Auth endpoints that go through the general proxy (keys, change-password)
+const AUTH_PROXY_URL = isClient
   ? '/api/proxy/auth'
   : (process.env.API_URL || 'http://localhost:3001/api') + '/auth'
 
@@ -275,7 +280,8 @@ export const auth = {
   },
 
   getKeys: async () => {
-    const response = await fetch(`${AUTH_URL}/keys`, {
+    // Uses proxy URL because there's no dedicated /api/auth/keys endpoint
+    const response = await fetch(`${AUTH_PROXY_URL}/keys`, {
       method: 'GET',
       credentials: 'include',
     })
@@ -301,8 +307,9 @@ export const auth = {
     newKeySalt?: string,
     reEncryptedKeys?: Array<{ accountId: string; encryptedKey: string }>
   ) => {
+    // Uses proxy URL because there's no dedicated /api/auth/change-password endpoint
     const csrfToken = getCSRFToken()
-    const response = await fetch(`${AUTH_URL}/change-password`, {
+    const response = await fetch(`${AUTH_PROXY_URL}/change-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

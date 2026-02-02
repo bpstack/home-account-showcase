@@ -312,6 +312,27 @@ function BalanceContent({
     setMonth(null)
   }
 
+  const handleYearChange = (year: number | null) => {
+    setYear(year)
+    if (year !== null) {
+      setMonth(null)
+      // Exclusión mutua: al activar año, anulamos periodo custom
+      setCustomDates('', '')
+      setPeriod('yearly')
+    }
+  }
+
+  const handleMonthChange = (month: number | null) => {
+    setMonth(month)
+    if (month === null) {
+      setPeriod('yearly')
+    } else {
+      setPeriod('monthly')
+    }
+    // Exclusión mutua: al activar mes, anulamos periodo custom
+    setCustomDates('', '')
+  }
+
   const handleCategoryClick = (transaction: Transaction) => {
     setSelectedTransaction(transaction)
     setIsCategoryModalOpen(true)
@@ -330,13 +351,10 @@ function BalanceContent({
             <PageFilters
               showMonthSelect
               selectedMonth={selectedMonth}
-              onMonthChange={setMonth}
+              onMonthChange={handleMonthChange}
               showYearSelect
               year={selectedYear}
-              onYearChange={(y) => {
-                setYear(y)
-                if (y !== null) setMonth(null)
-              }}
+              onYearChange={handleYearChange}
               showDatePicker
               startDate={period === 'custom' ? customStartDate : undefined}
               endDate={period === 'custom' ? customEndDate : undefined}
@@ -854,26 +872,28 @@ function TransactionsSection({
   return (
     <Card>
       <div
-        className="px-6 py-4 cursor-pointer hover:bg-layer-2/50 transition-colors"
+        className="px-3 sm:px-4 py-3 cursor-pointer hover:bg-layer-2/50 transition-colors"
         onClick={() => setShowTransactions(!showTransactions)}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="text-base font-semibold text-text-primary">{title}</h3>
-            <span className="text-xs text-text-secondary bg-layer-2 px-2 py-0.5 rounded-full">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="text-sm sm:text-base font-semibold text-text-primary shrink-0">{title}</h3>
+            <span className="text-xs text-text-secondary bg-layer-2 px-2 py-0.5 rounded-full shrink-0">
               {data.total}
             </span>
-            <span className="text-xs text-text-muted">
-              • Para modificar o eliminar transacciones ve al módulo Transactions
-            </span>
           </div>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="shrink-0">
             {showTransactions ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
               <ChevronDown className="h-4 w-4" />
             )}
           </Button>
+        </div>
+        <div className="mt-1 flex items-center gap-2">
+          <span className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+            • Ve a Transactions para modificar
+          </span>
         </div>
       </div>
       {showTransactions && (

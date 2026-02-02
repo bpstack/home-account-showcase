@@ -28,7 +28,7 @@ export const accessTokenCookieOptions = {
   secure: isProduction,
   sameSite: 'lax' as const,
   path: '/',
-  maxAge: 5 * 60, // 5 minutos en segundos
+  maxAge: 15 * 60, // 15 minutos en segundos
 }
 
 export const refreshTokenCookieOptions = {

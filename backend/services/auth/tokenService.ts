@@ -7,9 +7,9 @@ import type { TokenPayload } from '../../models/auth/index.js'
 // Encode secret key for jose
 const secret = new TextEncoder().encode(SECRET_JWT_KEY)
 
-// Fase 3: Sistema de tokens dual
-const ACCESS_TOKEN_EXPIRY = '5m' // 5 minutos
-const REFRESH_TOKEN_EXPIRY = '1h' // 1 hora
+// Sistema de tokens dual
+const ACCESS_TOKEN_EXPIRY = '15m' // 15 minutos (aumentado para mejor UX)
+const REFRESH_TOKEN_EXPIRY = '8h' // 8 horas (consistente con cookie)
 
 /**
  * Genera un access token JWT (corta duración - 5 minutos)

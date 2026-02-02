@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
       success: true,
       user: data.user,
       csrfToken: data.csrfToken,
+      key_salt: data.key_salt,
+      accountId: data.accountId,
     })
 
     if (cookies.accessToken) {

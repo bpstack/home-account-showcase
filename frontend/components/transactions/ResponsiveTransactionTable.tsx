@@ -137,36 +137,58 @@ export function ResponsiveTransactionTable({
       {/* Bulk Actions Bar */}
       {hasBulkActions && selectedIds.size > 0 && (
         <div className="bg-accent/10 border border-accent/20 rounded-md p-3 mb-4">
+          {/* Select All Button - Mobile */}
+          <div className="md:hidden mb-3">
+            <button
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors"
+            >
+              {selectedIds.size === transactions.length ? (
+                <>
+                  <CheckSquare className="h-4 w-4" />
+                  Deseleccionar todas ({selectedIds.size})
+                </>
+              ) : (
+                <>
+                  <Square className="h-4 w-4" />
+                  Seleccionar todas ({transactions.length})
+                </>
+              )}
+            </button>
+          </div>
+          
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-accent">
+            <span className="text-sm font-medium text-accent shrink-0">
               {selectedIds.size} transacción{selectedIds.size > 1 ? 'es' : ''} seleccionada{selectedIds.size > 1 ? 's' : ''}
             </span>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 flex-1">
               {onBulkCategoryChange && (
                 <>
-                  <Select
+                  <div className="w-full sm:w-auto flex gap-2">
+                    <Select
                       options={categoryOptions}
                       value={bulkCategoryId}
                       onChange={(e) => {
                         setBulkCategoryId(e.target.value)
                         setBulkSubcategoryId('')
                       }}
-                      className="w-40 h-8 text-xs"
+                      className="flex-1 sm:w-40 h-8 text-xs min-w-[120px]"
                     />
                     {bulkCategoryId && (
                       <Select
                         options={subcategoryOptions}
                         value={bulkSubcategoryId}
                         onChange={(e) => setBulkSubcategoryId(e.target.value)}
-                        className="w-40 h-8 text-xs"
+                        className="flex-1 sm:w-40 h-8 text-xs min-w-[120px]"
                       />
                     )}
+                  </div>
                   <Button
                     size="sm"
                     onClick={handleBulkCategoryChange}
                     disabled={!bulkCategoryId}
-                    className="h-8"
+                    className="h-8 shrink-0"
                   >
                     <Tag className="h-3.5 w-3.5 mr-1" />
                     Cambiar
@@ -179,7 +201,7 @@ export function ResponsiveTransactionTable({
                   size="sm"
                   variant="danger"
                   onClick={handleBulkDelete}
-                  className="h-8"
+                  className="h-8 shrink-0"
                 >
                   <Trash className="h-3.5 w-3.5 mr-1" />
                   Eliminar
@@ -190,7 +212,7 @@ export function ResponsiveTransactionTable({
                 size="sm"
                 variant="ghost"
                 onClick={() => setSelectedIds(new Set())}
-                className="h-8"
+                className="h-8 shrink-0"
               >
                 Cancelar
               </Button>
@@ -342,12 +364,38 @@ export function ResponsiveTransactionTable({
 
       {/* Cards - Mobile */}
       <div className="md:hidden space-y-2">
+        {/* Mobile Header with Select All - only shown when in bulk mode */}
+        {hasBulkActions && (
+          <div className="flex items-center justify-between bg-accent/5 rounded-md px-3 py-2">
+            <span className="text-xs font-medium text-accent">
+              {selectedIds.size} de {transactions.length} seleccionadas
+            </span>
+            <button
+              onClick={toggleSelectAll}
+              className="text-xs text-accent hover:text-accent/80 flex items-center gap-1"
+            >
+              {selectedIds.size === transactions.length ? (
+                <>
+                  <CheckSquare className="h-4 w-4" />
+                  Deseleccionar
+                </>
+              ) : (
+                <>
+                  <Square className="h-4 w-4" />
+                  Todas
+                </>
+              )}
+            </button>
+          </div>
+        )}
+        
         {transactions.map((tx) => (
           <div
             key={tx.id}
-            className={`bg-white dark:bg-[#151b23] rounded-md border border-gray-200 dark:border-gray-800 p-3 hover:shadow-md dark:hover:shadow-gray-900/50 transition-all ${
+            className={`bg-white dark:bg-[#151b23] rounded-md border p-3 transition-all ${
               tx._optimistic ? 'bg-accent/5 animate-pulse' : ''
-            } ${selectedIds.has(tx.id) ? 'border-accent' : ''}`}
+            } ${selectedIds.has(tx.id) ? 'border-accent bg-accent/5' : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'}
+            `}
           >
             <div className="flex items-start gap-3">
               {hasBulkActions && (
@@ -431,6 +479,49 @@ export function ResponsiveTransactionTable({
           </div>
         ))}
       </div>
+
+      {/* Mobile Bulk Actions Floating Bar */}
+      {hasBulkActions && selectedIds.size > 0 && (
+        <div className="md:hidden fixed bottom-4 left-4 right-4 bg-white dark:bg-[#151b23] border border-accent/30 rounded-lg shadow-lg p-3 z-50">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-accent">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex items-center gap-2">
+              {onBulkDelete && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={handleBulkDelete}
+                  className="h-9"
+                >
+                  <Trash className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
+              )}
+              {onBulkCategoryChange && (
+                <Button
+                  size="sm"
+                  onClick={handleBulkCategoryChange}
+                  disabled={!bulkCategoryId}
+                  className="h-9"
+                >
+                  <Tag className="h-4 w-4 mr-1" />
+                  Category
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+                className="h-9 px-3"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pagination */}
       <div className="flex flex-col items-center gap-2 mt-4">
