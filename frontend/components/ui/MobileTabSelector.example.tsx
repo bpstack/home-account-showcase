@@ -1,9 +1,9 @@
 /**
  * EJEMPLO DE USO: MobileTabSelector
- * 
+ *
  * Este es un componente reutilizable que proporciona una interfaz atractiva
  * para cambiar tabs en dispositivos móviles mediante una modal.
- * 
+ *
  * Características:
  * - Aspecto de enlace centrado (no botón azul)
  * - Icono con flecha dropdown
@@ -15,13 +15,7 @@
 
 import { useState } from 'react'
 import { MobileTabSelector } from '@/components/ui'
-import {
-  LayoutDashboard,
-  History,
-  LineChart,
-  Coins,
-  TrendingUp,
-} from 'lucide-react'
+import { LayoutDashboard, History, LineChart, Coins, TrendingUp } from 'lucide-react'
 
 // EJEMPLO 1: Uso básico en Dashboard
 export function DashboardTabsExample() {
@@ -37,11 +31,7 @@ export function DashboardTabsExample() {
   return (
     <div className="border-b border-gray-200 dark:border-gray-800 py-4">
       <div className="md:hidden flex justify-center">
-        <MobileTabSelector
-          tabs={tabs}
-          activeTabId={activeTab}
-          onTabChange={setActiveTab}
-        />
+        <MobileTabSelector tabs={tabs} activeTabId={activeTab} onTabChange={setActiveTab} />
       </div>
 
       {/* Tu contenido aquí */}
@@ -122,11 +112,7 @@ export function FullTabsIntegrationExample() {
 
       {/* Mobile: usa MobileTabSelector automáticamente */}
       <div className="md:hidden flex justify-center py-4">
-        <MobileTabSelector
-          tabs={tabs}
-          activeTabId={activeTab}
-          onTabChange={setActiveTab}
-        />
+        <MobileTabSelector tabs={tabs} activeTabId={activeTab} onTabChange={setActiveTab} />
       </div>
 
       {/* Contenido */}

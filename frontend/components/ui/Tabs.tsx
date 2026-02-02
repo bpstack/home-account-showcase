@@ -96,11 +96,7 @@ export function Tabs({
         <div className="md:hidden px-3 py-2 space-y-2 pb-6">
           {/* Mobile Tab Selector con Modal */}
           <div className="flex justify-center">
-            <MobileTabSelector
-              tabs={tabs}
-              activeTabId={activeTab}
-              onTabChange={handleTabChange}
-            />
+            <MobileTabSelector tabs={tabs} activeTabId={activeTab} onTabChange={handleTabChange} />
           </div>
           {/* Filtros */}
           {rightContent && <div>{rightContent}</div>}

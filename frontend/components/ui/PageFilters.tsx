@@ -70,7 +70,7 @@ export function PageFilters({
   return (
     <div className={`flex items-center justify-between w-full ${className || ''}`}>
       {/* Filtros a la izquierda */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-8">
         {showMonthSelect && onMonthChange && (
           <FilterSelect
             variant="tab"
@@ -90,7 +90,12 @@ export function PageFilters({
               }
             }}
             icon={<Calendar className="h-3.5 w-3.5" />}
-            label={selectedMonth !== null && selectedMonth !== undefined ? MONTHS_ES[selectedMonth] ?? 'Mes' : 'Mes'}
+            title="Mes"
+            label={
+              selectedMonth !== null && selectedMonth !== undefined
+                ? MONTHS_ES[selectedMonth]
+                : undefined
+            }
           />
         )}
 
@@ -103,7 +108,8 @@ export function PageFilters({
               onYearChange(e.target.value === 'none' ? null : parseInt(e.target.value))
             }
             icon={<CalendarDays className="h-3.5 w-3.5" />}
-            label={year !== null && year !== undefined ? String(year) : 'Año'}
+            title="Año"
+            label={year !== null && year !== undefined ? String(year) : undefined}
           />
         )}
 

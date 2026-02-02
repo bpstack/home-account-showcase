@@ -32,6 +32,8 @@ interface FilterSelectProps {
   icon?: ReactNode
   /** Etiqueta fija en lugar de mostrar el valor seleccionado */
   label?: string
+  /** Título que aparece arriba del valor (solo para variant="tab") */
+  title?: string
   /** Valor seleccionado */
   value?: string
   /** Callback cuando cambia el valor */
@@ -82,6 +84,7 @@ function FilterSelect({
   variant = 'default',
   icon,
   label,
+  title,
   value,
   onChange,
   className,
@@ -90,6 +93,10 @@ function FilterSelect({
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((opt) => opt.value === value) || options[0]
+
+  // Determinar si hay un valor real seleccionado (no 'none' ni 'all')
+  const hasValue = value && value !== 'none' && value !== 'all'
+  const displayValue = hasValue ? label || selectedOption?.label : '-'
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -134,7 +141,7 @@ function FilterSelect({
               {icon}
             </span>
           )}
-          <span>{label || selectedOption?.label}</span>
+          <span>{title || label || selectedOption?.label}</span>
           <ChevronDown
             className={cn(
               'h-3 w-3 text-muted-foreground group-hover:text-foreground transition-all duration-200',
@@ -142,6 +149,12 @@ function FilterSelect({
             )}
           />
         </button>
+        {/* Segunda línea con el valor seleccionado - alineada con el título */}
+        {title && (
+          <div className="absolute top-full left-6 text-xs font-medium text-foreground leading-tight pointer-events-none whitespace-nowrap mt-0.5">
+            {displayValue}
+          </div>
+        )}
 
         {/* Dropdown Menu */}
         {isOpen && (

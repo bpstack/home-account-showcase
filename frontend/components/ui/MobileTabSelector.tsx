@@ -79,9 +79,7 @@ export function MobileTabSelector({
           {/* Header */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-foreground">Cambiar Vista</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Selecciona la vista que deseas ver
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Selecciona la vista que deseas ver</p>
           </div>
 
           {/* Tab options */}
@@ -107,9 +105,7 @@ export function MobileTabSelector({
                       <div
                         className={cn(
                           'h-5 w-5 flex items-center justify-center',
-                          isActive
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-muted-foreground'
+                          isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
                         )}
                       >
                         {tab.icon}
@@ -121,17 +117,13 @@ export function MobileTabSelector({
                       <p
                         className={cn(
                           'font-medium text-sm',
-                          isActive
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-foreground'
+                          isActive ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'
                         )}
                       >
                         {tab.label}
                       </p>
                       {tab.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {tab.description}
-                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{tab.description}</p>
                       )}
                     </div>
                   </div>

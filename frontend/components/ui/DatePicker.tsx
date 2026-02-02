@@ -190,14 +190,11 @@ export function DatePicker({
           <CalendarRange className="h-4 w-4 flex-shrink-0" />
           <span>Período</span>
           <ChevronDown
-            className={cn(
-              'h-3 w-3 transition-transform duration-200',
-              isOpen && 'rotate-180'
-            )}
+            className={cn('h-3 w-3 transition-transform duration-200', isOpen && 'rotate-180')}
           />
         </button>
-        {/* Segunda línea con la fecha - posicionada debajo */}
-        <div className="absolute top-full left-1 text-xs font-medium text-foreground leading-tight pointer-events-none whitespace-nowrap mt-0.5">
+        {/* Segunda línea con la fecha - alineada con el título */}
+        <div className="absolute top-full left-6 text-xs font-medium text-foreground leading-tight pointer-events-none whitespace-nowrap mt-0.5">
           {dateRange.start && dateRange.end ? shortDisplayText : '-'}
         </div>
 
