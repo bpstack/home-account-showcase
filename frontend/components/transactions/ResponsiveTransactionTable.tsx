@@ -1,10 +1,12 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Edit2, Trash2, Loader2, Clock } from 'lucide-react'
-import { Button } from '@/components/ui'
+import { useState, useCallback } from 'react'
+import { ChevronLeft, ChevronRight, Edit2, Trash2, Loader2, Clock, CheckSquare, Square, Trash, Tag } from 'lucide-react'
+import { Button, Select } from '@/components/ui'
 import type { Transaction } from '@/lib/apiClient'
 
-// Extended transaction type with optimistic flag
+const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
 export type TransactionWithOptimistic = Transaction & {
   _optimistic?: boolean
 }
@@ -18,6 +20,9 @@ export interface ResponsiveTransactionTableProps {
   onCategoryClick?: (transaction: Transaction) => void
   onEdit?: (transaction: Transaction) => void
   onDelete?: (id: string) => void
+  onBulkDelete?: (ids: string[]) => void
+  onBulkCategoryChange?: (ids: string[], categoryId: string, subcategoryId?: string) => void
+  categories?: any[]
   isLoading?: boolean
   showSubcategory?: boolean
   emptyMessage?: string
@@ -32,17 +37,27 @@ export function ResponsiveTransactionTable({
   onCategoryClick,
   onEdit,
   onDelete,
+  onBulkDelete,
+  onBulkCategoryChange,
+  categories = [],
   isLoading = false,
   showSubcategory = false,
   emptyMessage = 'No hay transacciones en este periodo',
 }: ResponsiveTransactionTableProps) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkCategoryId, setBulkCategoryId] = useState('')
+  const [bulkSubcategoryId, setBulkSubcategoryId] = useState('')
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
   }
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
+    const day = date.getDate()
+    const month = MONTHS_ES[date.getMonth()]
+    const year = date.getFullYear()
+    return `${day} ${month} ${year}`
   }
 
   const formatDateShort = (dateStr: string) => {
@@ -50,7 +65,59 @@ export function ResponsiveTransactionTable({
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
   }
 
-  const hasActions = onEdit || onDelete
+  const hasActions = onEdit || onDelete || onBulkDelete || onBulkCategoryChange
+  const hasBulkActions = onBulkDelete || onBulkCategoryChange
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === transactions.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(transactions.map(tx => tx.id)))
+    }
+  }, [transactions, selectedIds])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleBulkDelete = useCallback(() => {
+    if (onBulkDelete && selectedIds.size > 0) {
+      onBulkDelete(Array.from(selectedIds))
+      setSelectedIds(new Set())
+    }
+  }, [onBulkDelete, selectedIds])
+
+  const handleBulkCategoryChange = useCallback(() => {
+    if (onBulkCategoryChange && selectedIds.size > 0 && bulkCategoryId) {
+      onBulkCategoryChange(Array.from(selectedIds), bulkCategoryId, bulkSubcategoryId || undefined)
+      setSelectedIds(new Set())
+      setBulkCategoryId('')
+      setBulkSubcategoryId('')
+    }
+  }, [onBulkCategoryChange, selectedIds, bulkCategoryId, bulkSubcategoryId])
+
+  const categoryOptions = [
+    { value: '', label: 'Nueva categoría...' },
+    ...categories.map((cat) => ({ value: cat.id, label: cat.name })),
+  ]
+
+  const subcategoryOptions = (() => {
+    if (!bulkCategoryId) return [{ value: '', label: 'Subcategoría...' }]
+    const category = categories.find((c) => c.id === bulkCategoryId)
+    if (!category?.subcategories) return [{ value: '', label: 'Sin subcategorías' }]
+    return [
+      { value: '', label: 'Subcategoría...' },
+      ...category.subcategories.map((sub: any) => ({ value: sub.id, label: sub.name })),
+    ]
+  })()
 
   if (isLoading) {
     return (
@@ -67,115 +134,200 @@ export function ResponsiveTransactionTable({
 
   return (
     <>
+      {/* Bulk Actions Bar */}
+      {hasBulkActions && selectedIds.size > 0 && (
+        <div className="bg-accent/10 border border-accent/20 rounded-md p-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-accent">
+              {selectedIds.size} transacción{selectedIds.size > 1 ? 'es' : ''} seleccionada{selectedIds.size > 1 ? 's' : ''}
+            </span>
+            
+            <div className="flex items-center gap-2">
+              {onBulkCategoryChange && (
+                <>
+                  <Select
+                      options={categoryOptions}
+                      value={bulkCategoryId}
+                      onChange={(e) => {
+                        setBulkCategoryId(e.target.value)
+                        setBulkSubcategoryId('')
+                      }}
+                      className="w-40 h-8 text-xs"
+                    />
+                    {bulkCategoryId && (
+                      <Select
+                        options={subcategoryOptions}
+                        value={bulkSubcategoryId}
+                        onChange={(e) => setBulkSubcategoryId(e.target.value)}
+                        className="w-40 h-8 text-xs"
+                      />
+                    )}
+                  <Button
+                    size="sm"
+                    onClick={handleBulkCategoryChange}
+                    disabled={!bulkCategoryId}
+                    className="h-8"
+                  >
+                    <Tag className="h-3.5 w-3.5 mr-1" />
+                    Cambiar
+                  </Button>
+                </>
+              )}
+              
+              {onBulkDelete && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={handleBulkDelete}
+                  className="h-8"
+                >
+                  <Trash className="h-3.5 w-3.5 mr-1" />
+                  Eliminar
+                </Button>
+              )}
+              
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+                className="h-8"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table - Desktop */}
-      <div className="hidden md:block">
+      <div className="hidden md:block bg-white dark:bg-[#151b23] rounded-md border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-layer-3">
-                <th className="text-left py-3 px-2 text-text-secondary font-medium text-xs uppercase tracking-wider">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-[#0d1117] border-b border-gray-200 dark:border-gray-800">
+              <tr>
+                {hasBulkActions && (
+                  <th className="px-3 py-2 text-center w-10">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="inline-flex items-center justify-center"
+                    >
+                      {selectedIds.size === transactions.length ? (
+                        <CheckSquare className="h-4 w-4 text-accent" />
+                      ) : (
+                        <Square className="h-4 w-4 text-gray-400" />
+                      )}
+                    </button>
+                  </th>
+                )}
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   Fecha
                 </th>
-                <th className="text-left py-3 px-2 text-text-secondary font-medium text-xs uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   Descripcion
                 </th>
-                <th className="text-left py-3 px-2 text-text-secondary font-medium text-xs uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   Categoria
                 </th>
-                <th className="text-right py-3 px-2 text-text-secondary font-medium text-xs uppercase tracking-wider">
+                <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   Importe
                 </th>
                 {hasActions && (
-                  <th className="text-right py-3 px-2 text-text-secondary font-medium text-xs uppercase tracking-wider w-24">
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Acciones
                   </th>
                 )}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {transactions.map((tx) => (
                 <tr
                   key={tx.id}
-                  className={`border-b border-layer-2 transition-colors ${
-                    tx._optimistic ? 'bg-accent/5 animate-pulse' : 'hover:bg-layer-2/50'
-                  }`}
+                  className={`hover:bg-gray-50 dark:hover:bg-[#0d1117] transition-colors ${
+                    tx._optimistic ? 'bg-accent/5 animate-pulse' : ''
+                  } ${selectedIds.has(tx.id) ? 'bg-accent/5' : ''}`}
                 >
-                  <td className="py-3 px-2 text-text-secondary text-sm">
-                    {tx._optimistic && <Clock className="h-3 w-3 inline-block mr-1 text-accent" />}
+                  {hasBulkActions && (
+                    <td className="px-3 py-2 text-center">
+                      <button
+                        onClick={() => toggleSelect(tx.id)}
+                        className="inline-flex items-center justify-center"
+                      >
+                        {selectedIds.has(tx.id) ? (
+                          <CheckSquare className="h-4 w-4 text-accent" />
+                        ) : (
+                          <Square className="h-4 w-4 text-gray-400" />
+                        )}
+                      </button>
+                    </td>
+                  )}
+                  <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                    {tx._optimistic && <Clock className="h-3.5 w-3.5 inline-block mr-1 text-accent" />}
                     {formatDate(tx.date)}
                   </td>
-                  <td
-                    className={`py-3 px-2 font-medium text-sm ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}
-                  >
-                    {tx.description}
+                  <td className="px-3 py-2">
+                    <span className={`text-xs font-medium ${tx._optimistic ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                      {tx.description}
+                    </span>
                   </td>
-                  <td className="py-3 px-2">
+                  <td className="px-3 py-2">
                     <button
                       onClick={() => onCategoryClick?.(tx)}
-                      className="text-left hover:bg-layer-2 rounded px-1.5 py-1 -mx-1.5 -my-1 transition-colors"
+                      className="text-left"
                       title="Haz clic para cambiar la categoria"
                     >
                       {tx.category_name ? (
-                        <div className="flex items-start gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0 mt-1.5"
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full shrink-0"
                             style={{ backgroundColor: tx.category_color || '#6b7280' }}
                           />
-                          <div className="min-w-0">
-                            <span
-                              className="text-sm block"
-                              style={{
-                                color: tx.category_color || '#6b7280',
-                                filter: 'contrast(1.2)',
-                              }}
-                            >
-                              {tx.category_name}
+                          <span
+                            className="text-xs capitalize"
+                            style={{ color: tx.category_color || '#6b7280' }}
+                          >
+                            {tx.category_name}
+                          </span>
+                          {showSubcategory && tx.subcategory_name && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                              / {tx.subcategory_name}
                             </span>
-                            {showSubcategory && tx.subcategory_name && (
-                              <span className="text-xs block text-text-secondary">
-                                {tx.subcategory_name}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
                       ) : (
-                        <span className="text-sm text-text-secondary">Sin categoria</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Sin categoria</span>
                       )}
                     </button>
                   </td>
-                  <td
-                    className={`py-3 px-2 text-right font-semibold text-sm ${
-                      Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'
-                    }`}
-                  >
-                    {Number(tx.amount) >= 0 ? '+' : ''}
-                    {formatCurrency(Number(tx.amount))}
-                  </td>
+                  <td className="px-3 py-2 text-right">
+                      <span className="text-text-secondary text-xs">
+                        {Number(tx.amount) >= 0 ? '+' : '-'}
+                      </span>
+                      <span className={`${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'} ml-1 text-sm`}>
+                        {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(Number(tx.amount)))}
+                      </span>
+                      <span className="text-text-secondary text-xs ml-1">€</span>
+                    </td>
                   {hasActions && (
-                    <td className="py-3 px-2 text-right">
+                    <td className="px-3 py-2 text-right">
                       {tx._optimistic ? (
                         <span className="text-xs text-accent">Guardando...</span>
                       ) : (
-                        <div className="flex justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1">
                           {onEdit && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
+                            <button
                               onClick={() => onEdit(tx)}
+                              className="inline-flex items-center justify-center w-7 h-7 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                             >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
                           {onDelete && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-danger hover:text-danger"
+                            <button
                               onClick={() => onDelete(tx.id)}
+                              className="inline-flex items-center justify-center w-7 h-7 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       )}
@@ -193,87 +345,88 @@ export function ResponsiveTransactionTable({
         {transactions.map((tx) => (
           <div
             key={tx.id}
-            className={`rounded-lg border p-4 md:p-3 transition-shadow ${
-              tx._optimistic
-                ? 'bg-accent/5 border-accent/20 animate-pulse'
-                : 'bg-layer-1 border-layer-3 hover:shadow-md'
-            }`}
+            className={`bg-white dark:bg-[#151b23] rounded-md border border-gray-200 dark:border-gray-800 p-3 hover:shadow-md dark:hover:shadow-gray-900/50 transition-all ${
+              tx._optimistic ? 'bg-accent/5 animate-pulse' : ''
+            } ${selectedIds.has(tx.id) ? 'border-accent' : ''}`}
           >
-            {/* Header: Descripcion + Importe */}
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="flex-1 min-w-0">
-                {tx._optimistic && (
-                  <span className="inline-flex items-center gap-1 text-xs text-accent mb-1">
-                    <Clock className="h-3 w-3" />
-                    Guardando...
-                  </span>
-                )}
-                <p
-                  className={`text-base md:text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-text-secondary' : 'text-text-primary'}`}
+            <div className="flex items-start gap-3">
+              {hasBulkActions && (
+                <button
+                  onClick={() => toggleSelect(tx.id)}
+                  className="mt-1 inline-flex items-center justify-center shrink-0"
                 >
-                  {tx.description}
-                </p>
-              </div>
-              <span
-                className={`text-sm font-semibold shrink-0 ${
-                  tx._optimistic
-                    ? 'text-text-secondary'
-                    : Number(tx.amount) >= 0
-                      ? 'text-success'
-                      : 'text-danger'
-                }`}
-              >
-                {Number(tx.amount) >= 0 ? '+' : ''}
-                {formatCurrency(Number(tx.amount))}
-              </span>
-            </div>
-
-            {/* Footer: Fecha + Categoria + Actions */}
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span>{formatDateShort(tx.date)}</span>
-              <span>·</span>
-              <button
-                onClick={() => onCategoryClick?.(tx)}
-                className="hover:underline transition-all"
-                style={{ color: tx.category_color || '#6b7280', filter: 'contrast(1.2)' }}
-              >
-                {tx.category_name || 'Sin categoria'}
-              </button>
-              {showSubcategory && tx.subcategory_name && (
-                <>
-                  <span>·</span>
-                  <span style={{ color: tx.category_color ? `${tx.category_color}99` : '#9ca3af' }}>
-                    {tx.subcategory_name}
-                  </span>
-                </>
+                  {selectedIds.has(tx.id) ? (
+                    <CheckSquare className="h-5 w-5 text-accent" />
+                  ) : (
+                    <Square className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
               )}
-              {hasActions && !tx._optimistic && (
-                <>
-                  <span>·</span>
-                  <div className="flex gap-0.5">
-                    {onEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 p-0"
-                        onClick={() => onEdit(tx)}
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    {tx._optimistic && (
+                      <span className="inline-flex items-center gap-1 text-xs text-accent mb-1">
+                        <Clock className="h-3 w-3" />
+                        Guardando...
+                      </span>
                     )}
-                    {onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 p-0 text-danger hover:text-danger"
-                        onClick={() => onDelete(tx.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
+                    <p className={`text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                      {tx.description}
+                    </p>
                   </div>
-                </>
-              )}
+                  <span className={`text-sm shrink-0 ml-2 ${tx._optimistic ? 'text-gray-400' : Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}>
+                      <span className="text-text-secondary font-normal">{Number(tx.amount) >= 0 ? '+' : '-'}</span>
+                      <span className="ml-0.5 text-base">
+                        {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(Number(tx.amount)))}
+                      </span>
+                      <span className="text-text-secondary text-xs ml-0.5">€</span>
+                    </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>{formatDate(tx.date)}</span>
+                  <span>·</span>
+                  <button
+                    onClick={() => onCategoryClick?.(tx)}
+                    className="hover:underline transition-all"
+                    style={{ color: tx.category_color || '#6b7280' }}
+                  >
+                    {tx.category_name || 'Sin categoria'}
+                  </button>
+                  {showSubcategory && tx.subcategory_name && (
+                    <>
+                      <span>·</span>
+                      <span style={{ color: tx.category_color ? `${tx.category_color}99` : '#9ca3af' }}>
+                        {tx.subcategory_name}
+                      </span>
+                    </>
+                  )}
+                  {hasActions && !hasBulkActions && !tx._optimistic && (
+                    <>
+                      <span>·</span>
+                      <div className="flex gap-0.5">
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(tx)}
+                            className="inline-flex items-center justify-center w-7 h-7 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            onClick={() => onDelete(tx.id)}
+                            className="inline-flex items-center justify-center w-7 h-7 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -281,7 +434,7 @@ export function ResponsiveTransactionTable({
 
       {/* Pagination */}
       <div className="flex flex-col items-center gap-2 mt-4">
-        <span className="text-xs text-text-secondary">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
           Mostrando {transactions.length} de {total} transacciones
         </span>
         {totalPages > 1 && (
@@ -294,7 +447,7 @@ export function ResponsiveTransactionTable({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm text-text-secondary px-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
               Pagina {page} de {totalPages}
             </span>
             <Button

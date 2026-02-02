@@ -863,6 +863,9 @@ function TransactionsSection({
             <span className="text-xs text-text-secondary bg-layer-2 px-2 py-0.5 rounded-full">
               {data.total}
             </span>
+            <span className="text-xs text-text-muted">
+              • Para modificar o eliminar transacciones ve al módulo Transactions
+            </span>
           </div>
           <Button variant="ghost" size="sm">
             {showTransactions ? (

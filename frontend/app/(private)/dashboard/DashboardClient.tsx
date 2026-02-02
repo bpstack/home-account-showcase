@@ -589,10 +589,13 @@ function OverviewTab({
 
           <div className="text-right">
             <p
-              className={`text-xl sm:text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}
+              className={`text-xl sm:text-2xl ${type === 'income' ? 'text-success' : 'text-danger'}`}
             >
-              {type === 'income' ? '+' : '-'}
-              {formatCurrency(current)}
+              <span className="text-text-secondary">{type === 'income' ? '+' : '-'}</span>
+              <span className="ml-1 text-xl sm:text-2xl">
+                {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(current)}
+              </span>
+              <span className="text-text-secondary ml-1">€</span>
             </p>
             <div
               className={`flex items-center justify-end gap-1 mt-0.5 ${change.isPositive ? 'text-success' : 'text-danger'}`}
@@ -602,9 +605,12 @@ function OverviewTab({
               ) : (
                 <TrendingDown className="h-3 w-3" />
               )}
-              <span className="text-xs sm:text-sm font-medium">
-                {change.isPositive ? '+' : '-'}
-                {formatCurrency(Math.abs(change.value))}
+              <span className="text-xs sm:text-sm">
+                <span className="text-text-secondary">{change.isPositive ? '+' : '-'}</span>
+                <span className="ml-1">
+                  {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(change.value))}
+                </span>
+                <span className="text-text-secondary ml-1">€</span>
               </span>
             </div>
             <span className="text-xs text-text-secondary">
@@ -758,56 +764,72 @@ function HistoryTab({
           ) : chartData.length > 0 ? (
             <div className="space-y-3">
               {/* Desktop Table */}
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-layer-3">
-                      <th className="text-left py-3 px-4 text-text-secondary font-medium">Mes</th>
-                      <th className="text-right py-3 px-4 text-text-secondary font-medium">
-                        Ingresos
-                      </th>
-                      <th className="text-right py-3 px-4 text-text-secondary font-medium">
-                        Gastos
-                      </th>
-                      <th className="text-right py-3 px-4 text-text-secondary font-medium">
-                        Balance
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chartData.map((item, index) => {
-                      const balance = item.income - item.expenses
-                      const hasData = item.income > 0 || item.expenses > 0
-                      const isCurrentMonth =
-                        index === new Date().getMonth() && selectedYear === currentYear
+              <div className="hidden sm:block bg-white dark:bg-[#151b23] rounded-md border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 dark:bg-[#0d1117] border-b border-gray-200 dark:border-gray-800">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                          Mes
+                        </th>
+                        <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                          Ingresos
+                        </th>
+                        <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                          Gastos
+                        </th>
+                        <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                          Balance
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                      {chartData.map((item, index) => {
+                        const balance = item.income - item.expenses
+                        const hasData = item.income > 0 || item.expenses > 0
+                        const isCurrentMonth =
+                          index === new Date().getMonth() && selectedYear === currentYear
 
-                      return (
-                        <tr
-                          key={item.month}
-                          className={`border-b border-layer-2 hover:bg-layer-1 transition-colors ${isCurrentMonth ? 'bg-accent/5' : ''}`}
-                        >
-                          <td className="py-3 px-4 text-text-primary font-medium">
-                            {MONTHS_ES[index]}
-                            {isCurrentMonth && (
-                              <span className="ml-2 text-xs text-accent">(Actual)</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right text-success">
-                            {hasData ? `+${item.income.toFixed(2)} €` : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-right text-danger">
-                            {hasData ? `-${item.expenses.toFixed(2)} €` : '-'}
-                          </td>
-                          <td
-                            className={`py-3 px-4 text-right font-medium ${balance >= 0 ? 'text-success' : 'text-danger'}`}
+                        return (
+                          <tr
+                            key={item.month}
+                            className={`hover:bg-gray-50 dark:hover:bg-[#0d1117] transition-colors ${isCurrentMonth ? 'bg-accent/5' : ''}`}
                           >
-                            {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)} €` : '-'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400 font-medium">
+                              {MONTHS_ES[index]}
+                              {isCurrentMonth && (
+                                <span className="ml-2 text-xs text-accent">(Actual)</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-right">
+                              <span className="text-text-secondary">+</span>
+                              <span className="text-success text-sm">
+                                {hasData ? item.income.toFixed(2) : '-'}
+                              </span>
+                              {hasData && <span className="text-text-secondary ml-1">€</span>}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-right">
+                              <span className="text-text-secondary">-</span>
+                              <span className="text-danger text-sm">
+                                {hasData ? item.expenses.toFixed(2) : '-'}
+                              </span>
+                              {hasData && <span className="text-text-secondary ml-1">€</span>}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-right">
+                              <span className="text-text-secondary">
+                                {hasData ? (balance >= 0 ? '+' : '-') : ''}
+                              </span>
+                              <span className={`text-sm ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                                {hasData ? Math.abs(balance).toFixed(2) : '-'}
+                              </span>
+                              {hasData && <span className="text-text-secondary ml-1">€</span>}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Mobile Cards */}
@@ -831,28 +853,36 @@ function HistoryTab({
                           )}
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div>
-                          <p className="text-text-secondary text-xs mb-1">Ingresos</p>
-                          <p className="font-semibold text-success">
-                            {hasData ? `+${item.income.toFixed(2)}` : '-'}
-                          </p>
+<div className="grid grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <p className="text-text-secondary text-xs mb-1">Ingresos</p>
+                            <p>
+                              <span className="text-text-secondary">+</span>
+                              <span className="text-success text-base ml-1">{hasData ? item.income.toFixed(2) : '-'}</span>
+                              {hasData && <span className="text-text-secondary ml-1">€</span>}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-text-secondary text-xs mb-1">Gastos</p>
+                            <p>
+                              <span className="text-text-secondary">-</span>
+                              <span className="text-danger text-base ml-1">{hasData ? item.expenses.toFixed(2) : '-'}</span>
+                              {hasData && <span className="text-text-secondary ml-1">€</span>}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-text-secondary text-xs mb-1">Balance</p>
+                            <p>
+                              <span className="text-text-secondary">
+                                {hasData ? (balance >= 0 ? '+' : '-') : ''}
+                              </span>
+                              <span className={`text-base ml-1 ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                                {hasData ? Math.abs(balance).toFixed(2) : '-'}
+                              </span>
+                              {hasData && <span className="text-text-secondary ml-1">€</span>}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-text-secondary text-xs mb-1">Gastos</p>
-                          <p className="font-semibold text-danger">
-                            {hasData ? `-${item.expenses.toFixed(2)}` : '-'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-text-secondary text-xs mb-1">Balance</p>
-                          <p
-                            className={`font-semibold ${balance >= 0 ? 'text-success' : 'text-danger'}`}
-                          >
-                            {hasData ? `${balance >= 0 ? '+' : ''}${balance.toFixed(2)}` : '-'}
-                          </p>
-                        </div>
-                      </div>
                     </div>
                   )
                 })}
@@ -911,7 +941,7 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-text-primary font-medium">{item.name}</span>
                       <span className="text-text-secondary">
-                        {item.amount.toFixed(2)} € ({percentage.toFixed(1)}%)
+                        {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.amount)} € ({percentage.toFixed(1)}%)
                       </span>
                     </div>
                     <div className="h-4 bg-layer-2 rounded-full overflow-hidden">
@@ -939,7 +969,9 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
                     <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }} />
                     <span className="font-medium text-text-primary">{item.name}</span>
                   </div>
-                  <p className="text-2xl font-bold text-text-primary">{item.amount.toFixed(2)} €</p>
+                  <p className="text-2xl font-bold text-text-primary">
+                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.amount)} <span className="text-text-secondary text-lg font-normal">€</span>
+                  </p>
                   <p className="text-sm text-text-secondary">{percentage.toFixed(1)}% del total</p>
                 </CardContent>
               </Card>
@@ -1004,8 +1036,11 @@ function SavingsTab({
             <div className="mb-3">
               <p className="text-xs text-muted-foreground mb-1">Ahorro mensual</p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {stats.balance >= 0 ? '+' : ''}
-                {formatCurrency(savingsAmount)}
+                <span className="text-text-secondary">{stats.balance >= 0 ? '+' : '-'}</span>
+                <span className="ml-1">
+                  {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(savingsAmount))}
+                </span>
+                <span className="text-text-secondary ml-1">€</span>
               </p>
             </div>
             {/* Tasa y Nivel en línea */}
@@ -1035,17 +1070,26 @@ function SavingsTab({
           <CardContent className="space-y-1 sm:space-y-2 px-3 sm:px-6 pb-3 sm:pb-6">
             <div className="flex justify-between items-center py-1.5 sm:py-2 border-b border-layer-2 text-xs sm:text-sm">
               <span className="text-muted-foreground">Ingresos</span>
-              <span className="font-medium text-green-600">+{formatCurrency(stats.income)}</span>
+              <span>
+                <span className="text-text-secondary">+</span>
+                <span className="text-success ml-1">{formatCurrency(stats.income)}</span>
+              </span>
             </div>
             <div className="flex justify-between items-center py-1.5 sm:py-2 border-b border-layer-2 text-xs sm:text-sm">
               <span className="text-muted-foreground">Gastos</span>
-              <span className="font-medium text-red-600">-{formatCurrency(stats.expenses)}</span>
+              <span>
+                <span className="text-text-secondary">-</span>
+                <span className="text-danger ml-1">{formatCurrency(stats.expenses)}</span>
+              </span>
             </div>
             <div className="flex justify-between items-center py-1.5 sm:py-2 text-xs sm:text-sm font-medium">
               <span>Ahorro neto</span>
-              <span className="text-blue-600 dark:text-blue-400">
-                {stats.balance >= 0 ? '+' : ''}
-                {formatCurrency(savingsAmount)}
+              <span>
+                <span className="text-text-secondary">{stats.balance >= 0 ? '+' : '-'}</span>
+                <span className={`ml-1 ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(savingsAmount))}
+                </span>
+                <span className="text-text-secondary ml-1">€</span>
               </span>
             </div>
           </CardContent>
@@ -1065,19 +1109,31 @@ function SavingsTab({
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
                 <span className="text-xs text-muted-foreground">Ritmo actual</span>
                 <span className="font-semibold text-blue-600 dark:text-blue-400">
-                  +{formatCurrency(savingsAmount * 12)}
+                  <span className="text-text-secondary">+</span>
+                  <span className="ml-1">
+                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(savingsAmount * 12)}
+                  </span>
+                  <span className="text-text-secondary ml-1">€</span>
                 </span>
               </div>
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
                 <span className="text-xs text-muted-foreground">Meta 30%</span>
                 <span className="font-semibold text-green-600">
-                  +{formatCurrency(stats.income * 0.3 * 12)}
+                  <span className="text-text-secondary">+</span>
+                  <span className="ml-1">
+                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.income * 0.3 * 12)}
+                  </span>
+                  <span className="text-text-secondary ml-1">€</span>
                 </span>
               </div>
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
                 <span className="text-xs text-muted-foreground">Con inversión 5%</span>
                 <span className="font-semibold text-primary">
-                  +{formatCurrency(savingsAmount * 12 * 1.05)}
+                  <span className="text-text-secondary">+</span>
+                  <span className="ml-1">
+                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(savingsAmount * 12 * 1.05)}
+                  </span>
+                  <span className="text-text-secondary ml-1">€</span>
                 </span>
               </div>
             </div>

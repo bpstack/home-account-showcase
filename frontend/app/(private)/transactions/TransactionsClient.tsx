@@ -10,6 +10,7 @@ import {
   useCreateTransaction,
   useUpdateTransaction,
   useDeleteTransaction,
+  useBulkUpdateByIds,
 } from '@/lib/queries/transactions'
 import { useCategories } from '@/lib/queries/categories'
 import { useFiltersStore } from '@/stores/filtersStore'
@@ -22,6 +23,7 @@ import {
   Tabs,
   PageFilters,
   FilterSelect,
+  DatePickerSimple,
 } from '@/components/ui'
 import { Loader2, Search, Plus, Upload, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
 import {
@@ -318,6 +320,7 @@ function TransactionsContent({
   const createMutation = useCreateTransaction()
   const updateMutation = useUpdateTransaction()
   const deleteMutation = useDeleteTransaction()
+  const bulkUpdateByIdsMutation = useBulkUpdateByIds()
 
   useEffect(() => {
     if (form.category_id) {
@@ -410,6 +413,33 @@ function TransactionsContent({
     setCategoryModalOpen(true)
   }
 
+  const handleBulkDelete = (ids: string[]) => {
+    if (!confirm(`¿Estás seguro de eliminar ${ids.length} transacción(es)?`)) return
+    ids.forEach(id => {
+      deleteMutation.mutate(id, {
+        onSuccess: () => invalidateTransactions(),
+      })
+    })
+  }
+
+  const handleBulkCategoryChange = (ids: string[], categoryId: string, subcategoryId?: string) => {
+    if (!account) return
+    if (!confirm(`¿Cambiar categoría de ${ids.length} transacción(es)?`)) return
+
+    bulkUpdateByIdsMutation.mutate(
+      {
+        account_id: account.id,
+        transaction_ids: ids,
+        subcategory_id: subcategoryId || null,
+      },
+      {
+        onSuccess: () => {
+          invalidateTransactions()
+        },
+      }
+    )
+  }
+
   return (
     <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6 sm:px-4">
       <div className="relative">
@@ -487,7 +517,7 @@ function TransactionsContent({
         </div>
       </div>
 
-      <div className="p-4 md:p-6 space-y-6">
+        <div className="p-4 md:p-6 space-y-6">
         <TransactionsSummary totals={totals} />
 
         <ResponsiveTransactionTable
@@ -499,6 +529,9 @@ function TransactionsContent({
           onEdit={handleEdit}
           onDelete={handleDelete}
           onCategoryClick={handleCategoryClick}
+          onBulkDelete={handleBulkDelete}
+          onBulkCategoryChange={handleBulkCategoryChange}
+          categories={categories}
           isLoading={isLoadingTx}
         />
       </div>
@@ -527,11 +560,9 @@ function TransactionsContent({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Fecha</label>
-              <Input
-                type="date"
+              <DatePickerSimple
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
+                onChange={(date) => setForm({ ...form, date })}
               />
             </div>
           </div>
