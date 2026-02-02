@@ -136,6 +136,18 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const handleMonthChange = (month: number | null) => {
     setMonth(month)
     setPeriod(month === null ? 'year' : 'month')
+    // Exclusión mutua: al activar mes, anulamos periodo custom
+    setCustomDates('', '')
+  }
+
+  const handleYearChange = (year: number | null) => {
+    setYear(year)
+    if (year !== null) {
+      setMonth(null)
+      // Exclusión mutua: al activar año, anulamos periodo custom
+      setCustomDates('', '')
+      setPeriod('year')
+    }
   }
 
   const handleDateRangeChange = (startDate: string, endDate: string) => {
@@ -246,10 +258,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 onMonthChange={handleMonthChange}
                 showYearSelect
                 year={selectedYear}
-                onYearChange={(y) => {
-                  setYear(y)
-                  if (y !== null) setMonth(null)
-                }}
+                onYearChange={handleYearChange}
                 showDatePicker
                 startDate={period === 'custom' ? customStartDate : undefined}
                 endDate={period === 'custom' ? customEndDate : undefined}
@@ -389,10 +398,18 @@ function OverviewTab({
       const start = new Date(customStartDate)
       const end = new Date(customEndDate)
       if (start.getTime() === end.getTime()) {
-        return start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+        return start.toLocaleDateString('es-ES', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
       }
       const startStr = start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-      const endStr = end.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+      const endStr = end.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
       return startStr + ' - ' + endStr
     }
 
@@ -475,7 +492,8 @@ function OverviewTab({
 
           {/* Amount */}
           <p className={`text-2xl font-bold ${textClass}`}>
-            {sign}{formattedAmount} €
+            {sign}
+            {formattedAmount} €
           </p>
 
           {/* Footer: Icon + Period */}
@@ -570,11 +588,15 @@ function OverviewTab({
           </div>
 
           <div className="text-right">
-            <p className={`text-xl sm:text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}>
+            <p
+              className={`text-xl sm:text-2xl font-bold ${type === 'income' ? 'text-success' : 'text-danger'}`}
+            >
               {type === 'income' ? '+' : '-'}
               {formatCurrency(current)}
             </p>
-            <div className={`flex items-center justify-end gap-1 mt-0.5 ${change.isPositive ? 'text-success' : 'text-danger'}`}>
+            <div
+              className={`flex items-center justify-end gap-1 mt-0.5 ${change.isPositive ? 'text-success' : 'text-danger'}`}
+            >
               {change.isPositive ? (
                 <TrendingUp className="h-3 w-3" />
               ) : (
