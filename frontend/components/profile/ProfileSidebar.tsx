@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { users } from '@/lib/apiClient'
-import { Settings, ChevronRight, User, Lock, Check, X, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Settings, ChevronRight, User, Check, X, AlertCircle } from 'lucide-react'
 
 export function ProfileSidebar() {
   const { user, account } = useAuth()
@@ -14,22 +14,12 @@ export function ProfileSidebar() {
   const activePanel = searchParams.get('panel')
 
   const [isEditingName, setIsEditingName] = useState(false)
-  const [isEditingPassword, setIsEditingPassword] = useState(false)
 
   const [newName, setNewName] = useState('')
   const [namePassword, setNamePassword] = useState('')
   const [nameLoading, setNameLoading] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [nameSuccess, setNameSuccess] = useState<string | null>(null)
-
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [passwordLoading, setPasswordLoading] = useState(false)
-  const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   if (!user) return null
 
@@ -83,56 +73,6 @@ export function ProfileSidebar() {
       setNameError(apiError.message || 'Error al actualizar')
     } finally {
       setNameLoading(false)
-    }
-  }
-
-  const handleStartEditPassword = () => {
-    setIsEditingPassword(true)
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
-    setPasswordError(null)
-  }
-
-  const handleCancelEditPassword = () => {
-    setIsEditingPassword(false)
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
-    setPasswordError(null)
-  }
-
-  const handleSavePassword = async () => {
-    if (!currentPassword) {
-      setPasswordError('Ingresa tu contraseña actual')
-      return
-    }
-
-    if (!newPassword) {
-      setPasswordError('Ingresa la nueva contraseña')
-      return
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordError('Mínimo 6 caracteres')
-      return
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Las contraseñas no coinciden')
-      return
-    }
-
-    setPasswordLoading(true)
-    setPasswordError(null)
-
-    try {
-      await users.changePassword(user.id, currentPassword, newPassword)
-      router.push('/login?message=password_changed')
-    } catch (error: unknown) {
-      const apiError = error as { message?: string }
-      setPasswordError(apiError.message || 'Error al cambiar contraseña')
-      setPasswordLoading(false)
     }
   }
 
@@ -231,125 +171,6 @@ export function ProfileSidebar() {
                 <button
                   onClick={handleCancelEditName}
                   disabled={nameLoading}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-[#30363d] hover:bg-gray-50 dark:hover:bg-[#21262d] rounded-lg transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="p-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-gray-400" />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Contraseña
-              </span>
-            </div>
-            {!isEditingPassword && (
-              <button
-                onClick={handleStartEditPassword}
-                className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {!isEditingPassword ? (
-            <p className="text-sm text-gray-900 dark:text-white">••••••••</p>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  Contraseña actual
-                </label>
-                <div className="relative">
-                  <input
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full px-3 py-2 pr-10 text-sm bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    disabled={passwordLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400"
-                  >
-                    {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  Nueva contraseña
-                </label>
-                <div className="relative">
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 pr-10 text-sm bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    disabled={passwordLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400"
-                  >
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  Confirmar contraseña
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2 pr-10 text-sm bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-[#30363d] rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    disabled={passwordLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {passwordError && (
-                <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{passwordError}</span>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSavePassword}
-                  disabled={passwordLoading}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
-                >
-                  {passwordLoading ? 'Guardando...' : 'Guardar'}
-                </button>
-                <button
-                  onClick={handleCancelEditPassword}
-                  disabled={passwordLoading}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-[#0d1117] border border-gray-300 dark:border-[#30363d] hover:bg-gray-50 dark:hover:bg-[#21262d] rounded-lg transition-colors"
                 >
                   Cancelar
