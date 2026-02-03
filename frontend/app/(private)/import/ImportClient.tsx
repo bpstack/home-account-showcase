@@ -45,7 +45,6 @@ import {
 
 const importTabs = [
   { id: 'individual', label: 'Individual', icon: <User className="h-4 w-4" /> },
-  { id: 'batch', label: 'Por lotes', icon: <Layers className="h-4 w-4" /> },
   { id: 'mass', label: 'Masivo', icon: <Database className="h-4 w-4" /> },
 ]
 
@@ -323,6 +322,13 @@ export default function ImportClient() {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setError('El archivo supera el tamaño máximo permitido (5MB)')
+      return
+    }
+
     setFile(selectedFile)
     setIsLoading(true)
     setError(null)
@@ -556,41 +562,6 @@ export default function ImportClient() {
                   </form>
                 </CardContent>
               </Card>
-            ) : activeTab === 'batch' ? (
-              <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                <CardHeader className="pb-6 pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center">
-                      <Layers className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
-                        Importación por Lotes
-                      </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-text-secondary mt-1">
-                        Introduce múltiples transacciones simultáneamente.
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="py-16">
-                  <div className="flex flex-col items-center justify-center text-center px-8">
-                    <div className="relative mb-6">
-                      <div className="absolute -inset-4 rounded-full bg-orange-200 dark:bg-orange-500/10 animate-pulse" />
-                      <div className="relative h-16 w-16 rounded-3xl bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center">
-                        <Layers className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-                      </div>
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-text-primary mb-3">Editor por lotes</h3>
-                    <p className="text-sm text-slate-600 dark:text-text-secondary max-w-sm mb-8 leading-relaxed">
-                      Estamos trabajando en una potente herramienta para que puedas teclear tus gastos como en una hoja de cálculo.
-                    </p>
-                    <Button disabled className="min-w-[160px] h-11">
-                      Próximamente
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             ) : (
               <div className="space-y-6">
                 {/* Step Indicator */}
@@ -677,7 +648,7 @@ export default function ImportClient() {
 
                           <div className="flex items-center gap-3">
                             <div className="px-4 py-2 rounded-full bg-slate-100 dark:bg-layer-2 border border-slate-200 dark:border-layer-3 text-xs font-medium text-slate-600 dark:text-text-secondary">
-                              Máx 50MB
+                              Máx 5MB
                             </div>
                             <div className="px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-500">
                               IA categorización activa

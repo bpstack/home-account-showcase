@@ -22,11 +22,11 @@ export const validateFileContent = async (req: Request, res: Response, next: Nex
 
     const { buffer, mimetype, originalname } = req.file
     
-    // Check file size limit (10MB)
-    if (buffer.length > 10 * 1024 * 1024) {
+    // Check file size limit (5MB)
+    if (buffer.length > 5 * 1024 * 1024) {
       return res.status(400).json({
         success: false,
-        error: 'El archivo excede el tamaño máximo permitido (10MB)',
+        error: 'El archivo excede el tamaño máximo permitido (5MB)',
       })
     }
 
