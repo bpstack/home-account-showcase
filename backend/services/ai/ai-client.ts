@@ -6,6 +6,26 @@ import { PROVIDER_DEFAULTS } from './types.js'
 import { createProvider, getProviderConfigFromEnv } from './providers/index.js'
 import { getPersistedProvider, setPersistedProvider, initializeAISettings, hasPersistedSettings } from './ai-settings.js'
 
+/**
+ * Clean up common AI JSON issues before parsing
+ */
+function cleanJSON(jsonStr: string): string {
+  return jsonStr
+    // Replace N/A, null, undefined with 0 or empty string
+    .replace(/"([^"]+)":\s*N\/A/g, '"$1": 0')
+    .replace(/"([^"]+)":\s*null/g, '"$1": 0')
+    .replace(/"([^"]+)":\s*undefined/g, '"$1": ""')
+    // Remove trailing commas before } or ]
+    .replace(/,\s*([}\]])/g, '$1')
+    // Fix common issues with newlines in strings
+    .replace(/"\s*:\s*"/g, '": "')
+    // Remove comments if any
+    .replace(/\/\/.*$/gm, '')
+    // Ensure proper escaping
+    .replace(/\\"/g, '"')
+    .replace(/"(?=\s*[,}\]])/g, '')
+}
+
 // Initialize settings on module load
 initializeAISettings()
 
@@ -177,7 +197,13 @@ export class AIClient {
       const jsonMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/) || trimmed.match(/(\{[\s\S]*\})/)
       if (jsonMatch) {
         const jsonStr = jsonMatch[1] || jsonMatch[0]
-        return JSON.parse(jsonStr.trim())
+        // Clean up common AI JSON issues
+        const cleaned = cleanJSON(jsonStr.trim())
+        try {
+          return JSON.parse(cleaned)
+        } catch {
+          throw new Error('No valid JSON found in response')
+        }
       }
       throw new Error('No valid JSON found in response')
     }

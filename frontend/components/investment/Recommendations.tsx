@@ -6,10 +6,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useRecommendations, useInvestmentOverview } from '@/lib/queries/investment'
+import { useCryptoStore } from '@/stores/cryptoStore'
 import { DisclaimerAlert } from './DisclaimerAlert'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { TrendingUp, TrendingDown, PiggyBank, ArrowRight, Wallet, Coins, Info } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
+import { useEffect } from 'react'
 
 interface RecommendationsProps {
   accountId: string
@@ -22,15 +24,26 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
     accountId,
     profile ? { profile } : undefined
   )
-
   const { data: overviewData } = useInvestmentOverview(accountId, { refetchOnMount: false })
+  const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
+
   const investmentPercentage = overviewData?.profile?.investmentPercentage || 20
   const savingsCapacity = overviewData?.financialSummary?.savingsCapacity || 0
   const investmentAmount = (savingsCapacity * investmentPercentage) / 100
 
-  if (isLoading) {
+  // Refetch when profile becomes available
+  useEffect(() => {
+    if (overviewData?.profile && !data) {
+      refetch()
+    }
+  }, [overviewData?.profile, data, refetch])
+
+  if (isLoading || !isAccountUnlocked) {
     return <RecommendationsSkeleton />
   }
+
+  const isAIError = data?.error?.includes('IA no disponible') || data?.error?.includes('rate limit')
+  const needsProfile = !overviewData?.profile
 
   if (isError || !data || !data.assetAllocation) {
     return (
@@ -41,9 +54,31 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
             Plan de Inversión Mensual
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-center py-4 text-muted-foreground">
-            Error al cargar recomendaciones
+        <CardContent className="space-y-4">
+          {isAIError ? (
+            <div className="text-center py-4">
+              <p className="text-amber-600 dark:text-amber-400 mb-2">
+                IA temporalmente no disponible
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Inténtalo de nuevo en unos minutos
+              </p>
+            </div>
+          ) : needsProfile ? (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground mb-4">
+                Completa tu perfil de inversor para ver recomendaciones personalizadas
+              </p>
+              <Button variant="outline" onClick={() => window.location.href = '/investment?tab=profile'}>
+                Completar Perfil
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">
+              Error al cargar recomendaciones
+            </div>
+          )}
+          <div className="text-center">
             <Button variant="ghost" onClick={() => refetch()}>
               Reintentar
             </Button>

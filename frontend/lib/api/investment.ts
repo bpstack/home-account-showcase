@@ -115,6 +115,7 @@ export interface RecommendationResult {
   }
   marketContext: string
   disclaimer: string
+  error?: string
 }
 
 export interface ChatSession {
