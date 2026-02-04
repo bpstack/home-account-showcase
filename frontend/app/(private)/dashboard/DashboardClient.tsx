@@ -276,6 +276,22 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 onClear={() => setYear(null)}
                 className="ml-auto"
               />
+            ) : activeTab === 'stats' ? (
+              <PageFilters
+                showMonthSelect
+                selectedMonth={selectedMonth}
+                onMonthChange={handleMonthChange}
+                showYearSelect
+                year={selectedYear}
+                onYearChange={handleYearChange}
+                showDatePicker
+                startDate={period === 'custom' ? customStartDate : undefined}
+                endDate={period === 'custom' ? customEndDate : undefined}
+                onDatesChange={handleDateRangeChange}
+                showClear={hasActiveFilters}
+                onClear={clearFilters}
+                className="ml-auto"
+              />
             ) : null
           }
         />

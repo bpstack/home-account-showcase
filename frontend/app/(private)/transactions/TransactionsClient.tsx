@@ -165,10 +165,24 @@ function TransactionsContent({
     updateUrl({ search: '' })
   }
 
+  const handleMonthChange = (month: number | null) => {
+    setMonth(month)
+    setPeriod(month === null ? 'yearly' : 'monthly')
+    setCustomDates('', '')
+  }
+
+  const handleYearChange = (year: number | null) => {
+    setYear(year)
+    if (year !== null) {
+      setMonth(null)
+      setPeriod('yearly')
+      setCustomDates('', '')
+    }
+  }
+
   const handleDateRangeChange = (startDate: string, endDate: string) => {
     setCustomDates(startDate, endDate)
     setPeriod('custom')
-    // Exclusión mutua
     setYear(null)
     setMonth(null)
   }
@@ -452,13 +466,10 @@ function TransactionsContent({
             <PageFilters
               showMonthSelect
               selectedMonth={selectedMonth}
-              onMonthChange={setMonth}
+              onMonthChange={handleMonthChange}
               showYearSelect
               year={selectedYear}
-              onYearChange={(y) => {
-                setYear(y)
-                if (y !== null) setMonth(null)
-              }}
+              onYearChange={handleYearChange}
               showDatePicker
               startDate={period === 'custom' ? customStartDate : undefined}
               endDate={period === 'custom' ? customEndDate : undefined}
