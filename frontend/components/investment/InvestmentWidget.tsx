@@ -12,20 +12,23 @@ import { formatCurrency, cn } from '@/lib/utils'
 interface InvestmentWidgetProps {
   accountId: string
   compact?: boolean
+  stats?: {
+    income: number
+    expenses: number
+    balance: number
+  }
 }
 
-export function InvestmentWidget({ accountId, compact = false }: InvestmentWidgetProps) {
+export function InvestmentWidget({ accountId, compact = false, stats }: InvestmentWidgetProps) {
   const { data, isLoading, isError } = useInvestmentOverview(accountId)
 
   if (isLoading) {
     return <InvestmentWidgetSkeleton compact={compact} />
   }
 
-  if (isError || !data) {
-    return null
-  }
-
-  const { financialSummary, profile, marketPrices } = data
+  const { financialSummary, profile, marketPrices } = data || {}
+  const savingsAmount = stats ? Math.max(0, stats.balance) : 0
+  const savingsRate = stats && stats.income > 0 ? (stats.balance / stats.income) * 100 : 0
 
   if (compact) {
     return (
@@ -39,7 +42,7 @@ export function InvestmentWidget({ accountId, compact = false }: InvestmentWidge
               <div>
                 <p className="text-sm font-medium">Módulo de Inversión</p>
                 <p className="text-xs text-muted-foreground">
-                  {profile ? `${profile.riskProfile} • ${data.financialSummary.savingsRate.toFixed(0)}% ahorro` : 'Sin configurar'}
+                  {profile ? `${profile.riskProfile} • ${savingsRate.toFixed(0)}% ahorro` : 'Sin configurar'}
                 </p>
               </div>
             </div>
@@ -64,40 +67,42 @@ export function InvestmentWidget({ accountId, compact = false }: InvestmentWidge
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Quick stats */}
+        {/* Quick stats - use filtered stats if available */}
         <div className="grid grid-cols-2 gap-3">
           <QuickStat
             icon={<PiggyBank className="h-4 w-4" />}
             label="Ahorro mensual"
-            value={formatCurrency(financialSummary.savingsCapacity)}
+            value={formatCurrency(savingsAmount)}
             color="text-green-600"
           />
           <QuickStat
             icon={<Wallet className="h-4 w-4" />}
             label="Tasa ahorro"
-            value={`${financialSummary.savingsRate.toFixed(1)}%`}
+            value={`${savingsRate.toFixed(1)}%`}
             color="text-accent"
           />
         </div>
 
-        {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Fondo de emergencia</span>
-            <span className="font-medium">
-              {((financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100).toFixed(0)}%
-            </span>
+        {/* Progress - from API */}
+        {financialSummary && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Fondo de emergencia</span>
+              <span className="font-medium">
+                {((financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100).toFixed(0)}%
+              </span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
+                style={{ width: `${Math.min(100, (financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(financialSummary.emergencyFundStatus)} de {formatCurrency(financialSummary.emergencyFundGoal)}
+            </p>
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
-              style={{ width: `${Math.min(100, (financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100)}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(financialSummary.emergencyFundStatus)} de {formatCurrency(financialSummary.emergencyFundGoal)}
-          </p>
-        </div>
+        )}
 
         {/* Market preview */}
         {marketPrices && (

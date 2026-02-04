@@ -39,7 +39,7 @@ import { InvestmentWidget } from '@/components/investment/InvestmentWidget'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import { MONTHS_ES } from '@/lib/constants'
-import { Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 
 // Initial data types from RSC
 export interface DashboardInitialData {
@@ -277,6 +277,22 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 className="ml-auto"
               />
             ) : activeTab === 'stats' ? (
+              <PageFilters
+                showMonthSelect
+                selectedMonth={selectedMonth}
+                onMonthChange={handleMonthChange}
+                showYearSelect
+                year={selectedYear}
+                onYearChange={handleYearChange}
+                showDatePicker
+                startDate={period === 'custom' ? customStartDate : undefined}
+                endDate={period === 'custom' ? customEndDate : undefined}
+                onDatesChange={handleDateRangeChange}
+                showClear={hasActiveFilters}
+                onClear={clearFilters}
+                className="ml-auto"
+              />
+            ) : activeTab === 'investment' ? (
               <PageFilters
                 showMonthSelect
                 selectedMonth={selectedMonth}
@@ -1116,38 +1132,52 @@ function SavingsTab({
           <CardHeader className="pb-2 px-4">
             <CardTitle className="text-sm flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Proyección anual
+              {period === 'year' || period === 'all' ? 'Año completo' : 'Proyección anual'}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-2">
             {/* Mobile: vertical list, Desktop: horizontal */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
-                <span className="text-xs text-muted-foreground">Ritmo actual</span>
+                <span className="text-xs text-muted-foreground">
+                  {period === 'year' || period === 'all' ? 'Total ahorrado' : 'Ritmo actual'}
+                </span>
                 <span className="font-semibold text-blue-600 dark:text-blue-400">
                   <span className="text-text-secondary">+</span>
                   <span className="ml-1">
-                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(savingsAmount * 12)}
+                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+                      period === 'year' || period === 'all' ? savingsAmount : savingsAmount * 12
+                    )}
                   </span>
                   <span className="text-text-secondary ml-1">€</span>
                 </span>
               </div>
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
-                <span className="text-xs text-muted-foreground">Meta 30%</span>
+                <span className="text-xs text-muted-foreground">
+                  Objetivo 30%
+                </span>
                 <span className="font-semibold text-green-600">
                   <span className="text-text-secondary">+</span>
                   <span className="ml-1">
-                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.income * 0.3 * 12)}
+                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+                      period === 'year' || period === 'all' ? stats.income * 0.3 : stats.income * 0.3 * 12
+                    )}
                   </span>
                   <span className="text-text-secondary ml-1">€</span>
                 </span>
               </div>
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
-                <span className="text-xs text-muted-foreground">Con inversión 5%</span>
+                <span className="text-xs text-muted-foreground">
+                  Con inversión 5%
+                </span>
                 <span className="font-semibold text-primary">
                   <span className="text-text-secondary">+</span>
                   <span className="ml-1">
-                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(savingsAmount * 12 * 1.05)}
+                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+                      period === 'year' || period === 'all' 
+                        ? savingsAmount * 1.05 
+                        : savingsAmount * 12 * 1.05
+                    )}
                   </span>
                   <span className="text-text-secondary ml-1">€</span>
                 </span>
@@ -1159,7 +1189,7 @@ function SavingsTab({
 
       {/* Right column - Investment widget */}
       <div className="lg:col-span-1">
-        <InvestmentWidget accountId={accountId} />
+        <InvestmentWidget accountId={accountId} stats={stats} />
       </div>
     </div>
   )
