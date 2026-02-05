@@ -617,59 +617,24 @@ export const transactions = {
   delete: (id: string) =>
     request<{ success: boolean }>(`/transactions/${id}`, { method: 'DELETE' }),
 
-  getSummary: (accountId: string, startDate?: string, endDate?: string) => {
-    const params = new URLSearchParams({ account_id: accountId })
-    if (startDate) params.set('start_date', startDate)
-    if (endDate) params.set('end_date', endDate)
-    return request<{ success: boolean; summary: CategorySummary[]; total: number }>(
-      `/transactions/summary?${params}`
-    )
-  },
-
-  getStats: (accountId: string, startDate?: string, endDate?: string) => {
-    const params = new URLSearchParams({ account_id: accountId })
-    if (startDate) params.set('start_date', startDate)
-    if (endDate) params.set('end_date', endDate)
-    return request<{
-      success: boolean
-      stats: {
-        income: number
-        expenses: number
-        balance: number
-        transactionCount: number
-        incomeByType: Record<string, number>
-      }
-    }>(`/transactions/stats?${params}`)
-  },
-
-  getBalanceHistory: (accountId: string, year: number) => {
-    const params = new URLSearchParams({ account_id: accountId, year: year.toString() })
-    return request<{
-      success: boolean
-      balanceHistory: { date: string; fullDate: string; balance: number }[]
-    }>(`/transactions/balance-history?${params}`)
-  },
-
-  getMonthlySummary: (accountId: string, year: number) => {
-    const params = new URLSearchParams({ account_id: accountId, year: year.toString() })
-    return request<{
-      success: boolean
-      monthlySummary: { month: string; income: number; expenses: number }[]
-    }>(`/transactions/monthly-summary?${params}`)
-  },
-
+  /**
+   * Preview transactions that would be affected by a bulk update
+   */
   bulkUpdatePreview: (accountId: string, descriptionPattern: string) => {
-    const params = new URLSearchParams({
-      account_id: accountId,
-      description_pattern: descriptionPattern,
-    })
+    const searchParams = new URLSearchParams()
+    searchParams.set('account_id', accountId)
+    searchParams.set('description_pattern', descriptionPattern)
+    
     return request<{
       success: boolean
+      transactions: Transaction[]
       count: number
-      description_pattern: string
-    }>(`/transactions/bulk-update-preview?${params}`)
+    }>(`/transactions/bulk-preview?${searchParams}`)
   },
 
+  /**
+   * Bulk update transactions matching a description pattern
+   */
   bulkUpdateCategory: (data: {
     account_id: string
     description_pattern: string
@@ -679,8 +644,7 @@ export const transactions = {
     request<{
       success: boolean
       updatedCount: number
-      description_pattern: string
-      subcategory_id: string | null
+      affectedTransactions: Transaction[]
     }>('/transactions/bulk-update-category', {
       method: 'PUT',
       body: JSON.stringify(data),

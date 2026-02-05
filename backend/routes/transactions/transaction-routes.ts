@@ -7,12 +7,6 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  getTransactionsSummary,
-  getStats,
-  getBalanceHistory,
-  getMonthlySummary,
-  bulkUpdatePreview,
-  bulkUpdateCategory,
   bulkUpdateByIds,
 } from '../../controllers/transactions/transaction-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
@@ -22,18 +16,12 @@ const router: Router = Router()
 
 router.use(authenticateToken)
 
-// GETs no necesitan CSRF
+// GETs - CRUD básico (los stats/summary se calculan client-side con E2E)
 router.get('/', getTransactions)
-router.get('/summary', getTransactionsSummary)
-router.get('/stats', getStats)
-router.get('/balance-history', getBalanceHistory)
-router.get('/monthly-summary', getMonthlySummary)
-router.get('/bulk-update-preview', bulkUpdatePreview)
 router.get('/:id', getTransactionById)
 
-// Mutaciones necesitan CSRF
+// Mutaciones
 router.post('/', checkCSRF, createTransaction)
-router.put('/bulk-update-category', checkCSRF, bulkUpdateCategory)
 router.put('/bulk-update-by-ids', checkCSRF, bulkUpdateByIds)
 router.put('/:id', checkCSRF, updateTransaction)
 router.delete('/:id', checkCSRF, deleteTransaction)

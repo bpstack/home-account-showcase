@@ -88,12 +88,70 @@ interface BalanceClientProps {
   initialIncomeByCategory?: { name: string; color: string; amount: number }[]
 }
 
-function BalancePageFallback() {
+import { Skeleton } from '@/components/ui/Skeleton'
+
+function BalanceSkeleton() {
   return (
-    <div className="flex items-center justify-center py-12">
-      <Loader2 className="h-5 w-5 animate-spin text-text-secondary" />
+    <div className="space-y-6 animate-pulse">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardContent className="py-4 px-4 text-center space-y-3">
+              <Skeleton className="h-3 w-16 mx-auto" />
+              <Skeleton className="h-8 w-28 mx-auto" />
+              <Skeleton className="h-6 w-24 mx-auto rounded-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="lg:col-span-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="border rounded-md">
+          {[1, 2, 3, 4, 5].map((i) => (
+             <div key={i} className="flex items-center justify-between p-4 border-b last:border-0">
+               <div className="flex gap-4">
+                 <Skeleton className="h-10 w-10 rounded-full" />
+                 <div className="space-y-2">
+                   <Skeleton className="h-4 w-32" />
+                   <Skeleton className="h-3 w-24" />
+                 </div>
+               </div>
+               <Skeleton className="h-4 w-20" />
+             </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
+}
+
+function BalancePageFallback() {
+  return <BalanceSkeleton />
 }
 
 export default function BalanceClient(props: BalanceClientProps) {
@@ -369,9 +427,7 @@ function BalanceContent({
 
       <div className="px-4 md:px-6 py-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-accent" />
-          </div>
+          <BalanceSkeleton />
         ) : period === 'custom' && (!customStartDate || !customEndDate) ? (
           <Card>
             <CardContent className="py-16">
