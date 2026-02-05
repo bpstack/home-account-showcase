@@ -69,20 +69,20 @@ export function useAuth() {
     (accountsQuery.data && accountsQuery.data.length > 0 ? accountsQuery.data[0] : null)
 
   // Effect: Redirect to /unlock if authenticated but crypto is locked
-  // Reemplaza el antiguo recoverCryptoKeys
+  // Also: Redirect to dashboard if authenticated AND crypto is unlocked
   useEffect(() => {
     const cryptoStore = useCryptoStore.getState()
 
     // Conditions for redirect to /unlock:
     // 1. User is authenticated (cookie valid)
-    // 2. Crypto is NOT unlocked (UK not in memory)
+    // 2. Crypto is NOT unlocked (UK not in memory or account not unlocked)
     // 3. NOT already on /unlock page (avoid loop)
-    if (
-      userQuery.data && // Auth = OK
-      !cryptoStore.isUnlocked && // Crypto = LOCKED
-      !window.location.pathname.includes('/unlock') // Not already on /unlock
-    ) {
+    const isCryptoReady = cryptoStore.isUnlocked && cryptoStore.accountKeys.size > 0
+
+    if (userQuery.data && !isCryptoReady && !window.location.pathname.includes('/unlock')) {
       router.replace('/unlock')
+    } else if (userQuery.data && isCryptoReady && window.location.pathname === '/unlock') {
+      router.replace('/dashboard')
     }
   }, [userQuery.data, router])
 
@@ -134,7 +134,7 @@ export function useAuth() {
         setSelectedAccountId(activeAccount.id)
       }
 
-      router.push(redirectTo || '/dashboard')
+      router.replace(redirectTo || '/dashboard')
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Error al iniciar sesión'
       useAuthStore.getState().setAuthError(message)
@@ -166,7 +166,7 @@ export function useAuth() {
       )
     }
 
-    router.push('/dashboard')
+    router.replace('/dashboard')
   }
 
   const register = async (
@@ -217,7 +217,7 @@ export function useAuth() {
         setSelectedAccountId(activeAccount.id)
       }
 
-      router.push(options?.redirectTo || '/dashboard')
+      router.replace(options?.redirectTo || '/dashboard')
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Error al registrar'
       useAuthStore.getState().setAuthError(message)
