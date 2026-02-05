@@ -6,6 +6,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useRecommendations, useInvestmentOverview } from '@/lib/queries/investment'
+import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { DisclaimerAlert } from './DisclaimerAlert'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
@@ -25,10 +26,11 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
     profile ? { profile } : undefined
   )
   const { data: overviewData } = useInvestmentOverview(accountId, { refetchOnMount: false })
+  const { metrics: financialSummary } = useFinancialMetrics(accountId)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
 
   const investmentPercentage = overviewData?.profile?.investmentPercentage || 20
-  const savingsCapacity = overviewData?.financialSummary?.savingsCapacity || 0
+  const savingsCapacity = financialSummary?.savingsCapacity || 0
   const investmentAmount = (savingsCapacity * investmentPercentage) / 100
 
   // Refetch when profile becomes available

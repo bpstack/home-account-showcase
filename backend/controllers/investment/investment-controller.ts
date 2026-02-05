@@ -6,7 +6,6 @@ import { createInvestmentAI } from '../../services/ai/investment-ai.js'
 import { getActiveProvider } from '../../services/ai/ai-client.js'
 import { getMarketData, getMarketDataFull, getQuickSummary } from '../../services/market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
-import { TransactionRepository } from '../../repositories/transactions/transaction-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
 import type { ProfileAnswers, InvestmentContext, ChatMessage } from '../../services/ai/prompts/types.js'
 import {
@@ -18,114 +17,45 @@ import {
 import { checkInputSecurity, checkOutputSecurity } from '../../services/ai/security/index.js'
 
 // ========================
-// HELPER: Get account context (all historical transactions)
+// HELPER: Get account context
+// @deprecated This method no longer calculates financial metrics server-side due to E2E encryption.
+// It returns safe default values. Financial calculations must be performed on the client side
+// using the 'useFinancialMetrics' hook after decrypting transaction data.
 // ========================
 
 async function getAccountFinancialContext(accountId: string, userId: string): Promise<InvestmentContext> {
-  // Get transactions from last 12 months (sufficient for financial metrics)
-  // This is scalable: ~720 tx max per user (60 tx/month * 12 months)
-  const twelveMonthsAgo = new Date()
-  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
-  const startDate = twelveMonthsAgo.toISOString().split('T')[0]
-
-  const transactions = await TransactionRepository.getByAccountId({
-    account_id: accountId,
-    startDate,
-    limit: 1000 // Safety limit: ~83 tx/month for 12 months
-  }, userId)
-
-  // Get account info
-  const account = await AccountRepository.getById(accountId, userId)
+  // E2E ENCRYPTION NOTICE:
+  // We cannot calculate financial metrics (savings, income, expenses) server-side because
+  // transaction amounts are encrypted in the database.
+  // 
+  // The client (Frontend) is responsible for:
+  // 1. Fetching encrypted transactions
+  // 2. Decrypting them using the user's private key
+  // 3. Calculating metrics using useFinancialMetrics hook
+  //
+  // This function now returns default/safe values to maintain API contract without exposing encrypted garbage.
   
-  // Ensure amounts are numbers
-  const safeTransactions = transactions.map(t => ({
-    ...t,
-    amount: Number(t.amount)
-  }))
-
-  // Calculate metrics
-  const incomeTransactions = safeTransactions.filter(t => t.amount > 0)
-  const expenseTransactions = safeTransactions.filter(t => t.amount < 0)
-
-  const avgMonthlyIncome = incomeTransactions.length > 0
-    ? incomeTransactions.reduce((sum, t) => sum + t.amount, 0) / Math.max(1, new Set(incomeTransactions.map(t => 
-      new Date(t.date).toISOString().slice(0, 7)
-    )).size)
-    : 0
-
-  const avgMonthlyExpenses = expenseTransactions.length > 0
-    ? Math.abs(expenseTransactions.reduce((sum, t) => sum + t.amount, 0)) / Math.max(1, new Set(expenseTransactions.map(t => 
-      new Date(t.date).toISOString().slice(0, 7)
-    )).size)
-    : 0
-
-  const savingsCapacity = Math.max(0, avgMonthlyIncome - avgMonthlyExpenses)
-  const savingsRate = avgMonthlyIncome > 0 ? (savingsCapacity / avgMonthlyIncome) * 100 : 0
-
   // Get investment profile if exists
   const investmentProfile = await InvestmentRepository.getProfileByAccountId(accountId)
-
-  // Emergency fund months (default to 6)
-  const emergencyFundMonths = investmentProfile?.emergency_fund_months || 6
-  
-  // Emergency fund goal - calculate as N months of expenses (safety net)
-  const emergencyFundGoal = avgMonthlyExpenses * emergencyFundMonths
-  
-  // Emergency fund status - use user's manual input (liquidity_reserve), default to 0
-  const emergencyFundCurrent = investmentProfile?.liquidity_reserve || 0
-
-  // Calculate trend
-  const monthlySavings: Record<string, number> = {}
-  safeTransactions.forEach(t => {
-    const month = new Date(t.date).toISOString().slice(0, 7)
-    if (!monthlySavings[month]) monthlySavings[month] = 0
-    monthlySavings[month] += t.amount
-  })
-
-  const savingsValues = Object.values(monthlySavings)
-  const trend = savingsValues.length >= 2
-    ? (savingsValues[savingsValues.length - 1] > savingsValues[0] ? 'improving' : 
-       savingsValues[savingsValues.length - 1] < savingsValues[0] ? 'declining' : 'stable')
-    : 'stable'
-
-  const deficitMonths = savingsValues.filter(s => s < 0).length
-
-  // Category distribution
-  const categoryTotals: Record<string, number> = {}
-  expenseTransactions.forEach(t => {
-    const cat = t.category_name || 'Sin categoría'
-    if (!categoryTotals[cat]) categoryTotals[cat] = 0
-    categoryTotals[cat] += Math.abs(t.amount)
-  })
-
-  const totalExpenses = Object.values(categoryTotals).reduce((a, b) => a + b, 0)
-  const categoryPercentages: Record<string, number> = {}
-  Object.entries(categoryTotals).forEach(([cat, total]) => {
-    categoryPercentages[cat] = totalExpenses > 0 ? Math.round((total / totalExpenses) * 100) : 0
-  })
 
   return {
     accountId,
     userId,
-    avgMonthlyIncome,
-    avgMonthlyExpenses,
-    savingsCapacity,
-    savingsRate,
-    emergencyFundCurrent,
-    emergencyFundGoal,
-    historicalMonths: Object.keys(monthlySavings).length,
-    trend: trend as 'improving' | 'stable' | 'declining',
-    deficitMonths,
+    // Return zeroes/defaults as we can't see the encrypted values
+    avgMonthlyIncome: 0,
+    avgMonthlyExpenses: 0,
+    savingsCapacity: 0,
+    savingsRate: 0,
+    emergencyFundCurrent: investmentProfile?.liquidity_reserve || 0,
+    emergencyFundGoal: 0, // Cannot calculate without expenses
+    historicalMonths: 0,
+    trend: 'stable',
+    deficitMonths: 0,
     investmentPercentage: investmentProfile?.investment_percentage || 20,
     horizonYears: investmentProfile?.horizon_years || 5,
     experienceLevel: investmentProfile?.experience_level as 'none' | 'basic' | 'intermediate' | 'advanced' || 'none',
-    transactionCategories: categoryPercentages,
-    recentTransactions: transactions.slice(0, 50).map(t => ({
-      description: t.description,
-      amount: t.amount,
-      date: t.date.toISOString(),
-      category: t.category_name
-    }))
+    transactionCategories: {},
+    recentTransactions: []
   }
 }
 
@@ -163,17 +93,6 @@ export const getOverview = async (req: Request, res: Response): Promise<void> =>
       success: true,
       data: {
         accountId,
-        financialSummary: {
-          avgMonthlyIncome: Math.round(financialContext.avgMonthlyIncome * 100) / 100,
-          avgMonthlyExpenses: Math.round(financialContext.avgMonthlyExpenses * 100) / 100,
-          savingsCapacity: Math.round(financialContext.savingsCapacity * 100) / 100,
-          savingsRate: Math.round(financialContext.savingsRate * 100) / 100,
-          emergencyFundStatus: Math.round(financialContext.emergencyFundCurrent * 100) / 100,
-          emergencyFundGoal: Math.round(financialContext.emergencyFundGoal * 100) / 100,
-          historicalMonths: financialContext.historicalMonths,
-          trend: financialContext.trend,
-          deficitMonths: financialContext.deficitMonths
-        },
         profile: investmentProfile ? {
           riskProfile: investmentProfile.risk_profile,
           horizonYears: investmentProfile.horizon_years,

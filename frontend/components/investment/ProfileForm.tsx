@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useAnalyzeProfile, useInvestmentOverview } from '@/lib/queries/investment'
+import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { cn } from '@/lib/utils'
 import {
   User,
@@ -104,6 +105,7 @@ const STEPS = [
 
 export function ProfileForm({ accountId }: ProfileFormProps) {
   const { data: investmentData, isLoading: profileLoading } = useInvestmentOverview(accountId, { refetchOnMount: false })
+  const { metrics: financialSummary } = useFinancialMetrics(accountId)
   const [showForm, setShowForm] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -127,7 +129,7 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
       }
       setAnswers({
         age: 30, // These would come from user's actual data
-        monthlyIncome: investmentData?.financialSummary?.avgMonthlyIncome * 1.2 || 1000,
+        monthlyIncome: financialSummary?.avgMonthlyIncome * 1.2 || 1000,
         jobStability: 'medium',
         hasEmergencyFund: profile.hasEmergencyFund ? 'partial' : 'no',
         horizonYears: horizonMap[profile.horizonYears] || '3-10',
@@ -135,7 +137,7 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
         experienceLevel: 'none'
       })
     }
-  }, [profile, showForm, investmentData])
+  }, [profile, showForm, financialSummary])
 
   const step = STEPS[currentStep]
   const progress = ((currentStep + 1) / STEPS.length) * 100
@@ -228,7 +230,7 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(profile.monthlyInvestable || investmentData?.financialSummary?.savingsCapacity * (profile.investmentPercentage / 100) || 0)}
+                {formatCurrency(profile.monthlyInvestable || financialSummary?.savingsCapacity * (profile.investmentPercentage / 100) || 0)}
               </div>
               <div className="text-xs text-muted-foreground">Cantidad mensual</div>
             </div>

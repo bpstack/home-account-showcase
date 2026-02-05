@@ -9,7 +9,7 @@ import {
   useUpdateEmergencyFundMonths,
   useUpdateLiquidityReserve,
 } from '@/lib/queries/investment'
-import { useTransactions } from '@/lib/queries/transactions'
+import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { formatCurrency, cn } from '@/lib/utils'
 import { InvestmentWidget } from './InvestmentWidget'
@@ -45,11 +45,9 @@ const MONTHS_OPTIONS = [
 
 export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
   const { data: investmentData, isLoading: isInvestmentLoading } = useInvestmentOverview(accountId)
-  const { data: txData, isLoading: isTxLoading } = useTransactions({ account_id: accountId, limit: 10000 })
+  const { metrics: financialSummary, isLoading: isMetricsLoading } = useFinancialMetrics(accountId)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
   
-  const transactions = txData?.transactions || []
-
   const [selectedMonths, setSelectedMonths] = useState<number | null>(null)
   const [isEditingFund, setIsEditingFund] = useState(false)
   const [fundAmount, setFundAmount] = useState('')
@@ -57,82 +55,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
   const updateMonthsMutation = useUpdateEmergencyFundMonths()
   const updateLiquidityMutation = useUpdateLiquidityReserve()
 
-  const isLoading = isInvestmentLoading || isTxLoading
-
-  // Calculate financial summary from decrypted transactions (client-side)
-  // This must be declared before any early returns to comply with React Hooks rules
-  const financialSummary = useMemo(() => {
-    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
-      return {
-        avgMonthlyIncome: 0,
-        avgMonthlyExpenses: 0,
-        savingsCapacity: 0,
-        savingsRate: 0,
-        trend: 'stable' as const,
-        deficitMonths: 0,
-        historicalMonths: 0,
-        emergencyFundStatus: investmentData?.financialSummary?.emergencyFundStatus || 0,
-        emergencyFundGoal: investmentData?.financialSummary?.emergencyFundGoal || 0,
-      }
-    }
-
-    const incomeTxs = transactions.filter(t => t.amount > 0)
-    const expenseTxs = transactions.filter(t => t.amount < 0)
-
-    const totalIncome = incomeTxs.reduce((sum, t) => sum + Number(t.amount), 0)
-    const totalExpenses = Math.abs(expenseTxs.reduce((sum, t) => sum + Number(t.amount), 0))
-
-    const monthlyIncome: Record<string, number> = {}
-    const monthlyExpenses: Record<string, number> = {}
-
-    transactions.forEach(t => {
-      const month = t.date.split('T')[0].slice(0, 7)
-      if (t.amount > 0) {
-        monthlyIncome[month] = (monthlyIncome[month] || 0) + Number(t.amount)
-      } else {
-        monthlyExpenses[month] = (monthlyExpenses[month] || 0) + Math.abs(Number(t.amount))
-      }
-    })
-
-    const months = Object.keys(monthlyIncome)
-    const avgMonthlyIncome = months.length > 0 
-      ? totalIncome / months.length 
-      : 0
-    const avgMonthlyExpenses = months.length > 0 
-      ? totalExpenses / months.length 
-      : 0
-
-    const savingsCapacity = Math.max(0, avgMonthlyIncome - avgMonthlyExpenses)
-    const savingsRate = avgMonthlyIncome > 0 
-      ? (savingsCapacity / avgMonthlyIncome) * 100 
-      : 0
-
-    const monthlySavings: Record<string, number> = {}
-    transactions.forEach(t => {
-      const month = t.date.split('T')[0].slice(0, 7)
-      monthlySavings[month] = (monthlySavings[month] || 0) + Number(t.amount)
-    })
-
-    const savingsValues = Object.values(monthlySavings)
-    const trend = savingsValues.length >= 2
-      ? (savingsValues[savingsValues.length - 1] > savingsValues[0] ? 'improving' : 
-         savingsValues[savingsValues.length - 1] < savingsValues[0] ? 'declining' : 'stable')
-      : 'stable'
-
-    const deficitMonths = savingsValues.filter(s => s < 0).length
-
-    return {
-      avgMonthlyIncome,
-      avgMonthlyExpenses,
-      savingsCapacity,
-      savingsRate,
-      trend: trend as 'improving' | 'stable' | 'declining',
-      deficitMonths,
-      historicalMonths: months.length,
-      emergencyFundStatus: investmentData?.financialSummary?.emergencyFundStatus || 0,
-      emergencyFundGoal: investmentData?.financialSummary?.emergencyFundGoal || 0,
-    }
-  }, [transactions, investmentData])
+  const isLoading = isInvestmentLoading || isMetricsLoading
 
   const profile = investmentData?.profile
   const currentMonths = profile?.emergencyFundMonths || 6

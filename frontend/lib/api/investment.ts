@@ -22,17 +22,7 @@ async function investmentRequest<T>(endpoint: string, options?: RequestInit): Pr
   return data
 }
 
-export interface FinancialSummary {
-  avgMonthlyIncome: number
-  avgMonthlyExpenses: number
-  savingsCapacity: number
-  savingsRate: number
-  emergencyFundStatus: number
-  emergencyFundGoal: number
-  historicalMonths: number
-  trend: 'improving' | 'stable' | 'declining'
-  deficitMonths: number
-}
+// FinancialSummary interface moved to hooks/useFinancialMetrics.ts
 
 export interface InvestmentProfile {
   riskProfile: 'conservative' | 'balanced' | 'dynamic'
@@ -57,7 +47,7 @@ export interface MarketPrices {
 
 export interface InvestmentOverview {
   accountId: string
-  financialSummary: FinancialSummary
+  // Financial summary removed - calculated client-side
   profile: InvestmentProfile | null
   marketPrices: MarketPrices
   aiEnabled: boolean
