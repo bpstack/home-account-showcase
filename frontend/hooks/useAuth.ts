@@ -10,10 +10,6 @@ import {
   clearLastAccountId,
 } from '@/stores/authStore'
 import { useCryptoStore } from '@/stores/cryptoStore'
-import { deriveUserKey, generateAccountKey, encryptAccountKey } from '@/lib/crypto'
-
-// Module-level flag to prevent concurrent key recovery calls
-let isRecoveringKeys = false
 
 interface Account {
   id: string
@@ -72,51 +68,23 @@ export function useAuth() {
     accountsQuery.data?.find((a) => a.id === selectedAccountId) ||
     (accountsQuery.data && accountsQuery.data.length > 0 ? accountsQuery.data[0] : null)
 
-
-  // Effect to recover crypto keys after page refresh
-  // If user is authenticated but crypto store is empty, try to recover from sessionStorage
+  // Effect: Redirect to /unlock if authenticated but crypto is locked
+  // Reemplaza el antiguo recoverCryptoKeys
   useEffect(() => {
-    const recoverCryptoKeys = async () => {
-      const cryptoStore = useCryptoStore.getState()
+    const cryptoStore = useCryptoStore.getState()
 
-      // Skip if already unlocked, recovery in progress, or no user
-      if (cryptoStore.isUnlocked || isRecoveringKeys || !userQuery.data) return
-
-      // Try to get stored password from sessionStorage
-      const storedPassword = cryptoStore.getStoredPassword()
-      if (!storedPassword) return
-
-      // Set flag to prevent concurrent recovery attempts
-      isRecoveringKeys = true
-
-      try {
-        // Fetch keys from backend
-        const { key_salt, encrypted_keys } = await auth.getKeys()
-
-        if (key_salt && encrypted_keys && encrypted_keys.length > 0) {
-          // Re-derive UK from stored password
-          await cryptoStore.deriveAndSetUserKey(storedPassword, key_salt)
-
-          // Unlock all accounts
-          await cryptoStore.unlockAccounts(
-            encrypted_keys.map((k) => ({
-              accountId: k.account_id,
-              encryptedKey: k.encrypted_key,
-              keyVersion: k.key_version,
-            }))
-          )
-        }
-      } catch (error) {
-        console.error('Failed to recover crypto keys:', error)
-        // Clear invalid stored password
-        cryptoStore.lock()
-      } finally {
-        isRecoveringKeys = false
-      }
+    // Conditions for redirect to /unlock:
+    // 1. User is authenticated (cookie valid)
+    // 2. Crypto is NOT unlocked (UK not in memory)
+    // 3. NOT already on /unlock page (avoid loop)
+    if (
+      userQuery.data && // Auth = OK
+      !cryptoStore.isUnlocked && // Crypto = LOCKED
+      !window.location.pathname.includes('/unlock') // Not already on /unlock
+    ) {
+      router.replace('/unlock')
     }
-
-    recoverCryptoKeys()
-  }, [userQuery.data])
+  }, [userQuery.data, router])
 
   const switchAccount = async (accountId: string) => {
     const newAccount = accountsQuery.data?.find((a) => a.id === accountId)
@@ -176,6 +144,31 @@ export function useAuth() {
     }
   }
 
+  const unlock = async (password: string) => {
+    // 🔐 ENCRYPTION: Re-derive UK and unlock accounts
+    // This is used in /unlock page when user re-enters password after F5
+    const cryptoStore = useCryptoStore.getState()
+
+    // Fetch keys from backend (must be authenticated already)
+    const { key_salt, encrypted_keys } = await auth.getKeys()
+
+    if (key_salt && encrypted_keys && encrypted_keys.length > 0) {
+      // Derive UK from password
+      await cryptoStore.deriveAndSetUserKey(password, key_salt)
+
+      // Unlock all accounts
+      await cryptoStore.unlockAccounts(
+        encrypted_keys.map((k) => ({
+          accountId: k.account_id,
+          encryptedKey: k.encrypted_key,
+          keyVersion: k.key_version,
+        }))
+      )
+    }
+
+    router.push('/dashboard')
+  }
+
   const register = async (
     email: string,
     password: string,
@@ -187,30 +180,13 @@ export function useAuth() {
     useAuthStore.getState().setAuthError(null)
 
     try {
-      // 🔐 ENCRYPTION: Generate Account Key before registration (if creating account)
-      let encryptedAccountKey: string | undefined
-
-      if (!options?.skipDefaultAccount) {
-        // Need to pre-generate AK and encrypt it
-        // We'll derive UK from password using a placeholder salt first,
-        // then the backend will return the real salt
-        // Actually, we need to send the encrypted AK WITH the registration
-        // So we derive UK → generate AK → encrypt AK → send encrypted AK
-        // Backend will generate the salt, return it, and we re-derive UK client-side
-        // For now, we generate AK and will encrypt it after we get the salt
-        // This requires a 2-step process or backend generating salt upfront
-        // Let's use the simpler approach: generate random AK, encrypt with derived UK
-        // Backend returns salt, frontend re-derives UK and verifies
-      }
-
       // El servidor establece las cookies httpOnly automáticamente
       const { user, key_salt, accountId } = await auth.register(
         email,
         password,
         name,
         accountName,
-        options?.skipDefaultAccount,
-        encryptedAccountKey
+        options?.skipDefaultAccount
       )
 
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
@@ -296,5 +272,6 @@ export function useAuth() {
     logout,
     clearError,
     switchAccount,
+    unlock,
   }
 }
