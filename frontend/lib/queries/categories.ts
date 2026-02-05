@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { categories as categoriesApi, subcategories as subcategoriesApi } from '../apiClient'
 import type { Category } from '../apiClient'
-import { useCryptoStore } from '@/stores/cryptoStore'
+import { useCryptoStore, useCryptoReady } from '@/stores/cryptoStore'
 import { decrypt, encrypt } from '../crypto'
 
 export const categoryKeys = {
@@ -59,6 +59,7 @@ async function decryptCategoryData(
 
 export function useCategories(accountId: string, options?: UseCategoriesOptions) {
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
+  const isCryptoReady = useCryptoReady(accountId)
 
   return useQuery({
     queryKey: categoryKeys.lists(accountId),
@@ -80,7 +81,7 @@ export function useCategories(accountId: string, options?: UseCategoriesOptions)
       return response
     },
     initialData: options?.initialData,
-    enabled: options?.enabled !== false && !!accountId,
+    enabled: options?.enabled !== false && !!accountId && isCryptoReady,
   })
 }
 
