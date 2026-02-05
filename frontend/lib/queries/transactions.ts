@@ -8,7 +8,7 @@ import {
   CreateTransactionData,
   UpdateTransactionData,
 } from '../apiClient'
-import { useCryptoStore } from '@/stores/cryptoStore'
+import { useCryptoStore, useCryptoReady } from '@/stores/cryptoStore'
 import { encrypt, decrypt, getAmountSign, type EncryptedTransaction } from '../crypto'
 
 export const transactionKeys = {
@@ -55,6 +55,9 @@ async function decryptTransaction(
 export function useTransactions(params: TransactionParams, options?: UseTransactionsOptions) {
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
+  
+  // CRITICAL: Wait for crypto to be ready before fetching
+  const isCryptoReady = useCryptoReady(params.account_id)
 
   return useQuery({
     queryKey: transactionKeys.list(params),
@@ -77,7 +80,8 @@ export function useTransactions(params: TransactionParams, options?: UseTransact
 
       return response
     },
-    enabled: !!params.account_id,
+    // CRITICAL: Only fetch when crypto is ready
+    enabled: !!params.account_id && isCryptoReady,
     staleTime: options?.staleTime ?? 0,
     initialData: options?.initialData,
   })

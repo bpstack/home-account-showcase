@@ -6,6 +6,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useInvestmentOverview } from '@/lib/queries/investment'
+import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { TrendingUp, ArrowRight, Sparkles, PiggyBank, Wallet, Target } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 
@@ -22,13 +23,18 @@ interface InvestmentWidgetProps {
 export function InvestmentWidget({ accountId, compact = false, stats }: InvestmentWidgetProps) {
   const { data, isLoading, isError } = useInvestmentOverview(accountId)
 
-  if (isLoading) {
+  // Fetch transactions for local calculation are now handled inside the hook
+  const { metrics: financialSummary, isLoading: isMetricsLoading } = useFinancialMetrics(accountId)
+
+  if (isLoading || isMetricsLoading) {
     return <InvestmentWidgetSkeleton compact={compact} />
   }
 
-  const { financialSummary, profile, marketPrices } = data || {}
-  const savingsAmount = stats ? Math.max(0, stats.balance) : 0
-  const savingsRate = stats && stats.income > 0 ? (stats.balance / stats.income) * 100 : 0
+  const { profile, marketPrices } = data || {}
+  
+  // Use local metrics
+  const savingsAmount = financialSummary.savingsCapacity
+  const savingsRate = financialSummary.savingsRate
 
   if (compact) {
     return (
