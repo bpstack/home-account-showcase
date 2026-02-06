@@ -1,37 +1,38 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCategories } from '@/lib/queries/categories'
 import { useImportTransactions } from '@/lib/queries/useImportTransactions'
-import { 
-  importApi, 
-  transactions, 
-  ai, 
-  type ParseResult, 
-  type CategoryMapping, 
+import {
+  importApi,
+  transactions,
+  ai,
+  type ParseResult,
+  type CategoryMapping,
   type CreateTransactionData,
   type Category,
-  type Subcategory 
+  type Subcategory,
 } from '@/lib/apiClient'
 
-import { 
-  Tabs, 
-  Card, 
-  CardHeader, 
-  CardTitle, 
+import {
+  Tabs,
+  Card,
+  CardHeader,
+  CardTitle,
   CardContent,
   Button,
   Input,
   Select,
-  DatePickerSimple
+  DatePickerSimple,
 } from '@/components/ui'
 
-import { 
-  FileSpreadsheet, 
-  User, 
-  Layers, 
+import {
+  FileSpreadsheet,
+  User,
+  Layers,
   Database,
   Info,
   CheckCircle2,
@@ -40,7 +41,7 @@ import {
   Upload,
   Loader2,
   ArrowRight,
-  Sparkles
+  Sparkles,
 } from 'lucide-react'
 
 const importTabs = [
@@ -80,43 +81,239 @@ const emptyForm: SingleForm = {
 
 // Keyword mappings: bank keywords → app category/subcategory keywords
 const KEYWORD_MAPPINGS: { keywords: string[]; category: string; subcategory?: string }[] = [
-  { keywords: ['supermercado', 'alimentacion', 'alimentación', 'mercadona', 'carrefour', 'lidl', 'aldi', 'dia', 'experos', 'hipercor', 'eroski', 'consum'], category: 'supermercado', subcategory: 'alimentacion' },
-  { keywords: ['ropa', 'complementos', 'vestir', 'zara', 'hm', 'primark', 'mango', 'pull', 'bershka', 'stradivarius'], category: 'supermercado', subcategory: 'ropa' },
+  {
+    keywords: [
+      'supermercado',
+      'alimentacion',
+      'alimentación',
+      'mercadona',
+      'carrefour',
+      'lidl',
+      'aldi',
+      'dia',
+      'experos',
+      'hipercor',
+      'eroski',
+      'consum',
+    ],
+    category: 'supermercado',
+    subcategory: 'alimentacion',
+  },
+  {
+    keywords: [
+      'ropa',
+      'complementos',
+      'vestir',
+      'zara',
+      'hm',
+      'primark',
+      'mango',
+      'pull',
+      'bershka',
+      'stradivarius',
+    ],
+    category: 'supermercado',
+    subcategory: 'ropa',
+  },
   { keywords: ['limpieza', 'drogueria'], category: 'supermercado', subcategory: 'limpieza' },
-  { keywords: ['restaurante', 'cafeteria', 'cafe', 'comida fuera', 'cena', 'almuerzo', 'barullo', 'mcdonalds', 'burger', 'telepizza', 'dominos'], category: 'ocio', subcategory: 'restaurantes' },
+  {
+    keywords: [
+      'restaurante',
+      'cafeteria',
+      'cafe',
+      'comida fuera',
+      'cena',
+      'almuerzo',
+      'barullo',
+      'mcdonalds',
+      'burger',
+      'telepizza',
+      'dominos',
+    ],
+    category: 'ocio',
+    subcategory: 'restaurantes',
+  },
   { keywords: ['bar', 'cerveza', 'copa', 'pub'], category: 'ocio', subcategory: 'bares' },
-  { keywords: ['juguete', 'jugueteria', 'regalo', 'toys', 'regalos'], category: 'ocio', subcategory: 'regalos' },
-  { keywords: ['vacacion', 'viaje', 'hotel', 'vuelo', 'airbnb', 'booking', 'ocio y viajes'], category: 'ocio', subcategory: 'vacaciones' },
-  { keywords: ['cine', 'teatro', 'concierto', 'espectaculo', 'entrada', 'netflix', 'spotify', 'hbo', 'disney'], category: 'ocio', subcategory: 'espectaculos' },
-  { keywords: ['deporte', 'gimnasio', 'fitness', 'padel', 'tenis', 'futbol', 'decathlon'], category: 'ocio', subcategory: 'deporte' },
-  { keywords: ['gasolina', 'combustible', 'gasolinera', 'repsol', 'cepsa', 'bp', 'shell', 'galp', 'vehiculo', 'vehículo'], category: 'transporte', subcategory: 'combustible' },
-  { keywords: ['taxi', 'uber', 'cabify', 'bus', 'tren', 'metro', 'transporte publico', 'renfe', 'avanza'], category: 'transporte', subcategory: 'taxi' },
-  { keywords: ['parking', 'garage', 'aparcamiento'], category: 'transporte', subcategory: 'garage' },
-  { keywords: ['taller', 'mecanico', 'itv', 'mantenimiento auto', 'neumatico', 'norauto', 'midas'], category: 'transporte', subcategory: 'mantenimiento' },
-  { keywords: ['hogar', 'casa', 'vivienda', 'mueble', 'ikea', 'decoracion', 'leroy', 'bricomart'], category: 'vivienda', subcategory: 'muebles' },
-  { keywords: ['electrodomestico', 'media markt', 'worten', 'el corte ingles electronica'], category: 'vivienda', subcategory: 'electrodomesticos' },
-  { keywords: ['reparacion', 'fontanero', 'electricista', 'reforma'], category: 'vivienda', subcategory: 'reparaciones' },
-  { keywords: ['luz', 'electricidad', 'endesa', 'iberdrola', 'naturgy'], category: 'gastos fijos', subcategory: 'luz' },
+  {
+    keywords: ['juguete', 'jugueteria', 'regalo', 'toys', 'regalos'],
+    category: 'ocio',
+    subcategory: 'regalos',
+  },
+  {
+    keywords: ['vacacion', 'viaje', 'hotel', 'vuelo', 'airbnb', 'booking', 'ocio y viajes'],
+    category: 'ocio',
+    subcategory: 'vacaciones',
+  },
+  {
+    keywords: [
+      'cine',
+      'teatro',
+      'concierto',
+      'espectaculo',
+      'entrada',
+      'netflix',
+      'spotify',
+      'hbo',
+      'disney',
+    ],
+    category: 'ocio',
+    subcategory: 'espectaculos',
+  },
+  {
+    keywords: ['deporte', 'gimnasio', 'fitness', 'padel', 'tenis', 'futbol', 'decathlon'],
+    category: 'ocio',
+    subcategory: 'deporte',
+  },
+  {
+    keywords: [
+      'gasolina',
+      'combustible',
+      'gasolinera',
+      'repsol',
+      'cepsa',
+      'bp',
+      'shell',
+      'galp',
+      'vehiculo',
+      'vehículo',
+    ],
+    category: 'transporte',
+    subcategory: 'combustible',
+  },
+  {
+    keywords: [
+      'taxi',
+      'uber',
+      'cabify',
+      'bus',
+      'tren',
+      'metro',
+      'transporte publico',
+      'renfe',
+      'avanza',
+    ],
+    category: 'transporte',
+    subcategory: 'taxi',
+  },
+  {
+    keywords: ['parking', 'garage', 'aparcamiento'],
+    category: 'transporte',
+    subcategory: 'garage',
+  },
+  {
+    keywords: ['taller', 'mecanico', 'itv', 'mantenimiento auto', 'neumatico', 'norauto', 'midas'],
+    category: 'transporte',
+    subcategory: 'mantenimiento',
+  },
+  {
+    keywords: ['hogar', 'casa', 'vivienda', 'mueble', 'ikea', 'decoracion', 'leroy', 'bricomart'],
+    category: 'vivienda',
+    subcategory: 'muebles',
+  },
+  {
+    keywords: ['electrodomestico', 'media markt', 'worten', 'el corte ingles electronica'],
+    category: 'vivienda',
+    subcategory: 'electrodomesticos',
+  },
+  {
+    keywords: ['reparacion', 'fontanero', 'electricista', 'reforma'],
+    category: 'vivienda',
+    subcategory: 'reparaciones',
+  },
+  {
+    keywords: ['luz', 'electricidad', 'endesa', 'iberdrola', 'naturgy'],
+    category: 'gastos fijos',
+    subcategory: 'luz',
+  },
   { keywords: ['agua', 'canal', 'emasa', 'aguas'], category: 'gastos fijos', subcategory: 'agua' },
-  { keywords: ['internet', 'fibra', 'movistar', 'vodafone', 'orange', 'telefono', 'digi', 'masmovil', 'jazztel'], category: 'gastos fijos', subcategory: 'internet' },
-  { keywords: ['hipoteca', 'prestamo vivienda'], category: 'gastos fijos', subcategory: 'hipoteca' },
+  {
+    keywords: [
+      'internet',
+      'fibra',
+      'movistar',
+      'vodafone',
+      'orange',
+      'telefono',
+      'digi',
+      'masmovil',
+      'jazztel',
+    ],
+    category: 'gastos fijos',
+    subcategory: 'internet',
+  },
+  {
+    keywords: ['hipoteca', 'prestamo vivienda'],
+    category: 'gastos fijos',
+    subcategory: 'hipoteca',
+  },
   { keywords: ['comunidad', 'vecinos'], category: 'gastos fijos', subcategory: 'comunidad' },
-  { keywords: ['farmacia', 'medicina', 'medicamento', 'herbolario', 'nutricion', 'educacion y salud'], category: 'salud', subcategory: 'farmacia' },
-  { keywords: ['medico', 'hospital', 'clinica', 'dentista', 'oculista'], category: 'salud', subcategory: 'obra social' },
-  { keywords: ['peluqueria', 'estetica', 'belleza', 'cuidado personal'], category: 'salud', subcategory: 'cuidado personal' },
-  { keywords: ['cajero', 'efectivo', 'atm', 'retirada'], category: 'efectivo', subcategory: 'cajero' },
+  {
+    keywords: [
+      'farmacia',
+      'medicina',
+      'medicamento',
+      'herbolario',
+      'nutricion',
+      'educacion y salud',
+    ],
+    category: 'salud',
+    subcategory: 'farmacia',
+  },
+  {
+    keywords: ['medico', 'hospital', 'clinica', 'dentista', 'oculista'],
+    category: 'salud',
+    subcategory: 'obra social',
+  },
+  {
+    keywords: ['peluqueria', 'estetica', 'belleza', 'cuidado personal'],
+    category: 'salud',
+    subcategory: 'cuidado personal',
+  },
+  {
+    keywords: ['cajero', 'efectivo', 'atm', 'retirada'],
+    category: 'efectivo',
+    subcategory: 'cajero',
+  },
   { keywords: ['bizum'], category: 'efectivo', subcategory: 'bizum' },
-  { keywords: ['transferencia', 'otros gastos', 'revolut', 'paypal', 'wise'], category: 'efectivo', subcategory: 'transferencias' },
-  { keywords: ['nomina', 'salario', 'sueldo', 'pago empresa'], category: 'ingresos', subcategory: 'nomina' },
-  { keywords: ['ingreso', 'abono', 'devolucion', 'ventajas', 'incentivo', 'bonificacion'], category: 'ingresos', subcategory: 'otros ingresos' },
-  { keywords: ['seguro', 'mapfre', 'axa', 'allianz', 'generali', 'sanitas', 'adeslas'], category: 'seguros' },
-  { keywords: ['colegio', 'escuela', 'instituto', 'universidad', 'educacion'], category: 'formacion', subcategory: 'colegio' },
-  { keywords: ['libro', 'material escolar', 'papeleria'], category: 'formacion', subcategory: 'libros' },
-  { keywords: ['curso', 'formacion', 'academia', 'udemy', 'coursera'], category: 'formacion', subcategory: 'cursos' },
+  {
+    keywords: ['transferencia', 'otros gastos', 'revolut', 'paypal', 'wise'],
+    category: 'efectivo',
+    subcategory: 'transferencias',
+  },
+  {
+    keywords: ['nomina', 'salario', 'sueldo', 'pago empresa'],
+    category: 'ingresos',
+    subcategory: 'nomina',
+  },
+  {
+    keywords: ['ingreso', 'abono', 'devolucion', 'ventajas', 'incentivo', 'bonificacion'],
+    category: 'ingresos',
+    subcategory: 'otros ingresos',
+  },
+  {
+    keywords: ['seguro', 'mapfre', 'axa', 'allianz', 'generali', 'sanitas', 'adeslas'],
+    category: 'seguros',
+  },
+  {
+    keywords: ['colegio', 'escuela', 'instituto', 'universidad', 'educacion'],
+    category: 'formacion',
+    subcategory: 'colegio',
+  },
+  {
+    keywords: ['libro', 'material escolar', 'papeleria'],
+    category: 'formacion',
+    subcategory: 'libros',
+  },
+  {
+    keywords: ['curso', 'formacion', 'academia', 'udemy', 'coursera'],
+    category: 'formacion',
+    subcategory: 'cursos',
+  },
   { keywords: ['compras'], category: 'supermercado' },
 ]
 
 export default function ImportClient() {
+  const router = useRouter()
   const { account } = useAuth()
   const queryClient = useQueryClient()
   const importMutation = useImportTransactions()
@@ -146,24 +343,27 @@ export default function ImportClient() {
   const savedMappingsLoaded = useRef(false)
 
   const { data: catData } = useCategories(account?.id || '', {
-    enabled: !!account?.id
+    enabled: !!account?.id,
   })
-  
+
   const categories = catData?.categories || []
 
-  const categoryOptions = useMemo(() => [
-    { value: '', label: 'Seleccionar categoría...' },
-    ...categories.map(c => ({ value: c.id, label: c.name }))
-  ], [categories])
+  const categoryOptions = useMemo(
+    () => [
+      { value: '', label: 'Seleccionar categoría...' },
+      ...categories.map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [categories]
+  )
 
   const subcategoryOptions = useMemo(() => {
     if (!form.category_id) return [{ value: '', label: 'Primero selecciona categoría' }]
-    const cat = categories.find(c => c.id === form.category_id)
+    const cat = categories.find((c) => c.id === form.category_id)
     if (!cat?.subcategories) return [{ value: '', label: 'Sin subcategorías' }]
-    
+
     return [
       { value: '', label: 'Seleccionar subcategoría...' },
-      ...cat.subcategories.map(s => ({ value: s.id, label: s.name }))
+      ...cat.subcategories.map((s) => ({ value: s.id, label: s.name })),
     ]
   }, [categories, form.category_id])
 
@@ -212,7 +412,11 @@ export default function ImportClient() {
   }, [account?.id])
 
   const normalizeText = (text: string): string => {
-    return text.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    return text
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
   }
 
   const findBestMatch = (
@@ -222,10 +426,14 @@ export default function ImportClient() {
     const bankText = normalizeText(`${fileCat.category} ${fileCat.subcategory}`)
     for (const mapping of KEYWORD_MAPPINGS) {
       if (mapping.keywords.some((kw) => bankText.includes(normalizeText(kw)))) {
-        const appCat = categoryList.find((c) => normalizeText(c.name).includes(normalizeText(mapping.category)))
+        const appCat = categoryList.find((c) =>
+          normalizeText(c.name).includes(normalizeText(mapping.category))
+        )
         if (appCat?.subcategories) {
           if (mapping.subcategory) {
-            const sub = appCat.subcategories.find((s: any) => normalizeText(s.name).includes(normalizeText(mapping.subcategory!)))
+            const sub = appCat.subcategories.find((s: any) =>
+              normalizeText(s.name).includes(normalizeText(mapping.subcategory!))
+            )
             if (sub) return sub.id
           }
           if (appCat.subcategories.length > 0) return appCat.subcategories[0].id
@@ -238,8 +446,10 @@ export default function ImportClient() {
   const initializeMappings = (fileCategories: { category: string; subcategory: string }[]) => {
     const initialMappings: MappingState = {}
     const savedMappingsMap = new Map<string, string>()
-    savedMappings.forEach((m) => savedMappingsMap.set(`${m.bank_category}|${m.bank_subcategory}`, m.subcategory_id))
-    
+    savedMappings.forEach((m) =>
+      savedMappingsMap.set(`${m.bank_category}|${m.bank_subcategory}`, m.subcategory_id)
+    )
+
     fileCategories.forEach((fileCat) => {
       const key = `${fileCat.category}|${fileCat.subcategory}`
       initialMappings[key] = savedMappingsMap.get(key) || findBestMatch(fileCat, categories)
@@ -256,7 +466,7 @@ export default function ImportClient() {
   const readFileAsText = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
-      reader.onload = (e) => resolve(e.target?.result as string || '')
+      reader.onload = (e) => resolve((e.target?.result as string) || '')
       reader.onerror = () => reject(new Error('Error leyendo archivo'))
       reader.readAsText(file)
     })
@@ -271,17 +481,17 @@ export default function ImportClient() {
         return null
       }
 
-      const txs = result.transactions.map(tx => ({
+      const txs = result.transactions.map((tx) => ({
         date: tx.date || new Date().toISOString().split('T')[0],
         description: tx.description?.trim() || '',
         amount: tx.amount,
         bank_category: tx.category?.toLowerCase() || 'otros',
-        bank_subcategory: tx.subcategory?.toLowerCase() || 'varios'
+        bank_subcategory: tx.subcategory?.toLowerCase() || 'varios',
       }))
 
       const seen = new Set<string>()
       const cats: { category: string; subcategory: string }[] = []
-      txs.forEach(tx => {
+      txs.forEach((tx) => {
         const key = `${tx.bank_category}|${tx.bank_subcategory}`
         if (!seen.has(key)) {
           seen.add(key)
@@ -296,7 +506,7 @@ export default function ImportClient() {
         categories: cats,
         errors: [],
         available_sheets: [],
-        sheet_name: 'AI Parsed'
+        sheet_name: 'AI Parsed',
       }
     } catch (err) {
       console.error('AI parse error:', err)
@@ -374,7 +584,7 @@ export default function ImportClient() {
             const hasBankCategory = tx.bank_category && tx.bank_category.trim() !== ''
             const bankKey = `${tx.bank_category}|${tx.bank_subcategory}`
             const descKey = `desc:${normalizeText(tx.description).substring(0, 50)}`
-            
+
             // Lógica simplificada de restauración para el ejemplo
             // En producción restauraríamos el loop de SYNONYMS completo
           }
@@ -394,33 +604,34 @@ export default function ImportClient() {
     }
   }
 
-
   const handleConfirmImport = async () => {
     if (!account || !parseResult) return
     setIsLoading(true)
-    
+
     const categoryMappings: CategoryMapping[] = Object.entries(mappings).map(([key, subId]) => {
       const [bank_category, bank_subcategory] = key.split('|')
       return { bank_category, bank_subcategory, subcategory_id: subId }
     })
 
-    importMutation.mutate({
-      account_id: account.id,
-      transactions: parseResult.transactions,
-      category_mappings: categoryMappings
-    }, {
-
-      onSuccess: (res: any) => {
-        setImportResult(res)
-        setStep('result')
-        queryClient.invalidateQueries({ queryKey: ['transactions'] })
-        setIsLoading(false)
+    importMutation.mutate(
+      {
+        account_id: account.id,
+        transactions: parseResult.transactions,
+        category_mappings: categoryMappings,
       },
-      onError: (err: any) => {
-        setError(err.message)
-        setIsLoading(false)
+      {
+        onSuccess: (res: any) => {
+          setImportResult(res)
+          setStep('result')
+          queryClient.invalidateQueries({ queryKey: ['transactions'] })
+          setIsLoading(false)
+        },
+        onError: (err: any) => {
+          setError(err.message)
+          setIsLoading(false)
+        },
       }
-    })
+    )
   }
 
   const allSubcategoryOptions = useMemo(() => {
@@ -435,7 +646,7 @@ export default function ImportClient() {
 
   const mappingStats = useMemo(() => {
     const values = Object.values(mappings)
-    return { mapped: values.filter(v => v).length, pending: values.filter(v => !v).length }
+    return { mapped: values.filter((v) => v).length, pending: values.filter((v) => !v).length }
   }, [mappings])
 
   return (
@@ -452,7 +663,6 @@ export default function ImportClient() {
 
       <div className="px-4 md:px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
           {/* Columna Izquierda: Funcionalidad (Tab Content) */}
           <div className="lg:col-span-8 space-y-6">
             {activeTab === 'individual' ? (
@@ -473,11 +683,12 @@ export default function ImportClient() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 pb-8 px-8">
-
                   <form onSubmit={handleSubmitIndividual} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">Tipo</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
+                          Tipo
+                        </label>
                         <Select
                           options={[
                             { value: 'expense', label: 'Gasto' },
@@ -488,7 +699,9 @@ export default function ImportClient() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">Fecha</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
+                          Fecha
+                        </label>
                         <DatePickerSimple
                           value={form.date}
                           onChange={(date) => setForm({ ...form, date })}
@@ -518,21 +731,29 @@ export default function ImportClient() {
                           className="pr-10"
                           required
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">€</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">
+                          €
+                        </span>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">Categoría</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
+                          Categoría
+                        </label>
                         <Select
                           options={categoryOptions}
                           value={form.category_id}
-                          onChange={(e) => setForm({ ...form, category_id: e.target.value, subcategory_id: '' })}
+                          onChange={(e) =>
+                            setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
+                          }
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">Subcategoría</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
+                          Subcategoría
+                        </label>
                         <Select
                           options={subcategoryOptions}
                           value={form.subcategory_id}
@@ -556,7 +777,11 @@ export default function ImportClient() {
                       </div>
                     )}
 
-                    <Button type="submit" className="w-full h-12 text-base font-semibold shadow-accent/20 transition-all hover:scale-[1.01]" isLoading={isLoading}>
+                    <Button
+                      type="submit"
+                      className="w-full h-12 text-base font-semibold shadow-accent/20 transition-all hover:scale-[1.01]"
+                      isLoading={isLoading}
+                    >
                       Añadir Transacción
                     </Button>
                   </form>
@@ -569,31 +794,48 @@ export default function ImportClient() {
                   <div className="flex items-center justify-between px-4 mb-2">
                     {[
                       { id: 'upload', label: 'Subir', icon: <Upload className="h-4 w-4" /> },
-                      { id: 'preview', label: 'Vista Previa', icon: <FileSpreadsheet className="h-4 w-4" /> },
+                      {
+                        id: 'preview',
+                        label: 'Vista Previa',
+                        icon: <FileSpreadsheet className="h-4 w-4" />,
+                      },
                       { id: 'mapping', label: 'Mapeo', icon: <Layers className="h-4 w-4" /> },
                     ].map((s, i, arr) => {
                       const isActive = step === s.id
-                      const isPast = arr.findIndex(stepObj => stepObj.id === step) > i
+                      const isPast = arr.findIndex((stepObj) => stepObj.id === step) > i
                       return (
                         <div key={s.id} className="flex items-center flex-1 last:flex-none group">
                           <div className="flex flex-col items-center gap-2 relative z-10">
-                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                              isActive ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-110' :
-                              isPast ? 'bg-emerald-100 dark:bg-success/20 text-emerald-600 dark:text-success' : 'bg-slate-100 dark:bg-layer-2 text-slate-500 dark:text-text-secondary border border-slate-200 dark:border-layer-3'
-                            }`}>
+                            <div
+                              className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                                isActive
+                                  ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-110'
+                                  : isPast
+                                    ? 'bg-emerald-100 dark:bg-success/20 text-emerald-600 dark:text-success'
+                                    : 'bg-slate-100 dark:bg-layer-2 text-slate-500 dark:text-text-secondary border border-slate-200 dark:border-layer-3'
+                              }`}
+                            >
                               {isPast ? <CheckCircle2 className="h-5 w-5" /> : s.icon}
                             </div>
-                            <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                              isActive ? 'text-accent' : isPast ? 'text-emerald-600 dark:text-success' : 'text-slate-500 dark:text-text-secondary'
-                            }`}>
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                isActive
+                                  ? 'text-accent'
+                                  : isPast
+                                    ? 'text-emerald-600 dark:text-success'
+                                    : 'text-slate-500 dark:text-text-secondary'
+                              }`}
+                            >
                               {s.label}
                             </span>
                           </div>
                           {i < arr.length - 1 && (
                             <div className="flex-1 h-[2px] mx-4 -mt-6 bg-slate-200 dark:bg-layer-2 relative overflow-hidden">
-                              <div className={`absolute inset-0 bg-accent transition-transform duration-500 origin-left ${
-                                isPast ? 'scale-x-100' : 'scale-x-0'
-                              }`} />
+                              <div
+                                className={`absolute inset-0 bg-accent transition-transform duration-500 origin-left ${
+                                  isPast ? 'scale-x-100' : 'scale-x-0'
+                                }`}
+                              />
                             </div>
                           )}
                         </div>
@@ -601,7 +843,6 @@ export default function ImportClient() {
                     })}
                   </div>
                 )}
-
 
                 {step === 'upload' && (
                   <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
@@ -622,7 +863,12 @@ export default function ImportClient() {
                     </CardHeader>
                     <CardContent className="p-8">
                       <label className="relative group cursor-pointer block">
-                        <input type="file" className="hidden" accept=".xlsx,.csv" onChange={handleFileSelect} />
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".xlsx,.csv"
+                          onChange={handleFileSelect}
+                        />
                         <div className="py-24 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 dark:border-emerald-500/20 rounded-3xl bg-emerald-50/50 dark:bg-emerald-500/[0.02] group-hover:bg-emerald-100/50 dark:group-hover:bg-emerald-500/[0.05] group-hover:border-emerald-400 dark:group-hover:border-emerald-500/40 transition-all duration-300 ease-out text-center overflow-hidden">
                           {/* Decorative elements */}
                           <div className="absolute top-0 right-0 p-8 opacity-20 dark:opacity-10 group-hover:scale-110 transition-transform duration-500">
@@ -637,13 +883,20 @@ export default function ImportClient() {
                             )}
                           </div>
 
-
                           <h3 className="text-2xl font-bold text-slate-800 dark:text-text-primary mb-2">
                             {isLoading ? 'Analizando tu archivo...' : 'Sube tu extracto de banco'}
                           </h3>
 
                           <p className="text-sm text-slate-600 dark:text-text-secondary max-w-sm px-4 mb-8 leading-relaxed">
-                            Arrastra tu archivo aquí o haz clic para explorar. Soportamos archivos <span className="font-bold text-emerald-700 dark:text-emerald-500">Excel (.xlsx)</span> y <span className="font-bold text-emerald-700 dark:text-emerald-500">CSV</span>.
+                            Arrastra tu archivo aquí o haz clic para explorar. Soportamos archivos{' '}
+                            <span className="font-bold text-emerald-700 dark:text-emerald-500">
+                              Excel (.xlsx)
+                            </span>{' '}
+                            y{' '}
+                            <span className="font-bold text-emerald-700 dark:text-emerald-500">
+                              CSV
+                            </span>
+                            .
                           </p>
 
                           <div className="flex items-center gap-3">
@@ -652,10 +905,10 @@ export default function ImportClient() {
                             </div>
                             <div className="px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-500">
                               IA categorización activa
-    </div>
-  </div>
-</div>
-</label>
+                            </div>
+                          </div>
+                        </div>
+                      </label>
 
                       {error && (
                         <div className="mt-6 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -678,12 +931,16 @@ export default function ImportClient() {
                             <FileSpreadsheet className="h-5 w-5 text-blue-600" />
                           </div>
                           <div>
-                            <CardTitle className="text-lg font-bold text-text-primary">Vista previa del archivo</CardTitle>
-                            <p className="text-xs text-text-secondary mt-1">Hemos detectado {parseResult.transactions.length} transacciones.</p>
+                            <CardTitle className="text-lg font-bold text-text-primary">
+                              Vista previa del archivo
+                            </CardTitle>
+                            <p className="text-xs text-text-secondary mt-1">
+                              Hemos detectado {parseResult.transactions.length} transacciones.
+                            </p>
                           </div>
                         </div>
-                        <Button 
-                          className="h-11 px-6 font-bold shadow-lg shadow-accent/20" 
+                        <Button
+                          className="h-11 px-6 font-bold shadow-lg shadow-accent/20"
                           onClick={() => setStep('mapping')}
                         >
                           Continuar al Mapeo
@@ -696,24 +953,42 @@ export default function ImportClient() {
                         <table className="w-full text-sm border-collapse">
                           <thead className="bg-layer-2/50 sticky top-0 backdrop-blur-sm z-20">
                             <tr>
-                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">Fecha</th>
-                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">Descripción</th>
-                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">Cat. Banco</th>
-                              <th className="p-4 text-right font-bold text-text-secondary uppercase tracking-wider text-[10px]">Importe</th>
+                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">
+                                Fecha
+                              </th>
+                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">
+                                Descripción
+                              </th>
+                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">
+                                Cat. Banco
+                              </th>
+                              <th className="p-4 text-right font-bold text-text-secondary uppercase tracking-wider text-[10px]">
+                                Importe
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-layer-2">
                             {parseResult.transactions.slice(0, 100).map((tx, i) => (
-                              <tr key={i} className="group hover:bg-accent/[0.02] transition-colors">
-                                <td className="p-4 whitespace-nowrap text-text-primary font-medium tabular-nums">{tx.date}</td>
-                                <td className="p-4 max-w-[250px] truncate text-text-primary font-medium">{tx.description}</td>
+                              <tr
+                                key={i}
+                                className="group hover:bg-accent/[0.02] transition-colors"
+                              >
+                                <td className="p-4 whitespace-nowrap text-text-primary font-medium tabular-nums">
+                                  {tx.date}
+                                </td>
+                                <td className="p-4 max-w-[250px] truncate text-text-primary font-medium">
+                                  {tx.description}
+                                </td>
                                 <td className="p-4">
                                   <span className="inline-flex px-2 py-1 rounded bg-layer-2 text-[10px] font-bold text-text-secondary uppercase">
                                     {tx.bank_category || 'Sin Categoría'}
                                   </span>
                                 </td>
-                                <td className={`p-4 text-right font-black tabular-nums ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}>
-                                  {tx.amount > 0 ? '+' : ''}{tx.amount.toFixed(2)}€
+                                <td
+                                  className={`p-4 text-right font-black tabular-nums ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}
+                                >
+                                  {tx.amount > 0 ? '+' : ''}
+                                  {tx.amount.toFixed(2)}€
                                 </td>
                               </tr>
                             ))}
@@ -733,7 +1008,9 @@ export default function ImportClient() {
                             <Layers className="h-5 w-5 text-orange-600" />
                           </div>
                           <div>
-                            <CardTitle className="text-lg font-bold text-text-primary">Mapeo de Categorías</CardTitle>
+                            <CardTitle className="text-lg font-bold text-text-primary">
+                              Mapeo de Categorías
+                            </CardTitle>
                             <p className="text-xs text-text-secondary mt-1">
                               Vincula las categorías de tu banco con las de la aplicación.
                             </p>
@@ -743,9 +1020,9 @@ export default function ImportClient() {
                           <div className="px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 text-[10px] font-black uppercase tracking-wider">
                             {mappingStats.pending} Pendientes
                           </div>
-                          <Button 
-                            className="h-11 px-8 font-black shadow-lg shadow-accent/20" 
-                            onClick={handleConfirmImport} 
+                          <Button
+                            className="h-11 px-8 font-black shadow-lg shadow-accent/20"
+                            onClick={handleConfirmImport}
                             isLoading={isLoading}
                           >
                             Finalizar Importación
@@ -759,31 +1036,49 @@ export default function ImportClient() {
                           const key = `${cat.category}|${cat.subcategory}`
                           const isMapped = !!mappings[key]
                           return (
-                            <div key={i} className={`group flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-2xl border transition-all duration-300 ${
-                              isMapped ? 'border-success/20 bg-success/[0.02] hover:bg-success/[0.04]' : 'border-layer-3 bg-layer-2/30 hover:border-accent/30'
-                            }`}>
+                            <div
+                              key={i}
+                              className={`group flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-2xl border transition-all duration-300 ${
+                                isMapped
+                                  ? 'border-success/20 bg-success/[0.02] hover:bg-success/[0.04]'
+                                  : 'border-layer-3 bg-layer-2/30 hover:border-accent/30'
+                              }`}
+                            >
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1.5">
-                                  <div className={`h-2 w-2 rounded-full ${isMapped ? 'bg-success animate-pulse' : 'bg-text-secondary/40'}`} />
-                                  <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Procedencia del banco</span>
+                                  <div
+                                    className={`h-2 w-2 rounded-full ${isMapped ? 'bg-success animate-pulse' : 'bg-text-secondary/40'}`}
+                                  />
+                                  <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
+                                    Procedencia del banco
+                                  </span>
                                 </div>
                                 <p className="text-base font-bold text-text-primary truncate uppercase tabular-nums">
-                                  {cat.category} <span className="text-text-secondary font-medium ml-2">{cat.subcategory ? `→ ${cat.subcategory}` : ''}</span>
+                                  {cat.category}{' '}
+                                  <span className="text-text-secondary font-medium ml-2">
+                                    {cat.subcategory ? `→ ${cat.subcategory}` : ''}
+                                  </span>
                                 </p>
                               </div>
 
                               <div className="h-10 w-10 rounded-full bg-layer-3 hidden md:flex items-center justify-center shrink-0">
-                                <ArrowRight className={`h-4 w-4 ${isMapped ? 'text-success' : 'text-text-secondary'}`} />
+                                <ArrowRight
+                                  className={`h-4 w-4 ${isMapped ? 'text-success' : 'text-text-secondary'}`}
+                                />
                               </div>
 
                               <div className="w-full md:w-80">
                                 <div className="flex items-center gap-2 mb-1.5 md:hidden">
-                                  <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Asignar en App</span>
+                                  <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
+                                    Asignar en App
+                                  </span>
                                 </div>
                                 <Select
                                   options={allSubcategoryOptions}
                                   value={mappings[key] || ''}
-                                  onChange={(e) => setMappings({ ...mappings, [key]: e.target.value })}
+                                  onChange={(e) =>
+                                    setMappings({ ...mappings, [key]: e.target.value })
+                                  }
                                   className={`h-12 font-semibold transition-all ${isMapped ? 'border-success/40 bg-white' : ''}`}
                                 />
                               </div>
@@ -799,7 +1094,7 @@ export default function ImportClient() {
                   <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in zoom-in-95 duration-500">
                     <div className="h-2 bg-success shrink-0" />
                     <CardContent className="py-20 text-center relative px-8">
-                       {/* Background confetti effect simulation */}
+                      {/* Background confetti effect simulation */}
                       <div className="absolute top-0 left-1/4 -translate-y-1/2 h-32 w-32 bg-success/10 blur-3xl rounded-full" />
                       <div className="absolute bottom-0 right-1/4 translate-y-1/2 h-32 w-32 bg-accent/10 blur-3xl rounded-full" />
 
@@ -810,39 +1105,49 @@ export default function ImportClient() {
                         </div>
                       </div>
 
-                      <h3 className="text-3xl font-black text-text-primary mb-4 tracking-tight">¡Importación completada!</h3>
-                      
+                      <h3 className="text-3xl font-black text-text-primary mb-4 tracking-tight">
+                        ¡Importación completada!
+                      </h3>
+
                       <div className="max-w-md mx-auto p-6 rounded-3xl bg-layer-2/50 border border-layer-3 mb-10">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="text-center p-4">
-                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Total Procesado</p>
-                            <p className="text-3xl font-black text-text-primary">{importResult.total}</p>
+                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">
+                              Total Procesado
+                            </p>
+                            <p className="text-3xl font-black text-text-primary">
+                              {importResult.total}
+                            </p>
                           </div>
                           <div className="text-center p-4">
-                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Guardadas</p>
-                            <p className="text-3xl font-black text-success tabular-nums">{importResult.inserted}</p>
+                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">
+                              Guardadas
+                            </p>
+                            <p className="text-3xl font-black text-success tabular-nums">
+                              {importResult.inserted}
+                            </p>
                           </div>
                         </div>
                         {importResult.skipped > 0 && (
                           <div className="mt-4 pt-4 border-t border-layer-3 flex items-center justify-center gap-2">
-                             <div className="h-2 w-2 rounded-full bg-warning" />
-                             <p className="text-xs font-bold text-text-secondary">
-                               {importResult.skipped} transacciones duplicadas fueron omitidas
-                             </p>
+                            <div className="h-2 w-2 rounded-full bg-warning" />
+                            <p className="text-xs font-bold text-text-secondary">
+                              {importResult.skipped} transacciones duplicadas fueron omitidas
+                            </p>
                           </div>
                         )}
                       </div>
 
                       <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <Button 
-                          onClick={() => window.location.href = '/transactions'} 
+                        <Button
+                          onClick={() => router.push('/transactions')}
                           className="h-14 px-10 text-base font-black shadow-xl shadow-accent/20"
                         >
                           Ir a Transacciones
                           <ArrowRight className="h-5 w-5 ml-2" />
                         </Button>
-                        <Button 
-                          onClick={() => setStep('upload')} 
+                        <Button
+                          onClick={() => setStep('upload')}
                           variant="outline"
                           className="h-14 px-10 text-base font-bold bg-white"
                         >
@@ -854,15 +1159,10 @@ export default function ImportClient() {
                 )}
               </div>
             )}
-
-
           </div>
-
-
 
           {/* Columna Derecha: Informativa (Sidebar) */}
           <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6 lg:self-start">
-
             <Card className="bg-gradient-to-br from-slate-50 dark:from-layer-2 to-white dark:to-layer-1 border-slate-200 dark:border-layer-3">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -870,11 +1170,14 @@ export default function ImportClient() {
                     <Info className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div>
-                    <CardTitle className="text-base font-bold text-slate-800 dark:text-text-primary leading-tight">Guía de Importación</CardTitle>
-                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mt-0.5">Consejos rápidos</p>
+                    <CardTitle className="text-base font-bold text-slate-800 dark:text-text-primary leading-tight">
+                      Guía de Importación
+                    </CardTitle>
+                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mt-0.5">
+                      Consejos rápidos
+                    </p>
                   </div>
                 </div>
-
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-layer-3">
@@ -883,7 +1186,9 @@ export default function ImportClient() {
                       <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">Formato estándar</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">
+                        Formato estándar
+                      </p>
                       <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
                         Busca las columnas Fecha, Descripción e Importe en tu archivo.
                       </p>
@@ -895,7 +1200,9 @@ export default function ImportClient() {
                       <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">Categorización IA</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">
+                        Categorización IA
+                      </p>
                       <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
                         Analizaremos conceptos para proponerte la mejor categoría automáticamente.
                       </p>
@@ -907,7 +1214,9 @@ export default function ImportClient() {
                       <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">Adiós duplicados</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">
+                        Adiós duplicados
+                      </p>
                       <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
                         Omitimos registros que ya existan en tu historial para evitar errores.
                       </p>
@@ -915,13 +1224,12 @@ export default function ImportClient() {
                   </div>
                 </div>
 
-
-
-
-
-
                 <div className="pt-4 border-t border-slate-200 dark:border-layer-3">
-                  <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-slate-600 dark:text-text-secondary hover:text-slate-900 dark:hover:text-text-primary hover:bg-slate-100 dark:hover:bg-layer-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2 text-slate-600 dark:text-text-secondary hover:text-slate-900 dark:hover:text-text-primary hover:bg-slate-100 dark:hover:bg-layer-2"
+                  >
                     <HelpCircle className="h-4 w-4" />
                     Descargar plantilla Excel
                   </Button>
@@ -937,9 +1245,12 @@ export default function ImportClient() {
                     <HelpCircle className="h-5 w-5 text-blue-600 dark:text-accent" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-slate-800 dark:text-text-primary mb-1 uppercase tracking-tight">¿Tienes dudas?</h4>
+                    <h4 className="text-sm font-black text-slate-800 dark:text-text-primary mb-1 uppercase tracking-tight">
+                      ¿Tienes dudas?
+                    </h4>
                     <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed mb-4">
-                      Si tu banco tiene un formato extraño, nuestro soporte técnico te ayudará a importarlo.
+                      Si tu banco tiene un formato extraño, nuestro soporte técnico te ayudará a
+                      importarlo.
                     </p>
                     <button className="text-[10px] font-black text-blue-600 dark:text-accent uppercase tracking-widest hover:underline text-left flex items-center gap-1">
                       Hablar con soporte
@@ -949,9 +1260,7 @@ export default function ImportClient() {
                 </div>
               </CardContent>
             </Card>
-
           </div>
-
         </div>
       </div>
     </div>

@@ -13,6 +13,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { TrendingUp, TrendingDown, PiggyBank, ArrowRight, Wallet, Coins, Info } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface RecommendationsProps {
   accountId: string
@@ -21,6 +22,7 @@ interface RecommendationsProps {
 }
 
 export function Recommendations({ accountId, profile, monthlyAmount }: RecommendationsProps) {
+  const router = useRouter()
   const { data, isLoading, isError, refetch } = useRecommendations(
     accountId,
     profile ? { profile } : undefined
@@ -71,7 +73,7 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
               <p className="text-muted-foreground mb-4">
                 Completa tu perfil de inversor para ver recomendaciones personalizadas
               </p>
-              <Button variant="outline" onClick={() => window.location.href = '/investment?tab=profile'}>
+              <Button variant="outline" onClick={() => router.push('/investment?tab=profile')}>
                 Completar Perfil
               </Button>
             </div>

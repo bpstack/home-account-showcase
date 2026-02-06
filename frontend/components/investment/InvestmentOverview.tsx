@@ -3,6 +3,7 @@
 
 'use client'
 
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import {
   useInvestmentOverview,
@@ -47,7 +48,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
   const { data: investmentData, isLoading: isInvestmentLoading } = useInvestmentOverview(accountId)
   const { metrics: financialSummary, isLoading: isMetricsLoading } = useFinancialMetrics(accountId)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
-  
+
   const [selectedMonths, setSelectedMonths] = useState<number | null>(null)
   const [isEditingFund, setIsEditingFund] = useState(false)
   const [fundAmount, setFundAmount] = useState('')
@@ -160,7 +161,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
       </CardHeader>
       <CardContent className="p-0 space-y-3 sm:space-y-4">
         {/* Investment Module Banner - Compact on mobile */}
-        <a
+        <Link
           href="/investment"
           className="group flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-gradient-to-br from-accent/10 to-primary/10 border border-accent/20 hover:border-accent/40 transition-all"
         >
@@ -178,7 +179,7 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
             </div>
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors shrink-0 ml-2" />
-        </a>
+        </Link>
 
         {/* Financial Metrics Grid - More compact */}
         <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
