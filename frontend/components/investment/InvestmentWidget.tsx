@@ -3,6 +3,7 @@
 
 'use client'
 
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useInvestmentOverview } from '@/lib/queries/investment'
@@ -31,7 +32,7 @@ export function InvestmentWidget({ accountId, compact = false, stats }: Investme
   }
 
   const { profile, marketPrices } = data || {}
-  
+
   // Use local metrics
   const savingsAmount = financialSummary.savingsCapacity
   const savingsRate = financialSummary.savingsRate
@@ -48,16 +49,18 @@ export function InvestmentWidget({ accountId, compact = false, stats }: Investme
               <div>
                 <p className="text-sm font-medium">Módulo de Inversión</p>
                 <p className="text-xs text-muted-foreground">
-                  {profile ? `${profile.riskProfile} • ${savingsRate.toFixed(0)}% ahorro` : 'Sin configurar'}
+                  {profile
+                    ? `${profile.riskProfile} • ${savingsRate.toFixed(0)}% ahorro`
+                    : 'Sin configurar'}
                 </p>
               </div>
             </div>
-            <a
+            <Link
               href="/investment"
               className="inline-flex items-center justify-center gap-2 h-8 px-3 text-xs font-medium rounded-md border border-layer-3 bg-transparent hover:bg-layer-1 text-text-primary transition-colors"
             >
               Ver <ArrowRight className="h-3 w-3 ml-1" />
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -95,17 +98,24 @@ export function InvestmentWidget({ accountId, compact = false, stats }: Investme
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Fondo de emergencia</span>
               <span className="font-medium">
-                {((financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100).toFixed(0)}%
+                {(
+                  (financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) *
+                  100
+                ).toFixed(0)}
+                %
               </span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
-                style={{ width: `${Math.min(100, (financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100)}%` }}
+                style={{
+                  width: `${Math.min(100, (financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100)}%`,
+                }}
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(financialSummary.emergencyFundStatus)} de {formatCurrency(financialSummary.emergencyFundGoal)}
+              {formatCurrency(financialSummary.emergencyFundStatus)} de{' '}
+              {formatCurrency(financialSummary.emergencyFundGoal)}
             </p>
           </div>
         )}
@@ -116,20 +126,26 @@ export function InvestmentWidget({ accountId, compact = false, stats }: Investme
             <p className="text-xs font-medium text-muted-foreground uppercase">Mercados</p>
             <div className="flex justify-between text-sm">
               <span>S&P 500</span>
-              <span className={cn(
-                'font-medium',
-                marketPrices.sp500.change24h >= 0 ? 'text-green-600' : 'text-red-600'
-              )}>
-                {marketPrices.sp500.change24h >= 0 ? '+' : ''}{marketPrices.sp500.change24h.toFixed(2)}%
+              <span
+                className={cn(
+                  'font-medium',
+                  marketPrices.sp500.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                )}
+              >
+                {marketPrices.sp500.change24h >= 0 ? '+' : ''}
+                {marketPrices.sp500.change24h.toFixed(2)}%
               </span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Bitcoin</span>
-              <span className={cn(
-                'font-medium',
-                marketPrices.btc.change24h >= 0 ? 'text-green-600' : 'text-red-600'
-              )}>
-                {marketPrices.btc.change24h >= 0 ? '+' : ''}{marketPrices.btc.change24h.toFixed(2)}%
+              <span
+                className={cn(
+                  'font-medium',
+                  marketPrices.btc.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                )}
+              >
+                {marketPrices.btc.change24h >= 0 ? '+' : ''}
+                {marketPrices.btc.change24h.toFixed(2)}%
               </span>
             </div>
           </div>
@@ -147,13 +163,13 @@ export function InvestmentWidget({ accountId, compact = false, stats }: Investme
         )}
 
         {/* CTA */}
-        <a
+        <Link
           href="/investment"
           className="inline-flex items-center justify-center w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
         >
           <Sparkles className="h-4 w-4 mr-2" />
           Acceder al módulo
-        </a>
+        </Link>
 
         <p className="text-xs text-muted-foreground text-center">
           Recomendaciones personalizadas basadas en tu historial
@@ -171,7 +187,7 @@ function QuickStat({
   icon,
   label,
   value,
-  color
+  color,
 }: {
   icon: React.ReactNode
   label: string
@@ -193,20 +209,22 @@ function Badge({ profile }: { profile: string }) {
   const colors: Record<string, string> = {
     conservative: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
     balanced: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-    dynamic: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+    dynamic: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
   }
 
   const labels: Record<string, string> = {
     conservative: 'Conservador',
     balanced: 'Equilibrado',
-    dynamic: 'Dinámico'
+    dynamic: 'Dinámico',
   }
 
   return (
-    <span className={cn(
-      'px-2 py-1 rounded-full text-xs font-medium',
-      colors[profile] || colors.balanced
-    )}>
+    <span
+      className={cn(
+        'px-2 py-1 rounded-full text-xs font-medium',
+        colors[profile] || colors.balanced
+      )}
+    >
       {labels[profile] || 'Equilibrado'}
     </span>
   )

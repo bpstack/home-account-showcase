@@ -18,6 +18,10 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [redirected, setRedirected] = useState(false)
 
+  // Subscribe to crypto store to react to unlock changes
+  const isUnlocked = useCryptoStore((s) => s.isUnlocked)
+  const accountKeysSize = useCryptoStore((s) => s.accountKeys.size)
+
   const shouldRedirectToLogin = useCallback(() => {
     // Don't redirect if on unlock page or if crypto is locked
     const cryptoStore = useCryptoStore.getState()
@@ -28,8 +32,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   }, [isLoading, isAuthenticated, pathname, redirected])
 
   useEffect(() => {
-    const cryptoStore = useCryptoStore.getState()
-    const isCryptoReady = cryptoStore.isUnlocked && cryptoStore.accountKeys.size > 0
+    const isCryptoReady = isUnlocked && accountKeysSize > 0
 
     // Redirect to unlock if crypto is locked
     if (user && !isCryptoReady && pathname !== UNLOCK_PATH) {
@@ -51,7 +54,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
       setRedirected(true)
       router.push('/login')
     }
-  }, [user, router, pathname, shouldRedirectToLogin])
+  }, [user, router, pathname, shouldRedirectToLogin, isUnlocked, accountKeysSize])
 
   const generateBreadcrumbs = () => {
     const paths = pathname.split('/').filter(Boolean)

@@ -68,23 +68,10 @@ export function useAuth() {
     accountsQuery.data?.find((a) => a.id === selectedAccountId) ||
     (accountsQuery.data && accountsQuery.data.length > 0 ? accountsQuery.data[0] : null)
 
-  // Effect: Redirect to /unlock if authenticated but crypto is locked
-  // Also: Redirect to dashboard if authenticated AND crypto is unlocked
-  useEffect(() => {
-    const cryptoStore = useCryptoStore.getState()
-
-    // Conditions for redirect to /unlock:
-    // 1. User is authenticated (cookie valid)
-    // 2. Crypto is NOT unlocked (UK not in memory or account not unlocked)
-    // 3. NOT already on /unlock page (avoid loop)
-    const isCryptoReady = cryptoStore.isUnlocked && cryptoStore.accountKeys.size > 0
-
-    if (userQuery.data && !isCryptoReady && !window.location.pathname.includes('/unlock')) {
-      router.replace('/unlock')
-    } else if (userQuery.data && isCryptoReady && window.location.pathname === '/unlock') {
-      router.replace('/dashboard')
-    }
-  }, [userQuery.data, router])
+  // NOTE: Redirect to /unlock when crypto is locked is handled exclusively
+  // by the PrivateLayout useEffect (app/(private)/layout.tsx).
+  // Do NOT add redirect logic here — it causes race conditions because
+  // useAuth() runs in many components and getState() is not reactive.
 
   const switchAccount = async (accountId: string) => {
     const newAccount = accountsQuery.data?.find((a) => a.id === accountId)
@@ -166,7 +153,8 @@ export function useAuth() {
       )
     }
 
-    router.replace('/dashboard')
+    // Note: Redirect is handled by the layout useEffect
+    // which reads 'unlockRedirect' from sessionStorage
   }
 
   const register = async (
