@@ -187,11 +187,13 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
             label="Ingresos"
             value={formatCurrency(financialSummary.avgMonthlyIncome)}
             icon={<Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />}
+            tooltip="Media de ingresos mensuales considerando todas tus transacciones"
           />
           <MetricCard
             label="Gastos"
             value={formatCurrency(financialSummary.avgMonthlyExpenses)}
             icon={<TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />}
+            tooltip="Media de gastos mensuales considerando todas tus transacciones"
           />
           <MetricCard
             label="Ahorro"
@@ -199,6 +201,8 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
             icon={<PiggyBank className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500" />}
             highlight
             subtitle={`${financialSummary.savingsRate.toFixed(0)}%`}
+            tooltip="Media de ahorro mensual considerando todas tus transacciones"
+            subtitleTooltip="Porcentaje de ingresos que logras ahorrar. Formula: Ingresos - Gastos / Ingresos x 100"
           />
         </div>
 
@@ -257,8 +261,11 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
 
           {/* Progress bar */}
           <div className="space-y-1.5 sm:space-y-2">
-            <div className="flex justify-between text-[10px] sm:text-xs">
-              <span className="text-muted-foreground">Progreso</span>
+            <div className="flex justify-between text-[10px] sm:text-xs items-center">
+              <span className="text-muted-foreground flex items-center gap-0.5">
+                Progreso
+                <InfoTooltip content="Porcentaje del fondo de emergencia completado. Meta = gastos mensuales × meses configurados." className="w-3 h-3" />
+              </span>
               <span className="font-semibold">{savingsProgress.toFixed(0)}%</span>
             </div>
             <div className="h-2 sm:h-3 bg-muted/50 rounded-full overflow-hidden border border-border/20">
@@ -276,7 +283,10 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
 
         {/* Emergency Fund Configuration - Compact */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 p-2.5 sm:p-4 bg-card border border-border/40 dark:border-white/5 dark:bg-zinc-900 rounded-lg sm:rounded-xl">
-          <span className="text-xs sm:text-sm font-medium flex-1">Config. Fondo Emergencia</span>
+          <span className="text-xs sm:text-sm font-medium flex-1 flex items-center gap-1">
+            Config. Fondo Emergencia
+            <InfoTooltip content="Define cuántos meses de gastos quieres cubrir con tu fondo de emergencia. Se recomienda entre 3 y 6 meses." />
+          </span>
           <select
             className="w-full sm:w-auto text-xs sm:text-sm border-none bg-muted/50 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 cursor-pointer outline-none focus:ring-2 focus:ring-primary/20 min-w-[100px] sm:min-w-[120px]"
             value={selectedMonths ?? currentMonths}
@@ -304,13 +314,19 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
             </span>
           </div>
           <div className="text-muted-foreground text-center p-1.5 sm:p-2 rounded-lg bg-muted/30">
-            📊{' '}
-            <span className="font-medium text-foreground">{financialSummary.historicalMonths}</span>{' '}
-            meses
+            <span className="inline-flex items-center gap-0.5">
+              📊{' '}
+              <span className="font-medium text-foreground">{financialSummary.historicalMonths}</span>{' '}
+              meses
+              <InfoTooltip content="Meses de historial de transacciones analizados para calcular tus métricas financieras." className="w-3 h-3" />
+            </span>
           </div>
           <div className="text-muted-foreground text-center p-1.5 sm:p-2 rounded-lg bg-muted/30">
-            📅 <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span>{' '}
-            déficit
+            <span className="inline-flex items-center gap-0.5">
+              📅 <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span>{' '}
+              déficit
+              <InfoTooltip content="Número de meses en los que tus gastos superaron a tus ingresos." className="w-3 h-3" />
+            </span>
           </div>
         </div>
 
@@ -338,6 +354,7 @@ function MetricCard({
   highlight = false,
   subtitle,
   tooltip,
+  subtitleTooltip,
   className,
 }: {
   label: string
@@ -346,6 +363,7 @@ function MetricCard({
   highlight?: boolean
   subtitle?: string
   tooltip?: string
+  subtitleTooltip?: string
   className?: string
 }) {
   return (
@@ -378,7 +396,10 @@ function MetricCard({
       {subtitle && (
         <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
           <div className="w-1 h-1 rounded-full bg-current" />
-          {subtitle}
+          {subtitleTooltip ? (
+            <InfoTooltip content={subtitleTooltip} side="top" className="text-emerald-600 dark:text-emerald-400" />
+          ) : null}
+          <span>{subtitle}</span>
         </div>
       )}
     </div>

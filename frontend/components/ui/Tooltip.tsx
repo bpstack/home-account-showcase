@@ -23,8 +23,8 @@ export function Tooltip({
 }: TooltipProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState({ top: 0, left: 0 })
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const tooltipRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLSpanElement>(null)
+  const tooltipRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     if (!isOpen || !triggerRef.current || !tooltipRef.current) return
@@ -81,7 +81,7 @@ export function Tooltip({
   }, [isOpen, side, align])
 
   return (
-    <div
+    <span
       ref={triggerRef}
       className="relative inline-flex"
       onMouseEnter={() => setIsOpen(true)}
@@ -91,7 +91,7 @@ export function Tooltip({
     >
       {children}
       {isOpen && (
-        <div
+        <span
           ref={tooltipRef}
           role="tooltip"
           className={cn(
@@ -106,22 +106,24 @@ export function Tooltip({
           }}
         >
           {content}
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   )
 }
 
 // Info icon with tooltip - common pattern
 export function InfoTooltip({
   content,
+  side,
   className
 }: {
   content: string
+  side?: 'top' | 'bottom' | 'left' | 'right'
   className?: string
 }) {
   return (
-    <Tooltip content={content}>
+    <Tooltip content={content} side={side}>
       <span
         className={cn(
           'inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-muted text-muted-foreground',

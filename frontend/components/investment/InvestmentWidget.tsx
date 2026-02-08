@@ -6,6 +6,7 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
 import { useInvestmentOverview } from '@/lib/queries/investment'
 import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { TrendingUp, ArrowRight, Sparkles, PiggyBank, Wallet, Target } from 'lucide-react'
@@ -83,12 +84,14 @@ export function InvestmentWidget({ accountId, compact = false, stats }: Investme
             label="Ahorro mensual"
             value={formatCurrency(savingsAmount)}
             color="text-green-600"
+            tooltip="Media de ahorro mensual considerando todas tus transacciones"
           />
           <QuickStat
             icon={<Wallet className="h-4 w-4" />}
             label="Tasa ahorro"
             value={`${savingsRate.toFixed(1)}%`}
             color="text-accent"
+            tooltip="Porcentaje de ingresos que logras ahorrar. Formula: Ingresos - Gastos / Ingresos x 100"
           />
         </div>
 
@@ -188,17 +191,22 @@ function QuickStat({
   label,
   value,
   color,
+  tooltip,
 }: {
   icon: React.ReactNode
   label: string
   value: string
   color: string
+  tooltip?: string
 }) {
   return (
     <div className="flex items-center gap-2 p-2 bg-background/50 rounded-lg">
       <div className={color}>{icon}</div>
       <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          {label}
+          {tooltip && <InfoTooltip content={tooltip} />}
+        </p>
         <p className="text-sm font-semibold">{value}</p>
       </div>
     </div>
