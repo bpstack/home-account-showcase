@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, Suspense, useCallback, useMemo } from 'react'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useState, useEffect, Suspense, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { subcategories as subcategoriesApi, Subcategory, Transaction } from '@/lib/apiClient'
@@ -89,9 +89,7 @@ function TransactionsContent({
 }: TransactionsClientProps) {
   const { account } = useAuth()
   const queryClient = useQueryClient()
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const pathname = usePathname()
 
   const {
     page,
@@ -119,7 +117,18 @@ function TransactionsContent({
     setType,
     reset: resetFilters,
   } = useFiltersStore()
-  const searchTerm = searchParams.get('search') || ''
+  const [localSearch, setLocalSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Debounce: wait until user stops typing before filtering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(localSearch.trim())
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [localSearch])
+
+  const searchTerm = debouncedSearch
 
   const hasActiveFilters =
     selectedMonth !== null ||
@@ -129,40 +138,11 @@ function TransactionsContent({
     selectedType !== 'all' ||
     period !== 'monthly'
 
-  const updateUrl = useCallback(
-    (updates: { search?: string }) => {
-      const params = new URLSearchParams(searchParams.toString())
-      if (updates.search !== undefined) {
-        if (updates.search) params.set('search', updates.search)
-        else params.delete('search')
-      }
-      router.push(`${pathname}?${params.toString()}`, { scroll: false })
-    },
-    [searchParams, router, pathname]
-  )
-
-  const [localSearch, setLocalSearch] = useState(searchTerm)
-
-  // Sync local search with URL when URL changes (e.g. on clear or back nav)
-  useEffect(() => {
-    setLocalSearch(searchTerm)
-  }, [searchTerm])
-
-  // Debounced update of the URL
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== searchTerm) {
-        updateUrl({ search: localSearch })
-      }
-    }, 600) // 600ms delay for performance
-
-    return () => clearTimeout(timer)
-  }, [localSearch, searchTerm, updateUrl])
-
   const clearFilters = () => {
     resetFilters()
     resetTransactions()
-    updateUrl({ search: '' })
+    setLocalSearch('')
+    setDebouncedSearch('')
   }
 
   const handleMonthChange = (month: number | null) => {
