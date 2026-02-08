@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Modal, ModalFooter, Button } from '@/components/ui'
 import { useCategories } from '@/lib/queries/categories'
-import { useBulkUpdatePreview, useBulkUpdateCategory } from '@/lib/queries/transactions'
+import { useBulkUpdateByIds } from '@/lib/queries/transactions'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import type { CategoryChangeModalProps } from './types'
 
@@ -13,6 +13,7 @@ export function CategoryChangeModal({
   onClose,
   transaction,
   accountId,
+  allTransactions = [],
   onSuccess,
 }: CategoryChangeModalProps) {
   const queryClient = useQueryClient()
@@ -24,20 +25,18 @@ export function CategoryChangeModal({
   const { data: categoriesData } = useCategories(accountId)
   const categories = categoriesData?.categories || []
 
-  // Obtener el patron de descripcion (texto antes del primer numero o todo si no hay numeros)
-  const descriptionPattern = useMemo(() => {
-    if (!transaction) return ''
-    // Usar la descripcion completa como patron
-    return transaction.description
-  }, [transaction])
+  // Client-side: find all transactions with matching description (decrypted)
+  const matchingTransactionIds = useMemo(() => {
+    if (!transaction || !applyToAll) return []
+    const pattern = transaction.description.toLowerCase()
+    return allTransactions
+      .filter((t) => t.description.toLowerCase() === pattern)
+      .map((t) => t.id)
+  }, [transaction, applyToAll, allTransactions])
 
-  // Preview de cuantas transacciones seran afectadas
-  const { data: previewData, isLoading: isLoadingPreview } = useBulkUpdatePreview(
-    accountId,
-    applyToAll ? descriptionPattern : ''
-  )
+  const affectedCount = applyToAll ? matchingTransactionIds.length : 1
 
-  const bulkUpdateMutation = useBulkUpdateCategory()
+  const bulkUpdateMutation = useBulkUpdateByIds()
 
   // Resetear estado cuando cambia la transaccion
   useEffect(() => {
@@ -70,11 +69,15 @@ export function CategoryChangeModal({
     if (!transaction || !accountId) return
 
     try {
+      // Use IDs-based update (works with encrypted data)
+      const idsToUpdate = applyToAll && matchingTransactionIds.length > 0
+        ? matchingTransactionIds
+        : [transaction.id]
+
       await bulkUpdateMutation.mutateAsync({
         account_id: accountId,
-        description_pattern: applyToAll ? descriptionPattern : transaction.description,
+        transaction_ids: idsToUpdate,
         subcategory_id: selectedSubcategoryId,
-        save_mapping: saveMapping,
       })
 
       // Invalidar queries para refrescar datos
@@ -86,8 +89,6 @@ export function CategoryChangeModal({
       console.error('Error al actualizar categoria:', error)
     }
   }
-
-  const affectedCount = previewData?.count || 1
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Cambiar categoria" size="lg">
@@ -160,16 +161,9 @@ export function CategoryChangeModal({
               <div className="ml-7 p-3 bg-warning/10 border border-warning/30 rounded-lg">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-warning" />
-                  {isLoadingPreview ? (
-                    <span className="text-sm text-warning flex items-center gap-2">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Calculando...
-                    </span>
-                  ) : (
-                    <span className="text-sm text-warning">
-                      Se actualizaran <strong>{affectedCount}</strong> transacciones
-                    </span>
-                  )}
+                  <span className="text-sm text-warning">
+                    Se actualizaran <strong>{affectedCount}</strong> transacciones
+                  </span>
                 </div>
               </div>
             )}

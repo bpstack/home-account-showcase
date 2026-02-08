@@ -7,5 +7,7 @@ export interface CategoryChangeModalProps {
   onClose: () => void
   transaction: Transaction | null
   accountId: string
+  /** All decrypted transactions for client-side matching (encrypted DB can't do LIKE) */
+  allTransactions?: Transaction[]
   onSuccess: () => void
 }

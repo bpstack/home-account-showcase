@@ -435,7 +435,7 @@ function TransactionsContent({
   }
 
   return (
-    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6 sm:px-4">
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
       <div className="relative">
         <Tabs
           tabs={tabsList}
@@ -462,9 +462,42 @@ function TransactionsContent({
         />
       </div>
 
-      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 p-4 border-b border-border bg-layer-1/50 relative z-20">
-        {/* Búsqueda - 50% de ancho en desktop */}
-        <div className="w-full md:w-1/2 relative">
+      <div className="flex items-center justify-between px-2 md:px-8 py-3 md:py-4 border-b border-border bg-layer-1/50 relative z-20">
+        <FilterSelect
+          options={categoryOptions}
+          value={selectedCategory}
+          onChange={(e) => setCategory(e.target.value)}
+          className="h-9 md:h-10 max-w-[200px]"
+        />
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 md:h-10 px-4 shrink-0 flex items-center gap-2"
+            onClick={() => router.push('/import')}
+          >
+            <Upload className="h-4 w-4" />
+            <span className="hidden lg:inline">Importar</span>
+          </Button>
+
+          <Button
+            onClick={() => setCreateModalOpen(true)}
+            size="sm"
+            className="h-9 md:h-10 px-4 shrink-0 flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden xl:inline">Nueva Transacción</span>
+            <span className="xl:hidden">Nuevo</span>
+          </Button>
+        </div>
+      </div>
+
+        <div className="p-4 md:p-6 space-y-6">
+        <TransactionsSummary totals={totals} />
+
+        {/* Buscador integrado en la tabla */}
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             type="text"
@@ -474,42 +507,6 @@ function TransactionsContent({
             className="pl-9 h-10 w-full"
           />
         </div>
-
-        {/* Acciones y Filtros - Alineados a la derecha */}
-        <div className="flex flex-wrap items-center justify-end gap-2 flex-1 min-w-0">
-          <FilterSelect
-            options={categoryOptions}
-            value={selectedCategory}
-            onChange={(e) => setCategory(e.target.value)}
-            className="min-w-[200px] max-w-full h-10"
-          />
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-10 px-4 shrink-0 flex items-center gap-2"
-              onClick={() => router.push('/import')}
-            >
-              <Upload className="h-4 w-4" />
-              <span className="hidden lg:inline">Importar</span>
-            </Button>
-
-            <Button
-              onClick={() => setCreateModalOpen(true)}
-              size="sm"
-              className="h-10 px-4 shrink-0 flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden xl:inline">Nueva Transacción</span>
-              <span className="xl:hidden">Nuevo</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-        <div className="p-4 md:p-6 space-y-6">
-        <TransactionsSummary totals={totals} />
 
         <ResponsiveTransactionTable
           transactions={filteredTransactions}
@@ -635,6 +632,7 @@ function TransactionsContent({
           }}
           transaction={selectedTransaction}
           accountId={account.id}
+          allTransactions={txData?.transactions || []}
           onSuccess={() => invalidateTransactions()}
         />
       )}

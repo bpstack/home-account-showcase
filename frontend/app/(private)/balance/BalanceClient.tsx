@@ -492,6 +492,7 @@ function BalanceContent({
           }}
           transaction={selectedTransaction}
           accountId={account.id}
+          allTransactions={txData?.transactions || []}
           onSuccess={() => {}}
         />
       )}
