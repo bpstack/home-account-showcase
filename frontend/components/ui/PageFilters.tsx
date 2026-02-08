@@ -70,7 +70,7 @@ export function PageFilters({
   return (
     <div className={`flex items-center justify-between w-full ${className || ''}`}>
       {/* Filtros a la izquierda */}
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
         {showMonthSelect && onMonthChange && (
           <FilterSelect
             variant="tab"

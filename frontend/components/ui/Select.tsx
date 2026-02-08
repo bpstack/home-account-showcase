@@ -127,7 +127,7 @@ function FilterSelect({
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'flex items-center gap-1 py-2 px-1 text-sm font-medium',
+            'flex items-center gap-1 py-2.5 px-2 text-sm font-medium',
             'bg-transparent border-0',
             'text-muted-foreground',
             'hover:text-foreground',

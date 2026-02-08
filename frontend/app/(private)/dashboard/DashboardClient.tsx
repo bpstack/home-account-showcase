@@ -243,7 +243,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const dateRangeLabel = null // No more direct short range from URL
 
   return (
-    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6 sm:px-4">
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
       {/* Tabs con línea inferior */}
       <div className="relative">
         <Tabs
@@ -252,23 +252,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           onChange={(tabId) => setActiveTab(tabId as any)}
           variant="underline-responsive"
           rightContent={
-            activeTab === 'overview' ? (
-              <PageFilters
-                showMonthSelect
-                selectedMonth={selectedMonth}
-                onMonthChange={handleMonthChange}
-                showYearSelect
-                year={selectedYear}
-                onYearChange={handleYearChange}
-                showDatePicker
-                startDate={period === 'custom' ? customStartDate : undefined}
-                endDate={period === 'custom' ? customEndDate : undefined}
-                onDatesChange={handleDateRangeChange}
-                showClear={hasActiveFilters}
-                onClear={clearFilters}
-                className="ml-auto"
-              />
-            ) : activeTab === 'history' ? (
+            activeTab === 'history' ? (
               <PageFilters
                 showYearSelect
                 year={selectedYear}
@@ -277,7 +261,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 onClear={() => setYear(null)}
                 className="ml-auto"
               />
-            ) : activeTab === 'stats' ? (
+            ) : (
               <PageFilters
                 showMonthSelect
                 selectedMonth={selectedMonth}
@@ -293,23 +277,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 onClear={clearFilters}
                 className="ml-auto"
               />
-            ) : activeTab === 'investment' ? (
-              <PageFilters
-                showMonthSelect
-                selectedMonth={selectedMonth}
-                onMonthChange={handleMonthChange}
-                showYearSelect
-                year={selectedYear}
-                onYearChange={handleYearChange}
-                showDatePicker
-                startDate={period === 'custom' ? customStartDate : undefined}
-                endDate={period === 'custom' ? customEndDate : undefined}
-                onDatesChange={handleDateRangeChange}
-                showClear={hasActiveFilters}
-                onClear={clearFilters}
-                className="ml-auto"
-              />
-            ) : null
+            )
           }
         />
 
@@ -524,7 +492,7 @@ function OverviewTab({
           <p className="text-xs text-muted-foreground mb-1">{title}</p>
 
           {/* Amount */}
-          <p className={`text-2xl font-bold ${textClass}`}>
+          <p className={`text-lg sm:text-2xl font-bold ${textClass}`}>
             {sign}
             {formattedAmount} €
           </p>
@@ -891,7 +859,7 @@ function HistoryTab({
                             <p className="text-text-secondary text-xs mb-1">Ingresos</p>
                             <p>
                               <span className="text-text-secondary">+</span>
-                              <span className="text-success text-base ml-1">{hasData ? item.income.toFixed(2) : '-'}</span>
+                              <span className="text-success text-sm ml-1">{hasData ? item.income.toFixed(2) : '-'}</span>
                               {hasData && <span className="text-text-secondary ml-1">€</span>}
                             </p>
                           </div>
@@ -899,7 +867,7 @@ function HistoryTab({
                             <p className="text-text-secondary text-xs mb-1">Gastos</p>
                             <p>
                               <span className="text-text-secondary">-</span>
-                              <span className="text-danger text-base ml-1">{hasData ? item.expenses.toFixed(2) : '-'}</span>
+                              <span className="text-danger text-sm ml-1">{hasData ? item.expenses.toFixed(2) : '-'}</span>
                               {hasData && <span className="text-text-secondary ml-1">€</span>}
                             </p>
                           </div>
@@ -909,7 +877,7 @@ function HistoryTab({
                               <span className="text-text-secondary">
                                 {hasData ? (balance >= 0 ? '+' : '-') : ''}
                               </span>
-                              <span className={`text-base ml-1 ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                              <span className={`text-sm ml-1 ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
                                 {hasData ? Math.abs(balance).toFixed(2) : '-'}
                               </span>
                               {hasData && <span className="text-text-secondary ml-1">€</span>}
@@ -1070,7 +1038,7 @@ function SavingsTab({
               <div className="text-xs text-muted-foreground mb-1">
                 Ahorro mensual
               </div>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                 <span className="text-text-secondary">{stats.balance >= 0 ? '+' : '-'}</span>
                 <span className="ml-1">
                   {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(savingsAmount))}
