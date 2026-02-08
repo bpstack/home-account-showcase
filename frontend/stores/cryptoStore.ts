@@ -97,17 +97,24 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
     const { userKey } = get()
     if (!userKey) throw new Error('User key not available')
     const newAccountKeys = new Map(get().accountKeys)
+    let decryptedCount = 0
     await Promise.all(
       accounts.map(async ({ accountId, encryptedKey, keyVersion }) => {
         try {
           const accountKey = await decryptAccountKey(encryptedKey, userKey)
           newAccountKeys.set(accountId, { key: accountKey, version: keyVersion })
+          decryptedCount++
         } catch (e) {
-          console.error(e)
+          console.error(`[CryptoStore] Failed to decrypt key for account ${accountId}:`, e)
         }
       })
     )
     set({ accountKeys: newAccountKeys })
+
+    // If we had accounts to unlock but none succeeded, the password was wrong
+    if (accounts.length > 0 && decryptedCount === 0) {
+      throw new Error('Wrong password')
+    }
   },
 
   createAccountKey: async (accountId) => {

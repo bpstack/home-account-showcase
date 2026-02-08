@@ -77,6 +77,9 @@ export interface CreateInvestmentProfileDTO {
   horizon_years?: number
   has_emergency_fund?: boolean
   experience_level?: 'none' | 'basic' | 'intermediate' | 'advanced'
+  monthly_investable?: number
+  liquidity_reserve?: number
+  emergency_fund_months?: number
 }
 
 export interface UpdateInvestmentProfileDTO {

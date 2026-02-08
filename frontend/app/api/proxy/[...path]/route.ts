@@ -38,6 +38,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ p
   return handleProxy(req, await params, 'DELETE')
 }
 
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  return handleProxy(req, await params, 'PATCH')
+}
+
 // Helper para intentar refresh del token
 async function tryRefresh(refreshToken: string): Promise<{ success: boolean; accessToken?: string; csrfToken?: string }> {
   try {
@@ -115,7 +119,7 @@ async function handleProxy(
     }
 
     // Pasar CSRF token en header si es mutación
-    if (['POST', 'PUT', 'DELETE'].includes(method)) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
       const csrfFromHeader = req.headers.get('x-csrf-token')
       if (csrfFromHeader) {
         headers['X-CSRF-Token'] = csrfFromHeader

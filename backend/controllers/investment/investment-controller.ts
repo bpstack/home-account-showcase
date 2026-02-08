@@ -141,8 +141,14 @@ export const updateEmergencyFundMonths = async (req: Request, res: Response): Pr
 
     const { months } = validation.data
 
-    await InvestmentRepository.updateProfile(accountId, {
-      emergency_fund_months: months
+    await InvestmentRepository.upsertProfile({
+      account_id: accountId,
+      emergency_fund_months: months,
+      risk_profile: 'balanced',
+      investment_percentage: 20,
+      has_emergency_fund: true,
+      experience_level: 'none',
+      horizon_years: 5
     })
 
     res.status(200).json({
@@ -183,8 +189,14 @@ export const updateLiquidityReserve = async (req: Request, res: Response): Promi
 
     const { amount } = validation.data
 
-    await InvestmentRepository.updateProfile(accountId, {
-      liquidity_reserve: amount
+    await InvestmentRepository.upsertProfile({
+      account_id: accountId,
+      liquidity_reserve: amount,
+      risk_profile: 'balanced',
+      investment_percentage: 20,
+      has_emergency_fund: true,
+      experience_level: 'none',
+      horizon_years: 5
     })
 
     res.status(200).json({

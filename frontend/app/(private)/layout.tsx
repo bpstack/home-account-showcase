@@ -20,31 +20,32 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
 
   // Subscribe to crypto store to react to unlock changes
   const isUnlocked = useCryptoStore((s) => s.isUnlocked)
-  const accountKeysSize = useCryptoStore((s) => s.accountKeys.size)
 
   const shouldRedirectToLogin = useCallback(() => {
     // Don't redirect if on unlock page or if crypto is locked
     const cryptoStore = useCryptoStore.getState()
-    const isCryptoReady = cryptoStore.isUnlocked && cryptoStore.accountKeys.size > 0
+    const isCryptoReady = cryptoStore.isUnlocked
     if (pathname === UNLOCK_PATH) return false
     if (!isCryptoReady && pathname !== '/login') return false
     return !isLoading && !isAuthenticated && pathname !== UNLOCK_PATH && !redirected
   }, [isLoading, isAuthenticated, pathname, redirected])
 
   useEffect(() => {
-    const isCryptoReady = isUnlocked && accountKeysSize > 0
+    // isUnlocked = User Key derived in memory (password was entered)
+    // accountKeysSize > 0 is expected for normal users, but users with no accounts
+    // would have 0 keys even after unlock — so we only require isUnlocked
+    const isCryptoReady = isUnlocked
 
     // Redirect to unlock if crypto is locked
     if (user && !isCryptoReady && pathname !== UNLOCK_PATH) {
-      sessionStorage.setItem('unlockRedirect', pathname)
-      router.replace(UNLOCK_PATH)
+      router.replace(`${UNLOCK_PATH}?from=${encodeURIComponent(pathname)}`)
       return
     }
 
     // Redirect back after unlock
     if (user && isCryptoReady && pathname === UNLOCK_PATH) {
-      const redirectTo = sessionStorage.getItem('unlockRedirect') || '/dashboard'
-      sessionStorage.removeItem('unlockRedirect')
+      const params = new URLSearchParams(window.location.search)
+      const redirectTo = params.get('from') || '/dashboard'
       router.replace(redirectTo)
       return
     }
@@ -54,7 +55,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
       setRedirected(true)
       router.push('/login')
     }
-  }, [user, router, pathname, shouldRedirectToLogin, isUnlocked, accountKeysSize])
+  }, [user, router, pathname, shouldRedirectToLogin, isUnlocked])
 
   const generateBreadcrumbs = () => {
     const paths = pathname.split('/').filter(Boolean)

@@ -18,11 +18,13 @@ import {
 } from 'recharts'
 import { Info } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
+import { InfoTooltip } from '@/components/ui/Tooltip'
 
 interface SimulatorProps {
   accountId: string
   initialAmount?: number
   suggestedMonthly?: number
+  riskProfile?: 'conservative' | 'balanced' | 'dynamic'
 }
 
 interface SimulationResult {
@@ -35,11 +37,12 @@ export function Simulator({
   accountId,
   initialAmount = 5000,
   suggestedMonthly = 200,
+  riskProfile = 'balanced',
 }: SimulatorProps) {
   const [params, setParams] = useState({
     initialAmount,
     monthlyContribution: suggestedMonthly,
-    profile: 'balanced' as 'conservative' | 'balanced' | 'dynamic',
+    profile: riskProfile,
     years: 10,
   })
 
@@ -88,8 +91,9 @@ export function Simulator({
         {/* Inputs - More compact on mobile */}
         <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 block">
+            <label className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 flex items-center gap-1">
               Capital inicial: {formatCurrency(params.initialAmount)}
+              <InfoTooltip content="Cantidad de dinero con la que empezarías a invertir. Puede ser ahorro actual disponible." />
             </label>
             <Slider
               value={[params.initialAmount]}
@@ -105,8 +109,9 @@ export function Simulator({
           </div>
 
           <div>
-            <label className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 block">
+            <label className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 flex items-center gap-1">
               Aportación mensual: {formatCurrency(params.monthlyContribution)}
+              <InfoTooltip content="Cantidad que invertirías cada mes. Basado en tu capacidad de ahorro y el porcentaje de inversión de tu perfil." />
             </label>
             <Slider
               value={[params.monthlyContribution]}
@@ -122,8 +127,9 @@ export function Simulator({
           </div>
 
           <div>
-            <label className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 block">
+            <label className="text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 flex items-center gap-1">
               Plazo: {params.years} años
+              <InfoTooltip content="Horizonte temporal de inversión. A mayor plazo, mayor beneficio del interés compuesto." />
             </label>
             <Slider
               value={[params.years]}
@@ -141,9 +147,9 @@ export function Simulator({
 
         {/* Results - More compact */}
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-          <ResultCard label="Pesimista" value={result.conservative} color="#ef4444" />
-          <ResultCard label="Esperado" value={result.expected} color="#22c55e" />
-          <ResultCard label="Optimista" value={result.optimistic} color="#3b82f6" />
+          <ResultCard label="Pesimista" value={result.conservative} color="#ef4444" tooltip="Resultado con el rendimiento mínimo del perfil seleccionado" />
+          <ResultCard label="Esperado" value={result.expected} color="#22c55e" tooltip="Resultado con el rendimiento medio esperado del perfil" />
+          <ResultCard label="Optimista" value={result.optimistic} color="#3b82f6" tooltip="Resultado con el rendimiento máximo del perfil seleccionado" />
         </div>
 
         {/* Chart - With horizontal scroll on mobile */}
@@ -277,11 +283,13 @@ function ResultCard({
   label,
   value,
   color,
+  tooltip,
   className,
 }: {
   label: string
   value: number
   color: string
+  tooltip?: string
   className?: string
 }) {
   return (
@@ -291,8 +299,9 @@ function ResultCard({
         className
       )}
     >
-      <div className="text-[8px] sm:text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5">
+      <div className="text-[8px] sm:text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-0.5 flex items-center justify-center gap-0.5">
         {label}
+        {tooltip && <InfoTooltip content={tooltip} className="w-3 h-3" />}
       </div>
       <div className="text-xs sm:text-sm font-bold tracking-tight" style={{ color }}>
         {formatCurrency(value)}

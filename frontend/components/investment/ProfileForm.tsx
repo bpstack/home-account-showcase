@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   RefreshCw
 } from 'lucide-react'
+import { InfoTooltip } from '@/components/ui/Tooltip'
 
 interface ProfileFormProps {
   accountId: string
@@ -226,13 +227,19 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{profile.investmentPercentage}%</div>
-              <div className="text-xs text-muted-foreground">Del ahorro a invertir</div>
+              <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
+                Del ahorro a invertir
+                <InfoTooltip content="Porcentaje de tu capacidad de ahorro mensual que se recomienda destinar a inversión." className="w-3 h-3" />
+              </div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
                 {formatCurrency(profile.monthlyInvestable || financialSummary?.savingsCapacity * (profile.investmentPercentage / 100) || 0)}
               </div>
-              <div className="text-xs text-muted-foreground">Cantidad mensual</div>
+              <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
+                Cantidad mensual
+                <InfoTooltip content="Cantidad mensual calculada como tu capacidad de ahorro × porcentaje de inversión." className="w-3 h-3" />
+              </div>
             </div>
           </div>
         </CardContent>

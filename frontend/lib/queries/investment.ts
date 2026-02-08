@@ -107,6 +107,7 @@ export function useUpdateEmergencyFundMonths() {
       investmentApi.updateEmergencyFundMonths(accountId, months),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['investment', 'overview', variables.accountId] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
     }
   })
 }
@@ -119,6 +120,7 @@ export function useUpdateLiquidityReserve() {
       investmentApi.updateLiquidityReserve(accountId, amount),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['investment', 'overview', variables.accountId] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
     }
   })
 }

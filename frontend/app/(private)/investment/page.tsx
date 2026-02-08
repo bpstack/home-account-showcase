@@ -13,6 +13,7 @@ import {
   AIChat,
 } from '@/components/investment'
 import { useAccount } from '@/lib/queries/accounts'
+import { useInvestmentOverview } from '@/lib/queries/investment'
 import { useDisclaimersStore } from '@/stores/disclaimersStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Loader2, Eye, EyeOff, RefreshCw } from 'lucide-react'
@@ -43,6 +44,8 @@ export default function InvestmentPage() {
 
   const { data: accounts, isLoading: accountsLoading } = useAccount()
   const defaultAccountId = accounts?.defaultAccount?.id
+  const { data: overviewData } = useInvestmentOverview(defaultAccountId ?? '', { refetchOnMount: false })
+  const riskProfile = overviewData?.profile?.riskProfile as 'conservative' | 'balanced' | 'dynamic' | undefined
 
   useEffect(() => {
     if (!accountsLoading && !defaultAccountId) {
@@ -127,7 +130,7 @@ export default function InvestmentPage() {
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-6 items-stretch">
             <div className="flex flex-col min-w-0">
-              <Simulator accountId={defaultAccountId} />
+              <Simulator accountId={defaultAccountId} riskProfile={riskProfile} />
             </div>
             <div className="flex flex-col min-w-0">
               <ProfileForm accountId={defaultAccountId} />
