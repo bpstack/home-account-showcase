@@ -53,7 +53,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     <div className="flex h-full flex-col bg-background">
       <div className="flex items-center gap-2 px-6 h-16 bg-background border-b border-border">
         <Wallet className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-        <span className="text-lg font-semibold text-foreground">Home Account</span>
+        <Link href="/dashboard" className="text-lg font-semibold text-foreground hover:opacity-80 transition-opacity">
+          Home Account
+        </Link>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
