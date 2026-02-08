@@ -1,6 +1,7 @@
 'use client'
 
 import { Card, CardHeader, CardTitle, CardContent, Tabs, PageFilters } from '@/components/ui'
+import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
 import { useAuth } from '@/hooks/useAuth'
 import { transactions, CategorySummary } from '@/lib/apiClient'
 import {
@@ -958,7 +959,7 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Distribución de gastos
+            Distribución de ingresos y gastos
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -1066,16 +1067,18 @@ function SavingsTab({
           <CardContent className="py-4 px-4 text-center">
             {/* Ahorro principal */}
             <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Ahorro mensual</p>
+              <div className="text-xs text-muted-foreground mb-1">
+                Ahorro mensual
+              </div>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 <span className="text-text-secondary">{stats.balance >= 0 ? '+' : '-'}</span>
                 <span className="ml-1">
                   {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(savingsAmount))}
                 </span>
-                <span className="text-text-secondary ml-1">€</span>
+                <span className="text-text-secondary ml-1">EUR</span>
               </p>
             </div>
-            {/* Tasa y Nivel en línea */}
+            {/* Tasa y Nivel en linea */}
             <div className="flex items-center justify-center gap-3">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
                 <TrendingUpIcon className="h-3 w-3 text-success" />
