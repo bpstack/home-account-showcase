@@ -667,13 +667,13 @@ export default function ImportClient() {
           <div className="lg:col-span-8 space-y-6">
             {activeTab === 'individual' ? (
               <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                <CardHeader className="pb-6 pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-blue-100 dark:bg-accent/20 flex items-center justify-center">
+                <CardHeader className="pb-4 pt-4 sm:pb-6 sm:pt-6">
+                  <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-3 sm:gap-4">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-blue-100 dark:bg-accent/20 flex items-center justify-center">
                       <User className="h-6 w-6 text-blue-600 dark:text-accent" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
+                      <CardTitle className="text-lg sm:text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
                         Nueva Transacción Individual
                       </CardTitle>
                       <p className="text-sm text-slate-600 dark:text-text-secondary mt-1">
@@ -682,7 +682,7 @@ export default function ImportClient() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-6 pb-8 px-8">
+                <CardContent className="pt-6 pb-8 px-4 sm:px-8">
                   <form onSubmit={handleSubmitIndividual} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -846,13 +846,13 @@ export default function ImportClient() {
 
                 {step === 'upload' && (
                   <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                    <CardHeader className="pb-6 pt-6">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+                    <CardHeader className="pb-4 pt-4 sm:pb-6 sm:pt-6">
+                      <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-3 sm:gap-4">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
                           <Database className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div>
-                          <CardTitle className="text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
+                          <CardTitle className="text-lg sm:text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
                             Importación Masiva (Excel/CSV)
                           </CardTitle>
                           <p className="text-sm text-slate-600 dark:text-text-secondary mt-1">
@@ -861,7 +861,7 @@ export default function ImportClient() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-8">
+                    <CardContent className="p-4 sm:p-8">
                       <label className="relative group cursor-pointer block">
                         <input
                           type="file"
@@ -869,25 +869,21 @@ export default function ImportClient() {
                           accept=".xlsx,.csv"
                           onChange={handleFileSelect}
                         />
-                        <div className="py-24 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 dark:border-emerald-500/20 rounded-3xl bg-emerald-50/50 dark:bg-emerald-500/[0.02] group-hover:bg-emerald-100/50 dark:group-hover:bg-emerald-500/[0.05] group-hover:border-emerald-400 dark:group-hover:border-emerald-500/40 transition-all duration-300 ease-out text-center overflow-hidden">
-                          {/* Decorative elements */}
-                          <div className="absolute top-0 right-0 p-8 opacity-20 dark:opacity-10 group-hover:scale-110 transition-transform duration-500">
-                            <FileSpreadsheet className="h-32 w-32 text-emerald-600 dark:text-emerald-500" />
-                          </div>
+                        <div className="py-8 sm:py-16 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 dark:border-emerald-500/20 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/[0.02] group-hover:bg-emerald-100/50 dark:group-hover:bg-emerald-500/[0.05] group-hover:border-emerald-400 dark:group-hover:border-emerald-500/40 transition-all duration-300 ease-out text-center overflow-hidden">
 
-                          <div className="relative h-20 w-20 rounded-full bg-emerald-100 dark:bg-accent/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-emerald-200 dark:border-accent/10">
+                          <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-emerald-100 dark:bg-accent/10 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-emerald-200 dark:border-accent/10">
                             {isLoading ? (
-                              <Loader2 className="h-10 w-10 text-emerald-600 dark:text-accent animate-spin" />
+                              <Loader2 className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 dark:text-accent animate-spin" />
                             ) : (
-                              <Upload className="h-10 w-10 text-emerald-600 dark:text-accent" />
+                              <Upload className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 dark:text-accent" />
                             )}
                           </div>
 
-                          <h3 className="text-2xl font-bold text-slate-800 dark:text-text-primary mb-2">
+                          <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-text-primary mb-2">
                             {isLoading ? 'Analizando tu archivo...' : 'Sube tu extracto de banco'}
                           </h3>
 
-                          <p className="text-sm text-slate-600 dark:text-text-secondary max-w-sm px-4 mb-8 leading-relaxed">
+                          <p className="text-sm text-slate-600 dark:text-text-secondary max-w-sm px-4 mb-4 sm:mb-6 leading-relaxed">
                             Arrastra tu archivo aquí o haz clic para explorar. Soportamos archivos{' '}
                             <span className="font-bold text-emerald-700 dark:text-emerald-500">
                               Excel (.xlsx)
@@ -899,11 +895,11 @@ export default function ImportClient() {
                             .
                           </p>
 
-                          <div className="flex items-center gap-3">
-                            <div className="px-4 py-2 rounded-full bg-slate-100 dark:bg-layer-2 border border-slate-200 dark:border-layer-3 text-xs font-medium text-slate-600 dark:text-text-secondary">
+                          <div className="flex flex-wrap justify-center items-center gap-2">
+                            <div className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-layer-2 border border-slate-200 dark:border-layer-3 text-xs font-medium text-slate-600 dark:text-text-secondary">
                               Máx 5MB
                             </div>
-                            <div className="px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-500">
+                            <div className="px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-500">
                               IA categorización activa
                             </div>
                           </div>
@@ -924,7 +920,7 @@ export default function ImportClient() {
 
                 {step === 'preview' && parseResult && (
                   <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent pb-6 pt-6 px-8">
+                    <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent pb-6 pt-6 px-4 sm:px-8">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
@@ -1001,7 +997,7 @@ export default function ImportClient() {
 
                 {step === 'mapping' && parseResult && (
                   <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent pb-6 pt-6 px-8 border-b border-layer-3">
+                    <CardHeader className="bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent pb-6 pt-6 px-4 sm:px-8 border-b border-layer-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="h-10 w-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
@@ -1030,7 +1026,7 @@ export default function ImportClient() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-4">
+                    <CardContent className="p-4 sm:p-8 space-y-4">
                       <div className="grid grid-cols-1 gap-3">
                         {parseResult.categories.map((cat, i) => {
                           const key = `${cat.category}|${cat.subcategory}`
@@ -1093,7 +1089,7 @@ export default function ImportClient() {
                 {step === 'result' && importResult && (
                   <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in zoom-in-95 duration-500">
                     <div className="h-2 bg-success shrink-0" />
-                    <CardContent className="py-20 text-center relative px-8">
+                    <CardContent className="py-20 text-center relative px-4 sm:px-8">
                       {/* Background confetti effect simulation */}
                       <div className="absolute top-0 left-1/4 -translate-y-1/2 h-32 w-32 bg-success/10 blur-3xl rounded-full" />
                       <div className="absolute bottom-0 right-1/4 translate-y-1/2 h-32 w-32 bg-accent/10 blur-3xl rounded-full" />
@@ -1162,7 +1158,7 @@ export default function ImportClient() {
           </div>
 
           {/* Columna Derecha: Informativa (Sidebar) */}
-          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-6 lg:self-start">
+          <div className="hidden lg:block lg:col-span-4 space-y-6 lg:sticky lg:top-6 lg:self-start">
             <Card className="bg-gradient-to-br from-slate-50 dark:from-layer-2 to-white dark:to-layer-1 border-slate-200 dark:border-layer-3">
               <CardHeader>
                 <div className="flex items-center gap-3">

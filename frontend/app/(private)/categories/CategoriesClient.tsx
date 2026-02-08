@@ -267,7 +267,8 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   const showDeleteModal = !!categoryToDelete
 
   return (
-    <div>
+    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
+      <div className="px-4 md:px-6 py-6">
       {error && (
         <div className="mb-4 p-4 bg-danger/10 border border-danger/30 rounded-lg flex items-center gap-3">
           <AlertCircle className="h-5 w-5 text-danger" />
@@ -301,7 +302,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         </div>
       )}
 
-      <div className="flex justify-center gap-8 mb-6">
+      <div className="flex justify-center gap-4 mb-6">
         <button
           onClick={handleAddDefaultCategories}
           disabled={addDefaultsMutation.isPending}
@@ -421,6 +422,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
           })}
         </div>
       ) : null}
+      </div>
 
       <Modal
         isOpen={isCategoryModalOpen}

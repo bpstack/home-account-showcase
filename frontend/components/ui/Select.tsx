@@ -158,7 +158,7 @@ function FilterSelect({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute left-0 top-full mt-1 min-w-[200px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
+          <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:left-0 top-auto sm:top-full mt-1 sm:min-w-[200px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
             {options.map((option, index) => {
               const isSelected = value === option.value
 
@@ -167,7 +167,7 @@ function FilterSelect({
                   <div
                     key={`heading-${index}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30 sticky top-0 z-10 cursor-default"
+                    className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-popover sticky top-0 z-10 cursor-default border-b border-border/50"
                   >
                     {option.label}
                   </div>
@@ -212,17 +212,17 @@ function FilterSelect({
           className
         )}
       >
-        <span>{selectedOption?.label}</span>
+        <span className="truncate">{selectedOption?.label}</span>
         <ChevronDown
           className={cn(
-            'h-4 w-4 text-muted-foreground transition-transform duration-200',
+            'h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-1',
             isOpen && 'rotate-180'
           )}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1 min-w-full lg:min-w-[250px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
+        <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:left-0 top-auto sm:top-full mt-1 sm:min-w-full sm:w-[250px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
           {options.map((option, index) => {
             const isSelected = value === option.value
 
@@ -231,7 +231,7 @@ function FilterSelect({
                 <div
                   key={`heading-${index}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0 z-10 cursor-default"
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-popover sticky top-0 z-10 cursor-default border-b border-border/50"
                 >
                   {option.label}
                 </div>
