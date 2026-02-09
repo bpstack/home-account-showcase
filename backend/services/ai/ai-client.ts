@@ -11,19 +11,18 @@ import { getPersistedProvider, setPersistedProvider, initializeAISettings, hasPe
  */
 function cleanJSON(jsonStr: string): string {
   return jsonStr
-    // Replace N/A, null, undefined with 0 or empty string
-    .replace(/"([^"]+)":\s*N\/A/g, '"$1": 0')
-    .replace(/"([^"]+)":\s*null/g, '"$1": 0')
-    .replace(/"([^"]+)":\s*undefined/g, '"$1": ""')
+    // Replace N/A with 0 (unquoted values)
+    .replace(/"([^"]+)":\s*N\/A\b/gi, '"$1": 0')
     // Remove trailing commas before } or ]
     .replace(/,\s*([}\]])/g, '$1')
-    // Fix common issues with newlines in strings
-    .replace(/"\s*:\s*"/g, '": "')
-    // Remove comments if any
+    // Remove single-line comments
     .replace(/\/\/.*$/gm, '')
-    // Ensure proper escaping
-    .replace(/\\"/g, '"')
-    .replace(/"(?=\s*[,}\]])/g, '')
+    // Remove multi-line comments
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    // Fix unquoted boolean-like values
+    .replace(/:\s*True\b/gi, ': true')
+    .replace(/:\s*False\b/gi, ': false')
+    .replace(/:\s*None\b/gi, ': null')
 }
 
 // Initialize settings on module load
@@ -190,23 +189,49 @@ export class AIClient {
   private parseJSON<T>(text: string): T {
     const trimmed = text.trim()
 
+    // Strategy 1: Direct parse
     try {
       return JSON.parse(trimmed)
     } catch {
-      // Try to find JSON in markdown code blocks
-      const jsonMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/) || trimmed.match(/(\{[\s\S]*\})/)
-      if (jsonMatch) {
-        const jsonStr = jsonMatch[1] || jsonMatch[0]
-        // Clean up common AI JSON issues
-        const cleaned = cleanJSON(jsonStr.trim())
-        try {
-          return JSON.parse(cleaned)
-        } catch {
-          throw new Error('No valid JSON found in response')
-        }
-      }
-      throw new Error('No valid JSON found in response')
+      // Continue to other strategies
     }
+
+    // Strategy 2: Extract from markdown code blocks
+    const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (codeBlockMatch) {
+      try {
+        const cleaned = cleanJSON(codeBlockMatch[1].trim())
+        return JSON.parse(cleaned)
+      } catch {
+        // Continue to other strategies
+      }
+    }
+
+    // Strategy 3: Find JSON object pattern (greedy, finds largest match)
+    const jsonObjectMatch = trimmed.match(/\{[\s\S]*\}/)
+    if (jsonObjectMatch) {
+      try {
+        const cleaned = cleanJSON(jsonObjectMatch[0].trim())
+        return JSON.parse(cleaned)
+      } catch {
+        // Continue to other strategies
+      }
+    }
+
+    // Strategy 4: Find JSON array pattern
+    const jsonArrayMatch = trimmed.match(/\[[\s\S]*\]/)
+    if (jsonArrayMatch) {
+      try {
+        const cleaned = cleanJSON(jsonArrayMatch[0].trim())
+        return JSON.parse(cleaned)
+      } catch {
+        // Continue
+      }
+    }
+
+    // Log what we received for debugging
+    console.error('[AI:parseJSON] Failed to parse. Raw response (first 500 chars):', trimmed.substring(0, 500))
+    throw new Error('No valid JSON found in response')
   }
 
   private delay(ms: number): Promise<void> {
