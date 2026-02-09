@@ -2,16 +2,27 @@ import { useMemo } from 'react'
 import { useInvestmentOverview } from '@/lib/queries/investment'
 import { useTransactions } from '@/lib/queries/transactions'
 
+export interface MonthlyData {
+  income: number
+  expenses: number
+  savings: number
+}
+
 export interface FinancialSummary {
   avgMonthlyIncome: number
   avgMonthlyExpenses: number
   savingsCapacity: number
   savingsRate: number
+  currentMonthIncome: number
+  currentMonthExpenses: number
+  currentMonthSavings: number
   trend: 'improving' | 'stable' | 'declining'
   deficitMonths: number
   historicalMonths: number
   emergencyFundStatus: number
   emergencyFundGoal: number
+  monthlyBreakdown: Record<string, MonthlyData>
+  availableMonths: string[]
 }
 
 export function useFinancialMetrics(accountId: string) {
@@ -25,16 +36,21 @@ export function useFinancialMetrics(accountId: string) {
 
   const metrics = useMemo((): FinancialSummary => {
     // Default values
-    const defaults = {
+    const defaults: FinancialSummary = {
       avgMonthlyIncome: 0,
       avgMonthlyExpenses: 0,
       savingsCapacity: 0,
       savingsRate: 0,
+      currentMonthIncome: 0,
+      currentMonthExpenses: 0,
+      currentMonthSavings: 0,
       trend: 'stable' as const,
       deficitMonths: 0,
       historicalMonths: 0,
       emergencyFundStatus: investmentData?.profile?.liquidityReserve || 0,
       emergencyFundGoal: 0,
+      monthlyBreakdown: {},
+      availableMonths: [],
     }
 
     if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
@@ -89,16 +105,41 @@ export function useFinancialMetrics(accountId: string) {
     const emergencyFundMonths = investmentData?.profile?.emergencyFundMonths || 6
     const emergencyFundGoal = avgMonthlyExpenses * emergencyFundMonths
 
+    // Current month metrics
+    const now = new Date()
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const currentMonthIncome = monthlyIncome[currentMonthKey] || 0
+    const currentMonthExpenses = monthlyExpenses[currentMonthKey] || 0
+    const currentMonthSavings = Math.max(0, currentMonthIncome - currentMonthExpenses)
+
+    // Build monthly breakdown for period selection
+    const allMonthKeys = [...new Set([...Object.keys(monthlyIncome), ...Object.keys(monthlyExpenses)])].sort()
+    const monthlyBreakdown: Record<string, MonthlyData> = {}
+    for (const key of allMonthKeys) {
+      const inc = monthlyIncome[key] || 0
+      const exp = monthlyExpenses[key] || 0
+      monthlyBreakdown[key] = {
+        income: inc,
+        expenses: exp,
+        savings: Math.max(0, inc - exp),
+      }
+    }
+
     return {
       avgMonthlyIncome,
       avgMonthlyExpenses,
       savingsCapacity,
       savingsRate,
+      currentMonthIncome,
+      currentMonthExpenses,
+      currentMonthSavings,
       trend,
       deficitMonths,
       historicalMonths: months.length,
       emergencyFundStatus: investmentData?.profile?.liquidityReserve || 0,
       emergencyFundGoal,
+      monthlyBreakdown,
+      availableMonths: allMonthKeys,
     }
   }, [transactions, investmentData])
 

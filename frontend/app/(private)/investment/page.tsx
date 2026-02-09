@@ -18,8 +18,9 @@ import { useDisclaimersStore } from '@/stores/disclaimersStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Loader2, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useMarketPrices } from '@/lib/queries/investment'
+import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 
 // Dynamic imports to avoid SSR issues
 const Recommendations = dynamic(
@@ -46,6 +47,21 @@ export default function InvestmentPage() {
   const defaultAccountId = accounts?.defaultAccount?.id
   const { data: overviewData } = useInvestmentOverview(defaultAccountId ?? '', { refetchOnMount: false })
   const riskProfile = overviewData?.profile?.riskProfile as 'conservative' | 'balanced' | 'dynamic' | undefined
+
+  // Filter state — lifted here so InvestmentOverview and Recommendations stay in sync
+  const now = new Date()
+  const [filterMonth, setFilterMonth] = useState<number>(now.getMonth())
+  const [filterYear, setFilterYear] = useState<number>(now.getFullYear())
+
+  const handleFilterChange = useCallback((month: number, year: number) => {
+    setFilterMonth(month)
+    setFilterYear(year)
+  }, [])
+
+  // Get financial metrics for selected month savings
+  const { metrics: financialSummary } = useFinancialMetrics(defaultAccountId ?? '')
+  const selectedPeriodKey = `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}`
+  const selectedMonthSavings = financialSummary?.monthlyBreakdown?.[selectedPeriodKey]?.savings
 
   useEffect(() => {
     if (!accountsLoading && !defaultAccountId) {
@@ -112,16 +128,16 @@ export default function InvestmentPage() {
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-6 items-stretch">
             <div className="flex flex-col min-w-0">
-              <InvestmentOverview accountId={defaultAccountId} />
+              <InvestmentOverview accountId={defaultAccountId} filterMonth={filterMonth} filterYear={filterYear} onFilterChange={handleFilterChange} />
             </div>
             <div className="flex flex-col min-w-0">
-              <Recommendations accountId={defaultAccountId} />
+              <Recommendations accountId={defaultAccountId} selectedMonthSavings={selectedMonthSavings} />
             </div>
           </div>
         </section>
 
         {/* Section 2: Herramientas de Planificación */}
-        <section className="p-1.5 sm:p-4 lg:p-6 rounded-lg sm:rounded-2xl bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30">
+        <section id="herramientas" className="p-1.5 sm:p-4 lg:p-6 rounded-lg sm:rounded-2xl bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 scroll-mt-4">
           <div className="flex items-center gap-2 mb-1.5 sm:mb-4 px-1 sm:px-0">
             <div className="hidden sm:block h-1 w-12 bg-purple-500 rounded-full"></div>
             <h2 className="text-xs sm:text-lg font-semibold text-purple-900 dark:text-purple-100">
@@ -132,8 +148,8 @@ export default function InvestmentPage() {
             <div className="flex flex-col min-w-0">
               <Simulator accountId={defaultAccountId} riskProfile={riskProfile} />
             </div>
-            <div className="flex flex-col min-w-0">
-              <ProfileForm accountId={defaultAccountId} />
+            <div id="perfil-form" className="flex flex-col min-w-0 scroll-mt-4">
+              <ProfileForm accountId={defaultAccountId} selectedMonthSavings={selectedMonthSavings} />
             </div>
           </div>
         </section>

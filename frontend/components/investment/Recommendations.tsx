@@ -20,9 +20,10 @@ interface RecommendationsProps {
   accountId: string
   profile?: string
   monthlyAmount?: number
+  selectedMonthSavings?: number
 }
 
-export function Recommendations({ accountId, profile, monthlyAmount }: RecommendationsProps) {
+export function Recommendations({ accountId, profile, monthlyAmount, selectedMonthSavings }: RecommendationsProps) {
   const router = useRouter()
   const { data, isLoading, isError, refetch } = useRecommendations(
     accountId,
@@ -33,8 +34,9 @@ export function Recommendations({ accountId, profile, monthlyAmount }: Recommend
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
 
   const investmentPercentage = overviewData?.profile?.investmentPercentage || 20
-  const savingsCapacity = financialSummary?.savingsCapacity || 0
-  const investmentAmount = (savingsCapacity * investmentPercentage) / 100
+  // Use selected month savings (0 if no data for that month)
+  const baseSavings = selectedMonthSavings ?? 0
+  const investmentAmount = (baseSavings * investmentPercentage) / 100
 
   // Refetch when profile becomes available
   useEffect(() => {

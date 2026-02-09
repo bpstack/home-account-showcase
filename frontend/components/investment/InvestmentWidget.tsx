@@ -48,7 +48,7 @@ export function InvestmentWidget({ accountId, compact = false, stats }: Investme
                 <TrendingUp className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="text-sm font-medium">Módulo de Inversión</p>
+                <p className="text-sm font-medium">Herramientas de Planificación</p>
                 <p className="text-xs text-muted-foreground">
                   {profile
                     ? `${profile.riskProfile} • ${savingsRate.toFixed(0)}% ahorro`

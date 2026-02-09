@@ -24,6 +24,7 @@ import { InfoTooltip } from '@/components/ui/Tooltip'
 
 interface ProfileFormProps {
   accountId: string
+  selectedMonthSavings?: number
 }
 
 const STEPS = [
@@ -104,7 +105,7 @@ const STEPS = [
   }
 ]
 
-export function ProfileForm({ accountId }: ProfileFormProps) {
+export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProps) {
   const { data: investmentData, isLoading: profileLoading } = useInvestmentOverview(accountId, { refetchOnMount: false })
   const { metrics: financialSummary } = useFinancialMetrics(accountId)
   const [showForm, setShowForm] = useState(false)
@@ -160,7 +161,15 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
   }
 
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(0, prev - 1))
+    if (currentStep === 0) {
+      // Go back to profile view if a profile exists, otherwise no-op
+      if (profile) {
+        setShowForm(false)
+        setCurrentStep(0)
+      }
+      return
+    }
+    setCurrentStep(prev => prev - 1)
   }
 
   const submitForm = async () => {
@@ -172,7 +181,16 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
         hasEmergencyFund: answers.hasEmergencyFund,
         horizonYears: answers.horizonYears,
         reactionToDrop: answers.reactionToDrop,
-        experienceLevel: answers.experienceLevel
+        experienceLevel: answers.experienceLevel,
+        financialMetrics: financialSummary ? {
+          avgMonthlyIncome: financialSummary.avgMonthlyIncome,
+          avgMonthlyExpenses: financialSummary.avgMonthlyExpenses,
+          savingsCapacity: financialSummary.savingsCapacity,
+          savingsRate: financialSummary.savingsRate,
+          historicalMonths: financialSummary.historicalMonths,
+          trend: financialSummary.trend,
+          deficitMonths: financialSummary.deficitMonths,
+        } : undefined,
       }
       console.log('[ProfileForm] Submitting:', payload)
 
@@ -234,11 +252,11 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(profile.monthlyInvestable || financialSummary?.savingsCapacity * (profile.investmentPercentage / 100) || 0)}
+                {formatCurrency(((selectedMonthSavings ?? 0) * profile.investmentPercentage) / 100)}
               </div>
               <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
                 Cantidad mensual
-                <InfoTooltip content="Cantidad mensual calculada como tu capacidad de ahorro × porcentaje de inversión." className="w-3 h-3" />
+                <InfoTooltip content="Cantidad mensual calculada como el ahorro del mes en curso × porcentaje de inversión." className="w-3 h-3" />
               </div>
             </div>
           </div>
@@ -275,14 +293,14 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
 
   // Show form
   return (
-    <Card className="max-w-2xl mx-auto bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
+    <Card className="mx-auto bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
       <CardHeader>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 gap-4">
           <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
             <User className="h-5 w-5" />
             Evaluación de Perfil de Riesgo
           </CardTitle>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
             Paso {currentStep + 1} de {STEPS.length}
           </span>
         </div>
@@ -295,12 +313,11 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
       </CardHeader>
 
       <CardContent>
-        <div className="py-8">
+        <div className="py-6 sm:py-8 min-h-[200px] sm:min-h-[250px]">
           {/* Question */}
-          <h3 className="text-xl font-semibold mb-2">{step.question}</h3>
+          <h3 className="text-lg sm:text-xl font-semibold mb-2">{step.question}</h3>
           {step.description && (
-            <p className="text-muted-foreground mb-6">{step.description}
-          </p>
+            <p className="text-muted-foreground mb-6">{step.description}</p>
           )}
 
           {/* Answer options */}
@@ -313,7 +330,7 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
                 step={step.step}
                 value={answers[step.field] || ''}
                 onChange={(e) => handleAnswer(e.target.value)}
-                className="w-full p-3 text-lg border rounded-lg focus:ring-2 focus:ring-primary"
+                className="w-full p-3 text-lg border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
                 placeholder={
                   step.field === 'age' ? 'Tu edad' : 'Ingresos mensuales (€)'
                 }
@@ -355,7 +372,7 @@ export function ProfileForm({ accountId }: ProfileFormProps) {
           <Button
             variant="outline"
             onClick={handleBack}
-            disabled={currentStep === 0}
+            disabled={currentStep === 0 && !profile}
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -405,7 +422,7 @@ function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId
   const recommendedProfile = result.recommendedProfile as keyof typeof profileColors
 
   return (
-    <Card className="max-w-2xl mx-auto bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
+    <Card className="mx-auto bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
       <CardHeader className="text-center">
         <div className={cn(
           'w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center',
@@ -447,7 +464,7 @@ function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId
           </div>
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center border border-blue-100">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {result.monthlyInvestable}€
+              {formatCurrency(result.monthlyInvestable)}
             </div>
             <div className="text-sm text-muted-foreground">
               Cantidad mensual

@@ -62,6 +62,15 @@ export interface ProfileAnswers {
   horizonYears: '<3' | '3-10' | '>10'
   reactionToDrop: 'sell' | 'hold' | 'buy_more'
   experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
+  financialMetrics?: {
+    avgMonthlyIncome: number
+    avgMonthlyExpenses: number
+    savingsCapacity: number
+    savingsRate: number
+    historicalMonths: number
+    trend: 'improving' | 'stable' | 'declining'
+    deficitMonths: number
+  }
 }
 
 export interface ProfileAssessmentResult {

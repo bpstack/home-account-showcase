@@ -3,6 +3,16 @@
 
 import { z } from 'zod'
 
+export const FinancialMetricsSchema = z.object({
+  avgMonthlyIncome: z.number().min(0),
+  avgMonthlyExpenses: z.number().min(0),
+  savingsCapacity: z.number(),
+  savingsRate: z.number(),
+  historicalMonths: z.number().int().min(0),
+  trend: z.enum(['improving', 'stable', 'declining']),
+  deficitMonths: z.number().int().min(0),
+})
+
 export const ProfileAnswersSchema = z.object({
   age: z.number().min(1).max(120),
   monthlyIncome: z.number().positive(),
@@ -10,7 +20,8 @@ export const ProfileAnswersSchema = z.object({
   hasEmergencyFund: z.enum(['yes', 'partial', 'no']),
   horizonYears: z.enum(['<3', '3-10', '>10']),
   reactionToDrop: z.enum(['sell', 'hold', 'buy_more']),
-  experienceLevel: z.enum(['none', 'basic', 'intermediate', 'advanced'])
+  experienceLevel: z.enum(['none', 'basic', 'intermediate', 'advanced']),
+  financialMetrics: FinancialMetricsSchema.optional(),
 })
 
 export const UpdateEmergencyFundMonthsSchema = z.object({

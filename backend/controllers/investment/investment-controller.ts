@@ -273,8 +273,19 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
 
     const validAnswers = validation.data
 
-    // Get financial context
+    // Get financial context — prefer client-side metrics (decrypted) over server defaults (all zeros due to E2E)
     const financialContext = await getAccountFinancialContext(accountId, userId)
+
+    if (validAnswers.financialMetrics) {
+      const fm = validAnswers.financialMetrics
+      financialContext.avgMonthlyIncome = fm.avgMonthlyIncome
+      financialContext.avgMonthlyExpenses = fm.avgMonthlyExpenses
+      financialContext.savingsCapacity = fm.savingsCapacity
+      financialContext.savingsRate = fm.savingsRate
+      financialContext.historicalMonths = fm.historicalMonths
+      financialContext.trend = fm.trend
+      financialContext.deficitMonths = fm.deficitMonths
+    }
 
     // Analyze with AI
     const ai = createInvestmentAI()

@@ -13,7 +13,6 @@ import {
 import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { formatCurrency, cn } from '@/lib/utils'
-import { InvestmentWidget } from './InvestmentWidget'
 import {
   TrendingUp,
   TrendingDown,
@@ -27,9 +26,13 @@ import { useState, useMemo } from 'react'
 import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
+import { MONTHS_ES } from '@/lib/constants'
 
 interface InvestmentOverviewProps {
   accountId: string
+  filterMonth: number
+  filterYear: number
+  onFilterChange: (month: number, year: number) => void
 }
 
 const MONTHS_OPTIONS = [
@@ -44,7 +47,7 @@ const MONTHS_OPTIONS = [
   { value: 60, label: '60 meses' },
 ]
 
-export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
+export function InvestmentOverview({ accountId, filterMonth, filterYear, onFilterChange }: InvestmentOverviewProps) {
   const { data: investmentData, isLoading: isInvestmentLoading } = useInvestmentOverview(accountId)
   const { metrics: financialSummary, isLoading: isMetricsLoading } = useFinancialMetrics(accountId)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
@@ -52,6 +55,18 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
   const [selectedMonths, setSelectedMonths] = useState<number | null>(null)
   const [isEditingFund, setIsEditingFund] = useState(false)
   const [fundAmount, setFundAmount] = useState('')
+
+  // Get filtered metrics for the selected period
+  const selectedPeriodKey = `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}`
+  const selectedMonthData = financialSummary.monthlyBreakdown?.[selectedPeriodKey]
+
+  // Available years from data
+  const availableYears = useMemo(() => {
+    const years = new Set<number>()
+    financialSummary.availableMonths?.forEach((m) => years.add(parseInt(m.split('-')[0])))
+    if (years.size === 0) years.add(new Date().getFullYear())
+    return Array.from(years).sort((a, b) => b - a)
+  }, [financialSummary.availableMonths])
 
   const updateMonthsMutation = useUpdateEmergencyFundMonths()
   const updateLiquidityMutation = useUpdateLiquidityReserve()
@@ -154,15 +169,36 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
   return (
     <Card className="h-full border-none shadow-none bg-transparent">
       <CardHeader className="px-0 pt-0 pb-2 sm:pb-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-base sm:text-lg font-bold tracking-tight">Resumen</CardTitle>
+          {/* Month/Year filter */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={filterMonth}
+              onChange={(e) => onFilterChange(parseInt(e.target.value), filterYear)}
+              className="text-xs sm:text-sm border-none bg-muted/50 rounded-lg px-2 py-1 cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              {MONTHS_ES.map((m, i) => (
+                <option key={i} value={i}>{m}</option>
+              ))}
+            </select>
+            <select
+              value={filterYear}
+              onChange={(e) => onFilterChange(filterMonth, parseInt(e.target.value))}
+              className="text-xs sm:text-sm border-none bg-muted/50 rounded-lg px-2 py-1 cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
           {profile && <RiskBadge profile={profile.riskProfile} />}
         </div>
       </CardHeader>
       <CardContent className="p-0 space-y-3 sm:space-y-4">
-        {/* Investment Module Banner - Compact on mobile */}
+        {/* Planning Tools Banner - Links to Herramientas section */}
         <Link
-          href="/investment"
+          href="/investment#perfil-form"
           className="group flex items-center justify-between p-2.5 sm:p-4 rounded-lg sm:rounded-xl bg-gradient-to-br from-accent/10 to-primary/10 border border-accent/20 hover:border-accent/40 transition-all"
         >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -170,40 +206,68 @@ export function InvestmentOverview({ accountId }: InvestmentOverviewProps) {
               <TrendingUp className="h-4 w-4 text-accent" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">Módulo de Inversión</p>
+              <p className="text-sm font-semibold truncate">Perfil de Inversión</p>
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                {profile
-                  ? `${profile.riskProfile === 'dynamic' ? 'Dinámico' : profile.riskProfile === 'conservative' ? 'Conservador' : 'Equilibrado'} • ${financialSummary.savingsRate.toFixed(0)}% ahorro`
-                  : 'Sin configurar'}
+                Rellena el formulario para planificar tu inversión
               </p>
             </div>
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors shrink-0 ml-2" />
         </Link>
 
-        {/* Financial Metrics Grid - More compact */}
+        {/* Selected Month Metrics */}
         <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
           <MetricCard
             label="Ingresos"
-            value={formatCurrency(financialSummary.avgMonthlyIncome)}
+            value={formatCurrency(selectedMonthData?.income ?? 0)}
             icon={<Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />}
-            tooltip="Media de ingresos mensuales considerando todas tus transacciones"
+            tooltip={`Ingresos de ${MONTHS_ES[filterMonth]} ${filterYear}`}
           />
           <MetricCard
             label="Gastos"
-            value={formatCurrency(financialSummary.avgMonthlyExpenses)}
+            value={formatCurrency(selectedMonthData?.expenses ?? 0)}
             icon={<TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />}
-            tooltip="Media de gastos mensuales considerando todas tus transacciones"
+            tooltip={`Gastos de ${MONTHS_ES[filterMonth]} ${filterYear}`}
           />
           <MetricCard
             label="Ahorro"
-            value={formatCurrency(financialSummary.savingsCapacity)}
+            value={formatCurrency(selectedMonthData?.savings ?? 0)}
             icon={<PiggyBank className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500" />}
             highlight
-            subtitle={`${financialSummary.savingsRate.toFixed(0)}%`}
-            tooltip="Media de ahorro mensual considerando todas tus transacciones"
-            subtitleTooltip="Porcentaje de ingresos que logras ahorrar. Formula: Ingresos - Gastos / Ingresos x 100"
+            tooltip={`Ahorro de ${MONTHS_ES[filterMonth]} ${filterYear} (ingresos - gastos)`}
           />
+        </div>
+
+        {/* Monthly Averages - Separate row for visibility */}
+        <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-muted/30 border border-border/30">
+          <div className="flex items-center gap-1 mb-2">
+            <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Media mensual
+            </span>
+            <InfoTooltip content="Promedios calculados con todas tus transacciones históricas" className="w-3 h-3" />
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="text-center">
+              <div className="text-sm sm:text-base font-bold text-blue-600 dark:text-blue-400">
+                {formatCurrency(financialSummary.avgMonthlyIncome)}
+              </div>
+              <div className="text-[9px] sm:text-xs text-muted-foreground">Ingresos</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm sm:text-base font-bold text-red-600 dark:text-red-400">
+                {formatCurrency(financialSummary.avgMonthlyExpenses)}
+              </div>
+              <div className="text-[9px] sm:text-xs text-muted-foreground">Gastos</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(financialSummary.savingsCapacity)}
+              </div>
+              <div className="text-[9px] sm:text-xs text-muted-foreground">
+                Ahorro · {financialSummary.savingsRate.toFixed(0)}%
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Emergency Fund Card - More compact on mobile */}
@@ -394,10 +458,9 @@ function MetricCard({
 
       {/* Footer: Subtitle */}
       {subtitle && (
-        <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-          <div className="w-1 h-1 rounded-full bg-current" />
+        <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
           {subtitleTooltip ? (
-            <InfoTooltip content={subtitleTooltip} side="top" className="text-emerald-600 dark:text-emerald-400" />
+            <InfoTooltip content={subtitleTooltip} side="top" className="w-3 h-3" />
           ) : null}
           <span>{subtitle}</span>
         </div>
