@@ -76,7 +76,10 @@ export function DatePicker({
   }, [])
 
   const getFirstDayOfMonth = useCallback((year: number, month: number) => {
-    return new Date(year, month, 1).getDay()
+    // getDay() returns 0=Sunday, but our calendar starts on Monday
+    // Convert: Sunday(0)->6, Monday(1)->0, Tuesday(2)->1, etc.
+    const day = new Date(year, month, 1).getDay()
+    return day === 0 ? 6 : day - 1
   }, [])
 
   const formatDate = useCallback((date: Date) => {
