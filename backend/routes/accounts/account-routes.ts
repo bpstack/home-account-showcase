@@ -16,6 +16,7 @@ import { InvitationController } from '../../controllers/invitations/invitation-c
 import { saveAccountKey } from '../../controllers/crypto/account-key-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
+import { cryptoKeyRateLimiter, invitationRateLimiter } from '../../middlewares/rateLimiter.js'
 
 const router: Router = Router()
 
@@ -43,11 +44,11 @@ router.post('/:id/leave', checkCSRF, leaveAccount)
 router.post('/:id/categories/default', checkCSRF, addDefaultCategories)
 
 // Encryption keys
-router.post('/:id/keys', checkCSRF, saveAccountKey)
+router.post('/:id/keys', cryptoKeyRateLimiter, checkCSRF, saveAccountKey)
 
 // Invitations (NUEVO)
 router.get('/:id/invitations', InvitationController.list)
-router.post('/:id/invitations', checkCSRF, InvitationController.create)
+router.post('/:id/invitations', invitationRateLimiter, checkCSRF, InvitationController.create)
 router.delete('/:id/invitations/:invitationId', checkCSRF, InvitationController.revoke)
 
 export default router

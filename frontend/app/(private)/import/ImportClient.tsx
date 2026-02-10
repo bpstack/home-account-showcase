@@ -44,6 +44,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 
+import { getTodayLocal } from '@/lib/date-utils'
+
 const importTabs = [
   { id: 'individual', label: 'Individual', icon: <User className="h-4 w-4" /> },
   { id: 'mass', label: 'Masivo', icon: <Database className="h-4 w-4" /> },
@@ -72,7 +74,7 @@ interface MappingState {
 
 const emptyForm: SingleForm = {
   description: '',
-  date: new Date().toISOString().split('T')[0],
+  date: getTodayLocal(),
   amount: '',
   type: 'expense',
   category_id: '',
@@ -482,7 +484,7 @@ export default function ImportClient() {
       }
 
       const txs = result.transactions.map((tx) => ({
-        date: tx.date || new Date().toISOString().split('T')[0],
+        date: tx.date || getTodayLocal(),
         description: tx.description?.trim() || '',
         amount: tx.amount,
         bank_category: tx.category?.toLowerCase() || 'otros',

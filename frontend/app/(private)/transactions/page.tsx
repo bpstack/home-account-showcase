@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import TransactionsClient from './TransactionsClient'
 import { getTransactions } from '@/lib/api'
 import { getCategories } from '@/lib/api/categories'
+import { createLocalDate, formatLocalDate } from '@/lib/date-utils'
 
 export default async function TransactionsPage() {
   const cookieStore = await cookies()
@@ -21,8 +22,8 @@ export default async function TransactionsPage() {
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
 
-  const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
-  const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
+  const startDate = formatLocalDate(createLocalDate(currentYear, currentMonth, 1))
+  const endDate = formatLocalDate(createLocalDate(currentYear, currentMonth + 1, 0))
 
   try {
     const [transactionsResponse, categoriesResponse] = await Promise.all([

@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createLocalDate, formatLocalDate } from '@/lib/date-utils'
 
 interface BalanceState {
   activeTab: 'balance' | 'income' | 'expenses'
@@ -17,8 +18,8 @@ interface BalanceState {
 
 const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth()
-const defaultStartDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0]
-const defaultEndDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0]
+const defaultStartDate = formatLocalDate(createLocalDate(currentYear, currentMonth, 1))
+const defaultEndDate = formatLocalDate(createLocalDate(currentYear, currentMonth + 1, 0))
 
 export const useBalanceStore = create<BalanceState>()(
   persist(

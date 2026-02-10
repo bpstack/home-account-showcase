@@ -35,3 +35,67 @@ export const registerRateLimiter = rateLimit({
   legacyHeaders: false,
   skipFailedRequests: false, // Contar todos los registros, exitosos o fallidos
 })
+
+/**
+ * Rate limiter para datos de mercado
+ * Protege APIs externas (CoinGecko, AlphaVantage, Frankfurter)
+ * Ventana: 1 minuto, máximo 10 requests por usuario
+ */
+export const marketRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 10, // Máximo 10 requests por minuto
+  message: {
+    success: false,
+    error: 'Demasiadas solicitudes de datos de mercado. Intenta de nuevo en 1 minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+/**
+ * Rate limiter para importación de archivos
+ * Previene uploads masivos de archivos
+ * Ventana: 1 minuto, máximo 5 archivos por usuario
+ */
+export const importFileRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 5, // Máximo 5 uploads por minuto
+  message: {
+    success: false,
+    error: 'Demasiados archivos subidos. Intenta de nuevo en 1 minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+/**
+ * Rate limiter para actualización de claves criptográficas
+ * Previene ataques de fuerza bruta en claves
+ * Ventana: 1 minuto, máximo 5 cambios por usuario
+ */
+export const cryptoKeyRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 5, // Máximo 5 cambios de clave por minuto
+  message: {
+    success: false,
+    error: 'Demasiados cambios de clave. Intenta de nuevo en 1 minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+/**
+ * Rate limiter para envío de invitaciones
+ * Previene spam de invitaciones
+ * Ventana: 1 hora, máximo 20 invitaciones por usuario
+ */
+export const invitationRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 20, // Máximo 20 invitaciones por hora
+  message: {
+    success: false,
+    error: 'Demasiadas invitaciones enviadas. Intenta de nuevo en 1 hora.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})

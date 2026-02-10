@@ -4,6 +4,7 @@
 import { Router } from 'express'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { aiRateLimiter } from '../../middlewares/aiRateLimiter.js'
+import { marketRateLimiter } from '../../middlewares/rateLimiter.js'
 import {
   getOverview,
   analyzeProfile,
@@ -44,7 +45,7 @@ router.post('/:accountId/analyze-profile', aiRateLimiter(), analyzeProfile)
 router.post('/:accountId/recommendations', aiRateLimiter(), getRecommendations)
 
 // GET /api/investment/:accountId/market-prices
-router.get('/:accountId/market-prices', getMarketPrices)
+router.get('/:accountId/market-prices', marketRateLimiter, getMarketPrices)
 
 // ========================
 // Chat endpoints

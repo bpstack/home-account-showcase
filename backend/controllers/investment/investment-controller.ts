@@ -228,9 +228,6 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
       answers.horizonYears = decodeHtmlEntities(answers.horizonYears) as any
     }
 
-    console.log('[Investment:AnalyzeProfile] Received body:', JSON.stringify(req.body))
-    console.log('[Investment:AnalyzeProfile] Fixed answers:', answers)
-
     if (!userId) {
       res.status(401).json({ success: false, error: 'No autorizado' })
       return
@@ -248,7 +245,6 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
 
     if (!validation.success) {
       const errors = validation.error.format()
-      console.log('[Investment:AnalyzeProfile] Validation failed:', JSON.stringify(errors, null, 2))
 
       // Extract specific field errors for better UX
       const fieldErrors: string[] = []
@@ -295,7 +291,6 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
     }
 
     const result = await ai.assessProfile(answers, financialContext)
-    console.log('[Investment:AnalyzeProfile] AI Result:', JSON.stringify(result, null, 2))
 
     // Map Spanish profile names to English for database
     const profileMap: Record<string, 'conservative' | 'balanced' | 'dynamic'> = {
@@ -311,7 +306,6 @@ export const analyzeProfile = async (req: Request, res: Response): Promise<void>
     }
 
     const dbProfile = profileMap[result.recommendedProfile?.toLowerCase()] || 'balanced'
-    console.log('[Investment:AnalyzeProfile] Recommended:', result.recommendedProfile, '-> DB Profile:', dbProfile)
 
     // Map horizon years string to number
     const horizonYearsMap: Record<string, number> = {
@@ -484,7 +478,6 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
     }
 
     const { message } = validation.data
-    console.log('[Investment:ChatMessage] Message:', message.substring(0, 50))
 
     // Security check on user input
     const securityCheck = await checkInputSecurity(userId, message, {
@@ -493,7 +486,6 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
     })
 
     if (!securityCheck.allowed) {
-      console.warn('[Investment:ChatMessage] Security blocked:', securityCheck.blockReason)
       res.status(400).json({
         success: false,
         error: securityCheck.blockReason || 'Mensaje no permitido',
@@ -516,20 +508,15 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
       return
     }
 
-    console.log('[Investment:ChatMessage] Getting financial context...')
     const financialContext = await getAccountFinancialContext(accountId, userId)
-    console.log('[Investment:ChatMessage] Context ready, calling AI...')
 
     const ai = createInvestmentAI()
     if (!ai.isAvailable()) {
-      console.error('[Investment:ChatMessage] AI not available')
       res.status(503).json({ success: false, error: 'IA no disponible. Verifica la configuración.' })
       return
     }
 
-    console.log('[Investment:ChatMessage] AI available, sending to chatWithSession...')
     const result = await ai.chatWithSession(safeMessage, accountId, userId, financialContext)
-    console.log('[Investment:ChatMessage] AI response received')
 
     // Validate AI output
     const outputCheck = await checkOutputSecurity(userId, result.answer)
@@ -630,7 +617,6 @@ export const explainConcept = async (req: Request, res: Response): Promise<void>
     })
 
     if (!securityCheck.allowed) {
-      console.warn('[Investment:Education] Security blocked:', securityCheck.blockReason)
       res.status(400).json({
         success: false,
         error: securityCheck.blockReason || 'Consulta no permitida',

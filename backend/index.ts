@@ -30,7 +30,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-XSS-Protection', '1; mode=block')
   res.setHeader('X-Frame-Options', 'DENY')
-  res.setHeader('Content-Security-Policy', "default-src 'self'")
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.coingecko.com https://api.frankfurter.app https://www.alphavantage.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
   next()
 })
 // CORS con credentials para cookies stackbp

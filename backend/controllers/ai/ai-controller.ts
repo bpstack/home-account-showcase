@@ -149,7 +149,6 @@ export const parseTransactions = async (req: Request, res: Response): Promise<vo
     })
 
     if (!securityCheck.allowed) {
-      console.warn(`[AI:Parse] Security blocked for user ${userId}: ${securityCheck.blockReason}`)
       res.status(403).json({
         success: false,
         error: securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad',
@@ -280,7 +279,6 @@ export const categorizeTransactions = async (req: Request, res: Response): Promi
     })
 
     if (!securityCheck.allowed) {
-      console.warn(`[AI:Categorize] Security blocked for user ${userId}: ${securityCheck.blockReason}`)
       res.status(403).json({
         success: false,
         error: securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad',

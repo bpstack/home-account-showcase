@@ -38,8 +38,9 @@ export class InvitationRepository {
     )
 
     if (existing.length > 0) {
-      // Actualizar expires_at de la existente (re-invitar)
-      await db.query(`UPDATE invitations SET expires_at = ?, created_at = NOW() WHERE id = ?`, [
+      const newToken = generateToken()
+      await db.query(`UPDATE invitations SET token = ?, expires_at = ?, created_at = NOW() WHERE id = ?`, [
+        newToken,
         expiresAt,
         existing[0].id,
       ])

@@ -2,6 +2,7 @@ import { Router, type Router as RouterType } from 'express'
 import multer from 'multer'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
+import { importFileRateLimiter } from '../../middlewares/rateLimiter.js'
 import {
   parseFile,
   confirmImport,
@@ -44,7 +45,7 @@ const upload = multer({
 import { validateFileContent } from '../../services/import/file-validation.js'
 
 // Parse uploaded file and return preview
-router.post('/parse', authenticateToken, upload.single('file'), validateFileContent, parseFile)
+router.post('/parse', authenticateToken, importFileRateLimiter, upload.single('file'), validateFileContent, parseFile)
 
 // Confirm import with category mappings
 router.post('/confirm', authenticateToken, checkCSRF, confirmImport)

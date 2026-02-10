@@ -32,6 +32,7 @@ import {
   CategoryChangeModal,
 } from '@/components/transactions'
 import { useTransactionsStore } from '@/stores/transactionsStore'
+import { getTodayLocal } from '@/lib/date-utils'
 
 interface TransactionForm {
   description: string
@@ -44,7 +45,7 @@ interface TransactionForm {
 
 const emptyForm: TransactionForm = {
   description: '',
-  date: new Date().toISOString().split('T')[0],
+  date: getTodayLocal(),
   amount: '',
   type: 'expense',
   category_id: '',

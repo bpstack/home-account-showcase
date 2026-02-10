@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Calendar, CalendarRange, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './Button'
+import { formatLocalDate } from '@/lib/date-utils'
 
 interface DatePickerProps {
   startDate?: string
@@ -79,7 +80,7 @@ export function DatePicker({
   }, [])
 
   const formatDate = useCallback((date: Date) => {
-    return date.toISOString().split('T')[0]
+    return formatLocalDate(date)
   }, [])
 
   const formatDisplayDate = useCallback((dateStr: string) => {
