@@ -38,7 +38,8 @@ function LoginForm() {
     }
   }
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  // Para OAuth, necesitamos la URL base sin /api
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/api$/, '')
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground relative overflow-hidden sm:p-4">
@@ -225,7 +226,7 @@ function LoginForm() {
               {/* Social login */}
               <div className="grid grid-cols-2 gap-3">
                 <a
-                  href={`${API_URL}/api/auth/google`}
+                  href={`${API_BASE}/api/auth/google`}
                   className="flex items-center justify-center gap-2 h-11 border-2 border-border rounded-xl font-medium hover:border-foreground hover:bg-muted/50 transition-all duration-300"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -249,7 +250,7 @@ function LoginForm() {
                   Google
                 </a>
                 <a
-                  href={`${API_URL}/api/auth/github`}
+                  href={`${API_BASE}/api/auth/github`}
                   className="flex items-center justify-center gap-2 h-11 border-2 border-border rounded-xl font-medium hover:border-foreground hover:bg-muted/50 transition-all duration-300"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
