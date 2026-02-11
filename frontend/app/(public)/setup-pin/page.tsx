@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCryptoStore } from '@/stores/cryptoStore'
 
-export default function SetupPinPage() {
+function SetupPinForm() {
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [error, setError] = useState('')
@@ -120,6 +120,22 @@ export default function SetupPinPage() {
           ⚠️ Si olvidas tu PIN, no podrás recuperar tus datos cifrados.
         </p>
       </div>
+    </div>
+  )
+}
+
+export default function SetupPinPage() {
+  return (
+    <Suspense fallback={<SetupPinSkeleton />}>
+      <SetupPinForm />
+    </Suspense>
+  )
+}
+
+function SetupPinSkeleton() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
     </div>
   )
 }
