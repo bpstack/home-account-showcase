@@ -2,20 +2,12 @@ import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
 import { generateAccessToken, generateRefreshToken } from '../../services/auth/tokenService.js'
-import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
+import { generateCSRFToken } from '../../services/auth/csrfService.js'
 import { asyncHandler } from '../../utils/async-handler.js'
 import { logger } from '../../utils/logger.js'
 import type { OAuthProfile } from '../../config/oauth.js'
 
-const isProduction = process.env.NODE_ENV === 'production'
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
-
-const cookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  path: '/',
-} as const
 
 export const oauthCallback = asyncHandler(async (req: Request, res: Response) => {
   const profile = req.user as OAuthProfile
@@ -85,25 +77,31 @@ export const oauthCallback = asyncHandler(async (req: Request, res: Response) =>
   const refreshToken = await generateRefreshToken({ id: user.id, email: user.email })
   const csrfToken = generateCSRFToken()
 
-  res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 })
-  res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 8 * 60 * 60 * 1000 })
-  res.cookie('csrfToken', csrfToken, createCSRFCookieOptions())
-
   logger.info('AUTH', 'oauthCallback', 'OAuth session established', {
     userId: user.id,
     isNewUser,
     hasKeySalt: !!user.key_salt,
   })
 
+  // Build token params for cross-domain transfer via auth-callback page
+  const tokenParams = new URLSearchParams({
+    accessToken,
+    refreshToken,
+    csrfToken,
+  })
+
+  let finalRedirect: string
   if (isNewUser) {
-    res.redirect(`${FRONTEND_URL}/setup-pin?csrf=${csrfToken}`)
+    finalRedirect = `/setup-pin?csrf=${csrfToken}`
   } else {
     const hasEncryption = await AccountKeyRepository.userHasKeys(user.id)
-
     if (hasEncryption) {
-      res.redirect(`${FRONTEND_URL}/unlock?csrf=${csrfToken}`)
+      finalRedirect = `/unlock?csrf=${csrfToken}`
     } else {
-      res.redirect(`${FRONTEND_URL}/setup-pin?csrf=${csrfToken}`)
+      finalRedirect = `/setup-pin?csrf=${csrfToken}`
     }
   }
+
+  tokenParams.set('redirect', finalRedirect)
+  res.redirect(`${FRONTEND_URL}/auth-callback?${tokenParams.toString()}`)
 })
