@@ -2,9 +2,12 @@ import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import dotenv from 'dotenv'
+import passport from 'passport'
+import { configureOAuth } from './config/oauth.js'
 import db from './config/db.js'
 import { PORT } from './config/config.js'
 import authRoutes from './routes/auth/auth-routes.js'
+import oauthRoutes from './routes/auth/oauth-routes.js'
 import userRoutes from './routes/auth/user-routes.js'
 import accountRoutes from './routes/accounts/account-routes.js'
 import invitationRoutes from './routes/invitations/invitation-routes.js'
@@ -26,6 +29,10 @@ const app = express()
 
 // 👇 Configuración para proxies como Render
 app.set('trust proxy', 1)
+
+// Passport.js for OAuth
+app.use(passport.initialize())
+configureOAuth()
 
 // Security headers
 app.use((req, res, next) => {
@@ -72,6 +79,7 @@ app.use(sanitizeQuery)
 
 // Routes
 app.use('/api/auth', authRoutes)
+app.use('/api/auth', oauthRoutes) // OAuth routes (google, github)
 app.use('/api/auth', cryptoRoutes) // GET/PUT /api/auth/keys
 app.use('/api/users', userRoutes)
 app.use('/api/accounts', accountRoutes)

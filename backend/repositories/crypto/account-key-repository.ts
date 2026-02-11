@@ -1,6 +1,7 @@
 // repositories/crypto/account-key-repository.ts
 
 import * as crypto from 'crypto'
+import { RowDataPacket } from 'mysql2'
 import db from '../../config/db.js'
 import type {
   AccountKey,
@@ -121,10 +122,21 @@ export class AccountKeyRepository {
     )
   }
 
-  /**
-   * Delete all keys for a user
-   */
+/**
+    * Delete all keys for a user
+    */
   static async deleteAllForUser(userId: string): Promise<void> {
     await db.query(`DELETE FROM account_keys WHERE user_id = ?`, [userId])
+  }
+
+  /**
+   * Check if user has any encrypted keys (for OAuth flow)
+   */
+  static async userHasKeys(userId: string): Promise<boolean> {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as count FROM account_keys WHERE user_id = ?`,
+      [userId]
+    )
+    return rows[0]?.count > 0
   }
 }

@@ -2,6 +2,7 @@
 
 import * as bcrypt from 'bcrypt'
 import * as crypto from 'crypto'
+import { RowDataPacket } from 'mysql2'
 import { SALT_ROUNDS } from '../../config/config.js'
 import db from '../../config/db.js'
 import type {
@@ -10,6 +11,8 @@ import type {
   RegisterDTO,
   LoginDTO,
   UpdateUserDTO,
+  CreateOAuthUserDTO,
+  LinkOAuthDTO,
 } from '../../models/auth/index.js'
 import { AppError } from '../../utils/app-error.js'
 import { logger } from '../../utils/logger.js'
@@ -329,11 +332,90 @@ export class UserRepository {
     }
   }
 
-  /**
-   * Eliminar usuario
-   */
+/**
+    * Eliminar usuario
+    */
   static async delete(id: string): Promise<boolean> {
     const [result] = await db.query(`DELETE FROM users WHERE id = ?`, [id])
     return (result as any).affectedRows > 0
+  }
+
+  // ============================================
+  // OAUTH METHODS
+  // ============================================
+
+  /**
+   * Buscar usuario por OAuth provider + ID
+   */
+  static async getByOAuth(provider: 'google' | 'github', oauthId: string): Promise<(User & { key_salt: string }) | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, name, key_salt, oauth_provider, oauth_id, avatar_url, created_at, updated_at
+       FROM users
+       WHERE oauth_provider = ? AND oauth_id = ?`,
+      [provider, oauthId]
+    )
+    return rows[0] || null
+  }
+
+  /**
+   * Obtener usuario por email (para vincular OAuth a cuenta existente)
+   */
+  static async getByEmailForOAuth(email: string): Promise<(User & { key_salt: string }) | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, name, key_salt, oauth_provider, oauth_id, avatar_url, password_hash, created_at, updated_at
+       FROM users
+       WHERE email = ?`,
+      [email]
+    )
+    return rows[0] || null
+  }
+
+  /**
+   * Crear usuario desde OAuth (sin password)
+   */
+  static async createOAuth(data: CreateOAuthUserDTO): Promise<User & { key_salt: string }> {
+    const userId = crypto.randomUUID()
+    const keySalt = crypto.randomBytes(32).toString('hex')
+
+    await db.query(
+      `INSERT INTO users (id, email, name, key_salt, oauth_provider, oauth_id, avatar_url, password_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+      [userId, data.email, data.name, keySalt, data.provider, data.oauthId, data.avatar || null]
+    )
+
+    return {
+      id: userId,
+      email: data.email,
+      name: data.name,
+      key_salt: keySalt,
+      oauth_provider: data.provider,
+      oauth_id: data.oauthId,
+      avatar_url: data.avatar,
+      created_at: new Date(),
+    }
+  }
+
+  /**
+   * Vincular OAuth a usuario existente
+   */
+  static async linkOAuth(userId: string, data: LinkOAuthDTO): Promise<boolean> {
+    const [result] = await db.query(
+      `UPDATE users
+       SET oauth_provider = ?, oauth_id = ?, avatar_url = COALESCE(?, avatar_url)
+       WHERE id = ?`,
+      [data.provider, data.oauthId, data.avatar || null, userId]
+    )
+    return (result as any).affectedRows > 0
+  }
+
+  /**
+   * Verificar si usuario tiene password local
+   */
+  static async hasLocalPassword(userId: string): Promise<boolean> {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT password_hash FROM users WHERE id = ?`,
+      [userId]
+    )
+    return rows[0]?.password_hash !== null
   }
 }

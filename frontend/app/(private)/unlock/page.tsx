@@ -130,7 +130,7 @@ function UnlockForm() {
                   Hola, <span className="font-medium text-foreground">{user?.email}</span>
                 </p>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Introduce tu contraseña para desbloquear tus datos cifrados
+                  Introduce tu contraseña o PIN para desbloquear tus datos cifrados
                 </p>
               </div>
 
@@ -157,7 +157,7 @@ function UnlockForm() {
                 {/* Password field */}
                 <div className="space-y-2">
                   <label htmlFor="password" className="text-sm font-medium">
-                    Contraseña
+                    Contraseña o PIN
                   </label>
                   <div
                     className={`relative transition-all duration-300 ${focusedField === 'password' ? 'scale-[1.02]' : ''}`}

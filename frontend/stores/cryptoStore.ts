@@ -43,6 +43,8 @@ interface CryptoState {
 
 interface CryptoActions {
   deriveAndSetUserKey: (_password: string, _salt: string) => Promise<void>
+  setUnlocked: () => void
+  generateAndSaveAccountKey: () => Promise<void>
   unlockAccount: (_accountId: string, _encryptedKey: string, _keyVersion: number) => Promise<void>
   unlockAccounts: (
     _accounts: Array<{
@@ -82,6 +84,32 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
       set({ error: 'Error al derivar clave de usuario', isUnlocking: false })
       throw error
     }
+  },
+
+  setUnlocked: () => {
+    set({ isUnlocked: true, error: null })
+  },
+
+  generateAndSaveAccountKey: async (csrfToken?: string) => {
+    const { userKey } = get()
+    if (!userKey) throw new Error('User key not available')
+
+    const accountId = crypto.randomUUID()
+    const accountKey = await generateAccountKey()
+    const encryptedKey = await encryptAccountKey(accountKey, userKey)
+    const newAccountKeys = new Map(get().accountKeys)
+    newAccountKeys.set(accountId, { key: accountKey, version: 1 })
+    set({ accountKeys: newAccountKeys })
+
+    await fetch('/api/accounts', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'x-csrf-token': csrfToken }),
+      },
+      body: JSON.stringify({ accountId, encryptedAccountKey: encryptedKey }),
+    })
   },
 
   unlockAccount: async (accountId, encryptedKey, keyVersion) => {

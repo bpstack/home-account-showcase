@@ -11,6 +11,9 @@ export interface User {
   email: string
   name: string
   key_salt?: string // For encryption - only returned when needed
+  oauth_provider?: 'local' | 'google' | 'github'
+  oauth_id?: string
+  avatar_url?: string
   created_at: Date
   updated_at?: Date
 }
@@ -18,6 +21,9 @@ export interface User {
 export interface UserRow extends User, RowDataPacket {
   password_hash?: string
   key_salt: string
+  oauth_provider?: 'local' | 'google' | 'github'
+  oauth_id?: string
+  avatar_url?: string
 }
 
 // ============================================
@@ -41,6 +47,21 @@ export interface LoginDTO {
 export interface UpdateUserDTO {
   name?: string
   email?: string
+}
+
+// OAuth types
+export interface CreateOAuthUserDTO {
+  email: string
+  name: string
+  provider: 'google' | 'github'
+  oauthId: string
+  avatar?: string
+}
+
+export interface LinkOAuthDTO {
+  provider: 'google' | 'github'
+  oauthId: string
+  avatar?: string
 }
 
 // ============================================
