@@ -1,7 +1,8 @@
 // services/market/frankfurter.ts
-// Frankfurter API - Divisas (100% gratuito, sin API key)
+// Frankfurter API - Currencies (100% free, no API key)
 
 import type { CurrencyRate, CurrencyPair } from './types.js'
+import { logger } from '../../utils/logger.js'
 
 const FRANKFURTER_BASE = 'https://api.frankfurter.app'
 
@@ -12,7 +13,7 @@ export async function getCurrencyRates(
   const url = `${FRANKFURTER_BASE}/latest?from=EUR&to=${symbols}`
 
   const startTime = Date.now()
-  console.log(`[Market:Frankfurter] Fetching rates for: ${currencies.join(', ')}`)
+  logger.info('FRANKFURTER', 'getCurrencyRates', `Fetching rates for: ${currencies.join(', ')}`)
 
   try {
     const response = await fetch(url, {
@@ -24,13 +25,13 @@ export async function getCurrencyRates(
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[Market:Frankfurter] API error: ${response.status} - ${errorText}`)
+      logger.error('FRANKFURTER', 'getCurrencyRates', `API error: ${response.status}`, new Error(errorText))
       return getFallbackCurrencyRates(currencies)
     }
 
     const data = await response.json()
     const elapsed = Date.now() - startTime
-    console.log(`[Market:Frankfurter] Response received in ${elapsed}ms`)
+    logger.info('FRANKFURTER', 'getCurrencyRates', `Response received in ${elapsed}ms`)
 
     const result: Record<CurrencyPair, CurrencyRate> = {} as Record<CurrencyPair, CurrencyRate>
 
@@ -38,7 +39,6 @@ export async function getCurrencyRates(
       if (data.rates && data.rates[currency]) {
         const rate = data.rates[currency]
         
-        // Calcular cambio 24h comparando con fecha anterior
         const change24h = await getCurrencyChange24h(currency)
 
         result[currency] = {
@@ -53,7 +53,7 @@ export async function getCurrencyRates(
     return result
   } catch (error) {
     const elapsed = Date.now() - startTime
-    console.error(`[Market:Frankfurter] Error after ${elapsed}ms:`, error)
+      logger.error('FRANKFURTER', 'getCurrencyRates', `Error after ${elapsed}ms`, error as Error)
     return getFallbackCurrencyRates(currencies)
   }
 }
@@ -83,14 +83,14 @@ async function getCurrencyChange24h(currency: CurrencyPair): Promise<number> {
       }
     }
   } catch (error) {
-    console.warn(`[Market:Frankfurter] Could not fetch 24h change for ${currency}`)
+    logger.warn('FRANKFURTER', 'getCurrencyChange24h', `Could not fetch 24h change for ${currency}`)
   }
   
   return 0
 }
 
 function getFallbackCurrencyRates(currencies: CurrencyPair[]): Record<CurrencyPair, CurrencyRate> {
-  console.warn('[Market:Frankfurter] Using fallback rates')
+  logger.warn('FRANKFURTER', 'getFallbackCurrencyRates', 'Using fallback rates')
 
   const fallbackRates: Record<CurrencyPair, CurrencyRate> = {
     USD: {

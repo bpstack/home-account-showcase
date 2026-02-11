@@ -2,6 +2,7 @@
 // Prompt para explicar conceptos financieros educativos
 
 import type { EducationResult } from './types.js'
+import { logger } from '../../../utils/logger.js'
 
 const FINANCIAL_CONCEPTS: Record<string, string> = {
   'ETF': 'Fondo que cotiza en bolsa como una acción, pero que contiene múltiples activos. Ejemplo: IWDA contiene acciones de todo el mundo.',
@@ -130,11 +131,12 @@ export function parseEducationResponse(text: string): EducationResult {
     
     return JSON.parse(cleaned) as EducationResult
   } catch (error) {
-    console.error('[EducationPrompt] Error parsing response:', error)
+    const err = error as Error
+    logger.error('AI_EDUCATION_PROMPT', 'parseEducationResponse', 'Error parsing response', err)
     return {
       concept: 'Error',
-      summary: 'No se pudo procesar la explicación',
-      explanation: 'Lo siento, tuve un problema explicando este concepto.',
+      summary: 'Could not process the explanation',
+      explanation: 'Sorry, I had a problem explaining this concept.',
       example: '',
       risks: [],
       relatedConcepts: [],

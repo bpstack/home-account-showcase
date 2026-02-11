@@ -2,6 +2,8 @@
 // Prompt para analizar el perfil de riesgo del usuario
 
 import type { ProfileAnswers, InvestmentContext, MarketDataContext } from './types.js'
+import { AppError } from '../../../utils/app-error.js'
+import { logger } from '../../../utils/logger.js'
 
 interface ProfileAssessmentResult {
   recommendedProfile: 'conservative' | 'balanced' | 'dynamic'
@@ -123,8 +125,9 @@ export function parseProfileAssessmentResponse(text: string): ProfileAssessmentR
     
     return JSON.parse(cleaned) as ProfileAssessmentResult
   } catch (error) {
-    console.error('[ProfilePrompt] Error parsing response:', error)
-    throw new Error('No se pudo parsear la respuesta del perfil')
+    const err = error as Error
+    logger.error('AI_PROFILE_PROMPT', 'parseProfileAssessmentResponse', 'Error parsing response', err)
+    throw new AppError('Could not parse profile assessment response', 500)
   }
 }
 

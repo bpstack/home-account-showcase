@@ -4,6 +4,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { logger } from '../../../utils/logger.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -49,7 +50,7 @@ function ensureLogDirectory(): void {
       fs.mkdirSync(LOG_DIR, { recursive: true })
     }
   } catch (error) {
-    console.error('[SecurityAudit] Failed to create log directory:', error)
+    logger.error('AI_AUDIT', 'ensureLogDirectory', 'Failed to create log directory', error as Error)
   }
 }
 
@@ -65,8 +66,8 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
   // Add to buffer
   eventBuffer.push(fullEvent)
 
-  // Console log for immediate visibility
-  console.warn(`[SecurityAudit] ${event.type}:`, {
+  // Log for immediate visibility
+  logger.warn('AI_AUDIT', 'logSecurityEvent', `Security event: ${event.type}`, {
     userId: event.userId,
     threatLevel: event.threatLevel,
     details: event.details?.substring(0, 100),
@@ -92,8 +93,7 @@ async function flushEventBuffer(): Promise<void> {
   try {
     fs.appendFileSync(SECURITY_LOG_FILE, logLines, 'utf-8')
   } catch (error) {
-    console.error('[SecurityAudit] Failed to write to log file:', error)
-    // Put events back in buffer if write failed
+    logger.error('AI_AUDIT', 'flushEventBuffer', 'Failed to write to log file', error as Error)
     eventBuffer.unshift(...events)
   }
 }
@@ -137,7 +137,7 @@ export async function getUserSecurityEvents(
 
     return events.slice(-limit)
   } catch (error) {
-    console.error('[SecurityAudit] Failed to read security events:', error)
+    logger.error('AI_AUDIT', 'getUserSecurityEvents', 'Failed to read security events', error as Error)
     return []
   }
 }
@@ -210,7 +210,7 @@ export async function getSecurityStats(
 
     return stats
   } catch (error) {
-    console.error('[SecurityAudit] Failed to calculate stats:', error)
+    logger.error('AI_AUDIT', 'getSecurityStats', 'Failed to calculate stats', error as Error)
     return stats
   }
 }
@@ -253,12 +253,12 @@ export async function cleanOldSecurityLogs(
 
     if (removedCount > 0) {
       fs.writeFileSync(SECURITY_LOG_FILE, validLines.join('\n') + '\n', 'utf-8')
-      console.log(`[SecurityAudit] Cleaned ${removedCount} old log entries`)
+      logger.info('AI_AUDIT', 'cleanOldSecurityLogs', `Cleaned ${removedCount} old log entries`)
     }
 
     return removedCount
   } catch (error) {
-    console.error('[SecurityAudit] Failed to clean old logs:', error)
+    logger.error('AI_AUDIT', 'cleanOldSecurityLogs', 'Failed to clean old logs', error as Error)
     return 0
   }
 }

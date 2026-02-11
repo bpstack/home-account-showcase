@@ -1,7 +1,8 @@
 // services/market/alphaVantage.ts
-// Alpha Vantage API - Índices y acciones (25 calls/día gratuito)
+// Alpha Vantage API - Indices and stocks (25 calls/day free)
 
 import type { MarketIndex } from './types.js'
+import { logger } from '../../utils/logger.js'
 
 const ALPHA_VANTAGE_BASE = 'https://www.alphavantage.co/query'
 const API_KEY = process.env.ALPHA_VANTAGE_API_KEY
@@ -18,37 +19,37 @@ export async function getIndexPrice(
   indexKey: keyof typeof INDEX_INFO
 ): Promise<MarketIndex | null> {
   if (!API_KEY) {
-    console.warn('[Market:AlphaVantage] API key not configured')
+    logger.warn('ALPHA_VANTAGE', 'getIndexPrice', 'API key not configured')
     return getFallbackIndexPrice(indexKey)
   }
 
   const index = INDEX_INFO[indexKey]
   if (!index) {
-    console.error(`[Market:AlphaVantage] Unknown index: ${indexKey}`)
+    logger.error('ALPHA_VANTAGE', 'getIndexPrice', `Unknown index: ${indexKey}`, new Error('Unknown index'))
     return null
   }
 
   const url = `${ALPHA_VANTAGE_BASE}?function=GLOBAL_QUOTE&symbol=${index.symbol}&apikey=${API_KEY}`
 
   const startTime = Date.now()
-  console.log(`[Market:AlphaVantage] Fetching ${index.name} (${index.symbol})`)
+  logger.info('ALPHA_VANTAGE', 'getIndexPrice', `Fetching ${index.name} (${index.symbol})`)
 
   try {
     const response = await fetch(url)
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[Market:AlphaVantage] API error: ${response.status} - ${errorText}`)
+      logger.error('ALPHA_VANTAGE', 'getIndexPrice', `API error: ${response.status}`, new Error(errorText))
       return getFallbackIndexPrice(indexKey)
     }
 
     const data = await response.json()
     const elapsed = Date.now() - startTime
-    console.log(`[Market:AlphaVantage] Response received in ${elapsed}ms`)
+    logger.info('ALPHA_VANTAGE', 'getIndexPrice', `Response received in ${elapsed}ms`)
 
     const quote = data['Global Quote']
     if (!quote || Object.keys(quote).length === 0) {
-      console.warn(`[Market:AlphaVantage] No data for ${index.name}`)
+      logger.warn('ALPHA_VANTAGE', 'getIndexPrice', `No data for ${index.name}`)
       return getFallbackIndexPrice(indexKey)
     }
 
@@ -64,10 +65,9 @@ export async function getIndexPrice(
     }
   } catch (error) {
     const elapsed = Date.now() - startTime
-    console.error(`[Market:AlphaVantage] Error after ${elapsed}ms:`, error)
+      logger.error('ALPHA_VANTAGE', 'getIndexPrice', `Error after ${elapsed}ms`, error as Error)
     return getFallbackIndexPrice(indexKey)
   } finally {
-    // Rate limiting: 5 calls per minute for free tier
     await delay(1500)
   }
 }
@@ -103,7 +103,7 @@ export async function getNASDAQ(): Promise<MarketIndex> {
 }
 
 function getFallbackIndexPrice(indexKey: string): MarketIndex {
-  console.warn(`[Market:AlphaVantage] Using fallback price for ${indexKey}`)
+  logger.warn('ALPHA_VANTAGE', 'getFallbackIndexPrice', `Using fallback price for ${indexKey}`)
 
   const fallbacks: Record<string, MarketIndex> = {
     SP500: {

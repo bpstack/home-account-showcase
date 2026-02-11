@@ -7,6 +7,7 @@ import {
   wrapUserInput,
   ANTI_JAILBREAK_SUFFIX,
 } from '../security/secure-prompts.js'
+import { logger } from '../../../utils/logger.js'
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -97,9 +98,10 @@ export function parseChatResponse(text: string): ChatResult {
     
     return JSON.parse(cleaned) as ChatResult
   } catch (error) {
-    console.error('[ChatPrompt] Error parsing response:', error)
+    const err = error as Error
+    logger.error('AI_CHAT_PROMPT', 'parseChatResponse', 'Error parsing response', err)
     return {
-      answer: 'Lo siento, tuve un problema procesando tu pregunta. ¿Puedes reformularla?',
+      answer: 'Sorry, I had a problem processing your question. Please try rephrasing it.',
       relatedConcepts: [],
       usedMarketData: false,
       usedFinancialData: false,

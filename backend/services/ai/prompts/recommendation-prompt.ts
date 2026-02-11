@@ -2,6 +2,8 @@
 // Prompt para generar recomendaciones de inversión personalizadas
 
 import type { RecommendationResult, InvestmentContext, MarketDataContext } from './types.js'
+import { AppError } from '../../../utils/app-error.js'
+import { logger } from '../../../utils/logger.js'
 
 // Interface definitions removed to use shared types from ./types.js
 
@@ -113,7 +115,8 @@ export function parseRecommendationResponse(text: string): RecommendationResult 
     
     return JSON.parse(cleaned) as RecommendationResult
   } catch (error) {
-    console.error('[RecommendationPrompt] Error parsing response:', error)
-    throw new Error('No se pudo parsear las recomendaciones')
+    const err = error as Error
+    logger.error('AI_RECOMMENDATION_PROMPT', 'parseRecommendationResponse', 'Error parsing response', err)
+    throw new AppError('Could not parse recommendations', 500)
   }
 }

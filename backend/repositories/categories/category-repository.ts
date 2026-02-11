@@ -11,6 +11,8 @@ import type {
   CreateCategoryDTO,
   UpdateCategoryDTO,
 } from '../../models/categories/index.js'
+import { AppError } from '../../utils/app-error.js'
+import { logger } from '../../utils/logger.js'
 
 export class CategoryRepository {
   /**
@@ -20,10 +22,9 @@ export class CategoryRepository {
     userId: string,
     data: CreateCategoryDTO & { name_encrypted?: string }
   ): Promise<Category> {
-    // Verificar acceso al account
     const hasAccess = await AccountRepository.hasAccess(data.account_id, userId)
     if (!hasAccess) {
-      throw new Error('No tienes acceso a esta cuenta')
+      throw new AppError('You do not have access to this account', 403)
     }
 
     const id = crypto.randomUUID()
@@ -47,10 +48,10 @@ export class CategoryRepository {
       }
     } catch (error: any) {
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new Error('Ya existe una categoría con ese nombre')
+        throw new AppError('Category with this name already exists', 409)
       }
-      console.error('Error creating category:', error)
-      throw new Error('Error interno al crear categoría')
+      logger.error('CATEGORY_REPO', 'create', 'Error creating category', error)
+      throw new AppError('Internal error creating category', 500)
     }
   }
 
@@ -58,13 +59,11 @@ export class CategoryRepository {
    * Obtener categorías por account con subcategorías
    */
   static async getByAccountId(accountId: string, userId: string): Promise<Category[]> {
-    // Verificar acceso
     const hasAccess = await AccountRepository.hasAccess(accountId, userId)
     if (!hasAccess) {
-      throw new Error('No tienes acceso a esta cuenta')
+      throw new AppError('You do not have access to this account', 403)
     }
 
-    // Obtener categorías (incluir campos encriptados)
     const [categories] = await db.query<CategoryRow[]>(
       `SELECT id, account_id, name, name_encrypted, color, icon, created_at, updated_at
        FROM categories
@@ -73,7 +72,6 @@ export class CategoryRepository {
       [accountId]
     )
 
-    // Obtener subcategorías para cada categoría (incluir campos encriptados)
     const [subcategories] = await db.query<SubcategoryRow[]>(
       `SELECT id, category_id, name, name_encrypted, created_at, updated_at
        FROM subcategories
@@ -82,7 +80,6 @@ export class CategoryRepository {
       [accountId]
     )
 
-    // Agrupar subcategorías por categoría
     const subcategoriesByCategory = new Map<string, Subcategory[]>()
     for (const sub of subcategories) {
       const list = subcategoriesByCategory.get(sub.category_id) || []
@@ -90,7 +87,6 @@ export class CategoryRepository {
       subcategoriesByCategory.set(sub.category_id, list)
     }
 
-    // Combinar categorías con sus subcategorías
     return categories.map((cat) => ({
       ...cat,
       subcategories: subcategoriesByCategory.get(cat.id) || [],
@@ -120,7 +116,6 @@ export class CategoryRepository {
     userId: string,
     data: UpdateCategoryDTO & { name_encrypted?: string }
   ): Promise<Category | null> {
-    // Verificar acceso
     const category = await this.getById(categoryId, userId)
     if (!category) {
       return null
@@ -158,7 +153,7 @@ export class CategoryRepository {
       return this.getById(categoryId, userId)
     } catch (error: any) {
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new Error('Ya existe una categoría con ese nombre')
+        throw new AppError('Category with this name already exists', 409)
       }
       throw error
     }
@@ -189,20 +184,18 @@ export class CategoryRepository {
     toCategoryId: string,
     userId: string
   ): Promise<number> {
-    // Verificar acceso a ambas categorías
     const fromCategory = await this.getById(fromCategoryId, userId)
     if (!fromCategory) {
-      throw new Error('Categoría de origen no encontrada')
+      throw new AppError('Source category not found', 404)
     }
 
     const toCategory = await this.getById(toCategoryId, userId)
     if (!toCategory) {
-      throw new Error('Categoría de destino no encontrada')
+      throw new AppError('Destination category not found', 404)
     }
 
-    // Verificar que ambas pertenecen al mismo account
     if (fromCategory.account_id !== toCategory.account_id) {
-      throw new Error('Las categorías deben pertenecer a la misma cuenta')
+      throw new AppError('Categories must belong to the same account', 400)
     }
 
     const [result] = await db.query<any>(

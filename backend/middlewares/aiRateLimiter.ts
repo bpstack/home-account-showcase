@@ -4,6 +4,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { getActiveProvider } from '../services/ai/ai-client.js'
 import type { AIProviderType } from '../services/ai/types.js'
+import { logger } from '../utils/logger.js'
 
 interface RateLimitEntry {
   count: number
@@ -147,19 +148,18 @@ export function aiRateLimiter(options: {
 
     // Categorize after parse is free
     if (options.isCategorize && isCategorizeAfterParse(userId)) {
-      console.log(`[RateLimit] Categorize free (after parse) for user ${userId}`)
+      logger.info('AI_RATE_LIMITER', 'aiRateLimiter', `Categorize free (after parse) for user ${userId}`)
       return next()
     }
 
-    // Check rate limit
     const { allowed, remaining, resetTime, limit } = checkRateLimit(userId, provider)
 
     if (!allowed) {
       const timeRemaining = Math.ceil((resetTime! - Date.now()) / 60000)
       res.status(429).json({
         success: false,
-        error: `Límite de peticiones ${provider.toUpperCase()} excedido`,
-        message: `Has alcanzado el límite de ${limit} peticiones por hora. Intenta de nuevo en ${timeRemaining} minutos.`,
+        error: `${provider.toUpperCase()} request limit exceeded`,
+        message: `You have reached the limit of ${limit} requests per hour. Try again in ${timeRemaining} minutes.`,
         remaining: 0,
         resetTime,
         provider,
@@ -167,15 +167,13 @@ export function aiRateLimiter(options: {
       return
     }
 
-    // Increment counter
     incrementRateLimit(userId, provider)
 
-    // Mark parse operation for combo tracking
     if (options.isParse) {
       markParseOperation(userId)
     }
 
-    console.log(`[RateLimit] ${provider}: ${remaining}/${limit} remaining for user ${userId}`)
+    logger.info('AI_RATE_LIMITER', 'aiRateLimiter', `${provider}: ${remaining}/${limit} remaining for user ${userId}`)
 
     next()
   }

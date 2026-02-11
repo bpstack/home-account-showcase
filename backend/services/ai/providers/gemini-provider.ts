@@ -1,5 +1,7 @@
 // services/ai/providers/gemini-provider.ts
 import type { IAIProvider, AIProviderConfig } from '../types.js'
+import { AppError } from '../../../utils/app-error.js'
+import { logger } from '../../../utils/logger.js'
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -26,10 +28,10 @@ export class GeminiProvider implements IAIProvider {
 
   async sendPrompt(prompt: string): Promise<string> {
     if (!this.apiKey) {
-      throw new Error('Gemini API key not configured')
+      throw new AppError('Gemini API key not configured', 503)
     }
 
-    console.log(`[AI:Gemini] Sending prompt (${prompt.length} chars)...`)
+    logger.info('AI_GEMINI', 'sendPrompt', `Sending prompt (${prompt.length} chars)`)
     const startTime = Date.now()
 
     const url = `${this.baseUrl}/models/${this.config.model}:generateContent?key=${this.apiKey}`
@@ -65,28 +67,28 @@ export class GeminiProvider implements IAIProvider {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(
-          `Gemini API error: ${response.status} - ${errorData?.error?.message || response.statusText}`
-        )
+        logger.error('AI_GEMINI', 'sendPrompt', `API error: ${response.status}`, errorData)
+        throw new AppError(`Gemini API error: ${response.status} - ${errorData?.error?.message || response.statusText}`, response.status)
       }
 
       const data: GeminiResponse = await response.json()
-      console.log(`[AI:Gemini] Response received in ${elapsed}ms`)
+      logger.info('AI_GEMINI', 'sendPrompt', `Response received in ${elapsed}ms`)
 
       if (data.error) {
-        throw new Error(`Gemini error: ${data.error.message}`)
+        throw new AppError(`Gemini error: ${data.error.message}`, 500)
       }
 
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text
       if (!text) {
-        throw new Error('No text response from Gemini')
+        throw new AppError('No text response from Gemini', 500)
       }
 
       return text.trim()
     } catch (error) {
       clearTimeout(timeoutId)
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Gemini request timeout after ${this.config.timeout}ms`)
+        logger.error('AI_GEMINI', 'sendPrompt', 'Request timeout', new Error('AbortError'))
+        throw new AppError(`Gemini request timeout after ${this.config.timeout}ms`, 504)
       }
       throw error
     }

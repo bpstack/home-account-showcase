@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import type { AIProviderType } from './types.js'
+import { logger } from '../../utils/logger.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -34,7 +35,7 @@ function loadSettings(): AISettings {
       return settings
     }
   } catch (error) {
-    console.warn('[AI Settings] Error loading settings:', error)
+    logger.warn('AI_SETTINGS', 'loadSettings', 'Error loading settings')
   }
   settingsFileExists = false
   return { ...DEFAULT_SETTINGS }
@@ -48,9 +49,9 @@ function saveSettings(settings: AISettings): void {
     settings.updatedAt = new Date().toISOString()
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8')
     settingsFileExists = true
-    console.log(`[AI Settings] Saved: ${settings.activeProvider}`)
+    logger.info('AI_SETTINGS', 'saveSettings', `Saved: ${settings.activeProvider}`)
   } catch (error) {
-    console.error('[AI Settings] Error saving settings:', error)
+    logger.error('AI_SETTINGS', 'saveSettings', 'Error saving settings', error as Error)
   }
 }
 
@@ -91,5 +92,5 @@ export function setPersistedProvider(provider: AIProviderType): void {
  */
 export function initializeAISettings(): void {
   cachedSettings = loadSettings()
-  console.log(`[AI Settings] Initialized with provider: ${cachedSettings.activeProvider}`)
+  logger.info('AI_SETTINGS', 'initializeAISettings', `Initialized with provider: ${cachedSettings.activeProvider}`)
 }

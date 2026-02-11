@@ -1,5 +1,3 @@
-// controllers/auth/auth-controller.ts
-
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
@@ -9,15 +7,14 @@ import {
   verifyToken,
 } from '../../services/auth/tokenService.js'
 import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
-import type { RegisterDTO, LoginDTO } from '../../models/auth/index.js'
 import {
   registerSchema,
   loginSchema,
-  refreshSchema,
   type RegisterInput,
   type LoginInput,
-  type RefreshInput,
 } from '../../validators/auth-validators.js'
+import { asyncHandler } from '../../utils/async-handler.js'
+import { AppError } from '../../utils/app-error.js'
 
 const isProduction = process.env.NODE_ENV === 'production'
 
@@ -25,7 +22,7 @@ const accessTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  maxAge: 15 * 60 * 1000, // 15 minutos
+  maxAge: 15 * 60 * 1000,
   path: '/',
 }
 
@@ -33,406 +30,175 @@ const refreshTokenCookieOptions = {
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  maxAge: 8 * 60 * 60 * 1000, // 8 horas
+  maxAge: 8 * 60 * 60 * 1000,
   path: '/',
 }
 
 const csrfCookieOptions = createCSRFCookieOptions()
 
-/**
- * Registro de nuevo usuario
- * POST /api/auth/register
- *
- * Body includes encryptedAccountKey for envelope encryption
- */
-export const register = async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Validación con Zod
-    const validationResult = registerSchema.safeParse(req.body)
-    if (!validationResult.success) {
-      const firstError = validationResult.error.issues[0]
-      res.status(400).json({
-        success: false,
-        error: firstError?.message || 'Datos inválidos',
-      })
-      return
-    }
-
-    const { email, password, name, accountName, skipDefaultAccount, encryptedAccountKey } =
-      validationResult.data as RegisterInput
-
-    const result = await UserRepository.create({
-      email,
-      password,
-      name,
-      accountName,
-      skipDefaultAccount,
-      encryptedAccountKey,
-    })
-
-    const accessToken = await generateAccessToken({ id: result.id, email: result.email })
-    const refreshToken = await generateRefreshToken({ id: result.id, email: result.email })
-    const csrfToken = generateCSRFToken()
-
-    // Establecer cookies httpOnly
-    res.cookie('accessToken', accessToken, accessTokenCookieOptions)
-    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
-    res.cookie('csrfToken', csrfToken, csrfCookieOptions)
-
-    // User object without key_salt (will be derived client-side)
-    const user = {
-      id: result.id,
-      email: result.email,
-      name: result.name,
-      created_at: result.created_at,
-    }
-
-    // Response includes key_salt for client to derive User Key
-    res.status(201).json({
-      success: true,
-      user,
-      key_salt: result.key_salt,
-      accountId: result.accountId,
-      csrfToken,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'El email ya está registrado') {
-      res.status(409).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en register:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const validationResult = registerSchema.safeParse(req.body)
+  if (!validationResult.success) {
+    throw new AppError(validationResult.error.issues[0]?.message || 'Invalid data', 400)
   }
-}
 
-/**
- * Login de usuario
- * POST /api/auth/login
- *
- * Returns key_salt and encrypted_keys for envelope encryption
- */
-export const login = async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Validación con Zod
-    const validationResult = loginSchema.safeParse(req.body)
-    if (!validationResult.success) {
-      const firstError = validationResult.error.issues[0]
-      res.status(400).json({
-        success: false,
-        error: firstError?.message || 'Datos inválidos',
-      })
-      return
-    }
+  const { email, password, name, accountName, skipDefaultAccount, encryptedAccountKey } =
+    validationResult.data as RegisterInput
 
-    const { email, password } = validationResult.data as LoginInput
+  const result = await UserRepository.create({
+    email,
+    password,
+    name,
+    accountName,
+    skipDefaultAccount,
+    encryptedAccountKey,
+  })
 
-    const userWithSalt = await UserRepository.login({ email, password })
+  const accessToken = await generateAccessToken({ id: result.id, email: result.email })
+  const refreshToken = await generateRefreshToken({ id: result.id, email: result.email })
+  const csrfToken = generateCSRFToken()
 
-    // Get encrypted account keys for this user
-    const encryptedKeys = await AccountKeyRepository.getByUserId(userWithSalt.id)
+  res.cookie('accessToken', accessToken, accessTokenCookieOptions)
+  res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+  res.cookie('csrfToken', csrfToken, csrfCookieOptions)
 
-    const accessToken = await generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
-    const refreshToken = await generateRefreshToken({ id: userWithSalt.id, email: userWithSalt.email })
-    const csrfToken = generateCSRFToken()
-
-    // Establecer cookies httpOnly
-    res.cookie('accessToken', accessToken, accessTokenCookieOptions)
-    res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
-    res.cookie('csrfToken', csrfToken, csrfCookieOptions)
-
-    // User object without key_salt in the user object
-    const user = {
-      id: userWithSalt.id,
-      email: userWithSalt.email,
-      name: userWithSalt.name,
-      created_at: userWithSalt.created_at,
-      updated_at: userWithSalt.updated_at,
-    }
-
-    // Response includes key_salt and encrypted_keys for client-side decryption
-    res.status(200).json({
-      success: true,
-      user,
-      key_salt: userWithSalt.key_salt,
-      encrypted_keys: encryptedKeys,
-      csrfToken,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'Credenciales inválidas') {
-      res.status(401).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en login:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  const user = {
+    id: result.id,
+    email: result.email,
+    name: result.name,
+    created_at: result.created_at,
   }
-}
 
-/**
- * Obtener usuario autenticado
- * GET /api/auth/me
- */
-export const me = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const user = await UserRepository.getById(req.user!.id)
+  res.status(201).json({
+    success: true,
+    user,
+    key_salt: result.key_salt,
+    accountId: result.accountId,
+    csrfToken,
+  })
+})
 
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        error: 'Usuario no encontrado',
-      })
-      return
-    }
-
-    res.status(200).json({
-      success: true,
-      user,
-    })
-  } catch (error) {
-    console.error('Error en /me:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const validationResult = loginSchema.safeParse(req.body)
+  if (!validationResult.success) {
+    throw new AppError(validationResult.error.issues[0]?.message || 'Invalid data', 400)
   }
-}
 
-/**
- * Refresh access token usando refresh token
- * POST /api/auth/refresh
- * SIEMPRE usa refresh token desde cookies httpOnly por seguridad
- * No acepta refresh token desde body para prevenir ataques XSS
- */
-export const refresh = async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Seguridad: Solo aceptar refresh token desde cookies httpOnly
-    const refreshTokenFromCookie = req.cookies?.refreshToken
-    const refreshTokenFromBody = req.body?.refreshToken
+  const { email, password } = validationResult.data as LoginInput
+  const userWithSalt = await UserRepository.login({ email, password })
+  const encryptedKeys = await AccountKeyRepository.getByUserId(userWithSalt.id)
 
-    // Rechazar explícitamente si viene por body
-    if (refreshTokenFromBody) {
-      res.status(400).json({
-        success: false,
-        error: 'Método no permitido. El refresh token debe venir en cookies httpOnly.',
-      })
-      return
-    }
+  const accessToken = await generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
+  const refreshToken = await generateRefreshToken({ id: userWithSalt.id, email: userWithSalt.email })
+  const csrfToken = generateCSRFToken()
 
-    const refreshToken = refreshTokenFromCookie
+  res.cookie('accessToken', accessToken, accessTokenCookieOptions)
+  res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+  res.cookie('csrfToken', csrfToken, csrfCookieOptions)
 
-    if (!refreshToken) {
-      res.status(401).json({
-        success: false,
-        error: 'Refresh token no proporcionado',
-      })
-      return
-    }
-
-    // Verificar el refresh token
-    const decoded = await verifyToken(refreshToken)
-
-    // Verificar que el usuario existe
-    const user = await UserRepository.getById(decoded.id)
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        error: 'Usuario no encontrado',
-      })
-      return
-    }
-
-    // Generar nuevo access token
-    const newAccessToken = await generateAccessToken({ id: user.id, email: user.email })
-    const newCSRFToken = generateCSRFToken()
-
-    // Establecer nueva cookie httpOnly
-    res.cookie('accessToken', newAccessToken, accessTokenCookieOptions)
-    res.cookie('csrfToken', newCSRFToken, csrfCookieOptions)
-
-    res.status(200).json({
-      success: true,
-      csrfToken: newCSRFToken,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'Token expirado' || err.message === 'Token inválido') {
-      res.status(401).json({
-        success: false,
-        error: 'Refresh token inválido o expirado',
-      })
-      return
-    }
-
-    console.error('Error en refresh:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  const user = {
+    id: userWithSalt.id,
+    email: userWithSalt.email,
+    name: userWithSalt.name,
+    created_at: userWithSalt.created_at,
+    updated_at: userWithSalt.updated_at,
   }
-}
 
-/**
- * Get encryption keys for authenticated user
- * GET /api/auth/keys
- *
- * Used after page refresh to re-derive User Key and unlock accounts
- * Returns key_salt and encrypted_keys for the current user
- */
-export const getKeys = async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Get user with key_salt
-    const user = await UserRepository.getByIdWithKeySalt(req.user!.id)
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        error: 'Usuario no encontrado',
-      })
-      return
-    }
+  res.status(200).json({
+    success: true,
+    user,
+    key_salt: userWithSalt.key_salt,
+    encrypted_keys: encryptedKeys,
+    csrfToken,
+  })
+})
 
-    // Get encrypted account keys
-    const encryptedKeys = await AccountKeyRepository.getByUserId(req.user!.id)
-
-    res.status(200).json({
-      success: true,
-      key_salt: user.key_salt,
-      encrypted_keys: encryptedKeys,
-    })
-  } catch (error) {
-    console.error('Error en getKeys:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+export const me = asyncHandler(async (req: Request, res: Response) => {
+  const user = await UserRepository.getById(req.user!.id)
+  if (!user) {
+    throw new AppError('User not found', 404)
   }
-}
+  res.status(200).json({ success: true, user })
+})
 
-/**
- * Logout (invalida el refresh token)
- * POST /api/auth/logout
- *
- * Nota: Los JWT son stateless, no se pueden invalidar directamente.
- * Para invalidación inmediata, se usaría una blacklist en BD/Redis.
- * Por ahora, el frontend simplemente borra los tokens.
- */
-/**
- * Cambiar contraseña con re-cifrado de claves
- * POST /api/auth/change-password
- *
- * Body: { currentPassword, newPassword, newKeySalt?, reEncryptedKeys? }
- * Si se proporciona newKeySalt y reEncryptedKeys, se re-cifran las claves de cuenta
- */
-export const changePassword = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { currentPassword, newPassword, newKeySalt, reEncryptedKeys } = req.body
-
-    if (!currentPassword || !newPassword) {
-      res.status(400).json({
-        success: false,
-        error: 'Se requiere contraseña actual y nueva contraseña',
-      })
-      return
-    }
-
-    if (newPassword.length < 6) {
-      res.status(400).json({
-        success: false,
-        error: 'La nueva contraseña debe tener al menos 6 caracteres',
-      })
-      return
-    }
-
-    // Si se proporciona newKeySalt, también deben venir las claves re-cifradas
-    if (newKeySalt && (!reEncryptedKeys || reEncryptedKeys.length === 0)) {
-      res.status(400).json({
-        success: false,
-        error: 'Si se cambia el salt, deben proporcionarse las claves re-cifradas',
-      })
-      return
-    }
-
-    await UserRepository.changePassword(
-      req.user!.id,
-      currentPassword,
-      newPassword,
-      newKeySalt,
-      reEncryptedKeys
-    )
-
-    // Limpiar cookies para forzar re-login
-    res.clearCookie('accessToken', { path: '/' })
-    res.clearCookie('refreshToken', { path: '/' })
-    res.clearCookie('csrfToken', { path: '/' })
-
-    res.status(200).json({
-      success: true,
-      message: 'Contraseña cambiada correctamente. Por favor, vuelve a iniciar sesión.',
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'Contraseña actual incorrecta') {
-      res.status(401).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    if (err.message === 'Usuario no encontrado') {
-      res.status(404).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en changePassword:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+export const refresh = asyncHandler(async (req: Request, res: Response) => {
+  const refreshTokenFromBody = req.body?.refreshToken
+  if (refreshTokenFromBody) {
+    throw new AppError('Refresh token must come from httpOnly cookie', 400)
   }
-}
 
-export const logout = async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Limpiar cookies httpOnly
-    res.clearCookie('accessToken', { path: '/' })
-    res.clearCookie('refreshToken', { path: '/' })
-    res.clearCookie('csrfToken', { path: '/' })
-
-    // Opcional: Invalidar refresh token en BD si implementamos blacklist
-    // Por ahora las cookies se borran y eso es suficiente
-    // Para invalidación inmediata, se usaría una blacklist en Redis
-
-    res.status(200).json({
-      success: true,
-      message: 'Sesión cerrada correctamente',
-    })
-  } catch (error) {
-    console.error('Error en logout:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  const refreshToken = req.cookies?.refreshToken
+  if (!refreshToken) {
+    throw new AppError('Refresh token not provided', 401)
   }
-}
+
+  const decoded = await verifyToken(refreshToken)
+  const user = await UserRepository.getById(decoded.id)
+  if (!user) {
+    throw new AppError('User not found', 401)
+  }
+
+  const newAccessToken = await generateAccessToken({ id: user.id, email: user.email })
+  const newCSRFToken = generateCSRFToken()
+
+  res.cookie('accessToken', newAccessToken, accessTokenCookieOptions)
+  res.cookie('csrfToken', newCSRFToken, csrfCookieOptions)
+
+  res.status(200).json({ success: true, csrfToken: newCSRFToken })
+})
+
+export const getKeys = asyncHandler(async (req: Request, res: Response) => {
+  const user = await UserRepository.getByIdWithKeySalt(req.user!.id)
+  if (!user) {
+    throw new AppError('User not found', 404)
+  }
+
+  const encryptedKeys = await AccountKeyRepository.getByUserId(req.user!.id)
+
+  res.status(200).json({
+    success: true,
+    key_salt: user.key_salt,
+    encrypted_keys: encryptedKeys,
+  })
+})
+
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  const { currentPassword, newPassword, newKeySalt, reEncryptedKeys } = req.body
+
+  if (!currentPassword || !newPassword) {
+    throw new AppError('Current and new password are required', 400)
+  }
+
+  if (newPassword.length < 6) {
+    throw new AppError('New password must be at least 6 characters', 400)
+  }
+
+  if (newKeySalt && (!reEncryptedKeys || reEncryptedKeys.length === 0)) {
+    throw new AppError('If salt is changed, re-encrypted keys must be provided', 400)
+  }
+
+  await UserRepository.changePassword(
+    req.user!.id,
+    currentPassword,
+    newPassword,
+    newKeySalt,
+    reEncryptedKeys
+  )
+
+  res.clearCookie('accessToken', { path: '/' })
+  res.clearCookie('refreshToken', { path: '/' })
+  res.clearCookie('csrfToken', { path: '/' })
+
+  res.status(200).json({
+    success: true,
+    message: 'Password changed successfully. Please log in again.',
+  })
+})
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  res.clearCookie('accessToken', { path: '/' })
+  res.clearCookie('refreshToken', { path: '/' })
+  res.clearCookie('csrfToken', { path: '/' })
+
+  res.status(200).json({ success: true, message: 'Session closed successfully' })
+})

@@ -1,6 +1,8 @@
 // services/ai/providers/claude-provider.ts
 import Anthropic from '@anthropic-ai/sdk'
 import type { IAIProvider, AIProviderConfig } from '../types.js'
+import { AppError } from '../../../utils/app-error.js'
+import { logger } from '../../../utils/logger.js'
 
 export class ClaudeProvider implements IAIProvider {
   readonly name = 'Claude'
@@ -21,10 +23,10 @@ export class ClaudeProvider implements IAIProvider {
 
   async sendPrompt(prompt: string): Promise<string> {
     if (!this.client) {
-      throw new Error('Claude client not initialized - missing API key')
+      throw new AppError('Claude client not initialized - missing API key', 503)
     }
 
-    console.log(`[AI:Claude] Sending prompt (${prompt.length} chars)...`)
+    logger.info('AI_CLAUDE', 'sendPrompt', `Sending prompt (${prompt.length} chars)`)
     const startTime = Date.now()
 
     const response = await Promise.race([
@@ -38,11 +40,11 @@ export class ClaudeProvider implements IAIProvider {
     ])
 
     const elapsed = Date.now() - startTime
-    console.log(`[AI:Claude] Response received in ${elapsed}ms`)
+    logger.info('AI_CLAUDE', 'sendPrompt', `Response received in ${elapsed}ms`)
 
     const content = (response as Anthropic.Message).content[0]
     if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude')
+      throw new AppError('Unexpected response type from Claude', 500)
     }
 
     return content.text.trim()
@@ -50,7 +52,8 @@ export class ClaudeProvider implements IAIProvider {
 
   private timeout(ms: number): Promise<never> {
     return new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(`Claude request timeout after ${ms}ms`)), ms)
+      logger.error('AI_CLAUDE', 'timeout', `Request timeout after ${ms}ms`, new Error('Timeout'))
+      reject(new AppError(`Claude request timeout after ${ms}ms`, 504))
     })
   }
 }

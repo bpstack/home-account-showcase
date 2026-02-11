@@ -1,5 +1,6 @@
 import XLSX from 'xlsx'
 import { sanitizeCSVValue } from '../../utils/sanitize.js'
+import { logger } from '../../utils/logger.js'
 
 export interface ParsedTransaction {
   date: string

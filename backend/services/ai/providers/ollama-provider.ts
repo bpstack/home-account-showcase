@@ -1,5 +1,7 @@
 // services/ai/providers/ollama-provider.ts
 import type { IAIProvider, AIProviderConfig } from '../types.js'
+import { AppError } from '../../../utils/app-error.js'
+import { logger } from '../../../utils/logger.js'
 
 interface OllamaResponse {
   model: string
@@ -24,7 +26,7 @@ export class OllamaProvider implements IAIProvider {
   }
 
   async sendPrompt(prompt: string): Promise<string> {
-    console.log(`[AI:Ollama] Sending prompt (${prompt.length} chars) to ${this.baseUrl}...`)
+    logger.info('AI_OLLAMA', 'sendPrompt', `Sending prompt (${prompt.length} chars) to ${this.baseUrl}`)
     const startTime = Date.now()
 
     const url = `${this.baseUrl}/api/generate`
@@ -54,18 +56,19 @@ export class OllamaProvider implements IAIProvider {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error')
-        throw new Error(`Ollama API error: ${response.status} - ${errorText}`)
+        logger.error('AI_OLLAMA', 'sendPrompt', `API error: ${response.status}`, errorText)
+        throw new AppError(`Ollama API error: ${response.status} - ${errorText}`, response.status)
       }
 
       const data: OllamaResponse = await response.json()
-      console.log(`[AI:Ollama] Response received in ${elapsed}ms`)
+      logger.info('AI_OLLAMA', 'sendPrompt', `Response received in ${elapsed}ms`)
 
       if (data.error) {
-        throw new Error(`Ollama error: ${data.error}`)
+        throw new AppError(`Ollama error: ${data.error}`, 500)
       }
 
       if (!data.response) {
-        throw new Error('No response from Ollama')
+        throw new AppError('No response from Ollama', 500)
       }
 
       return data.response.trim()
@@ -74,10 +77,12 @@ export class OllamaProvider implements IAIProvider {
 
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          throw new Error(`Ollama request timeout after ${this.config.timeout}ms`)
+          logger.error('AI_OLLAMA', 'sendPrompt', 'Request timeout', new Error('AbortError'))
+          throw new AppError(`Ollama request timeout after ${this.config.timeout}ms`, 504)
         }
         if (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed')) {
-          throw new Error(`Ollama no accesible en ${this.baseUrl}. ¿Está Docker/Ollama corriendo?`)
+          logger.error('AI_OLLAMA', 'sendPrompt', `Ollama not accessible at ${this.baseUrl}`, new Error('Connection refused'))
+          throw new AppError(`Ollama not accessible at ${this.baseUrl}. Is Docker/Ollama running?`, 503)
         }
       }
 
@@ -93,6 +98,7 @@ export class OllamaProvider implements IAIProvider {
       })
 
       if (!response.ok) {
+        logger.error('AI_OLLAMA', 'checkHealth', `Health check failed: ${response.status}`, new Error('Health check failed'))
         return { ok: false, error: `Ollama returned ${response.status}` }
       }
 
@@ -101,14 +107,16 @@ export class OllamaProvider implements IAIProvider {
       const modelNames = models.map((m: { name: string }) => m.name)
 
       if (!modelNames.some((name: string) => name.includes(this.config.model.split(':')[0]))) {
+        logger.error('AI_OLLAMA', 'checkHealth', `Model ${this.config.model} not found`, new Error('Model not found'))
         return {
           ok: false,
-          error: `Modelo ${this.config.model} no encontrado. Disponibles: ${modelNames.join(', ')}`,
+          error: `Model ${this.config.model} not found. Available: ${modelNames.join(', ')}`,
         }
       }
 
       return { ok: true }
     } catch (error) {
+      logger.error('AI_OLLAMA', 'checkHealth', 'Health check failed', error as Error)
       return {
         ok: false,
         error: error instanceof Error ? error.message : 'Unknown error',

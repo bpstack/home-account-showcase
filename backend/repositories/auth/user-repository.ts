@@ -11,6 +11,8 @@ import type {
   LoginDTO,
   UpdateUserDTO,
 } from '../../models/auth/index.js'
+import { AppError } from '../../utils/app-error.js'
+import { logger } from '../../utils/logger.js'
 
 export class UserRepository {
   /**
@@ -89,10 +91,10 @@ export class UserRepository {
       await connection.rollback()
 
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new Error('El email ya está registrado')
+        throw new AppError('Email already registered', 409)
       }
-      console.error('Error creating user:', error)
-      throw new Error('Error interno al crear usuario')
+      logger.error('USER_REPO', 'create', 'Error creating user', error)
+      throw new AppError('Internal error creating user', 500)
     } finally {
       connection.release()
     }
@@ -112,17 +114,16 @@ export class UserRepository {
 
     const user = rows[0]
 
-    // Comparación segura contra timing attacks
     const DUMMY_HASH = '$2b$10$dummyhashfortimingatttacksprevent'
     const passwordToCompare = user?.password_hash || DUMMY_HASH
     const isPasswordValid = await bcrypt.compare(password, passwordToCompare)
 
     if (!user) {
-      throw new Error('Credenciales inválidas')
+      throw new AppError('Invalid credentials', 401)
     }
 
     if (!isPasswordValid) {
-      throw new Error('Credenciales inválidas')
+      throw new AppError('Invalid credentials', 401)
     }
 
     // Retornar con key_salt pero sin password_hash
@@ -281,12 +282,12 @@ export class UserRepository {
 
       const user = rows[0]
       if (!user) {
-        throw new Error('Usuario no encontrado')
+        throw new AppError('User not found', 404)
       }
 
       const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash!)
       if (!isCurrentPasswordValid) {
-        throw new Error('Contraseña actual incorrecta')
+        throw new AppError('Current password is incorrect', 401)
       }
 
       await connection.beginTransaction()

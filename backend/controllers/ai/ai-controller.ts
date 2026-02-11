@@ -1,5 +1,5 @@
-// controllers/ai/ai-controller.ts
-
+import { asyncHandler } from '../../utils/async-handler.js'
+import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import {
   getAIStatus,
@@ -18,193 +18,103 @@ import {
   ANTI_JAILBREAK_SUFFIX,
 } from '../../services/ai/security/secure-prompts.js'
 
-/**
- * Get AI status and available providers
- * GET /api/ai/status
- */
-export const getStatus = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const status = getAIStatus()
+export const getStatus = asyncHandler(async (req: Request, res: Response) => {
+  const status = getAIStatus()
 
-    // Add rate limit info for current provider
-    const userId = (req as any).user?.id || 'anonymous'
-    const rateLimit = getAIRateLimitStatus(userId)
-    const providerLimits = getProviderLimits()
+  const userId = (req as any).user?.id || 'anonymous'
+  const rateLimit = getAIRateLimitStatus(userId)
+  const providerLimits = getProviderLimits()
 
-    res.status(200).json({
-      success: true,
-      ...status,
-      rateLimit,
-      providerLimits,
-    })
-  } catch (error) {
-    console.error('Error en getStatus:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  res.status(200).json({
+    success: true,
+    ...status,
+    rateLimit,
+    providerLimits,
+  })
+})
+
+export const setProvider = asyncHandler(async (req: Request, res: Response) => {
+  const { provider } = req.body as { provider: AIProviderType }
+
+  if (!provider) {
+    throw new AppError('provider es requerido', 400)
   }
-}
 
-/**
- * Set active AI provider
- * PUT /api/ai/provider
- * Body: { provider: "claude" | "gemini" | "groq" | "ollama" | "none" }
- */
-export const setProvider = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { provider } = req.body as { provider: AIProviderType }
-
-    if (!provider) {
-      res.status(400).json({
-        success: false,
-        error: 'provider es requerido',
-      })
-      return
-    }
-
-    const validProviders: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'none']
-    if (!validProviders.includes(provider)) {
-      res.status(400).json({
-        success: false,
-        error: `Provider inválido. Válidos: ${validProviders.join(', ')}`,
-      })
-      return
-    }
-
-    setActiveProvider(provider)
-
-    res.status(200).json({
-      success: true,
-      activeProvider: getActiveProvider(),
-    })
-  } catch (error) {
-    console.error('Error en setProvider:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  const validProviders: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'none']
+  if (!validProviders.includes(provider)) {
+    throw new AppError(`Provider inválido. Válidos: ${validProviders.join(', ')}`, 400)
   }
-}
 
-/**
- * Test connection to a specific provider
- * POST /api/ai/test
- * Body: { provider: "claude" | "gemini" | "groq" | "ollama" }
- */
-export const testConnection = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { provider } = req.body as { provider: AIProviderType }
+  setActiveProvider(provider)
 
-    if (!provider) {
-      res.status(400).json({
-        success: false,
-        error: 'provider es requerido',
-      })
-      return
-    }
+  res.status(200).json({
+    success: true,
+    activeProvider: getActiveProvider(),
+  })
+})
 
-    const validProviders: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama']
-    if (!validProviders.includes(provider)) {
-      res.status(400).json({
-        success: false,
-        error: `Provider inválido. Válidos: ${validProviders.join(', ')}`,
-      })
-      return
-    }
+export const testConnection = asyncHandler(async (req: Request, res: Response) => {
+  const { provider } = req.body as { provider: AIProviderType }
 
-    const result = await testProviderConnection(provider)
-
-    res.status(result.success ? 200 : 400).json(result)
-  } catch (error) {
-    console.error('Error en testConnection:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!provider) {
+    throw new AppError('provider es requerido', 400)
   }
-}
 
-/**
- * Parse transactions from text using AI
- * POST /api/ai/parse
- * Body: { text: string, provider?: AIProviderType }
- */
-export const parseTransactions = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { text, provider } = req.body as { text: string; provider?: AIProviderType }
-    const userId = (req as any).user?.id?.toString() || 'anonymous'
-
-    if (!text || typeof text !== 'string') {
-      res.status(400).json({
-        success: false,
-        error: 'text es requerido',
-      })
-      return
-    }
-
-    // Security check on user input
-    const securityCheck = await checkInputSecurity(userId, text, {
-      endpoint: '/api/ai/parse',
-    })
-
-    if (!securityCheck.allowed) {
-      res.status(403).json({
-        success: false,
-        error: securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad',
-        threatLevel: securityCheck.threats.threatLevel,
-      })
-      return
-    }
-
-    if (!isAIEnabled()) {
-      res.status(400).json({
-        success: false,
-        error: 'AI está deshabilitada (AI_ENABLED=false)',
-      })
-      return
-    }
-
-    const client = createAIClient(provider)
-    if (!client.isAvailable()) {
-      res.status(400).json({
-        success: false,
-        error: 'No hay proveedor de IA disponible',
-      })
-      return
-    }
-
-    const startTime = Date.now()
-
-    // Use sanitized input for the prompt
-    const safeText = securityCheck.sanitizedInput
-    const prompt = buildTransactionParsingPrompt(safeText)
-    const response = await client.sendPromptJSON<{ transactions: ParsedTransactionAI[] }>(prompt)
-
-    const responseTime = Date.now() - startTime
-
-    console.log(
-      `[AI:${client.getProviderName()}] Parsed ${response.transactions?.length || 0} transactions in ${responseTime}ms`
-    )
-
-    res.status(200).json({
-      success: true,
-      transactions: response.transactions || [],
-      provider: client.getProviderName(),
-      responseTime,
-    })
-  } catch (error) {
-    console.error('Error en parseTransactions:', error)
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Error interno del servidor',
-    })
+  const validProviders: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama']
+  if (!validProviders.includes(provider)) {
+    throw new AppError(`Provider inválido. Válidos: ${validProviders.join(', ')}`, 400)
   }
-}
 
-/**
- * Build the prompt for parsing transactions with security hardening
- */
+  const result = await testProviderConnection(provider)
+
+  res.status(result.success ? 200 : 400).json(result)
+})
+
+export const parseTransactions = asyncHandler(async (req: Request, res: Response) => {
+  const { text, provider } = req.body as { text: string; provider?: AIProviderType }
+  const userId = (req as any).user?.id?.toString() || 'anonymous'
+
+  if (!text || typeof text !== 'string') {
+    throw new AppError('text es requerido', 400)
+  }
+
+  const securityCheck = await checkInputSecurity(userId, text, {
+    endpoint: '/api/ai/parse',
+  })
+
+  if (!securityCheck.allowed) {
+    throw new AppError(securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad', 403)
+  }
+
+  if (!isAIEnabled()) {
+    throw new AppError('AI está deshabilitada (AI_ENABLED=false)', 400)
+  }
+
+  const client = createAIClient(provider)
+  if (!client.isAvailable()) {
+    throw new AppError('No hay proveedor de IA disponible', 400)
+  }
+
+  const startTime = Date.now()
+
+  const safeText = securityCheck.sanitizedInput
+  const prompt = buildTransactionParsingPrompt(safeText)
+  const response = await client.sendPromptJSON<{ transactions: ParsedTransactionAI[] }>(prompt)
+
+  const responseTime = Date.now() - startTime
+
+  console.log(
+    `[AI:${client.getProviderName()}] Parsed ${response.transactions?.length || 0} transactions in ${responseTime}ms`
+  )
+
+  res.status(200).json({
+    success: true,
+    transactions: response.transactions || [],
+    provider: client.getProviderName(),
+    responseTime,
+  })
+})
+
 function buildTransactionParsingPrompt(text: string): string {
   const safeText = wrapUserInput(text)
 
@@ -252,94 +162,59 @@ ${safeText}
 ${ANTI_JAILBREAK_SUFFIX}`
 }
 
-/**
- * Categorize transactions based on descriptions using AI
- * POST /api/ai/categorize
- * Body: { transactions: { description: string; date?: string; amount?: number }[] }
- */
-export const categorizeTransactions = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { transactions } = req.body as {
-      transactions: Array<{ description: string; date?: string; amount?: number }>
-    }
-    const userId = (req as any).user?.id?.toString() || 'anonymous'
-
-    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
-      res.status(400).json({
-        success: false,
-        error: 'transactions es requerido y debe ser un array no vacío',
-      })
-      return
-    }
-
-    // Security check on all transaction descriptions
-    const allDescriptions = transactions.map(tx => tx.description).join(' | ')
-    const securityCheck = await checkInputSecurity(userId, allDescriptions, {
-      endpoint: '/api/ai/categorize',
-    })
-
-    if (!securityCheck.allowed) {
-      res.status(403).json({
-        success: false,
-        error: securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad',
-        threatLevel: securityCheck.threats.threatLevel,
-      })
-      return
-    }
-
-    // Sanitize each transaction description
-    const sanitizedTransactions = transactions.map(tx => ({
-      ...tx,
-      description: tx.description.replace(/[<>{}[\]]/g, ''), // Basic sanitization
-    }))
-
-    if (!isAIEnabled()) {
-      res.status(400).json({
-        success: false,
-        error: 'AI está deshabilitada (AI_ENABLED=false)',
-      })
-      return
-    }
-
-    const client = createAIClient()
-    if (!client.isAvailable()) {
-      res.status(400).json({
-        success: false,
-        error: 'No hay proveedor de IA disponible',
-      })
-      return
-    }
-
-    const startTime = Date.now()
-
-    const prompt = buildCategorizationPrompt(sanitizedTransactions)
-    const response = await client.sendPromptJSON<{
-      categories: Array<{ category: string; subcategory: string }>
-    }>(prompt)
-
-    const responseTime = Date.now() - startTime
-
-    console.log(
-      `[AI:${client.getProviderName()}] Categorized ${transactions.length} transactions in ${responseTime}ms`
-    )
-
-    res.status(200).json({
-      success: true,
-      categories: response.categories || [],
-      responseTime,
-    })
-  } catch (error) {
-    console.error('Error en categorizeTransactions:', error)
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Error interno del servidor',
-    })
+export const categorizeTransactions = asyncHandler(async (req: Request, res: Response) => {
+  const { transactions } = req.body as {
+    transactions: Array<{ description: string; date?: string; amount?: number }>
   }
-}
+  const userId = (req as any).user?.id?.toString() || 'anonymous'
 
-/**
- * Build the prompt for categorizing transactions with security hardening
- */
+  if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+    throw new AppError('transactions es requerido y debe ser un array no vacío', 400)
+  }
+
+  const allDescriptions = transactions.map(tx => tx.description).join(' | ')
+  const securityCheck = await checkInputSecurity(userId, allDescriptions, {
+    endpoint: '/api/ai/categorize',
+  })
+
+  if (!securityCheck.allowed) {
+    throw new AppError(securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad', 403)
+  }
+
+  const sanitizedTransactions = transactions.map(tx => ({
+    ...tx,
+    description: tx.description.replace(/[<>{}[\]]/g, ''),
+  }))
+
+  if (!isAIEnabled()) {
+    throw new AppError('AI está deshabilitada (AI_ENABLED=false)', 400)
+  }
+
+  const client = createAIClient()
+  if (!client.isAvailable()) {
+    throw new AppError('No hay proveedor de IA disponible', 400)
+  }
+
+  const startTime = Date.now()
+
+  const prompt = buildCategorizationPrompt(sanitizedTransactions)
+  const response = await client.sendPromptJSON<{
+    categories: Array<{ category: string; subcategory: string }>
+  }>(prompt)
+
+  const responseTime = Date.now() - startTime
+
+  console.log(
+    `[AI:${client.getProviderName()}] Categorized ${transactions.length} transactions in ${responseTime}ms`
+  )
+
+  res.status(200).json({
+    success: true,
+    categories: response.categories || [],
+    responseTime,
+  })
+})
+
 function buildCategorizationPrompt(
   transactions: Array<{ description: string; date?: string; amount?: number }>
 ): string {
@@ -347,7 +222,6 @@ function buildCategorizationPrompt(
     .map((tx, i) => `${i + 1}. "${tx.description}"${tx.amount ? ` (${tx.amount})` : ''}`)
     .join('\n')
 
-  // Wrap transaction list as user data
   const safeTxList = wrapUserInput(txList)
 
   return `${SECURITY_INSTRUCTIONS}

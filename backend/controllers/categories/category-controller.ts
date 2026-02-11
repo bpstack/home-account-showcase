@@ -1,302 +1,126 @@
-// controllers/categories/category-controller.ts
-
+import { asyncHandler } from '../../utils/async-handler.js'
+import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { CategoryRepository } from '../../repositories/categories/category-repository.js'
 import { sanitizeForStorage } from '../../utils/sanitize.js'
 
-/**
- * Obtener categorías por account
- * GET /api/categories?account_id=xxx
- */
-export const getCategories = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { account_id } = req.query
+export const getCategories = asyncHandler(async (req: Request, res: Response) => {
+  const { account_id } = req.query
 
-    if (!account_id || typeof account_id !== 'string') {
-      res.status(400).json({
-        success: false,
-        error: 'account_id es requerido',
-      })
-      return
-    }
-
-    const categories = await CategoryRepository.getByAccountId(account_id, req.user!.id)
-
-    res.status(200).json({
-      success: true,
-      categories,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'No tienes acceso a esta cuenta') {
-      res.status(403).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en getCategories:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!account_id || typeof account_id !== 'string') {
+    throw new AppError('account_id es requerido', 400)
   }
-}
 
-/**
- * Obtener categoría por ID
- * GET /api/categories/:id
- */
-export const getCategoryById = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const category = await CategoryRepository.getById(id, req.user!.id)
+  const categories = await CategoryRepository.getByAccountId(account_id, req.user!.id)
 
-    if (!category) {
-      res.status(404).json({
-        success: false,
-        error: 'Categoría no encontrada',
-      })
-      return
-    }
+  res.status(200).json({
+    success: true,
+    categories,
+  })
+})
 
-    res.status(200).json({
-      success: true,
-      category,
-    })
-  } catch (error) {
-    console.error('Error en getCategoryById:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+export const getCategoryById = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const category = await CategoryRepository.getById(id, req.user!.id)
+
+  if (!category) {
+    throw new AppError('Categoría no encontrada', 404)
   }
-}
 
-/**
- * Crear categoría
- * POST /api/categories
- */
-export const createCategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { account_id, name, name_encrypted, color, icon } = req.body
+  res.status(200).json({
+    success: true,
+    category,
+  })
+})
 
-    if (!account_id || !name) {
-      res.status(400).json({
-        success: false,
-        error: 'account_id y name son requeridos',
-      })
-      return
-    }
+export const createCategory = asyncHandler(async (req: Request, res: Response) => {
+  const { account_id, name, name_encrypted, color, icon } = req.body
 
-    // Sanitize text fields to prevent XSS attacks
-    const safeName = sanitizeForStorage(name)
-
-    const category = await CategoryRepository.create(req.user!.id, {
-      account_id,
-      name: safeName,
-      name_encrypted, // Pass encrypted version if provided
-      color,
-      icon,
-    })
-
-    res.status(201).json({
-      success: true,
-      category,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'No tienes acceso a esta cuenta') {
-      res.status(403).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    if (err.message === 'Ya existe una categoría con ese nombre') {
-      res.status(409).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en createCategory:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!account_id || !name) {
+    throw new AppError('account_id y name son requeridos', 400)
   }
-}
 
-/**
- * Actualizar categoría
- * PUT /api/categories/:id
- */
-export const updateCategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const { name, name_encrypted, color, icon } = req.body
+  const safeName = sanitizeForStorage(name)
 
-    // Sanitize text fields to prevent XSS attacks
-    const safeName = name ? sanitizeForStorage(name) : undefined
+  const category = await CategoryRepository.create(req.user!.id, {
+    account_id,
+    name: safeName,
+    name_encrypted,
+    color,
+    icon,
+  })
 
-    const category = await CategoryRepository.update(id, req.user!.id, {
-      name: safeName,
-      name_encrypted, // Pass encrypted version if provided
-      color,
-      icon,
-    })
+  res.status(201).json({
+    success: true,
+    category,
+  })
+})
 
-    if (!category) {
-      res.status(404).json({
-        success: false,
-        error: 'Categoría no encontrada',
-      })
-      return
-    }
+export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const { name, name_encrypted, color, icon } = req.body
 
-    res.status(200).json({
-      success: true,
-      category,
-    })
-  } catch (error) {
-    const err = error as Error
+  const safeName = name ? sanitizeForStorage(name) : undefined
 
-    if (err.message === 'Ya existe una categoría con ese nombre') {
-      res.status(409).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
+  const category = await CategoryRepository.update(id, req.user!.id, {
+    name: safeName,
+    name_encrypted,
+    color,
+    icon,
+  })
 
-    console.error('Error en updateCategory:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!category) {
+    throw new AppError('Categoría no encontrada', 404)
   }
-}
 
-/**
- * Eliminar categoría
- * DELETE /api/categories/:id
- */
-export const deleteCategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const deleted = await CategoryRepository.delete(id, req.user!.id)
+  res.status(200).json({
+    success: true,
+    category,
+  })
+})
 
-    if (!deleted) {
-      res.status(404).json({
-        success: false,
-        error: 'Categoría no encontrada',
-      })
-      return
-    }
+export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const deleted = await CategoryRepository.delete(id, req.user!.id)
 
-    res.status(200).json({
-      success: true,
-      message: 'Categoría eliminada correctamente',
-    })
-  } catch (error) {
-    console.error('Error en deleteCategory:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!deleted) {
+    throw new AppError('Categoría no encontrada', 404)
   }
-}
 
-/**
- * Obtener transacciones huérfanas al borrar categoría
- * GET /api/categories/:id/orphaned-count
- */
-export const getOrphanedCount = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
+  res.status(200).json({
+    success: true,
+    message: 'Categoría eliminada correctamente',
+  })
+})
 
-    const count = await CategoryRepository.getOrphanedTransactionsCount(id, req.user!.id)
+export const getOrphanedCount = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
 
-    res.status(200).json({
-      success: true,
-      count,
-    })
-  } catch (error) {
-    const err = error as Error
+  const count = await CategoryRepository.getOrphanedTransactionsCount(id, req.user!.id)
 
-    if (err.message === 'No tienes acceso a esta cuenta') {
-      res.status(403).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
+  res.status(200).json({
+    success: true,
+    count,
+  })
+})
 
-    console.error('Error en getOrphanedCount:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+export const reassignTransactions = asyncHandler(async (req: Request, res: Response) => {
+  const { id: fromCategoryId } = req.params
+  const { to_category_id } = req.body
+
+  if (!to_category_id) {
+    throw new AppError('to_category_id es requerido', 400)
   }
-}
 
-/**
- * Reasignar transacciones a otra subcategoría
- * POST /api/categories/:id/reassign
- */
-export const reassignTransactions = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id: fromCategoryId } = req.params
-    const { to_category_id } = req.body
+  const count = await CategoryRepository.reassignTransactions(
+    fromCategoryId,
+    to_category_id,
+    req.user!.id
+  )
 
-    if (!to_category_id) {
-      res.status(400).json({
-        success: false,
-        error: 'to_category_id es requerido',
-      })
-      return
-    }
-
-    const count = await CategoryRepository.reassignTransactions(
-      fromCategoryId,
-      to_category_id,
-      req.user!.id
-    )
-
-    res.status(200).json({
-      success: true,
-      message: `Transacciones reasignadas: ${count}`,
-      reassignedCount: count,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message.includes('no encontrada') || err.message.includes('misma cuenta')) {
-      res.status(400).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    if (err.message === 'No tienes acceso a esta cuenta') {
-      res.status(403).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en reassignTransactions:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
-  }
-}
+  res.status(200).json({
+    success: true,
+    message: `Transacciones reasignadas: ${count}`,
+    reassignedCount: count,
+  })
+})

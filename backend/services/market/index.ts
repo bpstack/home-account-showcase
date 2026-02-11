@@ -1,30 +1,29 @@
 // services/market/index.ts
-// Market Data Aggregator - Combina todas las APIs
+// Market Data Aggregator - Combines all APIs
 
 import { getCryptoPrices } from './coinGecko.js'
 import { getCurrencyRates } from './frankfurter.js'
 import { getSP500, getMSCIWorld, getNASDAQ } from './alphaVantage.js'
 import { getCachedMarketData, cacheMarketData, getCacheDuration } from './market-cache.js'
 import type { MarketData, MarketDataContext, CryptoPrice, CurrencyRate, MarketIndex } from './types.js'
+import { logger } from '../../utils/logger.js'
 
 const CACHE_ENABLED = true
 
 export async function getMarketData(): Promise<MarketDataContext> {
   const cacheDuration = getCacheDuration()
 
-  // Try cache first
   if (CACHE_ENABLED) {
     const cached = await getCachedMarketData()
     if (cached) {
-      console.log('[Market] Returning cached market data')
+      logger.info('MARKET', 'getMarketData', 'Returning cached market data')
       return cached
     }
   }
 
-  console.log('[Market] Fetching fresh market data from all APIs...')
+  logger.info('MARKET', 'getMarketData', 'Fetching fresh market data from all APIs')
   const startTime = Date.now()
 
-  // Fetch from all APIs in parallel
   const [cryptoData, currencyData, sp500, msci, nasdaq] = await Promise.allSettled([
     getCryptoPrices(['bitcoin', 'ethereum']),
     getCurrencyRates(['USD', 'GBP']),
@@ -33,7 +32,6 @@ export async function getMarketData(): Promise<MarketDataContext> {
     getNASDAQ()
   ])
 
-  // Process results with fallbacks
   const crypto = cryptoData.status === 'fulfilled' ? cryptoData.value : {} as Record<string, { price: number; change24h: number }>
   const currencies = currencyData.status === 'fulfilled' ? currencyData.value : {} as Record<string, { rate: number; change24h?: number}>
 
@@ -64,9 +62,8 @@ export async function getMarketData(): Promise<MarketDataContext> {
   }
 
   const elapsed = Date.now() - startTime
-  console.log(`[Market] All data fetched in ${elapsed}ms`)
+  logger.info('MARKET', 'getMarketData', `All data fetched in ${elapsed}ms`)
 
-  // Cache the result
   if (CACHE_ENABLED) {
     await cacheMarketData(result)
   }

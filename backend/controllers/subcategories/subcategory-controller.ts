@@ -1,210 +1,90 @@
-// controllers/subcategories/subcategory-controller.ts
-
+import { asyncHandler } from '../../utils/async-handler.js'
+import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { SubcategoryRepository } from '../../repositories/subcategories/subcategory-repository.js'
 import { sanitizeForStorage } from '../../utils/sanitize.js'
 
-/**
- * Obtener subcategorías por categoría
- * GET /api/subcategories?category_id=xxx
- */
-export const getSubcategories = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { category_id } = req.query
+export const getSubcategories = asyncHandler(async (req: Request, res: Response) => {
+  const { category_id } = req.query
 
-    if (!category_id || typeof category_id !== 'string') {
-      res.status(400).json({
-        success: false,
-        error: 'category_id es requerido',
-      })
-      return
-    }
-
-    const subcategories = await SubcategoryRepository.getByCategoryId(category_id, req.user!.id)
-
-    res.status(200).json({
-      success: true,
-      subcategories,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'No tienes acceso a esta categoría') {
-      res.status(403).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en getSubcategories:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!category_id || typeof category_id !== 'string') {
+    throw new AppError('category_id es requerido', 400)
   }
-}
 
-/**
- * Obtener subcategoría por ID
- * GET /api/subcategories/:id
- */
-export const getSubcategoryById = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const subcategory = await SubcategoryRepository.getById(id, req.user!.id)
+  const subcategories = await SubcategoryRepository.getByCategoryId(category_id, req.user!.id)
 
-    if (!subcategory) {
-      res.status(404).json({
-        success: false,
-        error: 'Subcategoría no encontrada',
-      })
-      return
-    }
+  res.status(200).json({
+    success: true,
+    subcategories,
+  })
+})
 
-    res.status(200).json({
-      success: true,
-      subcategory,
-    })
-  } catch (error) {
-    console.error('Error en getSubcategoryById:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+export const getSubcategoryById = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const subcategory = await SubcategoryRepository.getById(id, req.user!.id)
+
+  if (!subcategory) {
+    throw new AppError('Subcategoría no encontrada', 404)
   }
-}
 
-/**
- * Crear subcategoría
- * POST /api/subcategories
- */
-export const createSubcategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { category_id, name, name_encrypted } = req.body
+  res.status(200).json({
+    success: true,
+    subcategory,
+  })
+})
 
-    if (!category_id || !name) {
-      res.status(400).json({
-        success: false,
-        error: 'category_id y name son requeridos',
-      })
-      return
-    }
+export const createSubcategory = asyncHandler(async (req: Request, res: Response) => {
+  const { category_id, name, name_encrypted } = req.body
 
-    // Sanitize text fields to prevent XSS attacks
-    const safeName = sanitizeForStorage(name)
-
-    const subcategory = await SubcategoryRepository.create(req.user!.id, {
-      category_id,
-      name: safeName,
-      name_encrypted, // Pass encrypted version if provided
-    })
-
-    res.status(201).json({
-      success: true,
-      subcategory,
-    })
-  } catch (error) {
-    const err = error as Error
-
-    if (err.message === 'No tienes acceso a esta categoría') {
-      res.status(403).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    if (err.message === 'Ya existe una subcategoría con ese nombre en esta categoría') {
-      res.status(409).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
-
-    console.error('Error en createSubcategory:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!category_id || !name) {
+    throw new AppError('category_id y name son requeridos', 400)
   }
-}
 
-/**
- * Actualizar subcategoría
- * PUT /api/subcategories/:id
- */
-export const updateSubcategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const { name, name_encrypted } = req.body
+  const safeName = sanitizeForStorage(name)
 
-    // Sanitize text fields to prevent XSS attacks
-    const safeName = name ? sanitizeForStorage(name) : undefined
+  const subcategory = await SubcategoryRepository.create(req.user!.id, {
+    category_id,
+    name: safeName,
+    name_encrypted,
+  })
 
-    const subcategory = await SubcategoryRepository.update(id, req.user!.id, {
-      name: safeName,
-      name_encrypted, // Pass encrypted version if provided
-    })
+  res.status(201).json({
+    success: true,
+    subcategory,
+  })
+})
 
-    if (!subcategory) {
-      res.status(404).json({
-        success: false,
-        error: 'Subcategoría no encontrada',
-      })
-      return
-    }
+export const updateSubcategory = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const { name, name_encrypted } = req.body
 
-    res.status(200).json({
-      success: true,
-      subcategory,
-    })
-  } catch (error) {
-    const err = error as Error
+  const safeName = name ? sanitizeForStorage(name) : undefined
 
-    if (err.message === 'Ya existe una subcategoría con ese nombre en esta categoría') {
-      res.status(409).json({
-        success: false,
-        error: err.message,
-      })
-      return
-    }
+  const subcategory = await SubcategoryRepository.update(id, req.user!.id, {
+    name: safeName,
+    name_encrypted,
+  })
 
-    console.error('Error en updateSubcategory:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!subcategory) {
+    throw new AppError('Subcategoría no encontrada', 404)
   }
-}
 
-/**
- * Eliminar subcategoría
- * DELETE /api/subcategories/:id
- */
-export const deleteSubcategory = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params
-    const deleted = await SubcategoryRepository.delete(id, req.user!.id)
+  res.status(200).json({
+    success: true,
+    subcategory,
+  })
+})
 
-    if (!deleted) {
-      res.status(404).json({
-        success: false,
-        error: 'Subcategoría no encontrada',
-      })
-      return
-    }
+export const deleteSubcategory = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const deleted = await SubcategoryRepository.delete(id, req.user!.id)
 
-    res.status(200).json({
-      success: true,
-      message: 'Subcategoría eliminada correctamente',
-    })
-  } catch (error) {
-    console.error('Error en deleteSubcategory:', error)
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-    })
+  if (!deleted) {
+    throw new AppError('Subcategoría no encontrada', 404)
   }
-}
+
+  res.status(200).json({
+    success: true,
+    message: 'Subcategoría eliminada correctamente',
+  })
+})

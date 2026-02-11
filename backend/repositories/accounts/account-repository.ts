@@ -12,6 +12,8 @@ import type {
   UpdateAccountDTO,
   AccountRole,
 } from '../../models/accounts/index.js'
+import { AppError } from '../../utils/app-error.js'
+import { logger } from '../../utils/logger.js'
 
 const MAX_OWNED_ACCOUNTS = 3
 
@@ -31,10 +33,9 @@ export class AccountRepository {
    * Crear account con owner
    */
   static async create({ name, userId }: CreateAccountDTO): Promise<Account> {
-    // Validar límite de cuentas como owner
     const ownedCount = await this.countOwnedAccounts(userId)
     if (ownedCount >= MAX_OWNED_ACCOUNTS) {
-      throw new Error(`Has alcanzado el límite de ${MAX_OWNED_ACCOUNTS} cuentas como propietario`)
+      throw new AppError('Account limit reached', 400)
     }
     const connection = await db.getConnection()
 
@@ -44,14 +45,12 @@ export class AccountRepository {
       const accountId = crypto.randomUUID()
       const accountUserId = crypto.randomUUID()
 
-      // Crear account con owner_id
       await connection.query(`INSERT INTO accounts (id, name, owner_id) VALUES (?, ?, ?)`, [
         accountId,
         name,
         userId,
       ])
 
-      // Asignar usuario como owner en account_users (redundancia intencional)
       await connection.query(
         `INSERT INTO account_users (id, account_id, user_id, role)
          VALUES (?, ?, ?, 'owner')`,
@@ -68,8 +67,8 @@ export class AccountRepository {
       }
     } catch (error) {
       await connection.rollback()
-      console.error('Error creating account:', error)
-      throw new Error('Error interno al crear cuenta')
+      logger.error('ACCOUNT_REPO', 'create', 'Error creating account', error as Error)
+      throw new AppError('Internal error creating account', 500)
     } finally {
       connection.release()
     }
@@ -114,11 +113,10 @@ export class AccountRepository {
     userId: string,
     { name }: UpdateAccountDTO
   ): Promise<Account | null> {
-    // Verificar que es owner
     const role = await this.getUserRole(accountId, userId)
 
     if (role !== 'owner') {
-      throw new Error('Solo el owner puede modificar la cuenta')
+      throw new AppError('Only the owner can modify the account', 403)
     }
 
     await db.query(`UPDATE accounts SET name = ? WHERE id = ?`, [name, accountId])
@@ -138,7 +136,7 @@ export class AccountRepository {
     const role = await this.getUserRole(accountId, userId)
 
     if (role !== 'owner') {
-      throw new Error('Solo el owner puede eliminar la cuenta')
+      throw new AppError('Only the owner can delete the account', 403)
     }
 
     const [result] = await db.query<any>(`DELETE FROM accounts WHERE id = ?`, [accountId])
@@ -180,12 +178,11 @@ export class AccountRepository {
     const role = await this.getUserRole(accountId, ownerId)
 
     if (role !== 'owner') {
-      throw new Error('Solo el owner puede remover miembros')
+      throw new AppError('Only the owner can remove members', 403)
     }
 
-    // No permitir que el owner se remueva a sí mismo
     if (ownerId === memberId) {
-      throw new Error('El owner no puede removerse a sí mismo')
+      throw new AppError('The owner cannot remove themselves', 400)
     }
 
     const [result] = await db.query<any>(
@@ -207,7 +204,6 @@ export class AccountRepository {
     try {
       await connection.beginTransaction()
 
-      // Obtener categorías por defecto
       const [defaultCategories] = await connection.query<any[]>(
         `SELECT id, name, color, icon, subcategories FROM default_categories`
       )
@@ -216,7 +212,6 @@ export class AccountRepository {
       let subcategoriesCount = 0
 
       for (const dc of defaultCategories) {
-        // Verificar si ya existe la categoría
         const [existing] = await connection.query<any[]>(
           `SELECT id FROM categories WHERE account_id = ? AND name = ?`,
           [accountId, dc.name]
@@ -225,11 +220,9 @@ export class AccountRepository {
         let categoryId: string
 
         if (existing.length > 0) {
-          // Usar categoría existente
           categoryId = existing[0].id
           categoriesCount++
         } else {
-          // Crear nueva categoría
           categoryId = crypto.randomUUID()
           await connection.query(
             `INSERT INTO categories (id, account_id, name, color, icon)
@@ -239,11 +232,9 @@ export class AccountRepository {
           categoriesCount++
         }
 
-        // Parsear subcategorías del JSON
         const subcategories: string[] =
           typeof dc.subcategories === 'string' ? JSON.parse(dc.subcategories) : dc.subcategories
 
-        // Crear subcategorías (solo si no existen)
         for (const subName of subcategories) {
           const [subExisting] = await connection.query<any[]>(
             `SELECT id FROM subcategories WHERE category_id = ? AND name = ?`,
@@ -266,8 +257,8 @@ export class AccountRepository {
       return { categories: categoriesCount, subcategories: subcategoriesCount }
     } catch (error) {
       await connection.rollback()
-      console.error('Error copying default categories:', error)
-      throw new Error('Error al copiar categorías por defecto')
+      logger.error('ACCOUNT_REPO', 'copyDefaultCategories', 'Error copying default categories', error as Error)
+      throw new AppError('Error copying default categories', 500)
     } finally {
       connection.release()
     }
@@ -280,10 +271,9 @@ export class AccountRepository {
     account: Account
     categoriesCopied: { categories: number; subcategories: number }
   }> {
-    // Validar límite de cuentas como owner
     const ownedCount = await this.countOwnedAccounts(userId)
     if (ownedCount >= MAX_OWNED_ACCOUNTS) {
-      throw new Error(`Has alcanzado el límite de ${MAX_OWNED_ACCOUNTS} cuentas como propietario`)
+      throw new AppError('Account limit reached', 400)
     }
 
     const connection = await db.getConnection()
@@ -294,21 +284,18 @@ export class AccountRepository {
       const accountId = crypto.randomUUID()
       const accountUserId = crypto.randomUUID()
 
-      // Crear account con owner_id
       await connection.query(`INSERT INTO accounts (id, name, owner_id) VALUES (?, ?, ?)`, [
         accountId,
         name,
         userId,
       ])
 
-      // Asignar usuario como owner (redundancia intencional)
       await connection.query(
         `INSERT INTO account_users (id, account_id, user_id, role)
          VALUES (?, ?, ?, 'owner')`,
         [accountUserId, accountId, userId]
       )
 
-      // Guardar encrypted account key si se proporciona
       if (encryptedAccountKey) {
         const accountKeyId = crypto.randomUUID()
         await connection.query(
@@ -318,7 +305,6 @@ export class AccountRepository {
         )
       }
 
-      // Copiar categorías por defecto
       const [defaultCategories] = await connection.query<any[]>(
         `SELECT id, name, color, icon, subcategories FROM default_categories`
       )
@@ -362,8 +348,8 @@ export class AccountRepository {
       }
     } catch (error) {
       await connection.rollback()
-      console.error('Error creating account with defaults:', error)
-      throw new Error('Error interno al crear cuenta')
+      logger.error('ACCOUNT_REPO', 'createWithDefaults', 'Error creating account with defaults', error as Error)
+      throw new AppError('Internal error creating account', 500)
     } finally {
       connection.release()
     }
@@ -373,10 +359,9 @@ export class AccountRepository {
    * Obtener miembros del account
    */
   static async getMembers(accountId: string, userId: string): Promise<any[]> {
-    // Verificar acceso
     const hasAccess = await this.hasAccess(accountId, userId)
     if (!hasAccess) {
-      throw new Error('No tienes acceso a esta cuenta')
+      throw new AppError('You do not have access to this account', 403)
     }
 
     const [rows] = await db.query<any[]>(
@@ -391,18 +376,15 @@ export class AccountRepository {
     return rows
   }
 
-  /**
-   * Abandonar cuenta (usuario se remueve a sí mismo)
-   */
   static async leaveAccount(accountId: string, userId: string): Promise<void> {
     const role = await this.getUserRole(accountId, userId)
 
     if (role === null) {
-      throw new Error('No tienes acceso a esta cuenta')
+      throw new AppError('You do not have access to this account', 403)
     }
 
     if (role === 'owner') {
-      throw new Error('El owner no puede abandonar la cuenta. Transfiere la propiedad primero.')
+      throw new AppError('The owner cannot leave the account. Transfer ownership first.', 400)
     }
 
     await db.query(`DELETE FROM account_users WHERE account_id = ? AND user_id = ?`, [

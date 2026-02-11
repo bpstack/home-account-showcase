@@ -34,6 +34,8 @@ import {
 import { getMarketData } from '../market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
 import { getActiveProvider } from './ai-client.js'
+import { AppError } from '../../utils/app-error.js'
+import { logger } from '../../utils/logger.js'
 
 export class InvestmentAI {
   private client: AIClient
@@ -61,19 +63,15 @@ export class InvestmentAI {
     const startTime = Date.now()
 
     if (!this.isAvailable()) {
-      throw new Error('IA no disponible')
+      throw new AppError('AI not available', 503)
     }
 
-    // Get market data
     const marketData = await getMarketData()
 
-    // Build prompt
     const prompt = buildProfileAssessmentPrompt(answers, context, marketData)
 
-    // Send to AI
     const response = await this.client.sendPromptJSON<ProfileAssessmentResult>(prompt)
 
-    // Log session
     const responseTime = Date.now() - startTime
     await this.logInvestmentSession(
       context.accountId || '',
@@ -98,7 +96,7 @@ export class InvestmentAI {
     const startTime = Date.now()
 
     if (!this.isAvailable()) {
-      throw new Error('IA no disponible')
+      throw new AppError('AI not available', 503)
     }
 
     const marketData = await getMarketData()
@@ -132,10 +130,9 @@ export class InvestmentAI {
     const startTime = Date.now()
 
     if (!this.isAvailable()) {
-      throw new Error('IA no disponible')
+      throw new AppError('AI not available', 503)
     }
 
-    // Add system message at the start if history is empty
     const systemMessage = buildSystemMessage(context)
     const enrichedHistory = chatHistory.length === 0
       ? [{ role: 'system', content: systemMessage } as ChatMessage, ...chatHistory]
@@ -146,7 +143,7 @@ export class InvestmentAI {
     const response = await this.client.sendPromptJSON<ChatResult>(prompt)
 
     const responseTime = Date.now() - startTime
-    console.log(`[InvestmentAI:Chat] Response in ${responseTime}ms`)
+    logger.info('INVESTMENT_AI', 'chat', `Response in ${responseTime}ms`)
 
     return response
   }
@@ -157,31 +154,28 @@ export class InvestmentAI {
     userId: string,
     financialContext: InvestmentContext
   ): Promise<ChatResult> {
-    console.log('[InvestmentAI:chatWithSession] Starting...')
+    logger.info('INVESTMENT_AI', 'chatWithSession', 'Starting')
 
-    // Get or create chat session
     let session = (await InvestmentRepository.getChatSessionsByAccount(accountId))[0]
-    console.log('[InvestmentAI:chatWithSession] Existing session:', session?.id || 'none')
+    logger.info('INVESTMENT_AI', 'chatWithSession', `Existing session: ${session?.id || 'none'}`)
 
     if (!session || this.isSessionExpired(session.last_message_at)) {
-      console.log('[InvestmentAI:chatWithSession] Creating new session...')
+      logger.info('INVESTMENT_AI', 'chatWithSession', 'Creating new session')
       session = await InvestmentRepository.createChatSession({
         account_id: accountId,
         user_id: userId,
         provider: getActiveProvider()
       })
-      console.log('[InvestmentAI:chatWithSession] New session created:', session.id)
+      logger.info('INVESTMENT_AI', 'chatWithSession', `New session created: ${session.id}`)
     }
 
-    // Get chat history
     const history = await InvestmentRepository.getChatMessagesForContext(session.id, 20) as ChatMessage[]
-    console.log('[InvestmentAI:chatWithSession] History messages:', history.length)
+    logger.info('INVESTMENT_AI', 'chatWithSession', `History messages: ${history.length}`)
 
-    // Build chat context
-    console.log('[InvestmentAI:chatWithSession] Getting market data...')
+    logger.info('INVESTMENT_AI', 'chatWithSession', 'Getting market data')
     const marketData = await getMarketData()
     const investmentProfile = await InvestmentRepository.getProfileByAccountId(accountId)
-    console.log('[InvestmentAI:chatWithSession] Market data ready, profile:', investmentProfile?.risk_profile || 'none')
+    logger.info('INVESTMENT_AI', 'chatWithSession', `Market data ready, profile: ${investmentProfile?.risk_profile || 'none'}`)
 
     const chatContext: ChatContext = {
       accountId,
@@ -200,11 +194,10 @@ export class InvestmentAI {
       marketPrices: marketData
     }
 
-    console.log('[InvestmentAI:chatWithSession] Calling chat()...')
+    logger.info('INVESTMENT_AI', 'chatWithSession', 'Calling chat')
     const result = await this.chat(message, chatContext, history, accountId, userId)
-    console.log('[InvestmentAI:chatWithSession] Chat result received')
+    logger.info('INVESTMENT_AI', 'chatWithSession', 'Chat result received')
 
-    // Save messages
     await InvestmentRepository.addChatMessage({
       session_id: session.id,
       role: 'user',
@@ -217,10 +210,9 @@ export class InvestmentAI {
       content: result.answer
     })
 
-    // Update session
     const messageCount = history.length + 2
     await InvestmentRepository.updateChatSession(session.id, messageCount)
-    console.log('[InvestmentAI:chatWithSession] Messages saved, done')
+    logger.info('INVESTMENT_AI', 'chatWithSession', 'Messages saved, done')
 
     return result
   }
@@ -240,7 +232,7 @@ export class InvestmentAI {
     userLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner'
   ): Promise<EducationResult> {
     if (!this.isAvailable()) {
-      throw new Error('IA no disponible')
+      throw new AppError('AI not available', 503)
     }
 
     const marketData = await getMarketData()
@@ -256,10 +248,6 @@ export class InvestmentAI {
 
     return this.client.sendPromptJSON(prompt)
   }
-
-  // ========================
-  // HELPER METHODS
-  // ========================
 
   private async logInvestmentSession(
     accountId: string,
@@ -277,7 +265,7 @@ export class InvestmentAI {
         responseTimeMs: responseTime
       })
     } catch (error) {
-      console.error('[InvestmentAI] Error logging session:', error)
+      logger.error('INVESTMENT_AI', 'logInvestmentSession', 'Error logging session', error as Error)
     }
   }
 }

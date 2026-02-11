@@ -9,6 +9,8 @@ import type {
   CreateSubcategoryDTO,
   UpdateSubcategoryDTO,
 } from '../../models/subcategories/index.js'
+import { AppError } from '../../utils/app-error.js'
+import { logger } from '../../utils/logger.js'
 
 export class SubcategoryRepository {
   /**
@@ -28,7 +30,7 @@ export class SubcategoryRepository {
   ): Promise<Subcategory> {
     const hasAccess = await this.verifyCategoryAccess(data.category_id, userId)
     if (!hasAccess) {
-      throw new Error('No tienes acceso a esta categoría')
+      throw new AppError('You do not have access to this category', 403)
     }
 
     const id = crypto.randomUUID()
@@ -49,10 +51,10 @@ export class SubcategoryRepository {
       }
     } catch (error: any) {
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new Error('Ya existe una subcategoría con ese nombre en esta categoría')
+        throw new AppError('Subcategory with this name already exists in this category', 409)
       }
-      console.error('Error creating subcategory:', error)
-      throw new Error('Error interno al crear subcategoría')
+      logger.error('SUBCATEGORY_REPO', 'create', 'Error creating subcategory', error)
+      throw new AppError('Internal error creating subcategory', 500)
     }
   }
 
@@ -62,7 +64,7 @@ export class SubcategoryRepository {
   static async getByCategoryId(categoryId: string, userId: string): Promise<Subcategory[]> {
     const hasAccess = await this.verifyCategoryAccess(categoryId, userId)
     if (!hasAccess) {
-      throw new Error('No tienes acceso a esta categoría')
+      throw new AppError('You do not have access to this category', 403)
     }
 
     const [rows] = await db.query<SubcategoryRow[]>(
@@ -129,7 +131,7 @@ export class SubcategoryRepository {
       return this.getById(subcategoryId, userId)
     } catch (error: any) {
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new Error('Ya existe una subcategoría con ese nombre en esta categoría')
+        throw new AppError('Subcategory with this name already exists in this category', 409)
       }
       throw error
     }

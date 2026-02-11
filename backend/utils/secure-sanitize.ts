@@ -5,6 +5,7 @@
 
 import DOMPurify from 'dompurify'
 import { JSDOM } from 'jsdom'
+import { logger } from './logger.js'
 
 // Configure DOMPurify for server-side use
 const window = new JSDOM('').window
@@ -45,8 +46,7 @@ export function secureXSS(input: string | null | undefined): string {
   try {
     return purify.sanitize(input.trim())
   } catch (error) {
-    console.warn('DOMPurify sanitization failed, using fallback:', error)
-    // Fallback to basic escaping
+    logger.warn('SECURE_SANITIZE', 'secureXSS', 'DOMPurify sanitization failed, using fallback')
     return basicEscape(input)
   }
 }
@@ -78,19 +78,17 @@ export function sanitizeForStorage(input: string | null | undefined): string {
   if (!input || typeof input !== 'string') return ''
   
   try {
-    // Use DOMPurify with more permissive settings for storage
     const tempPurify = DOMPurify(window)
     tempPurify.setConfig({
       USE_PROFILES: { html: false },
-      ALLOWED_TAGS: [], // Remove all tags
-      ALLOWED_ATTR: [], // Remove all attributes
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: [],
       FORCE_BODY: true,
     })
     
     return tempPurify.sanitize(input.trim())
   } catch (error) {
-    console.warn('DOMPurify storage sanitization failed:', error)
-    // Fallback: remove HTML tags and dangerous patterns
+    logger.warn('SECURE_SANITIZE', 'sanitizeForStorage', 'DOMPurify storage sanitization failed')
     return input
       .replace(/<[^>]*>?/gm, '')
       .replace(/javascript:/gi, '')

@@ -5,6 +5,8 @@ import type { AIProviderConfig, AIProviderType, IAIProvider, AIStatus } from './
 import { PROVIDER_DEFAULTS } from './types.js'
 import { createProvider, getProviderConfigFromEnv } from './providers/index.js'
 import { getPersistedProvider, setPersistedProvider, initializeAISettings, hasPersistedSettings } from './ai-settings.js'
+import { AppError } from '../../utils/app-error.js'
+import { logger } from '../../utils/logger.js'
 
 /**
  * Clean up common AI JSON issues before parsing
@@ -81,7 +83,7 @@ export function getConfiguredProvider(): AIProviderType {
  */
 export function setActiveProvider(provider: AIProviderType): void {
   setPersistedProvider(provider)
-  console.log(`[AI] Active provider changed to: ${provider}`)
+  logger.info('AI_CLIENT', 'setActiveProvider', `Active provider changed to: ${provider}`)
 }
 
 /**
@@ -150,23 +152,23 @@ export class AIClient {
    */
   async sendPrompt(prompt: string, retryCount = 0): Promise<string> {
     if (!this.provider || !this.enabled) {
-      throw new Error('AI provider not available')
+      throw new AppError('AI provider not available', 503)
     }
 
     const startTime = Date.now()
-    console.log(`[AI:${this.getProviderName()}] Sending prompt (${prompt.length} chars)...`)
+    logger.info('AI_CLIENT', 'sendPrompt', `Sending prompt (${prompt.length} chars) to ${this.getProviderName()}`)
 
     try {
       const response = await this.provider.sendPrompt(prompt)
       const elapsed = Date.now() - startTime
-      console.log(`[AI:${this.getProviderName()}] Response received in ${elapsed}ms`)
+      logger.info('AI_CLIENT', 'sendPrompt', `Response received in ${elapsed}ms from ${this.getProviderName()}`)
       return response
 
     } catch (error) {
-      console.error(`[AI:${this.getProviderName()}] Attempt ${retryCount + 1} failed:`, error)
+      logger.error('AI_CLIENT', 'sendPrompt', `Attempt ${retryCount + 1} failed`, error as Error)
 
       if (retryCount < this.config.maxRetries) {
-        console.log(`[AI:${this.getProviderName()}] Retrying... (${retryCount + 1}/${this.config.maxRetries})`)
+        logger.info('AI_CLIENT', 'sendPrompt', `Retrying... (${retryCount + 1}/${this.config.maxRetries})`)
         await this.delay(2000 * (retryCount + 1))
         return this.sendPrompt(prompt, retryCount + 1)
       }
@@ -229,9 +231,8 @@ export class AIClient {
       }
     }
 
-    // Log what we received for debugging
-    console.error('[AI:parseJSON] Failed to parse. Raw response (first 500 chars):', trimmed.substring(0, 500))
-    throw new Error('No valid JSON found in response')
+    logger.error('AI_CLIENT', 'parseJSON', 'Failed to parse response', new Error('No valid JSON found'))
+    throw new AppError('No valid JSON found in response', 500)
   }
 
   private delay(ms: number): Promise<void> {
@@ -290,10 +291,10 @@ export async function testProviderConnection(providerType: AIProviderType): Prom
     if (providerType === 'ollama') {
       return {
         success: false,
-        error: 'Ollama solo está disponible en entorno local. En producción, selecciona otro proveedor (Groq, Claude o Gemini).'
+        error: 'Ollama is only available in local environment. In production, select another provider (Groq, Claude, or Gemini).'
       }
     }
-    return { success: false, error: `El proveedor ${providerType} no está habilitado en este entorno` }
+    return { success: false, error: `Provider ${providerType} is not enabled in this environment` }
   }
 
   const config = getProviderConfigFromEnv(providerType)
@@ -318,6 +319,7 @@ export async function testProviderConnection(providerType: AIProviderType): Prom
       responseTime,
     }
   } catch (error) {
+      logger.error('AI_CLIENT', 'testProviderConnection', `Error testing ${providerType}`, error as Error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -342,10 +344,10 @@ export function logAIStatus(): void {
   const enabled = isAIEnabled()
   const status = getAIStatus()
 
-  console.log(`🤖 AI Integration: ${enabled ? '✅ enabled' : '❌ disabled'}`)
+  logger.info('AI_CLIENT', 'logAIStatus', `AI Integration: ${enabled ? 'enabled' : 'disabled'}`)
 
   if (enabled) {
-    console.log(`   ⚡ Active: ${status.activeProvider}`)
+    logger.info('AI_CLIENT', 'logAIStatus', `Active: ${status.activeProvider}`)
 
     const providerTypes: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama']
     for (const type of providerTypes) {
@@ -354,14 +356,13 @@ export function logAIStatus(): void {
       const hasApiKey = type === 'ollama' ? true : !!config.apiKey
       const isConfigured = providerEnabled && hasApiKey
 
-      const icon = isConfigured ? '✅' : '❌'
       const model = config.model || PROVIDER_DEFAULTS[type]?.model || 'not set'
 
       if (type === 'ollama') {
         const baseUrl = config.baseUrl || 'http://localhost:11434'
-        console.log(`   📦 ${type.charAt(0).toUpperCase() + type.slice(1)}: ${icon} ${model} @ ${baseUrl}`)
+        logger.info('AI_CLIENT', 'logAIStatus', `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} @ ${baseUrl} (${isConfigured ? 'configured' : 'not configured'})`)
       } else {
-        console.log(`   📦 ${type.charAt(0).toUpperCase() + type.slice(1)}: ${icon} ${model}`)
+        logger.info('AI_CLIENT', 'logAIStatus', `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} (${isConfigured ? 'configured' : 'not configured'})`)
       }
     }
   }

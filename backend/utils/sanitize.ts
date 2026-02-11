@@ -2,6 +2,8 @@
  * Sanitization utilities to prevent XSS and injection attacks.
  */
 
+import { logger } from './logger.js'
+
 /**
  * Sanitize text to prevent XSS attacks.
  * Removes HTML tags and escapes dangerous characters.
@@ -84,20 +86,15 @@ export function sanitizeCSVValue(value: string | null | undefined): string {
   const dangerousPrefixes = ['=', '+', '-', '@', '|', '\t', '\r', '\n']
   const firstChar = sanitized.charAt(0)
 
-  if (dangerousPrefixes.includes(firstChar)) {
-    // Exception: negative numbers are OK (e.g., "-45.30")
+    if (dangerousPrefixes.includes(firstChar)) {
     if (firstChar === '-' && /^-[\d.,]+$/.test(sanitized)) {
       return sanitized
     }
-    // Exception: positive numbers with + are OK (e.g., "+150.00")
     if (firstChar === '+' && /^\+[\d.,]+$/.test(sanitized)) {
       return sanitized
     }
 
-    // For actual dangerous values, remove the prefix
-    console.warn(
-      `CSV/Formula Injection attempt detected and sanitized: "${sanitized.substring(0, 50)}..."`
-    )
+    logger.warn('SANITIZE', 'sanitizeCSVValue', `CSV/Formula Injection attempt detected and sanitized: "${sanitized.substring(0, 50)}..."`)
     return sanitized.substring(1).trim()
   }
 

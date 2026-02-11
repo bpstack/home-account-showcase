@@ -1,7 +1,8 @@
 // services/market/coinGecko.ts
-// CoinGecko API - Criptomonedas (100% gratuito, sin API key)
+// CoinGecko API - Cryptocurrencies (100% free, no API key)
 
 import type { CryptoPrice, CryptoCoin } from './types.js'
+import { logger } from '../../utils/logger.js'
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
@@ -17,7 +18,7 @@ export async function getCryptoPrices(
   const url = `${COINGECKO_BASE}/simple/price?ids=${ids}&vs_currencies=eur&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`
 
   const startTime = Date.now()
-  console.log(`[Market:CoinGecko] Fetching prices for: ${coins.join(', ')}`)
+  logger.info('COINGECKO', 'getCryptoPrices', `Fetching prices for: ${coins.join(', ')}`)
 
   try {
     const response = await fetch(url, {
@@ -29,10 +30,10 @@ export async function getCryptoPrices(
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`[Market:CoinGecko] API error: ${response.status} - ${errorText}`)
+      logger.error('COINGECKO', 'getCryptoPrices', `API error: ${response.status}`, new Error(errorText))
       
       if (response.status === 429) {
-        console.warn('[Market:CoinGecko] Rate limit hit, using fallback values')
+        logger.warn('COINGECKO', 'getCryptoPrices', 'Rate limit hit, using fallback values')
         return getFallbackCryptoPrices(coins)
       }
       
@@ -41,7 +42,7 @@ export async function getCryptoPrices(
 
     const data = await response.json()
     const elapsed = Date.now() - startTime
-    console.log(`[Market:CoinGecko] Response received in ${elapsed}ms`)
+    logger.info('COINGECKO', 'getCryptoPrices', `Response received in ${elapsed}ms`)
 
     const result: Record<CryptoCoin, CryptoPrice> = {} as Record<CryptoCoin, CryptoPrice>
 
@@ -63,13 +64,13 @@ export async function getCryptoPrices(
     return result
   } catch (error) {
     const elapsed = Date.now() - startTime
-    console.error(`[Market:CoinGecko] Error after ${elapsed}ms:`, error)
+      logger.error('COINGECKO', 'getCryptoPrices', `Error after ${elapsed}ms`, error as Error)
     return getFallbackCryptoPrices(coins)
   }
 }
 
 function getFallbackCryptoPrices(coins: CryptoCoin[]): Record<CryptoCoin, CryptoPrice> {
-  console.warn('[Market:CoinGecko] Using fallback prices')
+  logger.warn('COINGECKO', 'getFallbackCryptoPrices', 'Using fallback prices')
   
   const fallbackPrices: Record<CryptoCoin, CryptoPrice> = {
     bitcoin: {
@@ -124,7 +125,7 @@ export async function getTopCryptos(limit: number = 10): Promise<CryptoPrice[]> 
       source: 'coingecko' as const
     }))
   } catch (error) {
-    console.error('[Market:CoinGecko] Error fetching top cryptos:', error)
+    logger.error('COINGECKO', 'getTopCryptos', 'Error fetching top cryptos', error as Error)
     return []
   }
 }

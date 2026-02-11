@@ -8,6 +8,8 @@ import { createReadStream } from 'fs'
 import { createInterface } from 'readline'
 import xlsx from 'xlsx'
 import type { Request, Response, NextFunction } from 'express'
+import { AppError } from '../../utils/app-error.js'
+import { logger } from '../../utils/logger.js'
 
 const pipelineAsync = promisify(pipeline)
 
@@ -22,15 +24,13 @@ export const validateFileContent = async (req: Request, res: Response, next: Nex
 
     const { buffer, mimetype, originalname } = req.file
     
-    // Check file size limit (5MB)
     if (buffer.length > 5 * 1024 * 1024) {
       return res.status(400).json({
         success: false,
-        error: 'El archivo excede el tamaño máximo permitido (5MB)',
+        error: 'File exceeds maximum allowed size (5MB)',
       })
     }
 
-    // Check for malicious content based on MIME type
     if (mimetype === 'text/csv' || originalname.toLowerCase().endsWith('.csv')) {
       await validateCSV(buffer)
     } else if (
@@ -43,10 +43,10 @@ export const validateFileContent = async (req: Request, res: Response, next: Nex
 
     next()
   } catch (error) {
-    console.error('Error en validación de archivo:', error)
+    logger.error('IMPORT_VALIDATE', 'validateFileContent', 'Error validating file', error as Error)
     res.status(400).json({
       success: false,
-      error: 'El archivo contiene contenido potencialmente malicioso y no puede ser procesado',
+      error: 'File contains potentially malicious content and cannot be processed',
     })
   }
 }
@@ -57,35 +57,31 @@ export const validateFileContent = async (req: Request, res: Response, next: Nex
 async function validateCSV(buffer: Buffer): Promise<void> {
   const content = buffer.toString('utf-8')
   
-  // Check for formula injection patterns
   const dangerousPatterns = [
-    /^\s*=[^=]/, // Excel formulas starting with =
-    /^\s*\+[^+]/, // Formulas starting with +
-    /^\s*-[^-]/, // Formulas starting with -
-    /^\s*@[^@]/, // Formulas starting with @
-    /javascript:/gi, // JavaScript URLs
-    /data:text\/html/gi, // Data URLs
-    /\bon\w+\s*=/gi, // Event handlers
-    /<script/gi, // Script tags
-    /<iframe/gi, // Iframes
+    /^\s*=[^=]/,
+    /^\s*\+[^+]/,
+    /^\s*-[^-]/,
+    /^\s*@[^@]/,
+    /javascript:/gi,
+    /data:text\/html/gi,
+    /\bon\w+\s*=/gi,
+    /<script/gi,
+    /<iframe/gi,
   ]
 
-  // Read first 10 lines for quick validation
   const lines = content.split('\n').slice(0, 10)
   
   for (const line of lines) {
     for (const pattern of dangerousPatterns) {
       if (pattern.test(line)) {
-        throw new Error('Contenido potencialmente malicioso detectado en CSV')
+        throw new AppError('Potentially malicious content detected in CSV', 400)
       }
     }
   }
 
-  // Check for unusual character patterns
   const suspiciousChars = content.match(/[<>"']/g)
   if (suspiciousChars && suspiciousChars.length > content.length * 0.1) {
-    // More than 10% of content has suspicious characters
-    throw new Error('Contenido sospechoso detectado en CSV')
+    throw new AppError('Suspicious content detected in CSV', 400)
   }
 }
 
@@ -96,28 +92,23 @@ async function validateExcel(buffer: Buffer): Promise<void> {
   try {
     const workbook = xlsx.read(buffer, { type: 'buffer' })
     
-    // Limit number of sheets
     if (workbook.SheetNames.length > 10) {
-      throw new Error('Demasiadas hojas en el archivo Excel')
+      throw new AppError('Too many sheets in Excel file', 400)
     }
 
-    // Check each sheet for suspicious content
     for (const sheetName of workbook.SheetNames) {
       const worksheet = workbook.Sheets[sheetName]
       const range = xlsx.utils.decode_range(worksheet['!ref'] || 'A1:A1')
       
-      // Limit sheet size
       if ((range.e.r - range.s.r + 1) > 10000) {
-        throw new Error('Demasiadas filas en la hoja de Excel')
+        throw new AppError('Too many rows in Excel sheet', 400)
       }
 
-      // Check for formula cells
       for (const cellAddress in worksheet) {
-        if (cellAddress[0] === '!') continue // Skip metadata
+        if (cellAddress[0] === '!') continue
         
         const cell = worksheet[cellAddress]
         if (cell.f) {
-          // Formula detected - check if it's simple or dangerous
           const formula = cell.f.toLowerCase()
           const dangerousFormulas = [
             'cmd',
@@ -131,29 +122,23 @@ async function validateExcel(buffer: Buffer): Promise<void> {
           ]
 
           if (dangerousFormulas.some(f => formula.includes(f))) {
-            throw new Error('Fórmula potencialmente peligrosa detectada en Excel')
+            throw new AppError('Potentially dangerous formula detected in Excel', 400)
           }
         }
 
-        // Check for hyperlinks to dangerous URLs
         if (cell.l && cell.l.Target) {
           const url = cell.l.Target.toLowerCase()
           if (url.includes('javascript:') || url.includes('data:text/html')) {
-            throw new Error('Hipervínculo peligroso detectado en Excel')
+            throw new AppError('Dangerous hyperlink detected in Excel', 400)
           }
         }
       }
     }
   } catch (error) {
-    if (error instanceof Error && (
-      error.message.includes('potencialmente peligrosa') || 
-      error.message.includes('demasiadas') ||
-      error.message.includes('peligroso')
-    )) {
+    if (error instanceof AppError) {
       throw error
     }
-    // Si hay error en la lectura, asumir que el archivo está corrupto/malicioso
-    throw new Error('El archivo Excel no es válido o está corrupto')
+    throw new AppError('Invalid or corrupted Excel file', 400)
   }
 }
 

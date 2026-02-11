@@ -17,6 +17,8 @@ import investmentRoutes from './routes/investment/investment-routes.js'
 import cryptoRoutes from './routes/crypto/crypto-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
 import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
+import { AppError } from './utils/app-error.js'
+import { logger } from './utils/logger.js'
 
 dotenv.config()
 
@@ -84,6 +86,23 @@ app.use('/api/investment', investmentRoutes)
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// Global error handler
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error('SERVER', 'errorHandler', 'Unhandled error', err)
+  
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      error: err.message,
+    })
+  }
+
+  return res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+  })
 })
 
 app.listen(PORT, () => {

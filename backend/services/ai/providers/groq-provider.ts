@@ -1,5 +1,7 @@
 // services/ai/providers/groq-provider.ts
 import type { IAIProvider, AIProviderConfig } from '../types.js'
+import { AppError } from '../../../utils/app-error.js'
+import { logger } from '../../../utils/logger.js'
 
 interface GroqResponse {
   choices?: Array<{
@@ -30,10 +32,10 @@ export class GroqProvider implements IAIProvider {
 
   async sendPrompt(prompt: string): Promise<string> {
     if (!this.apiKey) {
-      throw new Error('Groq API key not configured')
+      throw new AppError('Groq API key not configured', 503)
     }
 
-    console.log(`[AI:Groq] Sending prompt (${prompt.length} chars)...`)
+    logger.info('AI_GROQ', 'sendPrompt', `Sending prompt (${prompt.length} chars)`)
     const startTime = Date.now()
 
     const url = `${this.baseUrl}/chat/completions`
@@ -65,31 +67,34 @@ export class GroqProvider implements IAIProvider {
         const errorData = await response.json().catch(() => ({}))
         const errorMsg = errorData?.error?.message || response.statusText
         if (response.status === 429) {
-          throw new Error('Groq: Rate limit. Espera unos minutos.')
+          logger.warn('AI_GROQ', 'sendPrompt', 'Rate limit exceeded')
+          throw new AppError('Groq: Rate limit exceeded. Please wait a few minutes.', 429)
         }
         if (response.status === 401) {
-          throw new Error('Groq: API key inválida')
+          logger.error('AI_GROQ', 'sendPrompt', 'Invalid API key', new Error('Unauthorized'))
+          throw new AppError('Groq: Invalid API key', 401)
         }
-        throw new Error(`Groq API error: ${response.status} - ${errorMsg}`)
+        throw new AppError(`Groq API error: ${response.status} - ${errorMsg}`, response.status)
       }
 
       const data: GroqResponse = await response.json()
-      console.log(`[AI:Groq] Response received in ${elapsed}ms`)
+      logger.info('AI_GROQ', 'sendPrompt', `Response received in ${elapsed}ms`)
 
       if (data.error) {
-        throw new Error(`Groq error: ${data.error.message}`)
+        throw new AppError(`Groq error: ${data.error.message}`, 500)
       }
 
       const content = data.choices?.[0]?.message?.content
       if (!content) {
-        throw new Error('No content in Groq response')
+        throw new AppError('No content in Groq response', 500)
       }
 
       return content.trim()
     } catch (error) {
       clearTimeout(timeoutId)
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Groq request timeout after ${this.config.timeout}ms`)
+        logger.error('AI_GROQ', 'sendPrompt', 'Request timeout', new Error('AbortError'))
+        throw new AppError(`Groq request timeout after ${this.config.timeout}ms`, 504)
       }
       throw error
     }
