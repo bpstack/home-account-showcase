@@ -94,22 +94,31 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
     const { userKey } = get()
     if (!userKey) throw new Error('User key not available')
 
-    const accountId = crypto.randomUUID()
     const accountKey = await generateAccountKey()
     const encryptedKey = await encryptAccountKey(accountKey, userKey)
-    const newAccountKeys = new Map(get().accountKeys)
-    newAccountKeys.set(accountId, { key: accountKey, version: 1 })
-    set({ accountKeys: newAccountKeys })
 
-    await fetch('/api/accounts', {
+    const res = await fetch('/api/proxy/accounts', {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...(csrfToken && { 'x-csrf-token': csrfToken }),
       },
-      body: JSON.stringify({ accountId, encryptedAccountKey: encryptedKey }),
+      body: JSON.stringify({ name: 'Mi Cuenta', encryptedAccountKey: encryptedKey }),
     })
+
+    if (!res.ok) {
+      throw new Error('Failed to create account')
+    }
+
+    const data = await res.json()
+    const accountId = data.account?.id
+
+    if (accountId) {
+      const newAccountKeys = new Map(get().accountKeys)
+      newAccountKeys.set(accountId, { key: accountKey, version: 1 })
+      set({ accountKeys: newAccountKeys })
+    }
   },
 
   unlockAccount: async (accountId, encryptedKey, keyVersion) => {
