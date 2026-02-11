@@ -2,7 +2,7 @@
 
 import { useState, useRef, Suspense, useEffect } from 'react'
 import React from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
 import { Eye, EyeOff, Lock, Shield, Loader2, Key, CheckCircle2 } from 'lucide-react'
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 
 function UnlockForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { unlock, user } = useAuth()
   const authError = useAuthStore((s) => s.authError)
   const clearError = useAuthStore((s) => s.clearError)
@@ -27,6 +28,17 @@ function UnlockForm() {
   useEffect(() => {
     clearError()
   }, [clearError])
+
+  // Redirect after successful unlock
+  useEffect(() => {
+    if (unlocked) {
+      const redirectTo = searchParams.get('from') || '/dashboard'
+      const timer = setTimeout(() => {
+        router.push(redirectTo)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [unlocked, searchParams, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
