@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 function AuthCallbackHandler() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
 
@@ -37,7 +36,8 @@ function AuthCallbackHandler() {
           throw new Error('Error al establecer sesión')
         }
 
-        router.replace(redirect)
+        // Full page navigation to ensure cookies are applied
+        window.location.href = redirect
       } catch (err) {
         console.error('Auth callback error:', err)
         setError('Error al establecer la sesión')
@@ -45,7 +45,7 @@ function AuthCallbackHandler() {
     }
 
     handleCallback()
-  }, [searchParams, router])
+  }, [searchParams])
 
   if (error) {
     return (
