@@ -44,7 +44,7 @@ interface CryptoState {
 interface CryptoActions {
   deriveAndSetUserKey: (_password: string, _salt: string) => Promise<void>
   setUnlocked: () => void
-  generateAndSaveAccountKey: () => Promise<void>
+  generateAndSaveAccountKey: (_csrfToken?: string) => Promise<void>
   unlockAccount: (_accountId: string, _encryptedKey: string, _keyVersion: number) => Promise<void>
   unlockAccounts: (
     _accounts: Array<{
