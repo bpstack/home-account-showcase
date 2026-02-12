@@ -43,7 +43,7 @@ interface CryptoState {
 
 interface CryptoActions {
   deriveAndSetUserKey: (_password: string, _salt: string) => Promise<void>
-  setUnlocked: () => void
+  forceUnlockAfterSetup: () => void
   generateAndSaveAccountKey: (_csrfToken?: string) => Promise<void>
   unlockAccount: (_accountId: string, _encryptedKey: string, _keyVersion: number) => Promise<void>
   unlockAccounts: (
@@ -79,14 +79,16 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
     set({ isUnlocking: true, error: null })
     try {
       const userKey = await deriveUserKey(password, salt)
-      set({ userKey, isUnlocked: true, isUnlocking: false })
+      set({ userKey, isUnlocking: false })
     } catch (error) {
       set({ error: 'Error al derivar clave de usuario', isUnlocking: false })
       throw error
     }
   },
 
-  setUnlocked: () => {
+  forceUnlockAfterSetup: () => {
+    const { userKey } = get()
+    if (!userKey) throw new Error('Cannot force unlock without user key')
     set({ isUnlocked: true, error: null })
   },
 
@@ -133,25 +135,20 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
   unlockAccounts: async (accounts) => {
     const { userKey } = get()
     if (!userKey) throw new Error('User key not available')
-    const newAccountKeys = new Map(get().accountKeys)
-    let decryptedCount = 0
-    await Promise.all(
-      accounts.map(async ({ accountId, encryptedKey, keyVersion }) => {
-        try {
-          const accountKey = await decryptAccountKey(encryptedKey, userKey)
-          newAccountKeys.set(accountId, { key: accountKey, version: keyVersion })
-          decryptedCount++
-        } catch (e) {
-          console.error(`[CryptoStore] Failed to decrypt key for account ${accountId}:`, e)
-        }
-      })
-    )
-    set({ accountKeys: newAccountKeys })
 
-    // If we had accounts to unlock but none succeeded, the password was wrong
-    if (accounts.length > 0 && decryptedCount === 0) {
-      throw new Error('Wrong password')
+    const newAccountKeys = new Map<string, AccountKeyInfo>()
+
+    for (const { accountId, encryptedKey, keyVersion } of accounts) {
+      try {
+        const accountKey = await decryptAccountKey(encryptedKey, userKey)
+        newAccountKeys.set(accountId, { key: accountKey, version: keyVersion })
+      } catch (e) {
+        set({ userKey: null, accountKeys: new Map(), isUnlocked: false, error: 'Wrong password' })
+        throw new Error('Wrong password')
+      }
     }
+
+    set({ accountKeys: newAccountKeys, isUnlocked: true })
   },
 
   createAccountKey: async (accountId) => {

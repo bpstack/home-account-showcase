@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCryptoStore } from '@/stores/cryptoStore'
+import { generateVerificationBlob } from '@/lib/crypto'
 
 function SetupPinForm() {
   const [pin, setPin] = useState('')
@@ -12,7 +13,7 @@ function SetupPinForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const csrfToken = searchParams.get('csrf')
-  const { deriveAndSetUserKey, generateAndSaveAccountKey, setUnlocked } = useCryptoStore()
+  const { deriveAndSetUserKey, generateAndSaveAccountKey, forceUnlockAfterSetup } = useCryptoStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +37,6 @@ function SetupPinForm() {
     setLoading(true)
 
     try {
-      // Usar proxy de Next.js para llamar al backend
       const keysRes = await fetch('/api/proxy/auth/keys', {
         credentials: 'include',
       })
@@ -48,7 +48,22 @@ function SetupPinForm() {
 
       await deriveAndSetUserKey(pin, keysData.key_salt)
       await generateAndSaveAccountKey(csrfToken || undefined)
-      setUnlocked()
+
+      const userKey = useCryptoStore.getState().userKey
+      if (userKey) {
+        const blob = await generateVerificationBlob(userKey)
+        await fetch('/api/proxy/auth/verification-blob', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+          },
+          body: JSON.stringify({ verificationBlob: blob }),
+          credentials: 'include',
+        })
+      }
+
+      forceUnlockAfterSetup()
 
       router.push('/dashboard')
     } catch (err) {
@@ -65,7 +80,8 @@ function SetupPinForm() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-text-primary">Configura tu PIN de cifrado</h1>
           <p className="text-text-secondary mt-2">
-            Este PIN protege tus datos financieros. Necesitarás introducirlo cada vez que inicies sesión.
+            Este PIN protege tus datos financieros. Necesitarás introducirlo cada vez que inicies
+            sesión.
           </p>
         </div>
 
@@ -103,9 +119,7 @@ function SetupPinForm() {
             />
           </div>
 
-          {error && (
-            <p className="text-red-500 text-sm text-center">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
           <button
             type="submit"

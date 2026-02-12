@@ -21,6 +21,7 @@ export interface User {
 export interface UserRow extends User, RowDataPacket {
   password_hash?: string
   key_salt: string
+  verification_blob?: string | null
   oauth_provider?: 'local' | 'google' | 'github'
   oauth_id?: string
   avatar_url?: string
@@ -37,6 +38,7 @@ export interface RegisterDTO {
   accountName?: string
   skipDefaultAccount?: boolean // Para usuarios que vienen de invitación
   encryptedAccountKey?: string // Encrypted AK for the new account
+  verificationBlob?: string // Verification blob for PIN validation
 }
 
 export interface LoginDTO {

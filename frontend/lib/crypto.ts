@@ -172,6 +172,38 @@ export async function decrypt(encryptedData: string, accountKey: CryptoKey): Pro
 }
 
 // ============================================
+// VERIFICATION BLOB
+// ============================================
+
+const VERIFICATION_PLAINTEXT = 'HOME_ACCOUNT_VERIFIED_2026'
+
+/**
+ * Genera un verification blob cifrando un texto conocido con la User Key.
+ * Se almacena en BD. Al unlock, se intenta descifrar:
+ * - Si da VERIFICATION_PLAINTEXT → PIN correcto
+ * - Si AES-GCM falla → PIN incorrecto
+ */
+export async function generateVerificationBlob(userKey: CryptoKey): Promise<string> {
+  return encrypt(VERIFICATION_PLAINTEXT, userKey)
+}
+
+/**
+ * Verifica si un PIN/password es correcto intentando descifrar el blob.
+ * @returns true si el PIN es correcto, false si no
+ */
+export async function verifyUserKey(
+  verificationBlob: string,
+  userKey: CryptoKey
+): Promise<boolean> {
+  try {
+    const result = await decrypt(verificationBlob, userKey)
+    return result === VERIFICATION_PLAINTEXT
+  } catch {
+    return false
+  }
+}
+
+// ============================================
 // INVITATION KEY ENCRYPTION
 // ============================================
 

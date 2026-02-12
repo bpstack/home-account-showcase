@@ -5,6 +5,7 @@ export interface User {
   id: string
   email: string
   name: string
+  oauth_provider?: 'local' | 'google' | 'github'
 }
 
 interface AuthState {

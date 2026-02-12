@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
+import db from '../../config/db.js'
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -10,8 +11,10 @@ import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/
 import {
   registerSchema,
   loginSchema,
+  changePinSchema,
   type RegisterInput,
   type LoginInput,
+  type ChangePinInput,
 } from '../../validators/auth-validators.js'
 import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
@@ -89,7 +92,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const encryptedKeys = await AccountKeyRepository.getByUserId(userWithSalt.id)
 
   const accessToken = await generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
-  const refreshToken = await generateRefreshToken({ id: userWithSalt.id, email: userWithSalt.email })
+  const refreshToken = await generateRefreshToken({
+    id: userWithSalt.id,
+    email: userWithSalt.email,
+  })
   const csrfToken = generateCSRFToken()
 
   res.cookie('accessToken', accessToken, accessTokenCookieOptions)
@@ -108,6 +114,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     success: true,
     user,
     key_salt: userWithSalt.key_salt,
+    verification_blob: userWithSalt.verification_blob || null,
     encrypted_keys: encryptedKeys,
     csrfToken,
   })
@@ -158,6 +165,7 @@ export const getKeys = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     key_salt: user.key_salt,
+    verification_blob: user.verification_blob || null,
     encrypted_keys: encryptedKeys,
   })
 })
@@ -193,6 +201,49 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
     success: true,
     message: 'Password changed successfully. Please log in again.',
   })
+})
+
+export const changePin = asyncHandler(async (req: Request, res: Response) => {
+  const validationResult = changePinSchema.safeParse(req.body)
+  if (!validationResult.success) {
+    throw new AppError(validationResult.error.issues[0]?.message || 'Invalid data', 400)
+  }
+
+  const { currentPassword, newPin, newKeySalt, verificationBlob, reEncryptedKeys } =
+    validationResult.data as ChangePinInput
+
+  await UserRepository.changePin(
+    req.user!.id,
+    currentPassword,
+    newPin,
+    newKeySalt,
+    verificationBlob,
+    reEncryptedKeys
+  )
+
+  res.clearCookie('accessToken', { path: '/' })
+  res.clearCookie('refreshToken', { path: '/' })
+  res.clearCookie('csrfToken', { path: '/' })
+
+  res.status(200).json({
+    success: true,
+    message: 'PIN changed successfully. Please log in again.',
+  })
+})
+
+export const saveVerificationBlob = asyncHandler(async (req: Request, res: Response) => {
+  const { verificationBlob } = req.body
+
+  if (!verificationBlob || typeof verificationBlob !== 'string') {
+    throw new AppError('Verification blob is required', 400)
+  }
+
+  await db.query(`UPDATE users SET verification_blob = ? WHERE id = ?`, [
+    verificationBlob,
+    req.user!.id,
+  ])
+
+  res.status(200).json({ success: true })
 })
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {

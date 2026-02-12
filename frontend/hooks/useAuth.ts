@@ -10,6 +10,7 @@ import {
   clearLastAccountId,
 } from '@/stores/authStore'
 import { useCryptoStore } from '@/stores/cryptoStore'
+import { verifyUserKey, generateVerificationBlob } from '@/lib/crypto'
 
 interface Account {
   id: string
@@ -88,25 +89,55 @@ export function useAuth() {
 
     try {
       // El servidor establece las cookies httpOnly automáticamente
-      const { user, key_salt, encrypted_keys } = await auth.login(email, password)
+      const { user, key_salt, verification_blob, encrypted_keys } = await auth.login(
+        email,
+        password
+      )
 
       queryClient.setQueryData(AUTH_QUERY_KEYS.user, user)
 
-      // 🔐 ENCRYPTION: Derive User Key and unlock accounts
+      // 🔐 ENCRYPTION: Try to unlock with login password
+      // If user has a separate PIN, this will fail gracefully → redirect to /unlock
       if (key_salt && encrypted_keys && encrypted_keys.length > 0) {
         const cryptoStore = useCryptoStore.getState()
 
-        // Derive UK from password
-        await cryptoStore.deriveAndSetUserKey(password, key_salt)
+        try {
+          await cryptoStore.deriveAndSetUserKey(password, key_salt)
 
-        // Unlock all accounts
-        await cryptoStore.unlockAccounts(
-          encrypted_keys.map((k) => ({
-            accountId: k.account_id,
-            encryptedKey: k.encrypted_key,
-            keyVersion: k.key_version,
-          }))
-        )
+          // If there's a verification blob, check if password == encryption source
+          if (verification_blob) {
+            const userKey = useCryptoStore.getState().userKey
+            if (userKey) {
+              const isValid = await verifyUserKey(verification_blob, userKey)
+              if (!isValid) {
+                // Password ≠ PIN → user has a separate PIN for encryption
+                // Leave authenticated but locked, layout will redirect to /unlock
+                cryptoStore.lock()
+              } else {
+                // Password IS the encryption source → unlock normally
+                await cryptoStore.unlockAccounts(
+                  encrypted_keys.map((k) => ({
+                    accountId: k.account_id,
+                    encryptedKey: k.encrypted_key,
+                    keyVersion: k.key_version,
+                  }))
+                )
+              }
+            }
+          } else {
+            // No verification blob (legacy user) → try to unlock directly
+            await cryptoStore.unlockAccounts(
+              encrypted_keys.map((k) => ({
+                accountId: k.account_id,
+                encryptedKey: k.encrypted_key,
+                keyVersion: k.key_version,
+              }))
+            )
+          }
+        } catch {
+          // Unlock failed → user needs to enter PIN at /unlock
+          useCryptoStore.getState().lock()
+        }
       }
 
       const { accounts: userAccounts } = await accounts.getAll()
@@ -132,29 +163,34 @@ export function useAuth() {
   }
 
   const unlock = async (password: string) => {
-    // 🔐 ENCRYPTION: Re-derive UK and unlock accounts
-    // This is used in /unlock page when user re-enters password after F5
     const cryptoStore = useCryptoStore.getState()
 
-    // Fetch keys from backend (must be authenticated already)
-    const { key_salt, encrypted_keys } = await auth.getKeys()
+    const { key_salt, verification_blob, encrypted_keys } = await auth.getKeys()
 
-    if (key_salt && encrypted_keys && encrypted_keys.length > 0) {
-      // Derive UK from password
-      await cryptoStore.deriveAndSetUserKey(password, key_salt)
-
-      // Unlock all accounts
-      await cryptoStore.unlockAccounts(
-        encrypted_keys.map((k) => ({
-          accountId: k.account_id,
-          encryptedKey: k.encrypted_key,
-          keyVersion: k.key_version,
-        }))
-      )
+    if (!key_salt || !encrypted_keys || encrypted_keys.length === 0) {
+      throw new Error('No encryption keys found')
     }
 
-    // Note: Redirect is handled by the layout useEffect
-    // which reads 'unlockRedirect' from sessionStorage
+    await cryptoStore.deriveAndSetUserKey(password, key_salt)
+
+    if (verification_blob) {
+      const userKey = useCryptoStore.getState().userKey
+      if (!userKey) throw new Error('User key not available')
+
+      const isValid = await verifyUserKey(verification_blob, userKey)
+      if (!isValid) {
+        cryptoStore.lock()
+        throw new Error('Wrong password')
+      }
+    }
+
+    await cryptoStore.unlockAccounts(
+      encrypted_keys.map((k) => ({
+        accountId: k.account_id,
+        encryptedKey: k.encrypted_key,
+        keyVersion: k.key_version,
+      }))
+    )
   }
 
   const register = async (
@@ -194,6 +230,16 @@ export function useAuth() {
           // Save encrypted key to backend
           await accounts.saveAccountKey(accountId, encKey)
         }
+
+        // Generate and save verification blob
+        const userKey = useCryptoStore.getState().userKey
+        if (userKey) {
+          const blob = await generateVerificationBlob(userKey)
+          await auth.saveVerificationBlob(blob)
+        }
+
+        // Force unlock after setup
+        useCryptoStore.getState().forceUnlockAfterSetup()
       }
 
       const { accounts: userAccounts } = await accounts.getAll()

@@ -22,6 +22,7 @@ export class UserRepository {
    * Crear nuevo usuario + account automática (opcional)
    * @param skipDefaultAccount - Si true, no crea cuenta por defecto (para usuarios de invitación)
    * @param encryptedAccountKey - Encrypted AK for the new account (required if !skipDefaultAccount)
+   * @param verificationBlob - Verification blob for PIN validation
    */
   static async create({
     email,
@@ -30,6 +31,7 @@ export class UserRepository {
     accountName,
     skipDefaultAccount,
     encryptedAccountKey,
+    verificationBlob,
   }: RegisterDTO): Promise<User & { key_salt: string; accountId?: string }> {
     const connection = await db.getConnection()
 
@@ -38,19 +40,16 @@ export class UserRepository {
 
       const userId = crypto.randomUUID()
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
-      // Generate key_salt for encryption (64 hex chars = 32 bytes)
       const keySalt = crypto.randomBytes(32).toString('hex')
 
-      // 1. Crear usuario con key_salt
       await connection.query(
-        `INSERT INTO users (id, email, password_hash, key_salt, name)
-         VALUES (?, ?, ?, ?, ?)`,
-        [userId, email, hashedPassword, keySalt, name]
+        `INSERT INTO users (id, email, password_hash, key_salt, verification_blob, name)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [userId, email, hashedPassword, keySalt, verificationBlob || null, name]
       )
 
       let accountId: string | undefined
 
-      // 2. Crear account personal (solo si no viene de invitación)
       if (!skipDefaultAccount) {
         accountId = crypto.randomUUID()
         const accountUserId = crypto.randomUUID()
@@ -62,14 +61,12 @@ export class UserRepository {
           [accountId, finalAccountName, userId]
         )
 
-        // 3. Asignar usuario como owner
         await connection.query(
           `INSERT INTO account_users (id, account_id, user_id, role)
            VALUES (?, ?, ?, 'owner')`,
           [accountUserId, accountId, userId]
         )
 
-        // 4. Guardar encrypted account key si se proporciona
         if (encryptedAccountKey) {
           const accountKeyId = crypto.randomUUID()
           await connection.query(
@@ -107,9 +104,12 @@ export class UserRepository {
    * Login con email y password
    * Devuelve key_salt para que el cliente derive la User Key
    */
-  static async login({ email, password }: LoginDTO): Promise<User & { key_salt: string }> {
+  static async login({
+    email,
+    password,
+  }: LoginDTO): Promise<User & { key_salt: string; verification_blob: string | null }> {
     const [rows] = await db.query<UserRow[]>(
-      `SELECT id, email, name, password_hash, key_salt, created_at, updated_at
+      `SELECT id, email, name, password_hash, key_salt, verification_blob, created_at, updated_at
        FROM users
        WHERE email = ?`,
       [email]
@@ -135,6 +135,7 @@ export class UserRepository {
       email: user.email,
       name: user.name,
       key_salt: user.key_salt,
+      verification_blob: user.verification_blob ?? null,
       created_at: user.created_at,
       updated_at: user.updated_at,
     }
@@ -145,7 +146,7 @@ export class UserRepository {
    */
   static async getById(id: string): Promise<User | null> {
     const [rows] = await db.query<UserRow[]>(
-      `SELECT id, email, name, created_at, updated_at
+      `SELECT id, email, name, oauth_provider, created_at, updated_at
        FROM users
        WHERE id = ?`,
       [id]
@@ -157,15 +158,28 @@ export class UserRepository {
   /**
    * Obtener usuario por ID con key_salt (para recuperación de claves)
    */
-  static async getByIdWithKeySalt(id: string): Promise<(User & { key_salt: string }) | null> {
+  static async getByIdWithKeySalt(
+    id: string
+  ): Promise<(User & { key_salt: string; verification_blob: string | null }) | null> {
     const [rows] = await db.query<UserRow[]>(
-      `SELECT id, email, name, key_salt, created_at, updated_at
+      `SELECT id, email, name, key_salt, verification_blob, created_at, updated_at
        FROM users
        WHERE id = ?`,
       [id]
     )
 
-    return rows[0] || null
+    const row = rows[0]
+    if (!row) return null
+
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      key_salt: row.key_salt,
+      verification_blob: row.verification_blob ?? null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }
   }
 
   /**
@@ -332,9 +346,61 @@ export class UserRepository {
     }
   }
 
-/**
-    * Eliminar usuario
-    */
+  /**
+   * Cambiar PIN de cifrado E2E
+   * - NO modifica password_hash (PIN es independiente de la contraseña de login)
+   * - La verificación del PIN actual la hace el frontend (descifra Account Keys)
+   * - Actualiza key_salt, verification_blob y re-cifra Account Keys
+   */
+  static async changePin(
+    id: string,
+    _currentPassword: string,
+    _newPin: string,
+    newKeySalt: string,
+    verificationBlob: string,
+    reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }>
+  ): Promise<boolean> {
+    const connection = await db.getConnection()
+
+    try {
+      const [rows] = await connection.query<UserRow[]>(`SELECT id FROM users WHERE id = ?`, [id])
+
+      if (!rows[0]) {
+        throw new AppError('User not found', 404)
+      }
+
+      await connection.beginTransaction()
+
+      // Solo actualizar key_salt y verification_blob, NO password_hash
+      await connection.query(
+        `UPDATE users 
+         SET key_salt = ?, verification_blob = ?, updated_at = NOW() 
+         WHERE id = ?`,
+        [newKeySalt, verificationBlob, id]
+      )
+
+      for (const key of reEncryptedKeys) {
+        await connection.query(
+          `UPDATE account_keys
+           SET encrypted_key = ?, key_version = key_version + 1
+           WHERE account_id = ? AND user_id = ?`,
+          [key.encryptedKey, key.accountId, id]
+        )
+      }
+
+      await connection.commit()
+      return true
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
+  /**
+   * Eliminar usuario
+   */
   static async delete(id: string): Promise<boolean> {
     const [result] = await db.query(`DELETE FROM users WHERE id = ?`, [id])
     return (result as any).affectedRows > 0
@@ -347,7 +413,10 @@ export class UserRepository {
   /**
    * Buscar usuario por OAuth provider + ID
    */
-  static async getByOAuth(provider: 'google' | 'github', oauthId: string): Promise<(User & { key_salt: string }) | null> {
+  static async getByOAuth(
+    provider: 'google' | 'github',
+    oauthId: string
+  ): Promise<(User & { key_salt: string }) | null> {
     const [rows] = await db.query<UserRow[]>(
       `SELECT id, email, name, key_salt, oauth_provider, oauth_id, avatar_url, created_at, updated_at
        FROM users
@@ -412,10 +481,9 @@ export class UserRepository {
    * Verificar si usuario tiene password local
    */
   static async hasLocalPassword(userId: string): Promise<boolean> {
-    const [rows] = await db.query<RowDataPacket[]>(
-      `SELECT password_hash FROM users WHERE id = ?`,
-      [userId]
-    )
+    const [rows] = await db.query<RowDataPacket[]>(`SELECT password_hash FROM users WHERE id = ?`, [
+      userId,
+    ])
     return rows[0]?.password_hash !== null
   }
 }

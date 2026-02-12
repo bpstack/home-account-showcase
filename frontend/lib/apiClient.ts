@@ -185,8 +185,9 @@ export const auth = {
 
     return data as {
       success: boolean
-      user: { id: string; email: string; name: string }
+      user: { id: string; email: string; name: string; oauth_provider?: string }
       key_salt: string
+      verification_blob: string | null
       encrypted_keys: Array<{
         account_id: string
         encrypted_key: string
@@ -293,12 +294,64 @@ export const auth = {
     return data as {
       success: boolean
       key_salt: string
+      verification_blob: string | null
       encrypted_keys: Array<{
         account_id: string
         encrypted_key: string
         key_version: number
       }>
     }
+  },
+
+  changePin: async (
+    currentPassword: string,
+    newPin: string,
+    newKeySalt: string,
+    verificationBlob: string,
+    reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }>
+  ) => {
+    const csrfToken = getCSRFToken()
+    const response = await fetch(`${AUTH_PROXY_URL}/change-pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+      body: JSON.stringify({
+        currentPassword,
+        newPin,
+        newKeySalt,
+        verificationBlob,
+        reEncryptedKeys,
+      }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al cambiar PIN')
+    }
+    if (typeof window !== 'undefined') {
+      document.cookie = 'csrfToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    }
+    return data as { success: boolean; message: string }
+  },
+
+  saveVerificationBlob: async (verificationBlob: string) => {
+    const csrfToken = getCSRFToken()
+    const response = await fetch(`${AUTH_PROXY_URL}/verification-blob`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+      body: JSON.stringify({ verificationBlob }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al guardar blob de verificación')
+    }
+    return data as { success: boolean }
   },
 
   changePassword: async (
@@ -624,7 +677,7 @@ export const transactions = {
     const searchParams = new URLSearchParams()
     searchParams.set('account_id', accountId)
     searchParams.set('description_pattern', descriptionPattern)
-    
+
     return request<{
       success: boolean
       transactions: Transaction[]

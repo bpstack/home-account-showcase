@@ -7,7 +7,13 @@ import { accounts, auth } from '@/lib/apiClient'
 import { Button, Input } from '@/components/ui'
 import { AISettings } from './AISettings'
 import { useCryptoStore } from '@/stores/cryptoStore'
-import { deriveUserKey, encryptAccountKey, decryptAccountKey, generateKeySalt } from '@/lib/crypto'
+import {
+  deriveUserKey,
+  encryptAccountKey,
+  decryptAccountKey,
+  generateKeySalt,
+  generateVerificationBlob,
+} from '@/lib/crypto'
 
 interface Member {
   id: string
@@ -95,7 +101,14 @@ export function SettingsPanel() {
         {activeTab === 'ia' && <AISettings />}
         {activeTab === 'budget' && <BudgetSettings />}
         {activeTab === 'savings' && <SavingsSettings />}
-        {activeTab === 'security' && <SecuritySettings />}
+        {activeTab === 'security' && (
+          <div className="space-y-6">
+            <ChangePinSection />
+            {(!user?.oauth_provider || user.oauth_provider === 'local') && (
+              <ChangePasswordSection />
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -428,7 +441,167 @@ function SavingsSettings() {
   )
 }
 
-function SecuritySettings() {
+function ChangePinSection() {
+  const router = useRouter()
+  const [currentPin, setCurrentPin] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const validatePin = (pin: string): string | null => {
+    if (pin.length < 6) return 'El PIN debe tener al menos 6 dígitos'
+    if (pin.length > 8) return 'El PIN debe tener máximo 8 dígitos'
+    if (!/^\d+$/.test(pin)) return 'El PIN solo puede contener números'
+    return null
+  }
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage(null)
+
+    const pinError = validatePin(newPin)
+    if (pinError) {
+      setMessage({ type: 'error', text: pinError })
+      return
+    }
+
+    if (newPin !== confirmPin) {
+      setMessage({ type: 'error', text: 'Los PINs no coinciden' })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const keysData = await auth.getKeys()
+      const { key_salt: currentKeySalt, encrypted_keys } = keysData
+
+      if (!encrypted_keys || encrypted_keys.length === 0) {
+        setMessage({ type: 'error', text: 'No hay claves de cifrado configuradas' })
+        setIsLoading(false)
+        return
+      }
+
+      const currentUK = await deriveUserKey(currentPin, currentKeySalt)
+
+      try {
+        await decryptAccountKey(encrypted_keys[0].encrypted_key, currentUK)
+      } catch {
+        setMessage({ type: 'error', text: 'PIN o contraseña actual incorrectos' })
+        setIsLoading(false)
+        return
+      }
+
+      const newKeySalt = generateKeySalt()
+      const newUK = await deriveUserKey(newPin, newKeySalt)
+
+      const verificationBlob = await generateVerificationBlob(newUK)
+
+      const reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }> = []
+
+      for (const key of encrypted_keys) {
+        const decryptedAK = await decryptAccountKey(key.encrypted_key, currentUK)
+        const reEncryptedAK = await encryptAccountKey(decryptedAK, newUK)
+        reEncryptedKeys.push({
+          accountId: key.account_id,
+          encryptedKey: reEncryptedAK,
+        })
+      }
+
+      await auth.changePin(currentPin, newPin, newKeySalt, verificationBlob, reEncryptedKeys)
+
+      useCryptoStore.getState().lock()
+
+      setMessage({
+        type: 'success',
+        text: 'PIN cambiado correctamente. Redirigiendo a login...',
+      })
+
+      setTimeout(() => router.push('/login'), 2000)
+    } catch (error) {
+      const err = error as Error
+      setMessage({ type: 'error', text: err.message || 'Error al cambiar el PIN' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="bg-card rounded-lg border border-border">
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">Cambiar PIN de cifrado</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          El PIN protege tus datos cifrados. Se te pedirá cada vez que inicies sesión o recargues la
+          página.
+        </p>
+      </div>
+
+      <div className="p-4">
+        {message && (
+          <div
+            className={`mb-4 p-3 rounded-lg text-sm ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handleChangePin} className="space-y-4">
+          <Input
+            id="currentPin"
+            type="password"
+            label="PIN o contraseña actual"
+            value={currentPin}
+            onChange={(e) => setCurrentPin(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+
+          <Input
+            id="newPin"
+            type="password"
+            label="Nuevo PIN (6-8 dígitos)"
+            value={newPin}
+            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            required
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="••••••"
+          />
+
+          <Input
+            id="confirmPin"
+            type="password"
+            label="Confirmar nuevo PIN"
+            value={confirmPin}
+            onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            required
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="••••••"
+          />
+
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              <strong>Importante:</strong> Al cambiar tu PIN, se re-cifrarán todas tus claves de
+              cuenta, se cerrará tu sesión y deberás volver a iniciar sesión con el nuevo PIN.
+            </p>
+          </div>
+
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Cambiando PIN...' : 'Cambiar PIN'}
+          </Button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ChangePasswordSection() {
   const router = useRouter()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -440,7 +613,6 @@ function SecuritySettings() {
     e.preventDefault()
     setMessage(null)
 
-    // Validaciones
     if (newPassword !== confirmPassword) {
       setMessage({ type: 'error', text: 'Las contraseñas no coinciden' })
       return
@@ -454,27 +626,45 @@ function SecuritySettings() {
     setIsLoading(true)
 
     try {
-      // Obtener datos necesarios para re-cifrado
       const keysData = await auth.getKeys()
-      const { key_salt: currentKeySalt, encrypted_keys } = keysData
+      const { key_salt: currentKeySalt, verification_blob, encrypted_keys } = keysData
 
-      // Si hay claves encriptadas, necesitamos re-cifrarlas
-      if (encrypted_keys && encrypted_keys.length > 0) {
-        // Generar nuevo salt
+      // Check if the password is the encryption source (no separate PIN set)
+      let passwordIsEncryptionSource = false
+
+      if (encrypted_keys && encrypted_keys.length > 0 && currentKeySalt) {
+        const currentUK = await deriveUserKey(currentPassword, currentKeySalt)
+
+        if (verification_blob) {
+          // If blob exists, verify password against it
+          const { verifyUserKey } = await import('@/lib/crypto')
+          passwordIsEncryptionSource = await verifyUserKey(verification_blob, currentUK)
+        } else {
+          // No blob = legacy user, password is encryption source
+          // Try to decrypt first account key to confirm
+          try {
+            await decryptAccountKey(encrypted_keys[0].encrypted_key, currentUK)
+            passwordIsEncryptionSource = true
+          } catch {
+            passwordIsEncryptionSource = false
+          }
+        }
+      }
+
+      if (passwordIsEncryptionSource && encrypted_keys && encrypted_keys.length > 0) {
+        // Password IS the encryption source → re-encrypt keys with new password
         const newKeySalt = generateKeySalt()
 
-        // Derivar UK actual y nueva
         const currentUK = await deriveUserKey(currentPassword, currentKeySalt)
         const newUK = await deriveUserKey(newPassword, newKeySalt)
 
-        // Re-cifrar todas las Account Keys
+        const verificationBlob = await generateVerificationBlob(newUK)
+
         const reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }> = []
 
         for (const key of encrypted_keys) {
           try {
-            // Descifrar con UK actual
             const decryptedAK = await decryptAccountKey(key.encrypted_key, currentUK)
-            // Re-cifrar con nueva UK
             const reEncryptedAK = await encryptAccountKey(decryptedAK, newUK)
             reEncryptedKeys.push({
               accountId: key.account_id,
@@ -491,14 +681,20 @@ function SecuritySettings() {
           }
         }
 
-        // Enviar al backend con re-cifrado
         await auth.changePassword(currentPassword, newPassword, newKeySalt, reEncryptedKeys)
+
+        // Also save the new verification blob
+        try {
+          await auth.saveVerificationBlob(verificationBlob)
+        } catch {
+          // Non-critical, blob will be generated on next PIN change
+        }
       } else {
-        // Sin claves encriptadas, solo cambiar password
+        // Password is NOT the encryption source (user has a separate PIN)
+        // Only change the auth password, don't touch encryption
         await auth.changePassword(currentPassword, newPassword)
       }
 
-      // Limpiar crypto store
       useCryptoStore.getState().lock()
 
       setMessage({
@@ -506,7 +702,6 @@ function SecuritySettings() {
         text: 'Contraseña cambiada correctamente. Redirigiendo a login...',
       })
 
-      // Redirigir a login después de 2 segundos
       setTimeout(() => {
         router.push('/login')
       }, 2000)
@@ -521,9 +716,12 @@ function SecuritySettings() {
   return (
     <div className="bg-card rounded-lg border border-border">
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">Cambiar contraseña</h3>
+        <h3 className="text-sm font-semibold text-foreground">
+          Cambiar contraseña de inicio de sesión
+        </h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Actualiza tu contraseña. Esto re-cifrará todas tus claves de cuenta.
+          Actualiza tu contraseña de login. Si tienes un PIN de cifrado configurado, no se verá
+          afectado.
         </p>
       </div>
 
@@ -574,8 +772,8 @@ function SecuritySettings() {
 
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
             <p className="text-xs text-amber-700 dark:text-amber-400">
-              <strong>Importante:</strong> Al cambiar tu contraseña, se cerrarán todas tus sesiones y
-              deberás volver a iniciar sesión.
+              <strong>Importante:</strong> Al cambiar tu contraseña, se cerrarán todas tus sesiones
+              y deberás volver a iniciar sesión.
             </p>
           </div>
 
