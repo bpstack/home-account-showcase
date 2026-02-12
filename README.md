@@ -192,7 +192,7 @@ AI-powered investment features integrated into the dashboard:
 
 ### ⚠️ Known Limitation
 
-**AI chats and investment profiles are NOT encrypted yet.** This is a documented limitation for v2. Only transactions and categories are currently E2E encrypted.
+**AI chats and investment profiles are NOT encrypted yet.** Only transactions and categories are currently E2E encrypted.
 **AI chat content isn’t end-to-end encrypted and is visible to the provider, so adding extra protection here wouldn’t meaningfully increase privacy.**
 
 ## 🏗️ Architecture
