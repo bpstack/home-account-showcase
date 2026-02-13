@@ -13,6 +13,9 @@ import {
 import { CategoryPieChart, MonthlyBarChart, BalanceLineChart } from '@/components/charts'
 import { HistoryInfoAlert } from '@/components/dashboard/HistoryInfoAlert'
 import { OverviewInfoAlert } from '@/components/dashboard/OverviewInfoAlert'
+import { EmptyAccountState } from '@/components/dashboard/EmptyAccountState'
+import { useHasAnyTransactions } from '@/lib/queries/transactions'
+import { useTransactionsStore } from '@/stores/transactionsStore'
 import {
   TrendingDown,
   TrendingUp,
@@ -43,6 +46,7 @@ import { InvestmentWidget } from '@/components/investment/InvestmentWidget'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import { MONTHS_ES } from '@/lib/constants'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo, Suspense } from 'react'
 
 // Initial data types from RSC
@@ -119,6 +123,7 @@ interface Stats {
 
 export default function DashboardClient({ initialData }: DashboardClientProps) {
   const { account } = useAuth()
+  const router = useRouter()
 
   const {
     activeTab,
@@ -130,6 +135,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     setCustomDates,
     reset: resetDashboard,
   } = useDashboardStore()
+
+  const { setCreateModalOpen } = useTransactionsStore()
+  const { data: hasAnyTransactions, isLoading: isLoadingCheck } = useHasAnyTransactions(account?.id || '')
 
   const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
 
@@ -301,38 +309,51 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
       {/* Content area */}
       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
-        {activeTab === 'overview' && (
-          <Suspense fallback={<DashboardSkeleton />}>
-            {isLoading ? (
-              <DashboardSkeleton />
-            ) : (
-              <OverviewTab
-                stats={stats}
-                summary={summary}
-                incomeByType={statsData?.stats?.incomeByType}
-              />
+        {isLoadingCheck ? (
+          <DashboardSkeleton />
+        ) : !hasAnyTransactions ? (
+          <EmptyAccountState
+            onAddTransaction={() => {
+              setCreateModalOpen(true)
+              router.push('/transactions')
+            }}
+          />
+        ) : (
+          <>
+            {activeTab === 'overview' && (
+              <Suspense fallback={<DashboardSkeleton />}>
+                {isLoading ? (
+                  <DashboardSkeleton />
+                ) : (
+                  <OverviewTab
+                    stats={stats}
+                    summary={summary}
+                    incomeByType={statsData?.stats?.incomeByType}
+                  />
+                )}
+              </Suspense>
             )}
-          </Suspense>
-        )}
-        {activeTab === 'history' && (
-          <Suspense fallback={<HistorySkeleton />}>
-            <HistoryTab selectedYear={selectedYear ?? currentYear} initialData={initialData} />
-          </Suspense>
-        )}
+            {activeTab === 'history' && (
+              <Suspense fallback={<HistorySkeleton />}>
+                <HistoryTab selectedYear={selectedYear ?? currentYear} initialData={initialData} />
+              </Suspense>
+            )}
 
-        {activeTab === 'stats' && (
-          <Suspense fallback={<DashboardSkeleton />}>
-            {isLoading ? <DashboardSkeleton /> : <StatsTab summary={summary} />}
-          </Suspense>
-        )}
-        {activeTab === 'investment' && (
-          <Suspense fallback={<DashboardSkeleton />}>
-            {isLoading ? (
-              <DashboardSkeleton />
-            ) : (
-              <SavingsTab stats={stats} period={period} accountId={account?.id || ''} />
+            {activeTab === 'stats' && (
+              <Suspense fallback={<DashboardSkeleton />}>
+                {isLoading ? <DashboardSkeleton /> : <StatsTab summary={summary} />}
+              </Suspense>
             )}
-          </Suspense>
+            {activeTab === 'investment' && (
+              <Suspense fallback={<DashboardSkeleton />}>
+                {isLoading ? (
+                  <DashboardSkeleton />
+                ) : (
+                  <SavingsTab stats={stats} period={period} accountId={account?.id || ''} />
+                )}
+              </Suspense>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -548,13 +569,13 @@ function OverviewTab({
 
   const incomeByCategory = incomeByType
     ? Object.entries(incomeByType)
-        .filter(([, value]) => value > 0)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .map((item, index) => ({
-          ...item,
-          color: incomeColors[index % incomeColors.length],
-        }))
+      .filter(([, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .map((item, index) => ({
+        ...item,
+        color: incomeColors[index % incomeColors.length],
+      }))
     : []
 
   const calculateChange = (current: number, previous: number) => {
@@ -857,36 +878,36 @@ function HistoryTab({
                           )}
                         </div>
                       </div>
-<div className="grid grid-cols-3 gap-2 text-sm">
-                          <div>
-                            <p className="text-text-secondary text-xs mb-1">Ingresos</p>
-                            <p>
-                              <span className="text-text-secondary">+</span>
-                              <span className="text-success text-sm ml-1">{hasData ? item.income.toFixed(2) : '-'}</span>
-                              {hasData && <span className="text-text-secondary ml-1">€</span>}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-text-secondary text-xs mb-1">Gastos</p>
-                            <p>
-                              <span className="text-text-secondary">-</span>
-                              <span className="text-danger text-sm ml-1">{hasData ? item.expenses.toFixed(2) : '-'}</span>
-                              {hasData && <span className="text-text-secondary ml-1">€</span>}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-text-secondary text-xs mb-1">Balance</p>
-                            <p>
-                              <span className="text-text-secondary">
-                                {hasData ? (balance >= 0 ? '+' : '-') : ''}
-                              </span>
-                              <span className={`text-sm ml-1 ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
-                                {hasData ? Math.abs(balance).toFixed(2) : '-'}
-                              </span>
-                              {hasData && <span className="text-text-secondary ml-1">€</span>}
-                            </p>
-                          </div>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <p className="text-text-secondary text-xs mb-1">Ingresos</p>
+                          <p>
+                            <span className="text-text-secondary">+</span>
+                            <span className="text-success text-sm ml-1">{hasData ? item.income.toFixed(2) : '-'}</span>
+                            {hasData && <span className="text-text-secondary ml-1">€</span>}
+                          </p>
                         </div>
+                        <div>
+                          <p className="text-text-secondary text-xs mb-1">Gastos</p>
+                          <p>
+                            <span className="text-text-secondary">-</span>
+                            <span className="text-danger text-sm ml-1">{hasData ? item.expenses.toFixed(2) : '-'}</span>
+                            {hasData && <span className="text-text-secondary ml-1">€</span>}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-text-secondary text-xs mb-1">Balance</p>
+                          <p>
+                            <span className="text-text-secondary">
+                              {hasData ? (balance >= 0 ? '+' : '-') : ''}
+                            </span>
+                            <span className={`text-sm ml-1 ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                              {hasData ? Math.abs(balance).toFixed(2) : '-'}
+                            </span>
+                            {hasData && <span className="text-text-secondary ml-1">€</span>}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )
                 })}
@@ -1235,8 +1256,8 @@ function SavingsTab({
                   <span className="text-text-secondary">+</span>
                   <span className="ml-1">
                     {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-                      period === 'year' || period === 'all' 
-                        ? savingsAmount * 1.05 
+                      period === 'year' || period === 'all'
+                        ? savingsAmount * 1.05
                         : savingsAmount * 12 * 1.05
                     )}
                   </span>

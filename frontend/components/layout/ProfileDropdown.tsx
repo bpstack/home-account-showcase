@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { User, LogOut, ChevronDown, Building2, ExternalLink, Plus, Loader2 } from 'lucide-react'
+import { User, LogOut, ChevronDown, Building2, ExternalLink, Plus, Loader2, Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
 import { toast } from 'sonner'
@@ -21,6 +21,7 @@ export function ProfileDropdown() {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [newAccountName, setNewAccountName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
@@ -28,7 +29,7 @@ export function ProfileDropdown() {
   const accountMenuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { user, account, accounts: allAccounts, switchAccount, logout } = useAuth()
+  const { user, account, accounts: allAccounts, switchAccount, logout, isSwitchingAccount } = useAuth()
 
   // Contar cuentas donde el usuario es owner
   const ownedAccountsCount = allAccounts.filter((a) => a.role === 'owner').length
@@ -93,7 +94,6 @@ export function ProfileDropdown() {
       const encryptedAccountKey = await cryptoStore.createAccountKey(tempAccountId)
 
       const result = await accounts.create(newAccountName.trim(), encryptedAccountKey)
-      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.accounts })
 
       // Mover la key del temp ID al ID real
       const tempKey = cryptoStore.accountKeys.get(tempAccountId)
@@ -104,7 +104,11 @@ export function ProfileDropdown() {
         useCryptoStore.setState({ accountKeys: newAccountKeys })
       }
 
-      // Cambiar a la nueva cuenta
+      // Invalidar y esperar a que la lista de cuentas se actualice
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.accounts })
+      await queryClient.refetchQueries({ queryKey: AUTH_QUERY_KEYS.accounts })
+
+      // Cambiar a la nueva cuenta (ahora usa API Route, sin race condition)
       await switchAccount(result.account.id)
 
       setIsCreateModalOpen(false)
@@ -159,9 +163,8 @@ export function ProfileDropdown() {
           <span className="text-sm text-muted-foreground leading-none mt-0.5">{account?.role === 'owner' ? 'Propietario' : 'Miembro'}</span>
         </div>
         <ChevronDown
-          className={`hidden md:block h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
+          className={`hidden md:block h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
+            }`}
         />
       </button>
 
@@ -176,34 +179,48 @@ export function ProfileDropdown() {
             <div className="border-b border-border">
               <div className="relative" ref={accountMenuRef}>
                 <button
-                  onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-base text-foreground hover:bg-muted transition-colors"
+                  onClick={() => !isSwitchingAccount && setIsAccountMenuOpen(!isAccountMenuOpen)}
+                  disabled={isSwitchingAccount}
+                  className="w-full flex items-center justify-between px-4 py-3 text-base text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    {isSwitchingAccount ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    )}
                     <span className="font-medium">{currentAccount?.name}</span>
                   </div>
                   <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                      isAccountMenuOpen ? 'rotate-180' : ''
-                    }`}
+                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isAccountMenuOpen ? 'rotate-180' : ''
+                      }`}
                   />
                 </button>
 
                 {isAccountMenuOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                    {allAccounts.map((acc) => (
-                      <button
-                        key={acc.id}
-                        onClick={() => handleSwitchAccount(acc.id)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                      >
-                        <span>{acc.name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {acc.role === 'owner' ? 'Owner' : 'Member'}
-                        </span>
-                      </button>
-                    ))}
+                    {allAccounts.map((acc) => {
+                      const isActive = acc.id === currentAccount?.id
+                      return (
+                        <button
+                          key={acc.id}
+                          onClick={() => handleSwitchAccount(acc.id)}
+                          disabled={isSwitchingAccount || isActive}
+                          className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${isActive
+                              ? 'bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium cursor-default'
+                              : 'text-foreground hover:bg-muted'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span>{acc.name}</span>
+                            {isActive && <Check className="h-3 w-3" />}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {acc.role === 'owner' ? 'Propietario' : 'Miembro'}
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -246,12 +263,12 @@ export function ProfileDropdown() {
           {account?.role !== 'owner' && (
             <div className="border-t border-border py-1">
               <button
-                onClick={handleLeaveAccount}
+                onClick={() => setIsLeaveModalOpen(true)}
                 disabled={isLeaving}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               >
                 <ExternalLink className="h-4 w-4" />
-                <span>{isLeaving ? 'Abandonando...' : 'Abandonar cuenta'}</span>
+                <span>Abandonar cuenta</span>
               </button>
             </div>
           )}
@@ -329,6 +346,47 @@ export function ProfileDropdown() {
             </Button>
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* Modal de confirmación para abandonar cuenta */}
+      <Modal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        title="Abandonar cuenta"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            ¿Estás seguro de que quieres abandonar la cuenta{' '}
+            <span className="font-medium text-foreground">"{account?.name}"</span>?
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Ya no tendrás acceso a esta cuenta y sus datos.
+          </p>
+        </div>
+
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setIsLeaveModalOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            onClick={async () => {
+              setIsLeaveModalOpen(false)
+              await handleLeaveAccount()
+            }}
+            disabled={isLeaving}
+          >
+            {isLeaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Abandonando...
+              </>
+            ) : (
+              'Abandonar cuenta'
+            )}
+          </Button>
+        </ModalFooter>
       </Modal>
     </div>
   )

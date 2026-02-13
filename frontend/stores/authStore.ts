@@ -21,6 +21,9 @@ interface AuthState {
   setAuthError: (error: string | null) => void
   clearError: () => void
   setSelectedAccountId: (accountId: string | null) => void
+
+  isSwitchingAccount: boolean
+  setSwitchingAccount: (value: boolean) => void
 }
 
 const LAST_ACCOUNT_KEY = 'last_account_id'
@@ -74,6 +77,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       clearLastAccountId()
     }
   },
+
+  isSwitchingAccount: false,
+  setSwitchingAccount: (value) => set({ isSwitchingAccount: value }),
 }))
 
 // Helper para obtener el último account id (usado en useAuth)

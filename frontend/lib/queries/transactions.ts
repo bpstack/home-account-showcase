@@ -56,7 +56,7 @@ async function decryptTransaction(
 export function useTransactions(params: TransactionParams, options?: UseTransactionsOptions) {
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
-  
+
   // CRITICAL: Wait for crypto to be ready before fetching
   const isCryptoReady = useCryptoReady(params.account_id)
 
@@ -535,4 +535,22 @@ export function useBalanceHistory(accountId: string, year: number) {
     isLoading,
     error,
   }
+}
+
+export function useHasAnyTransactions(accountId: string) {
+  return useQuery({
+    queryKey: ['transactions', 'has-any', accountId] as const,
+    queryFn: async () => {
+      const response = await transactionsApi.getAll({
+        account_id: accountId,
+        limit: 1,
+        offset: 0,
+        start_date: '2000-01-01',
+        end_date: '2100-12-31'
+      })
+      return response.transactions.length > 0
+    },
+    enabled: !!accountId,
+    staleTime: 5 * 60 * 1000,
+  })
 }

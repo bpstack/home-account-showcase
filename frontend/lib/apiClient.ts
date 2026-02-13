@@ -442,6 +442,17 @@ export const accounts = {
     request<{ success: boolean; message: string }>(`/accounts/${id}/leave`, {
       method: 'POST',
     }),
+  // Eliminar cuenta (solo owner)
+  delete: (id: string) =>
+    request<{ success: boolean; message: string }>(`/accounts/${id}`, {
+      method: 'DELETE',
+    }),
+  // Expulsar miembro (solo owner)
+  removeMember: (accountId: string, memberId: string) =>
+    request<{ success: boolean; message: string }>(
+      `/accounts/${accountId}/members/${memberId}`,
+      { method: 'DELETE' }
+    ),
   // Invitations
   createInvitation: (accountId: string, email: string) =>
     request<{
@@ -823,12 +834,12 @@ export interface ParsedTransaction {
 export interface ParseResult {
   success: boolean
   file_type:
-    | 'control_gastos'
-    | 'movimientos_cc'
-    | 'csv_revolut'
-    | 'csv_generic'
-    | 'ai_parsed'
-    | 'unknown'
+  | 'control_gastos'
+  | 'movimientos_cc'
+  | 'csv_revolut'
+  | 'csv_generic'
+  | 'ai_parsed'
+  | 'unknown'
   sheet_name?: string
   available_sheets?: string[]
   transactions: ParsedTransaction[]

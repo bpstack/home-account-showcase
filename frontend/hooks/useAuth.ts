@@ -9,6 +9,7 @@ import {
   getLastAccountId,
   clearLastAccountId,
 } from '@/stores/authStore'
+import { toast } from 'sonner'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { verifyUserKey, generateVerificationBlob } from '@/lib/crypto'
 
@@ -29,6 +30,9 @@ export function useAuth() {
   const authError = useAuthStore((s) => s.authError)
   const clearError = useAuthStore((s) => s.clearError)
   const selectedAccountId = useAuthStore((s) => s.selectedAccountId)
+  const isSwitchingAccount = useAuthStore((s) => s.isSwitchingAccount)
+  const setSwitchingAccount = useAuthStore((s) => s.setSwitchingAccount)
+
   const setSelectedAccountId = useAuthStore((s) => s.setSelectedAccountId)
 
   // Query para obtener el usuario autenticado
@@ -77,9 +81,39 @@ export function useAuth() {
   const switchAccount = async (accountId: string) => {
     const newAccount = accountsQuery.data?.find((a) => a.id === accountId)
     if (newAccount) {
-      setSelectedAccountId(accountId)
-      queryClient.setQueryData(AUTH_QUERY_KEYS.account, newAccount)
-      router.refresh()
+      setSwitchingAccount(true)
+      const toastId = toast.loading(`Cambiando a ${newAccount.name}...`)
+
+      try {
+        // 1. Establecer cookie via API Route (server-side, sin race condition)
+        await fetch('/api/accounts/set-active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId }),
+        })
+
+        // 2. Sincronizar estado local (localStorage + Zustand)
+        setSelectedAccountId(accountId)
+
+        // 3. Actualizar React Query cache
+        queryClient.setQueryData(AUTH_QUERY_KEYS.account, newAccount)
+
+        // 4. Invalidar queries que dependen de la cuenta
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+          queryClient.invalidateQueries({ queryKey: ['categories'] })
+        ])
+
+        // 5. Refresh Server Components (ahora la cookie ya está en el servidor)
+        router.refresh()
+
+        toast.success(`Ahora estás en ${newAccount.name}`, { id: toastId })
+      } catch (error) {
+        toast.error('Error al cambiar de cuenta', { id: toastId })
+        console.error(error)
+      } finally {
+        setSwitchingAccount(false)
+      }
     }
   }
 
@@ -299,7 +333,9 @@ export function useAuth() {
     isAuthenticated,
     isLoggingIn,
     isRegistering,
+
     isLoggingOut,
+    isSwitchingAccount,
     authError,
     login,
     register,
