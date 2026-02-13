@@ -25,6 +25,7 @@ import type { Transaction } from '../apiClient'
 interface UseTransactionsOptions {
   staleTime?: number
   initialData?: { transactions: Transaction[]; total: number; limit: number; offset: number }
+  enabled?: boolean
 }
 
 // Helper to decrypt a single transaction if encrypted
@@ -78,7 +79,7 @@ export function useTransactions(params: TransactionParams, options?: UseTransact
       return response
     },
     // CRITICAL: Only fetch when crypto is ready
-    enabled: !!params.account_id && isCryptoReady,
+    enabled: (options?.enabled ?? true) && !!params.account_id && isCryptoReady,
     staleTime: options?.staleTime ?? 0,
     initialData: options?.initialData,
   })
@@ -97,6 +98,7 @@ interface StatsResponse {
 
 interface UseTransactionStatsOptions {
   initialData?: StatsResponse
+  enabled?: boolean
 }
 
 /**
@@ -147,7 +149,7 @@ export function useTransactionStats(
   accountId: string,
   startDate: string,
   endDate: string,
-  options?: UseTransactionStatsOptions
+  options?: UseTransactionStatsOptions & { subcategory_id?: string }
 ) {
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
 
@@ -156,7 +158,10 @@ export function useTransactionStats(
     account_id: accountId,
     start_date: startDate,
     end_date: endDate,
+    subcategory_id: options?.subcategory_id,
     limit: 10000, // Get all transactions for stats calculation
+  }, {
+    enabled: options?.enabled
   })
 
   // Calculate stats client-side

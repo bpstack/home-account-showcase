@@ -11,6 +11,7 @@ import {
   useUpdateTransaction,
   useDeleteTransaction,
   useBulkUpdateByIds,
+  useTransactionStats,
 } from '@/lib/queries/transactions'
 import { useCategories } from '@/lib/queries/categories'
 import { useFiltersStore } from '@/stores/filtersStore'
@@ -261,18 +262,40 @@ function TransactionsContent({
   const totalCount = isSearching ? allFilteredTransactions.length : txData?.total || 0
   const totalPages = Math.ceil(totalCount / limit)
 
-  const totals = useMemo(() => {
-    // Use all filtered transactions for totals (not just current page)
-    const txs = isSearching ? allFilteredTransactions : filteredTransactions
-    const income = txs
-      .filter((t) => t.amount > 0)
-      .reduce((acc, t) => acc + Number(t.amount || 0), 0)
-    const expenses = txs
-      .filter((t) => t.amount < 0)
-      .reduce((acc, t) => acc + Math.abs(Number(t.amount || 0)), 0)
+  // Calculate totals: use server/stats for period, or filtered results if searching
+  // Now supports category filtering too
+  const { data: statsData } = useTransactionStats(account?.id || '', startDate, endDate, {
+    enabled: !!account?.id && !isSearching,
+    subcategory_id: selectedCategory || undefined,
+  })
 
-    return { income, expenses }
-  }, [filteredTransactions, allFilteredTransactions, isSearching])
+  const totals = useMemo(() => {
+    // Only fallback to client-side calc if SEARCHING (because search happens client-side)
+    if (isSearching) {
+      const txs = allFilteredTransactions
+      const income = txs
+        .filter((t) => t.amount > 0)
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0)
+      const expenses = txs
+        .filter((t) => t.amount < 0)
+        .reduce((acc, t) => acc + Math.abs(Number(t.amount || 0)), 0)
+      return { income, expenses }
+    }
+
+    // Default: use the stats hook which fetches ALL transactions correctly
+    if (statsData?.stats) {
+      return {
+        income: statsData.stats.income,
+        expenses: statsData.stats.expenses,
+      }
+    }
+
+    return { income: 0, expenses: 0 }
+  }, [
+    statsData,
+    allFilteredTransactions,
+    isSearching,
+  ])
 
   const { data: categoriesData } = useCategories(account?.id || '', {
     initialData: initialCategories ? { categories: initialCategories as any } : undefined,
