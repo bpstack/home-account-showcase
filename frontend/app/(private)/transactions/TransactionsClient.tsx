@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense, useMemo } from 'react'
+import { useState, useEffect, Suspense, useMemo, useDeferredValue } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
@@ -27,7 +27,7 @@ import {
   DatePickerSimple,
   ConfirmDeleteDialog,
 } from '@/components/ui'
-import { Loader2, Search, Plus, Upload, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
+import { Loader2, Search, Plus, Upload, Wallet, TrendingUp, TrendingDown, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   TransactionsSummary,
@@ -122,17 +122,9 @@ function TransactionsContent({
     reset: resetFilters,
   } = useFiltersStore()
   const [localSearch, setLocalSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const deferredSearch = useDeferredValue(localSearch)
 
-  // Debounce: wait until user stops typing before filtering
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(localSearch.trim())
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [localSearch])
-
-  const searchTerm = debouncedSearch
+  const searchTerm = deferredSearch
 
   const hasActiveFilters =
     selectedMonth !== null ||
@@ -146,7 +138,6 @@ function TransactionsContent({
     resetFilters()
     resetTransactions()
     setLocalSearch('')
-    setDebouncedSearch('')
   }
 
   const handleMonthChange = (month: number | null) => {
@@ -348,6 +339,7 @@ function TransactionsContent({
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
   const [bulkIds, setBulkIds] = useState<string[]>([])
   const [categoryChangeIds, setCategoryChangeIds] = useState<string[]>([])
+  // NOTE: categoryChangeIds is now unused but kept for potential future bulk modal
 
   useEffect(() => {
     if (form.category_id) {
@@ -428,27 +420,21 @@ function TransactionsContent({
     )
   }
 
-  // Bulk category change handlers - uses toast directly (category selection happens in modal)
-  const handleBulkCategoryClick = (ids: string[]) => {
-    setCategoryChangeIds(ids)
-    // The category change modal will handle the selection
-    // Just open the existing category modal for bulk selection
-    setCategoryModalOpen(true)
-  }
-
-  const handleConfirmCategoryChange = (categoryId: string, subcategoryId?: string) => {
+  // Bulk category change - works directly without modal
+  const handleBulkCategoryChange = (ids: string[], categoryId: string, subcategoryId?: string) => {
+    if (!account) return
+    
     toast.promise(
       bulkUpdateByIdsMutation.mutateAsync({
-        account_id: account!.id,
-        transaction_ids: categoryChangeIds,
+        account_id: account.id,
+        transaction_ids: ids,
         subcategory_id: subcategoryId || null,
       }),
       {
-        loading: 'Actualizando categorías...',
+        loading: `Actualizando ${ids.length} categorías...`,
         success: () => {
           invalidateTransactions()
-          setCategoryModalOpen(false)
-          return `Categoría actualizada en ${categoryChangeIds.length} transacciones`
+          return `Categoría actualizada en ${ids.length} transacciones`
         },
         error: 'Error al actualizar categorías',
       }
@@ -605,8 +591,16 @@ function TransactionsContent({
             placeholder="Buscar por descripción..."
             value={localSearch || ''}
             onChange={(e) => setLocalSearch(e.target.value)}
-            className="pl-9 h-10 w-full"
+            className="pl-9 pr-8 h-10 w-full"
           />
+          {localSearch && (
+            <button
+              onClick={() => setLocalSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <ResponsiveTransactionTable
@@ -619,7 +613,7 @@ function TransactionsContent({
           onDelete={handleDeleteClick}
           onCategoryClick={handleCategoryClick}
           onBulkDelete={handleBulkDeleteClick}
-          onBulkCategoryChange={handleBulkCategoryClick}
+          onBulkCategoryChange={handleBulkCategoryChange}
           categories={categories}
           isLoading={isLoadingTx}
         />
