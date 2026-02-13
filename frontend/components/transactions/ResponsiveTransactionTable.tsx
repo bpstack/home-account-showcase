@@ -450,7 +450,7 @@ export function ResponsiveTransactionTable({
                       </span>
                     </>
                   )}
-                  {hasActions && !hasBulkActions && !tx._optimistic && (
+                  {hasActions && !tx._optimistic && (
                     <>
                       <span>·</span>
                       <div className="flex gap-0.5">

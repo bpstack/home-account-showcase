@@ -67,15 +67,12 @@ export function useTransactions(params: TransactionParams, options?: UseTransact
       // Decrypt if account is unlocked and data is encrypted
       const accountKey = getAccountKey(params.account_id)
       if (accountKey && response.transactions.length > 0) {
-        const firstTx = response.transactions[0] as Transaction & Partial<EncryptedTransaction>
-        if (firstTx.description_encrypted) {
-          const decryptedTxs = await Promise.all(
-            response.transactions.map((t) =>
-              decryptTransaction(t as Transaction & Partial<EncryptedTransaction>, accountKey)
-            )
+        const decryptedTxs = await Promise.all(
+          response.transactions.map((t) =>
+            decryptTransaction(t as Transaction & Partial<EncryptedTransaction>, accountKey)
           )
-          return { ...response, transactions: decryptedTxs }
-        }
+        )
+        return { ...response, transactions: decryptedTxs }
       }
 
       return response

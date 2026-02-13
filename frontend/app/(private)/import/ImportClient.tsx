@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCategories } from '@/lib/queries/categories'
 import { useImportTransactions } from '@/lib/queries/useImportTransactions'
+import { useCreateTransaction } from '@/lib/queries/transactions'
 import {
   importApi,
   transactions,
@@ -41,8 +42,12 @@ import {
   Upload,
   Loader2,
   ArrowRight,
+  ArrowLeft,
+  X,
   Sparkles,
 } from 'lucide-react'
+
+import { toast } from 'sonner'
 
 import { getTodayLocal } from '@/lib/date-utils'
 
@@ -319,6 +324,7 @@ export default function ImportClient() {
   const { account } = useAuth()
   const queryClient = useQueryClient()
   const importMutation = useImportTransactions()
+  const createMutation = useCreateTransaction()
   const [activeTab, setActiveTab] = useState('individual')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -387,7 +393,7 @@ export default function ImportClient() {
         subcategory_id: form.subcategory_id || undefined,
       }
 
-      const res = await transactions.create(data)
+      const res = await createMutation.mutateAsync(data)
       if (res.success) {
         setSuccess('Transacción creada correctamente')
         setForm(emptyForm)
@@ -626,10 +632,16 @@ export default function ImportClient() {
           setImportResult(res)
           setStep('result')
           queryClient.invalidateQueries({ queryKey: ['transactions'] })
+          toast.success('¡Importación completada!', {
+            description: `${res.inserted} transacciones guardadas`,
+          })
           setIsLoading(false)
         },
         onError: (err: any) => {
           setError(err.message)
+          toast.error('Error al importar', {
+            description: err.message,
+          })
           setIsLoading(false)
         },
       }
@@ -848,18 +860,60 @@ export default function ImportClient() {
 
                 {step === 'upload' && (
                   <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                    <CardHeader className="pb-4 pt-4 sm:pb-6 sm:pt-6">
-                      <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-3 sm:gap-4">
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
-                          <Database className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                    <CardHeader className="pb-4 pt-4 sm:pb-6 sm:pt-6 px-4">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                              <Database className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <CardTitle className="text-base sm:text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary truncate">
+                                Importación Masiva
+                              </CardTitle>
+                              <p className="text-xs sm:text-sm text-slate-600 dark:text-text-secondary mt-0.5 hidden sm:block">
+                                Sube tus extractos bancarios y deja que nuestra IA haga el trabajo.
+                              </p>
+                            </div>
+                          </div>
+                          {(file || isLoading) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setStep('upload')
+                                setFile(null)
+                                setParseResult(null)
+                                setMappings({})
+                                setError(null)
+                                setAiActivityLog([])
+                                setAiUsedInBackground(false)
+                              }}
+                              className="shrink-0 h-9 w-9 p-0"
+                            >
+                              <X className="h-5 w-5" />
+                            </Button>
+                          )}
                         </div>
-                        <div>
-                          <CardTitle className="text-lg sm:text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
-                            Importación Masiva (Excel/CSV)
-                          </CardTitle>
-                          <p className="text-sm text-slate-600 dark:text-text-secondary mt-1">
-                            Sube tus extractos bancarios y deja que nuestra IA haga el trabajo.
-                          </p>
+                        <div className="sm:hidden">
+                          {(file || isLoading) && (
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setStep('upload')
+                                setFile(null)
+                                setParseResult(null)
+                                setMappings({})
+                                setError(null)
+                                setAiActivityLog([])
+                                setAiUsedInBackground(false)
+                              }}
+                              className="w-full h-10 font-medium"
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Cancelar
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardHeader>
@@ -922,23 +976,34 @@ export default function ImportClient() {
 
                 {step === 'preview' && parseResult && (
                   <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent pb-6 pt-6 px-4 sm:px-8">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg font-bold text-text-primary">
-                              Vista previa del archivo
-                            </CardTitle>
-                            <p className="text-xs text-text-secondary mt-1">
-                              Hemos detectado {parseResult.transactions.length} transacciones.
-                            </p>
+                    <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent pb-4 pt-4 px-4 sm:px-8">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => {
+                                setStep('upload')
+                                setParseResult(null)
+                                setMappings({})
+                                setAiActivityLog([])
+                                setAiUsedInBackground(false)
+                              }}
+                              className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors flex items-center justify-center shrink-0"
+                            >
+                              <ArrowLeft className="h-4 w-4" />
+                            </button>
+                            <div>
+                              <CardTitle className="text-base font-bold text-text-primary">
+                                Vista previa del archivo
+                              </CardTitle>
+                              <p className="text-xs text-text-secondary mt-0.5">
+                                {parseResult.transactions.length} transacciones detectadas
+                              </p>
+                            </div>
                           </div>
                         </div>
                         <Button
-                          className="h-11 px-6 font-bold shadow-lg shadow-accent/20"
+                          className="h-11 w-full font-bold shadow-lg shadow-accent/20"
                           onClick={() => setStep('mapping')}
                         >
                           Continuar al Mapeo
@@ -947,7 +1012,7 @@ export default function ImportClient() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0 border-t border-layer-3">
-                      <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                      <div className="hidden md:block max-h-[500px] overflow-y-auto custom-scrollbar">
                         <table className="w-full text-sm border-collapse">
                           <thead className="bg-layer-2/50 sticky top-0 backdrop-blur-sm z-20">
                             <tr>
@@ -993,37 +1058,89 @@ export default function ImportClient() {
                           </tbody>
                         </table>
                       </div>
+
+                      <div className="md:hidden divide-y divide-layer-2 max-h-[400px] overflow-y-auto">
+                        {parseResult.transactions.slice(0, 100).map((tx, i) => (
+                          <div
+                            key={i}
+                            className="p-4 hover:bg-layer-2/30 transition-colors"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <p className="text-sm font-medium text-text-primary flex-1 min-w-0 line-clamp-2 pr-4">
+                                {tx.description}
+                              </p>
+                              <span className={`text-sm font-bold shrink-0 tabular-nums ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}>
+                                {tx.amount > 0 ? '+' : ''}
+                                {tx.amount.toFixed(2)}€
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-text-secondary">
+                              <span className="tabular-nums">{tx.date}</span>
+                              <span>·</span>
+                              <span className="inline-flex px-2 py-0.5 rounded bg-layer-2 text-[10px] font-bold text-text-secondary uppercase">
+                                {tx.bank_category || 'Sin Categoría'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {parseResult.transactions.length > 100 && (
+                        <div className="p-3 bg-layer-2/50 border-t border-layer-3 text-center">
+                          <p className="text-xs text-text-secondary">
+                            Mostrando <span className="font-bold text-accent">100</span> transacciones de ejemplo de las{' '}
+                            <span className="font-bold">{parseResult.transactions.length}</span> que se procesarán
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}
 
                 {step === 'mapping' && parseResult && (
                   <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent pb-6 pt-6 px-4 sm:px-8 border-b border-layer-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                            <Layers className="h-5 w-5 text-orange-600" />
+                    <CardHeader className="bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent pb-4 pt-4 px-4 sm:px-8">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <button
+                              onClick={() => setStep('preview')}
+                              className="h-8 w-8 rounded-lg bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 transition-colors flex items-center justify-center shrink-0"
+                            >
+                              <ArrowLeft className="h-4 w-4" />
+                            </button>
+                            <div className="min-w-0">
+                              <CardTitle className="text-base font-bold text-text-primary truncate">
+                                Mapeo de Categorías
+                              </CardTitle>
+                              <p className="text-xs text-text-secondary mt-0.5">
+                                Vincula las categorías de tu banco
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <CardTitle className="text-lg font-bold text-text-primary">
-                              Mapeo de Categorías
-                            </CardTitle>
-                            <p className="text-xs text-text-secondary mt-1">
-                              Vincula las categorías de tu banco con las de la aplicación.
-                            </p>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="hidden sm:block px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 text-[10px] font-black uppercase tracking-wider">
+                              {mappingStats.pending} Pendientes
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 text-[10px] font-black uppercase tracking-wider">
-                            {mappingStats.pending} Pendientes
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                          <div className="sm:hidden px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 text-xs font-bold uppercase tracking-wider text-center">
+                            {mappingStats.pending} categorías sin asignar
                           </div>
                           <Button
-                            className="h-11 px-8 font-black shadow-lg shadow-accent/20"
+                            className="h-11 w-full font-bold shadow-lg shadow-accent/20"
                             onClick={handleConfirmImport}
                             isLoading={isLoading}
                           >
                             Finalizar Importación
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setStep('preview')}
+                            className="hidden sm:flex h-11 px-4 font-medium"
+                          >
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Volver
                           </Button>
                         </div>
                       </div>
@@ -1077,7 +1194,7 @@ export default function ImportClient() {
                                   onChange={(e) =>
                                     setMappings({ ...mappings, [key]: e.target.value })
                                   }
-                                  className={`h-12 font-semibold transition-all ${isMapped ? 'border-success/40 bg-white' : ''}`}
+                                  className={`h-12 font-semibold transition-all ${isMapped ? 'border-success/40 bg-background' : ''}`}
                                 />
                               </div>
                             </div>
@@ -1090,7 +1207,22 @@ export default function ImportClient() {
 
                 {step === 'result' && importResult && (
                   <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in zoom-in-95 duration-500">
-                    <div className="h-2 bg-success shrink-0" />
+                    <div className="h-2 bg-success shrink-0 relative">
+                      <button
+                        onClick={() => {
+                          setStep('upload')
+                          setFile(null)
+                          setParseResult(null)
+                          setMappings({})
+                          setImportResult(null)
+                          setAiActivityLog([])
+                          setAiUsedInBackground(false)
+                        }}
+                        className="absolute top-2 right-2 md:hidden p-2 rounded-lg bg-white/10 text-text-secondary hover:bg-white/20 transition-colors"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
                     <CardContent className="py-20 text-center relative px-4 sm:px-8">
                       {/* Background confetti effect simulation */}
                       <div className="absolute top-0 left-1/4 -translate-y-1/2 h-32 w-32 bg-success/10 blur-3xl rounded-full" />
@@ -1136,20 +1268,29 @@ export default function ImportClient() {
                         )}
                       </div>
 
-                      <div className="flex flex-col sm:flex-row justify-center gap-4">
+                      <div className="flex flex-col gap-3">
                         <Button
                           onClick={() => router.push('/transactions')}
-                          className="h-14 px-10 text-base font-black shadow-xl shadow-accent/20"
+                          className="h-12 w-full text-base font-bold shadow-lg shadow-accent/20"
                         >
                           Ir a Transacciones
-                          <ArrowRight className="h-5 w-5 ml-2" />
+                          <ArrowRight className="h-4 w-4 ml-2" />
                         </Button>
                         <Button
-                          onClick={() => setStep('upload')}
+                          onClick={() => {
+                            setStep('upload')
+                            setFile(null)
+                            setParseResult(null)
+                            setMappings({})
+                            setImportResult(null)
+                            setAiActivityLog([])
+                            setAiUsedInBackground(false)
+                          }}
                           variant="outline"
-                          className="h-14 px-10 text-base font-bold bg-white"
+                          className="h-11 w-full text-sm font-medium"
                         >
-                          Importar más archivos
+                          <Upload className="h-4 w-4 mr-2" />
+                          Nueva Importación
                         </Button>
                       </div>
                     </CardContent>

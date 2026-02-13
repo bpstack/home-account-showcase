@@ -26,6 +26,7 @@ import {
   Modal,
   ModalFooter,
   Select,
+  ConfirmDialog,
 } from '@/components/ui'
 import {
   Plus,
@@ -38,6 +39,7 @@ import {
   AlertTriangle,
   Loader2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Category, Subcategory } from '@/lib/apiClient'
 
 const COLORS = [
@@ -174,7 +176,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
       ? updateCategoryMutation.mutateAsync({
           id: editingCategory.id,
           data: { name: categoryForm.name, color: categoryForm.color },
-          accountId: account.id, // For encryption
+          accountId: account.id,
         })
       : createCategoryMutation.mutateAsync({
           account_id: account.id,
@@ -182,9 +184,17 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
           color: categoryForm.color,
         })
 
-    mutation.then(() => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
-      setShowCategoryModal(false)
+    toast.promise(mutation, {
+      loading: editingCategory ? 'Actualizando categoría...' : 'Creando categoría...',
+      success: () => {
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
+        setEditingCategory(null)
+        setShowCategoryModal(false)
+        return editingCategory
+          ? 'Categoría actualizada correctamente'
+          : 'Categoría creada correctamente'
+      },
+      error: 'Error al guardar la categoría',
     })
   }
 
@@ -207,23 +217,36 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
       ? updateSubcategoryMutation.mutateAsync({
           id: editingSubcategory.id,
           data: { name: subcategoryForm.name },
-          accountId: account.id, // For encryption
+          accountId: account.id,
         })
       : createSubcategoryMutation.mutateAsync({
           category_id: parentCategoryId,
           name: subcategoryForm.name,
-          accountId: account.id, // For encryption
+          accountId: account.id,
         })
 
-    mutation.then(() => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    toast.promise(mutation, {
+      loading: editingSubcategory ? 'Actualizando subcategoría...' : 'Creando subcategoría...',
+      success: () => {
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
+        setEditingSubcategory(null)
+        setParentCategoryId('')
+        return editingSubcategory
+          ? 'Subcategoría actualizada correctamente'
+          : 'Subcategoría creada correctamente'
+      },
+      error: 'Error al guardar la subcategoría',
     })
   }
 
   function handleDeleteSubcategory(sub: Subcategory) {
-    if (!confirm(`¿Eliminar "${sub.name}"?`)) return
-    deleteSubcategoryMutation.mutate(sub.id, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+    toast.promise(deleteSubcategoryMutation.mutateAsync(sub.id), {
+      loading: 'Eliminando subcategoría...',
+      success: () => {
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
+        return `"${sub.name}" eliminada`
+      },
+      error: 'Error al eliminar la subcategoría',
     })
   }
 
@@ -237,18 +260,26 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
     if (orphanedQuery.data?.count && orphanedQuery.data.count > 0 && reassignCategoryId) {
       reassignMutation.mutate({ fromId: categoryToDelete.id, toId: reassignCategoryId })
     }
-    deleteCategoryMutation.mutate(categoryToDelete.id, {
-      onSuccess: () => {
+    toast.promise(deleteCategoryMutation.mutateAsync(categoryToDelete.id), {
+      loading: 'Eliminando categoría...',
+      success: () => {
         queryClient.invalidateQueries({ queryKey: ['categories'] })
         setCategoryToDelete(null)
+        return 'Categoría eliminada correctamente'
       },
+      error: 'Error al eliminar la categoría',
     })
   }
 
   function handleAddDefaultCategories() {
     if (!account) return
-    addDefaultsMutation.mutate(account.id, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
+    toast.promise(addDefaultsMutation.mutateAsync(account.id), {
+      loading: 'Añadiendo categorías por defecto...',
+      success: () => {
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
+        return 'Categorías por defecto añadidas correctamente'
+      },
+      error: 'Error al añadir categorías',
     })
   }
 
@@ -512,10 +543,14 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         </ModalFooter>
       </Modal>
 
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => setCategoryToDelete(null)}
+      <ConfirmDialog
+        open={showDeleteModal}
+        onOpenChange={(open) => !open && setCategoryToDelete(null)}
         title="Eliminar categoría"
+        confirmLabel="Eliminar"
+        onConfirm={handleConfirmDelete}
+        isLoading={deleteCategoryMutation.isPending || reassignMutation.isPending}
+        variant="danger"
         size="lg"
       >
         {categoryToDelete && (
@@ -558,23 +593,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             )}
           </div>
         )}
-        <ModalFooter>
-          <Button
-            variant="outline"
-            onClick={() => setCategoryToDelete(null)}
-            disabled={deleteCategoryMutation.isPending}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="danger"
-            onClick={handleConfirmDelete}
-            isLoading={deleteCategoryMutation.isPending || reassignMutation.isPending}
-          >
-            Eliminar
-          </Button>
-        </ModalFooter>
-      </Modal>
+      </ConfirmDialog>
     </div>
   )
 }

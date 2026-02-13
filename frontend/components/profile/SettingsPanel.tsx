@@ -14,6 +14,7 @@ import {
   generateKeySalt,
   generateVerificationBlob,
 } from '@/lib/crypto'
+import { toast } from 'sonner'
 
 interface Member {
   id: string
@@ -129,10 +130,12 @@ function AccountSettings() {
 
     try {
       await accounts.update(account!.id, { name: newName })
-      setMessage({ type: 'success', text: 'Nombre actualizado correctamente' })
+      toast.success('Nombre de cuenta actualizado correctamente')
       setTimeout(() => window.location.reload(), 1000)
     } catch (error) {
-      setMessage({ type: 'error', text: 'Error al actualizar el nombre' })
+      toast.error('Error al actualizar el nombre', {
+        description: (error as Error).message
+      })
     } finally {
       setIsLoading(false)
     }
@@ -228,17 +231,15 @@ function MembersSettings() {
 
     try {
       const { inviteLink } = await accounts.createInvitation(account.id, inviteEmail.trim())
-      setMessage({
-        type: 'success',
-        text: `Invitación creada. Comparte este enlace: ${window.location.origin}${inviteLink}`,
-      })
+      toast.success('Invitación creada correctamente')
+      await navigator.clipboard.writeText(`${window.location.origin}${inviteLink}`)
+      toast.info('Enlace copiado al portapapeles')
       setInviteEmail('')
       loadInvitations()
     } catch (error: unknown) {
       const apiError = error as { message?: string }
-      setMessage({
-        type: 'error',
-        text: apiError.message || 'Error al crear invitación',
+      toast.error('Error al crear la invitación', {
+        description: apiError.message
       })
     } finally {
       setIsInviting(false)

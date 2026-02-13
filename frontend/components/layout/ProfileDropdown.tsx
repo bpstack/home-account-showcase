@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { User, LogOut, ChevronDown, Building2, ExternalLink, Plus, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
+import { toast } from 'sonner'
 import { Modal, ModalFooter, Button } from '@/components/ui'
 import { useCryptoStore } from '@/stores/cryptoStore'
 
@@ -109,8 +110,12 @@ export function ProfileDropdown() {
       setIsCreateModalOpen(false)
       setNewAccountName('')
       setIsOpen(false)
+      toast.success('Cuenta creada correctamente')
     } catch (error) {
       setCreateError((error as Error).message || 'Error al crear la cuenta')
+      toast.error('Error al crear la cuenta', {
+        description: (error as Error).message
+      })
     } finally {
       setIsCreating(false)
     }
@@ -118,9 +123,6 @@ export function ProfileDropdown() {
 
   const handleLeaveAccount = async () => {
     if (!account) return
-    if (!confirm('¿Estás seguro de que quieres abandonar esta cuenta? Perderás acceso a todos los datos.')) {
-      return
-    }
 
     setIsLeaving(true)
     try {
@@ -131,8 +133,11 @@ export function ProfileDropdown() {
       router.push('/dashboard')
       setIsAccountMenuOpen(false)
       setIsOpen(false)
+      toast.success('Has abandonado la cuenta correctamente')
     } catch (error) {
-      alert('Error al abandonar la cuenta: ' + (error as Error).message)
+      toast.error('Error al abandonar la cuenta', {
+        description: (error as Error).message
+      })
     } finally {
       setIsLeaving(false)
     }

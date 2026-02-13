@@ -14,6 +14,7 @@ import { DisclaimerAlert } from './DisclaimerAlert'
 import { Send, MessageCircle, Bot, User, Loader2, Trash2, ChevronDown, History, X } from 'lucide-react'
 import { formatCurrency, formatDistanceToNow, cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { toast } from 'sonner'
 
 interface AIChatProps {
   accountId: string
@@ -111,15 +112,16 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
   }
 
   const handleDeleteSession = async (sessionIdToDelete: string) => {
-    if (!confirm('¿Eliminar esta conversación?')) return
     try {
       await investmentApi.deleteChatSession(accountId, sessionIdToDelete)
       await loadSessions()
       if (session?.sessionId === sessionIdToDelete) {
         clearChat()
       }
+      toast.success('Conversación eliminada')
     } catch (err) {
       console.error('Error deleting session:', err)
+      toast.error('Error al eliminar la conversación')
     }
   }
 

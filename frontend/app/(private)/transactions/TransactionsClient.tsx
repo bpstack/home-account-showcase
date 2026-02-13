@@ -24,8 +24,10 @@ import {
   PageFilters,
   FilterSelect,
   DatePickerSimple,
+  ConfirmDeleteDialog,
 } from '@/components/ui'
 import { Loader2, Search, Plus, Upload, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   TransactionsSummary,
   ResponsiveTransactionTable,
@@ -317,6 +319,13 @@ function TransactionsContent({
   const deleteMutation = useDeleteTransaction()
   const bulkUpdateByIdsMutation = useBulkUpdateByIds()
 
+  // Dialog states for confirmations
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
+  const [bulkIds, setBulkIds] = useState<string[]>([])
+  const [categoryChangeIds, setCategoryChangeIds] = useState<string[]>([])
+
   useEffect(() => {
     if (form.category_id) {
       subcategoriesApi.getAll(form.category_id).then((res) => {
@@ -327,24 +336,123 @@ function TransactionsContent({
     }
   }, [form.category_id])
 
+  // Delete handlers
+  const handleDeleteClick = (id: string) => {
+    setTransactionToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const restoreTransaction = (tx: Transaction) => {
+    toast.promise(
+      createMutation.mutateAsync({
+        account_id: tx.account_id,
+        date: tx.date.split('T')[0],
+        description: tx.description,
+        amount: Number(tx.amount),
+        subcategory_id: tx.subcategory_id || undefined,
+      }),
+      {
+        loading: 'Restaurando transacción...',
+        success: () => {
+          invalidateTransactions()
+          return 'Transacción restaurada'
+        },
+        error: 'Error al restaurar la transacción',
+      }
+    )
+  }
+
+  const handleConfirmDelete = () => {
+    if (!transactionToDelete) return
+    const txToRestore = allFilteredTransactions.find((t) => t.id === transactionToDelete)
+
+    toast.promise(deleteMutation.mutateAsync(transactionToDelete), {
+      loading: 'Eliminando transacción...',
+      success: () => {
+        invalidateTransactions()
+        setDeleteDialogOpen(false)
+        return 'Transacción eliminada'
+      },
+      error: 'Error al eliminar la transacción',
+      action: txToRestore
+        ? {
+            label: 'Deshacer',
+            onClick: () => restoreTransaction(txToRestore),
+          }
+        : undefined,
+    })
+  }
+
+  // Bulk delete handlers
+  const handleBulkDeleteClick = (ids: string[]) => {
+    setBulkIds(ids)
+    setBulkDeleteDialogOpen(true)
+  }
+
+  const handleConfirmBulkDelete = () => {
+    toast.promise(
+      Promise.all(bulkIds.map(id => deleteMutation.mutateAsync(id))),
+      {
+        loading: `Eliminando ${bulkIds.length} transacciones...`,
+        success: () => {
+          invalidateTransactions()
+          setBulkDeleteDialogOpen(false)
+          setBulkIds([])
+          return `${bulkIds.length} transacciones eliminadas`
+        },
+        error: 'Error al eliminar algunas transacciones',
+      }
+    )
+  }
+
+  // Bulk category change handlers - uses toast directly (category selection happens in modal)
+  const handleBulkCategoryClick = (ids: string[]) => {
+    setCategoryChangeIds(ids)
+    // The category change modal will handle the selection
+    // Just open the existing category modal for bulk selection
+    setCategoryModalOpen(true)
+  }
+
+  const handleConfirmCategoryChange = (categoryId: string, subcategoryId?: string) => {
+    toast.promise(
+      bulkUpdateByIdsMutation.mutateAsync({
+        account_id: account!.id,
+        transaction_ids: categoryChangeIds,
+        subcategory_id: subcategoryId || null,
+      }),
+      {
+        loading: 'Actualizando categorías...',
+        success: () => {
+          invalidateTransactions()
+          setCategoryModalOpen(false)
+          return `Categoría actualizada en ${categoryChangeIds.length} transacciones`
+        },
+        error: 'Error al actualizar categorías',
+      }
+    )
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!account) return
 
-    createMutation.mutate(
-      {
+    toast.promise(
+      createMutation.mutateAsync({
         account_id: account.id,
         date: form.date,
         description: form.description,
         amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
         subcategory_id: form.subcategory_id || undefined,
-      },
+      }),
       {
-        onSuccess: () => {
+        loading: 'Creando transacción...',
+        success: () => {
           setCreateModalOpen(false)
           setForm(emptyForm)
           invalidateTransactions()
+          return 'Transacción creada correctamente'
         },
+        error: 'Error al crear la transacción',
       }
     )
   }
@@ -366,8 +474,8 @@ function TransactionsContent({
     e.preventDefault()
     if (!editingId) return
 
-    updateMutation.mutate(
-      {
+    toast.promise(
+      updateMutation.mutateAsync({
         id: editingId,
         accountId: account!.id,
         data: {
@@ -376,23 +484,19 @@ function TransactionsContent({
           amount: parseFloat(form.amount) * (form.type === 'expense' ? -1 : 1),
           subcategory_id: form.subcategory_id || null,
         },
-      },
+      }),
       {
-        onSuccess: () => {
+        loading: 'Actualizando transacción...',
+        success: () => {
           setCreateModalOpen(false)
           setEditingId(null)
           setForm(emptyForm)
           invalidateTransactions()
+          return 'Transacción actualizada correctamente'
         },
+        error: 'Error al actualizar la transacción',
       }
     )
-  }
-
-  const handleDelete = (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta transacción?')) return
-    deleteMutation.mutate(id, {
-      onSuccess: () => invalidateTransactions(),
-    })
   }
 
   const handlePageChange = (newPage: number) => {
@@ -406,33 +510,6 @@ function TransactionsContent({
   const handleCategoryClick = (transaction: Transaction) => {
     setSelectedTransaction(transaction)
     setCategoryModalOpen(true)
-  }
-
-  const handleBulkDelete = (ids: string[]) => {
-    if (!confirm(`¿Estás seguro de eliminar ${ids.length} transacción(es)?`)) return
-    ids.forEach(id => {
-      deleteMutation.mutate(id, {
-        onSuccess: () => invalidateTransactions(),
-      })
-    })
-  }
-
-  const handleBulkCategoryChange = (ids: string[], categoryId: string, subcategoryId?: string) => {
-    if (!account) return
-    if (!confirm(`¿Cambiar categoría de ${ids.length} transacción(es)?`)) return
-
-    bulkUpdateByIdsMutation.mutate(
-      {
-        account_id: account.id,
-        transaction_ids: ids,
-        subcategory_id: subcategoryId || null,
-      },
-      {
-        onSuccess: () => {
-          invalidateTransactions()
-        },
-      }
-    )
   }
 
   return (
@@ -494,7 +571,7 @@ function TransactionsContent({
         </div>
       </div>
 
-        <div className="p-4 md:p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <TransactionsSummary totals={totals} />
 
         {/* Buscador integrado en la tabla */}
@@ -503,7 +580,7 @@ function TransactionsContent({
           <Input
             type="text"
             placeholder="Buscar por descripción..."
-            value={localSearch}
+            value={localSearch || ''}
             onChange={(e) => setLocalSearch(e.target.value)}
             className="pl-9 h-10 w-full"
           />
@@ -516,54 +593,70 @@ function TransactionsContent({
           totalPages={totalPages}
           onPageChange={handlePageChange}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onDelete={handleDeleteClick}
           onCategoryClick={handleCategoryClick}
-          onBulkDelete={handleBulkDelete}
-          onBulkCategoryChange={handleBulkCategoryChange}
+          onBulkDelete={handleBulkDeleteClick}
+          onBulkCategoryChange={handleBulkCategoryClick}
           categories={categories}
           isLoading={isLoadingTx}
         />
-      </div>
 
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => {
-          setCreateModalOpen(false)
-          setEditingId(null)
-          setForm(emptyForm)
-        }}
-        title={editingId ? 'Editar Transacción' : 'Nueva Transacción'}
-      >
-        <form onSubmit={editingId ? handleUpdate : handleCreate} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tipo</label>
-              <Select
-                options={[
-                  { value: 'expense', label: 'Gasto' },
-                  { value: 'income', label: 'Ingreso' },
-                ]}
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Fecha</label>
-              <DatePickerSimple
-                value={form.date}
-                onChange={(date) => setForm({ ...form, date })}
-              />
-            </div>
-          </div>
+        {/* Confirmation Dialogs */}
+        <ConfirmDeleteDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="¿Eliminar transacción?"
+          itemName="esta transacción"
+          onConfirm={handleConfirmDelete}
+        />
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Importe</label>
-            <div className="relative">
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={form.amount}
+        <ConfirmDeleteDialog
+          open={bulkDeleteDialogOpen}
+          onOpenChange={setBulkDeleteDialogOpen}
+          title={`¿Eliminar ${bulkIds.length} transacciones?`}
+          itemName={`${bulkIds.length} transacciones`}
+          onConfirm={handleConfirmBulkDelete}
+        />
+
+        <Modal
+          isOpen={isCreateModalOpen}
+          onClose={() => {
+            setCreateModalOpen(false)
+            setEditingId(null)
+            setForm(emptyForm)
+          }}
+          title={editingId ? 'Editar Transacción' : 'Nueva Transacción'}
+        >
+          <form onSubmit={editingId ? handleUpdate : handleCreate} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipo</label>
+                <Select
+                  options={[
+                    { value: 'expense', label: 'Gasto' },
+                    { value: 'income', label: 'Ingreso' },
+                  ]}
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fecha</label>
+                <DatePickerSimple
+                  value={form.date}
+                  onChange={(date) => setForm({ ...form, date })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Importe</label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
                 className="pr-8"
                 required
@@ -637,6 +730,7 @@ function TransactionsContent({
           onSuccess={() => invalidateTransactions()}
         />
       )}
+    </div>
     </div>
   )
 }
