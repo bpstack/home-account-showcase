@@ -926,7 +926,6 @@ export default function ImportClient() {
                           onChange={handleFileSelect}
                         />
                         <div className="py-8 sm:py-16 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 dark:border-emerald-500/20 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/[0.02] group-hover:bg-emerald-100/50 dark:group-hover:bg-emerald-500/[0.05] group-hover:border-emerald-400 dark:group-hover:border-emerald-500/40 transition-all duration-300 ease-out text-center overflow-hidden">
-
                           <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-emerald-100 dark:bg-accent/10 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-emerald-200 dark:border-accent/10">
                             {isLoading ? (
                               <Loader2 className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 dark:text-accent animate-spin" />
@@ -1061,15 +1060,14 @@ export default function ImportClient() {
 
                       <div className="md:hidden divide-y divide-layer-2 max-h-[400px] overflow-y-auto">
                         {parseResult.transactions.slice(0, 100).map((tx, i) => (
-                          <div
-                            key={i}
-                            className="p-4 hover:bg-layer-2/30 transition-colors"
-                          >
+                          <div key={i} className="p-4 hover:bg-layer-2/30 transition-colors">
                             <div className="flex items-start justify-between mb-2">
                               <p className="text-sm font-medium text-text-primary flex-1 min-w-0 line-clamp-2 pr-4">
                                 {tx.description}
                               </p>
-                              <span className={`text-sm font-bold shrink-0 tabular-nums ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}>
+                              <span
+                                className={`text-sm font-bold shrink-0 tabular-nums ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}
+                              >
                                 {tx.amount > 0 ? '+' : ''}
                                 {tx.amount.toFixed(2)}€
                               </span>
@@ -1087,8 +1085,10 @@ export default function ImportClient() {
                       {parseResult.transactions.length > 100 && (
                         <div className="p-3 bg-layer-2/50 border-t border-layer-3 text-center">
                           <p className="text-xs text-text-secondary">
-                            Mostrando <span className="font-bold text-accent">100</span> transacciones de ejemplo de las{' '}
-                            <span className="font-bold">{parseResult.transactions.length}</span> que se procesarán
+                            Mostrando <span className="font-bold text-accent">100</span>{' '}
+                            transacciones de ejemplo de las{' '}
+                            <span className="font-bold">{parseResult.transactions.length}</span> que
+                            se procesarán
                           </p>
                         </div>
                       )}
@@ -1364,14 +1364,14 @@ export default function ImportClient() {
                 </div>
 
                 <div className="pt-4 border-t border-slate-200 dark:border-layer-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start gap-2 text-slate-600 dark:text-text-secondary hover:text-slate-900 dark:hover:text-text-primary hover:bg-slate-100 dark:hover:bg-layer-2"
+                  <a
+                    href="/templates/import-template.xlsx"
+                    download
+                    className="flex items-center gap-2 text-slate-600 dark:text-text-secondary hover:text-slate-900 dark:hover:text-text-primary hover:bg-slate-100 dark:hover:bg-layer-2 px-3 py-2 rounded-lg transition-colors w-full"
                   >
                     <HelpCircle className="h-4 w-4" />
-                    Descargar plantilla Excel
-                  </Button>
+                    Descargar ejemplo de plantilla
+                  </a>
                 </div>
               </CardContent>
             </Card>
@@ -1391,10 +1391,13 @@ export default function ImportClient() {
                       Si tu banco tiene un formato extraño, nuestro soporte técnico te ayudará a
                       importarlo.
                     </p>
-                    <button className="text-[10px] font-black text-blue-600 dark:text-accent uppercase tracking-widest hover:underline text-left flex items-center gap-1">
+                    <a
+                      href="mailto:contact.bstack@gmail.com"
+                      className="text-[10px] font-black text-blue-600 dark:text-accent uppercase tracking-widest hover:underline text-left flex items-center gap-1"
+                    >
                       Hablar con soporte
                       <ArrowRight className="h-3 w-3" />
-                    </button>
+                    </a>
                   </div>
                 </div>
               </CardContent>

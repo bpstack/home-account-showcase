@@ -227,6 +227,12 @@ function LoginForm() {
               <div className="grid grid-cols-2 gap-3">
                 <a
                   href={`${API_BASE}/api/auth/google`}
+                  onClick={() => {
+                    // Guardar redirect para recuperarlo después del OAuth
+                    if (redirect) {
+                      sessionStorage.setItem('oauth_redirect', redirect)
+                    }
+                  }}
                   className="flex items-center justify-center gap-2 h-11 border-2 border-border rounded-xl font-medium hover:border-foreground hover:bg-muted/50 transition-all duration-300"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -251,6 +257,12 @@ function LoginForm() {
                 </a>
                 <a
                   href={`${API_BASE}/api/auth/github`}
+                  onClick={() => {
+                    // Guardar redirect para recuperarlo después del OAuth
+                    if (redirect) {
+                      sessionStorage.setItem('oauth_redirect', redirect)
+                    }
+                  }}
                   className="flex items-center justify-center gap-2 h-11 border-2 border-border rounded-xl font-medium hover:border-foreground hover:bg-muted/50 transition-all duration-300"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

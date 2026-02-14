@@ -4,15 +4,17 @@ import TransactionsClient from './TransactionsClient'
 import { getTransactions } from '@/lib/api'
 import { getCategories } from '@/lib/api/categories'
 import { createLocalDate, formatLocalDate } from '@/lib/date-utils'
+import { getValidAccountId } from '@/lib/serverApi'
 
 export default async function TransactionsPage() {
   const cookieStore = await cookies()
-  const accountId = cookieStore.get('selectedAccountId')?.value
   const accessToken = cookieStore.get('accessToken')?.value
 
   if (!accessToken) {
     redirect('/login')
   }
+
+  const accountId = await getValidAccountId()
 
   if (!accountId) {
     return <TransactionsClient />

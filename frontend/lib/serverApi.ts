@@ -65,3 +65,46 @@ export async function getSelectedAccountId(): Promise<string | null> {
   const cookieStore = await cookies()
   return cookieStore.get('selectedAccountId')?.value || null
 }
+
+interface AccountWithRole {
+  id: string
+  name: string
+  role: string
+}
+
+/**
+ * Obtener un accountId válido para el usuario actual.
+ * Valida que el selectedAccountId de la cookie pertenece al usuario,
+ * si no, devuelve la primera cuenta disponible.
+ */
+export async function getValidAccountId(): Promise<string | null> {
+  const cookieStore = await cookies()
+  const selectedAccountId = cookieStore.get('selectedAccountId')?.value
+  const accessToken = cookieStore.get('accessToken')?.value
+
+  if (!accessToken) {
+    return null
+  }
+
+  try {
+    // Obtener cuentas del usuario
+    const { accounts } = await serverFetch<{ accounts: AccountWithRole[] }>('/accounts')
+
+    if (!accounts || accounts.length === 0) {
+      return null
+    }
+
+    // Validar que selectedAccountId pertenece al usuario
+    if (selectedAccountId) {
+      const isValid = accounts.some((acc) => acc.id === selectedAccountId)
+      if (isValid) {
+        return selectedAccountId
+      }
+    }
+
+    // Si no es válido o no existe, usar la primera cuenta
+    return accounts[0].id
+  } catch {
+    return null
+  }
+}
