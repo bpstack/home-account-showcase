@@ -16,6 +16,7 @@ import {
   decryptAccountKey,
   generateKeySalt,
   generateVerificationBlob,
+  encryptAccountKeyForInvitation,
 } from '@/lib/crypto'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -87,10 +88,11 @@ export function SettingsPanel() {
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`px-2 md:px-3 py-2 md:py-3 text-xs md:text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+              className={`px-2 md:px-3 py-2 md:py-3 text-xs md:text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
             >
               {tab.label}
             </button>
@@ -214,10 +216,33 @@ function AccountSettings() {
 
     setIsInviting(true)
     try {
-      const { inviteLink } = await accounts.createInvitation(account.id, inviteEmail.trim())
+      const cryptoStore = useCryptoStore.getState()
+      const accountKey = cryptoStore.getAccountKey(account.id)
+
+      if (!accountKey) {
+        toast.error('Tu cuenta está bloqueada. Desbloquéala para invitar miembros.')
+        setIsInviting(false)
+        return
+      }
+
+      // Paso 1: Crear invitación (sin encrypted key aún)
+      const { invitation, inviteLink } = await accounts.createInvitation(
+        account.id,
+        inviteEmail.trim()
+      )
+
+      // Paso 2: Cifrar AK con el token de la invitación (el token ES el secret)
+      const encryptedKey = await encryptAccountKeyForInvitation(accountKey, invitation.token)
+
+      // Paso 3: Guardar la encrypted key en la invitación
+      await accounts.saveInvitationKey(account.id, invitation.id, encryptedKey)
+
       toast.success('Invitación creada correctamente')
+
+      // El link normal ya incluye todo lo necesario (el token es la clave)
       await navigator.clipboard.writeText(`${window.location.origin}${inviteLink}`)
       toast.info('Enlace copiado al portapapeles')
+
       setInviteEmail('')
       loadInvitations()
     } catch (error: unknown) {
@@ -328,10 +353,13 @@ function AccountSettings() {
           {account?.name?.charAt(0).toUpperCase() || '?'}
         </div>
         <div className="min-w-0">
-          <h3 className="text-lg font-semibold text-foreground truncate">{account?.name || 'Sin cuenta'}</h3>
+          <h3 className="text-lg font-semibold text-foreground truncate">
+            {account?.name || 'Sin cuenta'}
+          </h3>
           <p className="text-sm text-muted-foreground">
             {isOwner ? 'Propietario' : 'Miembro'}
-            {members.length > 0 && ` · ${members.length} ${members.length === 1 ? 'miembro' : 'miembros'}`}
+            {members.length > 0 &&
+              ` · ${members.length} ${members.length === 1 ? 'miembro' : 'miembros'}`}
           </p>
         </div>
       </div>
@@ -396,10 +424,11 @@ function AccountSettings() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${member.role === 'owner'
-                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                        : 'bg-muted text-muted-foreground'
-                        }`}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        member.role === 'owner'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
                     >
                       {member.role === 'owner' ? 'Propietario' : 'Miembro'}
                     </span>
@@ -563,7 +592,9 @@ function AccountSettings() {
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Esta acción es irreversible. Se eliminarán todas las transacciones, categorías, miembros e invitaciones de <strong className="text-foreground">&ldquo;{account?.name}&rdquo;</strong>.
+            Esta acción es irreversible. Se eliminarán todas las transacciones, categorías, miembros
+            e invitaciones de{' '}
+            <strong className="text-foreground">&ldquo;{account?.name}&rdquo;</strong>.
           </p>
 
           <div className="space-y-3">
@@ -598,9 +629,7 @@ function AccountSettings() {
                 autoComplete="off"
                 inputMode="numeric"
               />
-              {deletePinError && (
-                <p className="text-xs text-destructive mt-1">{deletePinError}</p>
-              )}
+              {deletePinError && <p className="text-xs text-destructive mt-1">{deletePinError}</p>}
             </div>
           </div>
         </div>
@@ -630,7 +659,6 @@ function AccountSettings() {
     </div>
   )
 }
-
 
 function BudgetSettings() {
   return (
@@ -763,10 +791,11 @@ function ChangePinSection() {
       <div className="p-4">
         {message && (
           <div
-            className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-              }`}
+            className={`mb-4 p-3 rounded-lg text-sm ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            }`}
           >
             {message.text}
           </div>
@@ -950,10 +979,11 @@ function ChangePasswordSection() {
       <div className="p-4">
         {message && (
           <div
-            className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-              }`}
+            className={`mb-4 p-3 rounded-lg text-sm ${
+              message.type === 'success'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+            }`}
           >
             {message.text}
           </div>

@@ -48,7 +48,7 @@ function getCSRFToken(): string {
 
 function isMutationMethod(method?: string): boolean {
   const m = (method || 'GET').toUpperCase()
-  return m === 'POST' || m === 'PUT' || m === 'DELETE'
+  return m === 'POST' || m === 'PUT' || m === 'DELETE' || m === 'PATCH'
 }
 
 /**
@@ -449,12 +449,11 @@ export const accounts = {
     }),
   // Expulsar miembro (solo owner)
   removeMember: (accountId: string, memberId: string) =>
-    request<{ success: boolean; message: string }>(
-      `/accounts/${accountId}/members/${memberId}`,
-      { method: 'DELETE' }
-    ),
+    request<{ success: boolean; message: string }>(`/accounts/${accountId}/members/${memberId}`, {
+      method: 'DELETE',
+    }),
   // Invitations
-  createInvitation: (accountId: string, email: string) =>
+  createInvitation: (accountId: string, email: string, encryptedKey?: string) =>
     request<{
       invitation: {
         id: string
@@ -466,7 +465,7 @@ export const accounts = {
       inviteLink: string
     }>(`/accounts/${accountId}/invitations`, {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, encryptedKey }),
     }),
   getInvitations: (accountId: string) =>
     request<{
@@ -479,6 +478,11 @@ export const accounts = {
         created_at: string
       }[]
     }>(`/accounts/${accountId}/invitations`),
+  saveInvitationKey: (accountId: string, invitationId: string, encryptedKey: string) =>
+    request<{ success: boolean }>(`/accounts/${accountId}/invitations/${invitationId}/key`, {
+      method: 'PATCH',
+      body: JSON.stringify({ encryptedKey }),
+    }),
   revokeInvitation: (accountId: string, invitationId: string) =>
     request<{ message: string }>(`/accounts/${accountId}/invitations/${invitationId}`, {
       method: 'DELETE',
@@ -499,9 +503,11 @@ export const invitations = {
     request<{
       invitation: {
         status: string
+        account_id: string
         account_name: string
         invited_by_name: string
         expires_at: string
+        encrypted_key: string | null
       }
       isExpired: boolean
     }>(`/invitations/${token}`),
@@ -834,12 +840,12 @@ export interface ParsedTransaction {
 export interface ParseResult {
   success: boolean
   file_type:
-  | 'control_gastos'
-  | 'movimientos_cc'
-  | 'csv_revolut'
-  | 'csv_generic'
-  | 'ai_parsed'
-  | 'unknown'
+    | 'control_gastos'
+    | 'movimientos_cc'
+    | 'csv_revolut'
+    | 'csv_generic'
+    | 'ai_parsed'
+    | 'unknown'
   sheet_name?: string
   available_sheets?: string[]
   transactions: ParsedTransaction[]

@@ -25,7 +25,12 @@ export class InvitationRepository {
   /**
    * Crear invitación
    */
-  static async create({ accountId, invitedBy, email }: CreateInvitationDTO): Promise<Invitation> {
+  static async create({
+    accountId,
+    invitedBy,
+    email,
+    encryptedKey,
+  }: CreateInvitationDTO): Promise<Invitation> {
     const id = crypto.randomUUID()
     const token = generateToken()
     const expiresAt = getExpirationDate()
@@ -39,11 +44,10 @@ export class InvitationRepository {
 
     if (existing.length > 0) {
       const newToken = generateToken()
-      await db.query(`UPDATE invitations SET token = ?, expires_at = ?, created_at = NOW() WHERE id = ?`, [
-        newToken,
-        expiresAt,
-        existing[0].id,
-      ])
+      await db.query(
+        `UPDATE invitations SET token = ?, expires_at = ?, created_at = NOW(), encrypted_key = ? WHERE id = ?`,
+        [newToken, expiresAt, encryptedKey || null, existing[0].id]
+      )
 
       const [updated] = await db.query<InvitationRow[]>(`SELECT * FROM invitations WHERE id = ?`, [
         existing[0].id,
@@ -64,9 +68,9 @@ export class InvitationRepository {
     }
 
     await db.query(
-      `INSERT INTO invitations (id, account_id, invited_by, email, token, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, accountId, invitedBy, email, token, expiresAt]
+      `INSERT INTO invitations (id, account_id, invited_by, email, token, expires_at, encrypted_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, accountId, invitedBy, email, token, expiresAt, encryptedKey || null]
     )
 
     const [rows] = await db.query<InvitationRow[]>(`SELECT * FROM invitations WHERE id = ?`, [id])
@@ -192,6 +196,20 @@ export class InvitationRepository {
     } finally {
       connection.release()
     }
+  }
+
+  /**
+   * Actualizar encrypted_key de una invitación
+   */
+  static async updateEncryptedKey(
+    invitationId: string,
+    accountId: string,
+    encryptedKey: string
+  ): Promise<void> {
+    await db.query(
+      `UPDATE invitations SET encrypted_key = ? WHERE id = ? AND account_id = ? AND status = 'pending'`,
+      [encryptedKey, invitationId, accountId]
+    )
   }
 
   /**

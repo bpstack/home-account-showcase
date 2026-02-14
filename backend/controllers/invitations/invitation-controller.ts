@@ -12,7 +12,7 @@ export class InvitationController {
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
       const { id: accountId } = req.params
-      const { email } = req.body
+      const { email, encryptedKey } = req.body
       const userId = req.user!.id
 
       if (!email) {
@@ -29,6 +29,7 @@ export class InvitationController {
         accountId,
         invitedBy: userId,
         email,
+        encryptedKey,
       })
 
       res.status(201).json({
@@ -87,9 +88,11 @@ export class InvitationController {
       res.json({
         invitation: {
           status: isExpired ? 'expired' : invitation.status,
+          account_id: invitation.account_id,
           account_name: invitation.account_name,
           invited_by_name: invitation.invited_by_name,
           expires_at: invitation.expires_at,
+          encrypted_key: invitation.encrypted_key,
         },
         isExpired,
       })
@@ -115,6 +118,10 @@ export class InvitationController {
       res.json({
         message: 'Invitación aceptada',
         invitation,
+        account: {
+          id: invitation.account_id,
+          name: '',
+        },
       })
     } catch (error: any) {
       if (
@@ -125,6 +132,34 @@ export class InvitationController {
       ) {
         return res.status(400).json({ error: error.message })
       }
+      next(error)
+    }
+  }
+
+  /**
+   * PATCH /accounts/:id/invitations/:invitationId/key
+   * Guardar encrypted_key en una invitación existente (solo owner)
+   */
+  static async updateKey(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id: accountId, invitationId } = req.params
+      const { encryptedKey } = req.body
+      const userId = req.user!.id
+
+      if (!encryptedKey) {
+        return res.status(400).json({ error: 'encryptedKey es requerido' })
+      }
+
+      // Verificar que es owner
+      const role = await AccountRepository.getUserRole(accountId, userId)
+      if (role !== 'owner') {
+        return res.status(403).json({ error: 'Solo el propietario puede actualizar invitaciones' })
+      }
+
+      await InvitationRepository.updateEncryptedKey(invitationId, accountId, encryptedKey)
+
+      res.json({ success: true })
+    } catch (error) {
       next(error)
     }
   }

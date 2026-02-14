@@ -49,6 +49,7 @@ router.post('/:id/keys', cryptoKeyRateLimiter, checkCSRF, saveAccountKey)
 // Invitations (NUEVO)
 router.get('/:id/invitations', InvitationController.list)
 router.post('/:id/invitations', invitationRateLimiter, checkCSRF, InvitationController.create)
+router.patch('/:id/invitations/:invitationId/key', checkCSRF, InvitationController.updateKey)
 router.delete('/:id/invitations/:invitationId', checkCSRF, InvitationController.revoke)
 
 export default router

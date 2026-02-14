@@ -31,6 +31,7 @@ export interface InvitationWithDetails extends Invitation {
   account_name: string
   invited_by_name: string
   invited_by_email: string
+  encrypted_key: string | null // Account Key cifrada para transferir al invitado
 }
 
 export interface InvitationWithDetailsRow extends InvitationWithDetails, RowDataPacket {}
@@ -43,6 +44,7 @@ export interface CreateInvitationDTO {
   accountId: string
   invitedBy: string // userId del owner
   email: string
+  encryptedKey?: string // Account Key cifrada con invitation secret
 }
 
 export interface AcceptInvitationDTO {

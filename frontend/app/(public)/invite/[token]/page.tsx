@@ -13,16 +13,21 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui'
 import Link from 'next/link'
-import { invitations } from '@/lib/apiClient'
+import { invitations, accounts } from '@/lib/apiClient'
 import { useAuth } from '@/hooks/useAuth'
+import { decryptAccountKeyFromInvitation, encryptAccountKey } from '@/lib/crypto'
+import { useCryptoStore } from '@/stores/cryptoStore'
+import { toast } from 'sonner'
 
 type InvitationState = 'loading' | 'valid' | 'expired' | 'not-found' | 'accepted' | 'error'
 
 interface InvitationData {
   status: string
+  account_id: string
   account_name: string
   invited_by_name: string
   expires_at: string
+  encrypted_key: string | null
 }
 
 export default function InvitePage() {
@@ -30,16 +35,18 @@ export default function InvitePage() {
   const router = useRouter()
   const token = params.token as string
 
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [state, setState] = useState<InvitationState>('loading')
   const [invitation, setInvitation] = useState<InvitationData | null>(null)
   const [isAccepting, setIsAccepting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Cargar invitación al montar
+  const isUnlocked = useCryptoStore((s) => s.isUnlocked)
+
+  // Cargar invitación al montar y re-evaluar cuando cambia auth/crypto
   useEffect(() => {
     loadInvitation()
-  }, [token])
+  }, [token, isAuthenticated, isUnlocked])
 
   const loadInvitation = async () => {
     try {
@@ -51,6 +58,14 @@ export default function InvitePage() {
       }
 
       setInvitation(data.invitation)
+
+      // Si la invitación ya fue aceptada, intentar completar la transferencia crypto
+      // (caso: el usuario aceptó pero crypto estaba locked, vuelve después de unlock)
+      if (data.invitation.status === 'accepted') {
+        await tryCompleteCryptoTransfer(data.invitation)
+        return
+      }
+
       setState('valid')
     } catch (err: any) {
       if (err.status === 404) {
@@ -62,14 +77,104 @@ export default function InvitePage() {
     }
   }
 
+  /**
+   * Intenta completar la transferencia de Account Key para una invitación ya aceptada.
+   * Esto cubre el caso donde el accept se hizo pero crypto estaba locked.
+   */
+  const tryCompleteCryptoTransfer = async (inv: InvitationData) => {
+    if (!inv.encrypted_key || !isAuthenticated) {
+      // Sin encrypted_key o sin auth, simplemente redirigir al dashboard
+      setState('accepted')
+      router.push('/dashboard')
+      return
+    }
+
+    const cryptoStore = useCryptoStore.getState()
+
+    if (!cryptoStore.isUnlocked) {
+      // Aún no está unlocked, redirigir a unlock
+      router.push(`/unlock?from=/invite/${token}`)
+      return
+    }
+
+    // Verificar si ya tenemos la key para esta cuenta
+    if (cryptoStore.isAccountUnlocked(inv.account_id)) {
+      setState('accepted')
+      setTimeout(() => router.push('/dashboard'), 500)
+      return
+    }
+
+    try {
+      const userKey = cryptoStore.userKey
+      if (!userKey) throw new Error('UserKey no disponible')
+
+      const accountKey = await decryptAccountKeyFromInvitation(inv.encrypted_key, token)
+      const encryptedForUser = await encryptAccountKey(accountKey, userKey)
+      await accounts.saveAccountKey(inv.account_id, encryptedForUser)
+      await cryptoStore.unlockAccount(inv.account_id, encryptedForUser, 1)
+
+      toast.success('¡Cifrado configurado correctamente!')
+    } catch (err) {
+      toast.error('No se pudo configurar el cifrado. Tendrás acceso limitado.')
+    }
+
+    setState('accepted')
+    setTimeout(() => router.push('/dashboard'), 1000)
+  }
+
   const handleAccept = async () => {
+    if (!invitation) return
+
     setIsAccepting(true)
     setError(null)
 
     try {
-      await invitations.accept(token)
+      // IMPORTANTE: Verificar crypto ANTES de aceptar la invitación
+      // Si aceptamos primero y luego el crypto no está listo, la invitación
+      // queda aceptada pero sin transferir la Account Key
+      if (invitation.encrypted_key) {
+        const cryptoStore = useCryptoStore.getState()
+
+        if (!cryptoStore.isUnlocked) {
+          // Necesita desbloquear crypto primero - NO aceptar aún
+          setIsAccepting(false)
+          router.push(`/unlock?from=/invite/${token}`)
+          return
+        }
+      }
+
+      const acceptResult = await invitations.accept(token)
+
+      // Transferir Account Key si está disponible
+      // El token de la URL es la clave de cifrado
+      // Nota: Ya verificamos isUnlocked arriba, así que cryptoStore está listo
+      if (invitation.encrypted_key) {
+        try {
+          const cryptoStore = useCryptoStore.getState()
+          const userKey = cryptoStore.userKey
+
+          if (!userKey) {
+            throw new Error('UserKey no disponible')
+          }
+
+          // Descifrar AK usando el token de la URL como secret
+          const accountKey = await decryptAccountKeyFromInvitation(invitation.encrypted_key, token)
+
+          // Cifrar AK con la User Key del invitado
+          const encryptedForUser = await encryptAccountKey(accountKey, userKey)
+
+          // Guardar en BD
+          await accounts.saveAccountKey(acceptResult.account.id, encryptedForUser)
+
+          // Registrar en memoria para esta sesión
+          await cryptoStore.unlockAccount(acceptResult.account.id, encryptedForUser, 1)
+        } catch (decryptError) {
+          toast.error('No se pudo configurar el cifrado de la cuenta. Tendrás acceso limitado.')
+        }
+      }
+
       setState('accepted')
-      // Redirigir al dashboard después de 2 segundos
+      toast.success('¡Bienvenido a la cuenta!')
       setTimeout(() => {
         router.push('/dashboard')
       }, 2000)
@@ -104,6 +209,7 @@ export default function InvitePage() {
             onAccept={handleAccept}
             isAccepting={isAccepting}
             error={error}
+            hasEncryptedKey={!!invitation.encrypted_key}
           />
         )}
       </div>
@@ -118,6 +224,7 @@ function ValidInvitation({
   onAccept,
   isAccepting,
   error,
+  hasEncryptedKey,
 }: {
   invitation: InvitationData
   isLoggedIn: boolean
@@ -125,6 +232,7 @@ function ValidInvitation({
   onAccept: () => void
   isAccepting: boolean
   error: string | null
+  hasEncryptedKey: boolean
 }) {
   const expiresAt = new Date(invitation.expires_at)
 
@@ -153,6 +261,16 @@ function ValidInvitation({
             </div>
           </div>
         </div>
+
+        {/* Warning si no hay clave cifrada */}
+        {!hasEncryptedKey && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-center">
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              ⚠️ Esta invitación no incluye cifrado. El propietario debe re-invitarte para acceso
+              completo a los datos.
+            </p>
+          </div>
+        )}
 
         {/* Error */}
         {error && (
