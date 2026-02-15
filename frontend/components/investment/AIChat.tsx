@@ -11,18 +11,8 @@ import { Input } from '@/components/ui/Input'
 import { useAIChat, QUICK_QUESTIONS } from '@/hooks/useAIChat'
 import { investmentApi } from '@/lib/api/investment'
 import { DisclaimerAlert } from './DisclaimerAlert'
-import {
-  Send,
-  MessageCircle,
-  Bot,
-  User,
-  Loader2,
-  Trash2,
-  ChevronDown,
-  History,
-  X,
-} from 'lucide-react'
-import { formatCurrency, formatDistanceToNow, cn } from '@/lib/utils'
+import { Send, MessageCircle, Bot, Loader2, Trash2, ChevronDown, History, X } from 'lucide-react'
+import { formatDistanceToNow, cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 

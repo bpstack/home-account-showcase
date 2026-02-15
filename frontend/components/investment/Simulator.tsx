@@ -27,14 +27,8 @@ interface SimulatorProps {
   riskProfile?: 'conservative' | 'balanced' | 'dynamic'
 }
 
-interface SimulationResult {
-  conservative: number
-  expected: number
-  optimistic: number
-}
-
 export function Simulator({
-  accountId,
+  accountId: _accountId,
   initialAmount = 5000,
   suggestedMonthly = 200,
   riskProfile = 'balanced',
@@ -53,12 +47,6 @@ export function Simulator({
     { value: 'balanced', label: 'Equilibrado', desc: '7-10% anual', color: '#22c55e' },
     { value: 'dynamic', label: 'Dinámico', desc: '10-15% anual', color: '#f59e0b' },
   ]
-
-  const returns = {
-    conservative: { min: 5, max: 7 },
-    balanced: { min: 7, max: 10 },
-    dynamic: { min: 10, max: 15 },
-  }
 
   return (
     <Card className="h-full border-none shadow-none bg-transparent">

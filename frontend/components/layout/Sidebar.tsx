@@ -20,7 +20,7 @@ type SidebarProps = {
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { user } = useAuth()
+  useAuth()
   const panel = searchParams.get('panel')
 
   const renderLink = (item: { name: string; href: string; icon: any }) => {

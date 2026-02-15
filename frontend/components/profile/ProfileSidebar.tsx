@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { users } from '@/lib/apiClient'
-import { Settings, ChevronRight, User, Check, X, AlertCircle } from 'lucide-react'
+import { Settings, ChevronRight, User, Check, AlertCircle } from 'lucide-react'
 
 export function ProfileSidebar() {
   const { user, account } = useAuth()

@@ -37,7 +37,7 @@ interface FilterSelectProps {
   /** Valor seleccionado */
   value?: string
   /** Callback cuando cambia el valor */
-  onChange?: (e: { target: { value: string } }) => void
+  onChange?: (_e: { target: { value: string } }) => void
   /** Clases adicionales */
   className?: string
 }

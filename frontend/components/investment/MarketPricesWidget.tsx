@@ -215,13 +215,13 @@ function MarketRow({
   value,
   change,
   prefix = '',
-  formatter = (v: number) => v.toLocaleString(),
+  formatter = (_v: number) => _v.toLocaleString(),
 }: {
   name: string
   value?: number | null
   change?: number | null
   prefix?: string
-  formatter?: (v: number) => string
+  formatter?: (_v: number) => string
 }) {
   const changeValue = change ?? 0
   const valueNumber = value ?? 0

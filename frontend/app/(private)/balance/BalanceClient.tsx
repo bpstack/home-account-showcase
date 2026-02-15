@@ -1,10 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { transactions as transactionsApi } from '@/lib/apiClient'
-import { useCategories } from '@/lib/queries/categories'
 import { useTransactionStats, useTransactions } from '@/lib/queries/transactions'
 import { useTransactionSummary } from '@/lib/queries/transactions'
 import {
@@ -17,15 +14,7 @@ import {
   PageFilters,
 } from '@/components/ui'
 import { ResponsiveTransactionTable, CategoryChangeModal } from '@/components/transactions'
-import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  PiggyBank,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, ChevronDown, ChevronUp } from 'lucide-react'
 import type { Transaction } from '@/lib/apiClient'
 import { useBalanceStore } from '@/stores/balanceStore'
 import { useFiltersStore } from '@/stores/filtersStore'
@@ -45,8 +34,7 @@ const monthsFull = [
   'Diciembre',
 ]
 
-const currentYearNow = new Date().getFullYear()
-const availableYears = Array.from({ length: currentYearNow - 2020 + 2 }, (_, i) => 2020 + i)
+// const currentYearNow = new Date().getFullYear()
 
 // Tabs definidos fuera del componente para evitar recrearlos en cada render
 const balanceTabs = [
@@ -170,7 +158,6 @@ function BalanceContent({
   initialIncomeByCategory,
 }: BalanceClientProps) {
   const { account } = useAuth()
-  const searchParams = useSearchParams()
 
   // Usar stores de Zustand como fuente de verdad
   const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
@@ -211,9 +198,11 @@ function BalanceContent({
         return `Año ${selectedYear}`
       case 'custom':
         if (!customStartDate || !customEndDate) return 'Período personalizado'
-        const start = new Date(customStartDate)
-        const end = new Date(customEndDate)
-        return `${start.toLocaleDateString('es-ES')} - ${end.toLocaleDateString('es-ES')}`
+        {
+          const start = new Date(customStartDate)
+          const end = new Date(customEndDate)
+          return `${start.toLocaleDateString('es-ES')} - ${end.toLocaleDateString('es-ES')}`
+        }
       default:
         return ''
     }
@@ -226,7 +215,7 @@ function BalanceContent({
 
   const getDateRange = useCallback(() => {
     switch (period) {
-      case 'monthly':
+      case 'monthly': {
         const yearToUse = selectedYear ?? new Date().getFullYear()
         if (selectedMonth === null) {
           return {
@@ -238,13 +227,15 @@ function BalanceContent({
           startDate: formatLocalDate(new Date(yearToUse, selectedMonth, 1)),
           endDate: formatLocalDate(new Date(yearToUse, selectedMonth + 1, 0)),
         }
+      }
 
-      case 'yearly':
+      case 'yearly': {
         const yToUse = selectedYear ?? new Date().getFullYear()
         return {
           startDate: `${yToUse}-01-01`,
           endDate: `${yToUse}-12-31`,
         }
+      }
 
       case 'custom':
         return {
@@ -523,12 +514,12 @@ function BalanceTabContent({
   stats: PeriodStats
   expensesByCategory: { name: string; color: string; amount: number }[]
   incomeByCategory: { name: string; color: string; amount: number }[]
-  formatCurrency: (v: number) => string
+  formatCurrency: (_v: number) => string
   data: PaginatedTransactions
-  setPage: (p: number) => void
+  setPage: (_p: number) => void
   showTransactions: boolean
-  setShowTransactions: (s: boolean) => void
-  onCategoryClick: (tx: Transaction) => void
+  setShowTransactions: (_s: boolean) => void
+  onCategoryClick: (_tx: Transaction) => void
   periodLabel: string
 }) {
   const savingsRate = stats.income > 0 ? ((stats.balance / stats.income) * 100).toFixed(1) : '0'
@@ -742,12 +733,12 @@ function IncomeTabContent({
   periodLabel,
 }: {
   stats: PeriodStats
-  formatCurrency: (v: number) => string
+  formatCurrency: (_v: number) => string
   data: PaginatedTransactions
-  setPage: (p: number) => void
+  setPage: (_p: number) => void
   showTransactions: boolean
-  setShowTransactions: (s: boolean) => void
-  onCategoryClick: (tx: Transaction) => void
+  setShowTransactions: (_s: boolean) => void
+  onCategoryClick: (_tx: Transaction) => void
   periodLabel: string
 }) {
   const incomeTypes = [
@@ -832,12 +823,12 @@ function ExpensesTabContent({
 }: {
   stats: PeriodStats
   expensesByCategory: { name: string; color: string; amount: number }[]
-  formatCurrency: (v: number) => string
+  formatCurrency: (_v: number) => string
   data: PaginatedTransactions
-  setPage: (p: number) => void
+  setPage: (_p: number) => void
   showTransactions: boolean
-  setShowTransactions: (s: boolean) => void
-  onCategoryClick: (tx: Transaction) => void
+  setShowTransactions: (_s: boolean) => void
+  onCategoryClick: (_tx: Transaction) => void
   periodLabel: string
 }) {
   const hasExpenses = stats.expenses > 0
@@ -928,10 +919,10 @@ function TransactionsSection({
   title,
 }: {
   data: PaginatedTransactions
-  setPage: (p: number) => void
+  setPage: (_p: number) => void
   showTransactions: boolean
-  setShowTransactions: (s: boolean) => void
-  onCategoryClick: (tx: Transaction) => void
+  setShowTransactions: (_s: boolean) => void
+  onCategoryClick: (_tx: Transaction) => void
   title: string
 }) {
   return (

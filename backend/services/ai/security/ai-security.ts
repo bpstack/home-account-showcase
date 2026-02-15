@@ -2,8 +2,8 @@
 // Comprehensive AI Security Service
 
 import { detectPromptInjection, sanitizeUserInput, type ThreatAnalysis } from './prompt-guard.js'
-import { validateAIOutput, type OutputValidation } from './output-validator.js'
-import { logSecurityEvent, type SecurityEventType } from './audit-logger.js'
+import { validateAIOutput } from './output-validator.js'
+import { logSecurityEvent } from './audit-logger.js'
 
 export interface SecurityCheckResult {
   allowed: boolean

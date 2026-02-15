@@ -4,22 +4,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useAnalyzeProfile, useInvestmentOverview } from '@/lib/queries/investment'
 import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { cn } from '@/lib/utils'
-import {
-  User,
-  Briefcase,
-  Shield,
-  Clock,
-  TrendingUp,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  RefreshCw,
-} from 'lucide-react'
+import { User, Shield, Clock, ArrowLeft, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react'
 import { InfoTooltip } from '@/components/ui/Tooltip'
 
 interface ProfileFormProps {
@@ -418,7 +408,7 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
 
 function ProfileResult({
   result,
-  accountId,
+  accountId: _accountId,
   onUpdate,
 }: {
   result: any

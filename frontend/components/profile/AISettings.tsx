@@ -183,7 +183,7 @@ export function AISettings() {
             {hasChanges && (
               <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
                 <p className="text-sm text-warning">
-                  Tienes cambios sin guardar. Pulsa "Guardar" para aplicarlos.
+                  Tienes cambios sin guardar. Pulsa &quot;Guardar&quot; para aplicarlos.
                 </p>
               </div>
             )}

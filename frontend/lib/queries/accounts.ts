@@ -2,7 +2,7 @@
 // Account queries and hooks
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { accounts, Account } from '@/lib/apiClient'
+import { accounts } from '@/lib/apiClient'
 import { useAuthStore, AUTH_QUERY_KEYS } from '@/stores/authStore'
 
 export function useAccount() {

@@ -8,14 +8,17 @@ import {
   ExpirationPlugin,
 } from 'serwist'
 
+export {}
+
 declare global {
+  // eslint-disable-next-line no-unused-vars
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined
-    addEventListener(type: string, listener: EventListenerOrEventListenerObject): void
     skipWaiting(): void
   }
 }
 
+// eslint-disable-next-line no-undef
 declare const self: WorkerGlobalScope
 
 const serwist = new Serwist({
@@ -111,12 +114,8 @@ const serwist = new Serwist({
 })
 
 serwist.addEventListeners()
-
 ;(
-  self as unknown as { addEventListener(type: string, listener: (event: Event) => void): void }
-).addEventListener('message', (event: Event) => {
-  const messageEvent = event as MessageEvent
-  if (messageEvent.data && messageEvent.data.type === 'SKIP_WAITING') {
-    self.skipWaiting()
-  }
+  self as unknown as { addEventListener(_type: string, _listener: (_event: Event) => void): void }
+).addEventListener('message', (_event: Event) => {
+  self.skipWaiting()
 })

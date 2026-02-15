@@ -80,7 +80,7 @@ export function sanitizeCSVValue(value: string | null | undefined): string {
   if (!value || typeof value !== 'string') return ''
 
   // First apply XSS sanitization
-  let sanitized = sanitizeForStorage(value)
+  const sanitized = sanitizeForStorage(value)
 
   // Check for dangerous formula prefixes
   const dangerousPrefixes = ['=', '+', '-', '@', '|', '\t', '\r', '\n']

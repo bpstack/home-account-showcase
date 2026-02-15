@@ -1,7 +1,7 @@
 // lib/queries/transactions.ts - React Query hooks for transactions
 // Architecture: React Query manages remote data, encryption is transparent
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   transactions as transactionsApi,
   TransactionParams,
@@ -55,7 +55,7 @@ async function decryptTransaction(
 
 export function useTransactions(params: TransactionParams, options?: UseTransactionsOptions) {
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
-  const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
+  useCryptoStore((s) => s.isAccountUnlocked)
 
   // CRITICAL: Wait for crypto to be ready before fetching
   const isCryptoReady = useCryptoReady(params.account_id)
@@ -151,8 +151,6 @@ export function useTransactionStats(
   endDate: string,
   options?: UseTransactionStatsOptions & { subcategory_id?: string }
 ) {
-  const getAccountKey = useCryptoStore((s) => s.getAccountKey)
-
   // Fetch all transactions for the period (they get decrypted automatically)
   const {
     data: txData,

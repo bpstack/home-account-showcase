@@ -6,11 +6,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useRecommendations, useInvestmentOverview } from '@/lib/queries/investment'
-import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { DisclaimerAlert } from './DisclaimerAlert'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { TrendingUp, TrendingDown, PiggyBank, ArrowRight, Wallet, Coins, Info } from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { TrendingUp, PiggyBank, Wallet, Coins, Info } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { InfoTooltip } from '@/components/ui/Tooltip'
 import { useEffect } from 'react'
@@ -26,7 +25,7 @@ interface RecommendationsProps {
 export function Recommendations({
   accountId,
   profile,
-  monthlyAmount,
+  monthlyAmount: _monthlyAmount,
   selectedMonthSavings,
 }: RecommendationsProps) {
   const router = useRouter()
@@ -35,7 +34,6 @@ export function Recommendations({
     profile ? { profile } : undefined
   )
   const { data: overviewData } = useInvestmentOverview(accountId, { refetchOnMount: false })
-  const { metrics: financialSummary } = useFinancialMetrics(accountId)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
 
   const investmentPercentage = overviewData?.profile?.investmentPercentage || 20

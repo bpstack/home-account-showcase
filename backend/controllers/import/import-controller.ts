@@ -7,7 +7,6 @@ import {
   type ParsedTransaction,
 } from '../../services/import/excel-parser.js'
 import { CategoryRepository } from '../../repositories/categories/category-repository.js'
-import { SubcategoryRepository } from '../../repositories/subcategories/subcategory-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
 import db from '../../config/db.js'
 

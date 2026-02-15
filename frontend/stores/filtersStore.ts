@@ -30,10 +30,10 @@ interface FiltersState {
   selectedCategory: string
   selectedType: 'all' | 'income' | 'expense'
 
-  setYear: (year: number | null) => void
-  setMonth: (month: number | null) => void
-  setCategory: (category: string) => void
-  setType: (type: 'all' | 'income' | 'expense') => void
+  setYear: (_year: number | null) => void
+  setMonth: (_month: number | null) => void
+  setCategory: (_category: string) => void
+  setType: (_type: 'all' | 'income' | 'expense') => void
   reset: () => void
 }
 

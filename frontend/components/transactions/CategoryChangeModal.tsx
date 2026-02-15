@@ -23,7 +23,7 @@ export function CategoryChangeModal({
   const [saveMapping, setSaveMapping] = useState(false)
 
   const { data: categoriesData } = useCategories(accountId)
-  const categories = categoriesData?.categories || []
+  const categories = useMemo(() => categoriesData?.categories || [], [categoriesData])
 
   // Client-side: find all transactions with matching description (decrypted)
   const matchingTransactionIds = useMemo(() => {

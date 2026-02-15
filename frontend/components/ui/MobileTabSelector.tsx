@@ -15,7 +15,7 @@ export interface Tab {
 interface MobileTabSelectorProps {
   tabs: Tab[]
   activeTabId: string
-  onTabChange: (tabId: string) => void
+  onTabChange: (_tabId: string) => void
   className?: string
   /** Mostrar solo en mobile (hidden en desktop por defecto) */
   mobileOnly?: boolean

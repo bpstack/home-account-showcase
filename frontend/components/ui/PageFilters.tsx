@@ -8,23 +8,23 @@ interface PageFiltersProps {
   // Period filters (Month/Year/etc) - Used in Balance/Dashboard if needed
   showPeriodFilters?: boolean
   period?: 'month' | 'year' | 'all' | 'custom'
-  onPeriodChange?: (period: 'month' | 'year' | 'all' | 'custom') => void
+  onPeriodChange?: (_period: 'month' | 'year' | 'all' | 'custom') => void
 
   // Year navigation/select
   showYearSelect?: boolean
   year?: number | null
-  onYearChange?: (year: number | null) => void
+  onYearChange?: (_year: number | null) => void
 
   // Date range
   showDatePicker?: boolean
   startDate?: string
   endDate?: string
-  onDatesChange?: (start: string, end: string) => void
+  onDatesChange?: (_start: string, _end: string) => void
 
   // Month select
   showMonthSelect?: boolean
   selectedMonth?: number | null
-  onMonthChange?: (month: number | null) => void
+  onMonthChange?: (_month: number | null) => void
 
   // Clear filters action
   showClear?: boolean

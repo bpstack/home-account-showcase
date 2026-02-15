@@ -4,14 +4,12 @@
 
 import { promisify } from 'util'
 import { pipeline } from 'stream'
-import { createReadStream } from 'fs'
-import { createInterface } from 'readline'
 import xlsx from 'xlsx'
 import type { Request, Response, NextFunction } from 'express'
 import { AppError } from '../../utils/app-error.js'
 import { logger } from '../../utils/logger.js'
 
-const pipelineAsync = promisify(pipeline)
+const _pipelineAsync = promisify(pipeline)
 
 /**
  * Validate file content to prevent malicious uploads

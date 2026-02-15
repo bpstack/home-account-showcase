@@ -5,7 +5,10 @@
 const isClient = typeof window !== 'undefined'
 const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
 
-async function investmentRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function investmentRequest<T>(
+  endpoint: string,
+  options?: globalThis.RequestInit
+): Promise<T> {
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     credentials: 'include',

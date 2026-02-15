@@ -36,7 +36,7 @@ export class InvestmentRepository {
   }
 
   static async createProfile(data: CreateInvestmentProfileDTO): Promise<InvestmentProfile> {
-    const [result] = await db.query(
+    const [_result] = await db.query(
       `INSERT INTO investment_profiles
        (account_id, risk_profile, investment_percentage, horizon_years, has_emergency_fund, experience_level)
        VALUES (?, ?, ?, ?, ?, ?)`,

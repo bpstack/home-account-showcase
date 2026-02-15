@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import DashboardClient, { type DashboardInitialData } from './DashboardClient'
+import DashboardClient from './DashboardClient'
 type Period = 'month' | 'year' | 'all'
 
 interface DashboardPageProps {
@@ -14,7 +14,7 @@ interface DashboardPageProps {
   }>
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage({ searchParams: _searchParams }: DashboardPageProps) {
   const cookieStore = await cookies()
   const accessToken = cookieStore.get('accessToken')?.value
 

@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { auth, accounts, ApiError } from '@/lib/apiClient'

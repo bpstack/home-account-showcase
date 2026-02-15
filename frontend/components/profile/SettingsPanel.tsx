@@ -121,7 +121,7 @@ export function SettingsPanel() {
 // ─── Unified Account Settings ─────────────────────────────────────────────────
 
 function AccountSettings() {
-  const { account, accounts: allAccounts, user, switchAccount } = useAuth()
+  const { account, accounts: allAccounts, switchAccount } = useAuth()
   const queryClient = useQueryClient()
 
   // Members state
@@ -130,7 +130,7 @@ function AccountSettings() {
 
   // Invitations state
   const [invitations, setInvitations] = useState<Invitation[]>([])
-  const [isLoadingInvitations, setIsLoadingInvitations] = useState(false)
+  const [_isLoadingInvitations, setIsLoadingInvitations] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [isInviting, setIsInviting] = useState(false)
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
@@ -139,7 +139,7 @@ function AccountSettings() {
   const [isRenaming, setIsRenaming] = useState(false)
 
   // Remove member state
-  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
+  const [_removingMemberId, _setRemovingMemberId] = useState<string | null>(null)
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null)
   const [isRemovingMember, setIsRemovingMember] = useState(false)
 

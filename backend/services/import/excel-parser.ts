@@ -1,6 +1,5 @@
 import XLSX from 'xlsx'
 import { sanitizeCSVValue } from '../../utils/sanitize.js'
-import { logger } from '../../utils/logger.js'
 
 export interface ParsedTransaction {
   date: string
@@ -28,7 +27,7 @@ export interface ParseResult {
 }
 
 // Required fields for a valid transaction
-const REQUIRED_FIELDS = ['date', 'description', 'amount'] as const
+const _REQUIRED_FIELDS = ['date', 'description', 'amount'] as const
 
 function excelDateToISO(serial: number): string {
   const utcDays = Math.floor(serial - 25569)
@@ -478,14 +477,14 @@ function parseDateToISO(dateStr: string): string | null {
   }
 
   // DD/MM/YYYY or DD-MM-YYYY
-  const euMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  const euMatch = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
   if (euMatch) {
     const [, day, month, year] = euMatch
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
   }
 
   // MM/DD/YYYY (US format)
-  const usMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  const usMatch = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
   if (usMatch) {
     // Assume EU format by default for Spanish banks
     const [, day, month, year] = usMatch
@@ -502,15 +501,15 @@ function parseAmount(value: string): number | null {
   let cleaned = value.replace(/[€$£\s]/g, '').trim()
 
   // Handle European format: 1.234,56 -> 1234.56
-  if (/^\-?\d{1,3}(\.\d{3})*,\d{2}$/.test(cleaned)) {
+  if (/^-?\d{1,3}(\.\d{3})*,\d{2}$/.test(cleaned)) {
     cleaned = cleaned.replace(/\./g, '').replace(',', '.')
   }
   // Handle format with comma as thousands: 1,234.56
-  else if (/^\-?\d{1,3}(,\d{3})*\.\d{2}$/.test(cleaned)) {
+  else if (/^-?\d{1,3}(,\d{3})*\.\d{2}$/.test(cleaned)) {
     cleaned = cleaned.replace(/,/g, '')
   }
   // Simple comma decimal: 123,45 -> 123.45
-  else if (/^\-?\d+,\d{2}$/.test(cleaned)) {
+  else if (/^-?\d+,\d{2}$/.test(cleaned)) {
     cleaned = cleaned.replace(',', '.')
   }
 

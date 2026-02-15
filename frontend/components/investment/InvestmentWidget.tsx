@@ -5,8 +5,7 @@
 
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
+import { InfoTooltip } from '@/components/ui/Tooltip'
 import { useInvestmentOverview } from '@/lib/queries/investment'
 import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { TrendingUp, ArrowRight, Sparkles, PiggyBank, Wallet, Target } from 'lucide-react'
@@ -22,8 +21,12 @@ interface InvestmentWidgetProps {
   }
 }
 
-export function InvestmentWidget({ accountId, compact = false, stats }: InvestmentWidgetProps) {
-  const { data, isLoading, isError } = useInvestmentOverview(accountId)
+export function InvestmentWidget({
+  accountId,
+  compact = false,
+  stats: _stats,
+}: InvestmentWidgetProps) {
+  const { data, isLoading } = useInvestmentOverview(accountId)
 
   // Fetch transactions for local calculation are now handled inside the hook
   const { metrics: financialSummary, isLoading: isMetricsLoading } = useFinancialMetrics(accountId)

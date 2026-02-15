@@ -383,7 +383,7 @@ export function ProfileDropdown() {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             ¿Estás seguro de que quieres abandonar la cuenta{' '}
-            <span className="font-medium text-foreground">"{account?.name}"</span>?
+            <span className="font-medium text-foreground">&quot;{account?.name}&quot;</span>?
           </p>
           <p className="text-sm text-muted-foreground">
             Ya no tendrás acceso a esta cuenta y sus datos.

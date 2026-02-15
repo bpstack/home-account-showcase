@@ -11,11 +11,11 @@ interface TransactionsState {
   customStartDate: string
   customEndDate: string
 
-  setPage: (page: number) => void
-  setCreateModalOpen: (open: boolean) => void
-  setCategoryModalOpen: (open: boolean) => void
-  setPeriod: (period: 'monthly' | 'yearly' | 'custom') => void
-  setCustomDates: (startDate: string, endDate: string) => void
+  setPage: (_page: number) => void
+  setCreateModalOpen: (_open: boolean) => void
+  setCategoryModalOpen: (_open: boolean) => void
+  setPeriod: (_period: 'monthly' | 'yearly' | 'custom') => void
+  setCustomDates: (_startDate: string, _endDate: string) => void
   reset: () => void
 }
 

@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser'
 import dotenv from 'dotenv'
 import passport from 'passport'
 import { configureOAuth } from './config/oauth.js'
-import db from './config/db.js'
+import _db from './config/db.js'
 import { PORT } from './config/config.js'
 import authRoutes from './routes/auth/auth-routes.js'
 import oauthRoutes from './routes/auth/oauth-routes.js'
@@ -100,7 +100,7 @@ app.get('/api/health', (req, res) => {
 })
 
 // Global error handler
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('SERVER', 'errorHandler', 'Unhandled error', err)
 
   if (err instanceof AppError) {

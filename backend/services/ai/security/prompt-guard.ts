@@ -128,7 +128,7 @@ export function detectPromptInjection(input: string): ThreatAnalysis {
   let score = 0
 
   // Normalize input for analysis
-  const normalized = input.toLowerCase().replace(/\s+/g, ' ').trim()
+  input.toLowerCase().replace(/\s+/g, ' ').trim()
 
   // Check critical patterns (score: 100 each)
   for (const pattern of CRITICAL_PATTERNS) {
@@ -187,7 +187,7 @@ function checkHeuristics(input: string, patterns: string[]): number {
   let score = 0
 
   // Excessive special characters
-  const specialCharRatio = (input.match(/[{}\[\]<>|\\`]/g) || []).length / input.length
+  const specialCharRatio = (input.match(/[{}[\]<>|\\`]/g) || []).length / input.length
   if (specialCharRatio > 0.1) {
     patterns.push('heuristic:excessive_special_chars')
     score += 15
@@ -247,6 +247,7 @@ export function sanitizeUserInput(input: string): string {
   sanitized = sanitized.normalize('NFKC')
 
   // Remove control characters (except newlines and tabs)
+  // eslint-disable-next-line no-control-regex
   sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
 
   // Escape potential template literals

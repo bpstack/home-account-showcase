@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatLocalDate } from '@/lib/date-utils'
 
 interface DatePickerSimpleProps {
   value?: string
-  onChange?: (date: string) => void
+  onChange?: (_date: string) => void
   className?: string
   placeholder?: string
 }
@@ -42,7 +42,7 @@ export function DatePickerSimple({
   )
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const today = new Date()
+  const today = useMemo(() => new Date(), [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -72,7 +72,7 @@ export function DatePickerSimple({
 
   const formatDisplayDate = useCallback((dateStr: string) => {
     if (!dateStr) return ''
-    const [year, month, day] = dateStr.split('-')
+    const [, month, day] = dateStr.split('-')
     return `${parseInt(day)} de ${months[parseInt(month) - 1]}`
   }, [])
 

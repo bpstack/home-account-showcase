@@ -1,9 +1,8 @@
 'use client'
 
 import { Card, CardHeader, CardTitle, CardContent, Tabs, PageFilters } from '@/components/ui'
-import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
 import { useAuth } from '@/hooks/useAuth'
-import { transactions, CategorySummary } from '@/lib/apiClient'
+import { CategorySummary } from '@/lib/apiClient'
 import {
   useTransactionStats,
   useTransactionSummary,
@@ -24,7 +23,6 @@ import {
   Calendar,
   BarChart3,
   Loader2,
-  PiggyBank,
   TrendingUpIcon,
   Sparkles,
   LayoutDashboard,
@@ -47,7 +45,7 @@ import { useDashboardStore } from '@/stores/dashboardStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 import { MONTHS_ES } from '@/lib/constants'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useState, useMemo, Suspense } from 'react'
 
 // Initial data types from RSC
 export interface DashboardInitialData {
@@ -133,7 +131,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     customStartDate,
     customEndDate,
     setCustomDates,
-    reset: resetDashboard,
   } = useDashboardStore()
 
   const { setCreateModalOpen } = useTransactionsStore()
@@ -252,8 +249,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const stats: Stats = statsData?.stats || { income: 0, expenses: 0, balance: 0 }
 
   const isLoading = isLoadingStats && !initialData.stats
-
-  const dateRangeLabel = null // No more direct short range from URL
 
   return (
     <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
@@ -380,7 +375,7 @@ function OverviewTab({
 
   const getPreviousDateRange = () => {
     switch (period) {
-      case 'month':
+      case 'month': {
         const monthNum = selectedMonth ?? currentMonth
         const yearNum = selectedYear ?? currentYear
         const prevMonth = monthNum === 0 ? 11 : monthNum - 1
@@ -390,12 +385,14 @@ function OverviewTab({
           startDate: new Date(prevYear, prevMonth, 1).toISOString().split('T')[0],
           endDate: new Date(prevYear, prevMonth + 1, 0).toISOString().split('T')[0],
         }
-      case 'year':
+      }
+      case 'year': {
         const yNum = selectedYear ?? currentYear
         return {
           startDate: `${yNum - 1}-01-01`,
           endDate: `${yNum - 1}-12-31`,
         }
+      }
 
       case 'all':
         return {
@@ -413,8 +410,6 @@ function OverviewTab({
   const { data: prevStatsData } = useTransactionStats(account?.id || '', prevStart, prevEnd)
 
   const prevStats = prevStatsData?.stats || { income: 0, expenses: 0, balance: 0 }
-
-  const formatCurrency = (value: number) => `${value.toFixed(2)} €`
 
   const formatPeriodLabel = () => {
     const now = new Date()

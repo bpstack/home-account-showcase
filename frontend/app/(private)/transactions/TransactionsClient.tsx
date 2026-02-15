@@ -289,7 +289,7 @@ function TransactionsContent({
     enabled: !!account?.id,
   })
 
-  const categories: any[] = categoriesData?.categories || []
+  const categories: any[] = useMemo(() => categoriesData?.categories || [], [categoriesData])
 
   const categoryOptions = useMemo(() => {
     const options: any[] = [{ value: '', label: 'Todas las categorías' }]
@@ -311,9 +311,11 @@ function TransactionsContent({
 
     return options
   }, [categories])
+
   useEffect(() => {
     setPage(1)
   }, [
+    setPage,
     selectedMonth,
     selectedYear,
     selectedCategory,
@@ -334,8 +336,6 @@ function TransactionsContent({
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
   const [bulkIds, setBulkIds] = useState<string[]>([])
-  const [categoryChangeIds, setCategoryChangeIds] = useState<string[]>([])
-  // NOTE: categoryChangeIds is now unused but kept for potential future bulk modal
 
   useEffect(() => {
     if (form.category_id) {

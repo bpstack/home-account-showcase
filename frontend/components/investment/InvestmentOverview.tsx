@@ -32,7 +32,7 @@ interface InvestmentOverviewProps {
   accountId: string
   filterMonth: number
   filterYear: number
-  onFilterChange: (month: number, year: number) => void
+  onFilterChange: (_month: number, _year: number) => void
 }
 
 const MONTHS_OPTIONS = [

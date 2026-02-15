@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 export interface SliderProps {
   value: number[]
-  onValueChange: (value: number[]) => void
+  onValueChange: (_value: number[]) => void
   min?: number
   max?: number
   step?: number

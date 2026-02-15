@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { auth, accounts, Account, ApiError } from '@/lib/apiClient'
 
 export interface User {
   id: string
@@ -15,15 +14,15 @@ interface AuthState {
   authError: string | null
   selectedAccountId: string | null
 
-  setLoggingIn: (value: boolean) => void
-  setRegistering: (value: boolean) => void
-  setLoggingOut: (value: boolean) => void
-  setAuthError: (error: string | null) => void
+  setLoggingIn: (_value: boolean) => void
+  setRegistering: (_value: boolean) => void
+  setLoggingOut: (_value: boolean) => void
+  setAuthError: (_error: string | null) => void
   clearError: () => void
-  setSelectedAccountId: (accountId: string | null) => void
+  setSelectedAccountId: (_accountId: string | null) => void
 
   isSwitchingAccount: boolean
-  setSwitchingAccount: (value: boolean) => void
+  setSwitchingAccount: (_value: boolean) => void
 }
 
 const LAST_ACCOUNT_KEY = 'last_account_id'

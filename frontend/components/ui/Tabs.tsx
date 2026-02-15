@@ -21,7 +21,7 @@ interface TabsProps {
   /** Tab por defecto si no hay activeTab ni URL param */
   defaultTab?: string
   /** Callback para control directo. Si se proporciona, no se usa URL */
-  onChange?: (tabId: string) => void
+  onChange?: (_tabId: string) => void
   /** Contenido adicional a mostrar a la derecha (ej: filtros) */
   rightContent?: ReactNode
 }
@@ -46,8 +46,6 @@ export function Tabs({
     (!onChange ? searchParams.get(paramName) : null) ??
     defaultTab ??
     tabs[0]?.id
-
-  const activeTabConfig = tabs.find((tab) => tab.id === activeTab) || tabs[0]
 
   const handleTabChange = useCallback(
     (tabId: string) => {

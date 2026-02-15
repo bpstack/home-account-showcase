@@ -12,9 +12,9 @@ interface DashboardState {
   customStartDate: string
   customEndDate: string
 
-  setActiveTab: (tab: DashboardTab) => void
-  setPeriod: (period: DashboardPeriod) => void
-  setCustomDates: (startDate: string, endDate: string) => void
+  setActiveTab: (_tab: DashboardTab) => void
+  setPeriod: (_period: DashboardPeriod) => void
+  setCustomDates: (_startDate: string, _endDate: string) => void
   reset: () => void
 }
 

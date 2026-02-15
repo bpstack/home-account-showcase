@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
@@ -9,13 +9,10 @@ import { useImportTransactions } from '@/lib/queries/useImportTransactions'
 import { useCreateTransaction } from '@/lib/queries/transactions'
 import {
   importApi,
-  transactions,
   ai,
   type ParseResult,
   type CategoryMapping,
   type CreateTransactionData,
-  type Category,
-  type Subcategory,
 } from '@/lib/apiClient'
 
 import {
@@ -344,17 +341,14 @@ export default function ImportClient() {
     skipped: number
     errors: string[]
   } | null>(null)
-  const [aiActivityLog, setAiActivityLog] = useState<string[]>([])
   const [aiAssistantEnabled] = useState(true)
-  const [aiUsedInBackground, setAiUsedInBackground] = useState(false)
-  const [selectedSheet, setSelectedSheet] = useState<string>('')
   const savedMappingsLoaded = useRef(false)
 
   const { data: catData } = useCategories(account?.id || '', {
     enabled: !!account?.id,
   })
 
-  const categories = catData?.categories || []
+  const categories = useMemo(() => catData?.categories || [], [catData])
 
   const categoryOptions = useMemo(
     () => [
@@ -427,6 +421,7 @@ export default function ImportClient() {
       .replace(/[\u0300-\u036f]/g, '')
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const findBestMatch = (
     fileCat: { category: string; subcategory: string },
     categoryList: any[]
@@ -451,25 +446,28 @@ export default function ImportClient() {
     return null
   }
 
-  const initializeMappings = (fileCategories: { category: string; subcategory: string }[]) => {
-    const initialMappings: MappingState = {}
-    const savedMappingsMap = new Map<string, string>()
-    savedMappings.forEach((m) =>
-      savedMappingsMap.set(`${m.bank_category}|${m.bank_subcategory}`, m.subcategory_id)
-    )
+  const initializeMappings = useCallback(
+    (fileCategories: { category: string; subcategory: string }[]) => {
+      const initialMappings: MappingState = {}
+      const savedMappingsMap = new Map<string, string>()
+      savedMappings.forEach((m) =>
+        savedMappingsMap.set(`${m.bank_category}|${m.bank_subcategory}`, m.subcategory_id)
+      )
 
-    fileCategories.forEach((fileCat) => {
-      const key = `${fileCat.category}|${fileCat.subcategory}`
-      initialMappings[key] = savedMappingsMap.get(key) || findBestMatch(fileCat, categories)
-    })
-    setMappings(initialMappings)
-  }
+      fileCategories.forEach((fileCat) => {
+        const key = `${fileCat.category}|${fileCat.subcategory}`
+        initialMappings[key] = savedMappingsMap.get(key) || findBestMatch(fileCat, categories)
+      })
+      setMappings(initialMappings)
+    },
+    [savedMappings, categories, findBestMatch]
+  )
 
   useEffect(() => {
     if (parseResult?.categories && categories.length > 0) {
       initializeMappings(parseResult.categories)
     }
-  }, [categories, savedMappings, parseResult?.categories])
+  }, [categories, savedMappings, parseResult?.categories, initializeMappings])
 
   const readFileAsText = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -522,21 +520,6 @@ export default function ImportClient() {
     }
   }
 
-  const categorizeWithAI = async (
-    txs: Array<{ description: string; date?: string; amount?: number }>
-  ): Promise<Array<{ category: string; subcategory: string }>> => {
-    try {
-      const result = await ai.categorize(txs)
-      if (result.success && result.categories) {
-        return result.categories
-      }
-      return []
-    } catch (err) {
-      console.error('AI categorize error:', err)
-      return []
-    }
-  }
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
@@ -550,8 +533,6 @@ export default function ImportClient() {
     setFile(selectedFile)
     setIsLoading(true)
     setError(null)
-    setAiUsedInBackground(false)
-    setAiActivityLog([])
 
     try {
       const result = await importApi.parse(selectedFile)
@@ -564,7 +545,6 @@ export default function ImportClient() {
             setParseResult(aiResult)
             initializeMappings(aiResult.categories)
             setStep('preview')
-            setAiUsedInBackground(true)
             setIsLoading(false)
             return
           }
@@ -578,27 +558,16 @@ export default function ImportClient() {
       setParseResult(data)
 
       if (data.transactions.length > 0) {
-        let currentMappings: MappingState = {}
         // En una implementación real, inicializaríamos mappings aquí
         // Pero initializeMappings ya se llama en un useEffect
 
         if (aiAssistantEnabled) {
-          const logs: string[] = []
-          const descriptionMappings: MappingState = {}
-
           // Loop para categorización AI si faltan mappings
           for (let i = 0; i < Math.min(data.transactions.length, 50); i++) {
             const tx = data.transactions[i]
-            const hasBankCategory = tx.bank_category && tx.bank_category.trim() !== ''
-            const bankKey = `${tx.bank_category}|${tx.bank_subcategory}`
-            const descKey = `desc:${normalizeText(tx.description).substring(0, 50)}`
-
             // Lógica simplificada de restauración para el ejemplo
             // En producción restauraríamos el loop de SYNONYMS completo
-          }
-          if (logs.length > 0) {
-            setAiActivityLog(logs)
-            setAiUsedInBackground(true)
+            void tx
           }
         }
         setStep('preview')
@@ -886,8 +855,6 @@ export default function ImportClient() {
                                 setParseResult(null)
                                 setMappings({})
                                 setError(null)
-                                setAiActivityLog([])
-                                setAiUsedInBackground(false)
                               }}
                               className="shrink-0 h-9 w-9 p-0"
                             >
@@ -905,8 +872,6 @@ export default function ImportClient() {
                                 setParseResult(null)
                                 setMappings({})
                                 setError(null)
-                                setAiActivityLog([])
-                                setAiUsedInBackground(false)
                               }}
                               className="w-full h-10 font-medium"
                             >
@@ -984,8 +949,6 @@ export default function ImportClient() {
                                 setStep('upload')
                                 setParseResult(null)
                                 setMappings({})
-                                setAiActivityLog([])
-                                setAiUsedInBackground(false)
                               }}
                               className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors flex items-center justify-center shrink-0"
                             >
@@ -1214,9 +1177,7 @@ export default function ImportClient() {
                           setFile(null)
                           setParseResult(null)
                           setMappings({})
-                          setImportResult(null)
-                          setAiActivityLog([])
-                          setAiUsedInBackground(false)
+                          setError(null)
                         }}
                         className="absolute top-2 right-2 md:hidden p-2 rounded-lg bg-white/10 text-text-secondary hover:bg-white/20 transition-colors"
                       >
@@ -1283,8 +1244,6 @@ export default function ImportClient() {
                             setParseResult(null)
                             setMappings({})
                             setImportResult(null)
-                            setAiActivityLog([])
-                            setAiUsedInBackground(false)
                           }}
                           variant="outline"
                           className="h-11 w-full text-sm font-medium"

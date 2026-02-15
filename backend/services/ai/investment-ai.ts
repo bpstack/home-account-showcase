@@ -3,20 +3,12 @@
 
 import { AIClient, createAIClient } from './ai-client.js'
 import type { AIProviderType } from './types.js'
-import {
-  buildProfileAssessmentPrompt,
-  parseProfileAssessmentResponse,
-  ProfileAnswers,
-} from './prompts/profile-prompt.js'
-import {
-  buildRecommendationPrompt,
-  parseRecommendationResponse,
-} from './prompts/recommendation-prompt.js'
-import { buildChatPrompt, parseChatResponse, buildSystemMessage } from './prompts/chat-prompt.js'
-import { buildEducationPrompt, parseEducationResponse } from './prompts/education-prompt.js'
+import { buildProfileAssessmentPrompt, ProfileAnswers } from './prompts/profile-prompt.js'
+import { buildRecommendationPrompt } from './prompts/recommendation-prompt.js'
+import { buildChatPrompt, buildSystemMessage } from './prompts/chat-prompt.js'
+import { buildEducationPrompt } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
-  MarketDataContext,
   ChatContext,
   ProfileAssessmentResult,
   RecommendationResult,
@@ -117,8 +109,8 @@ export class InvestmentAI {
     message: string,
     context: ChatContext,
     chatHistory: ChatMessage[],
-    accountId: string,
-    userId: string
+    _accountId: string,
+    _userId: string
   ): Promise<ChatResult> {
     const startTime = Date.now()
 
@@ -253,7 +245,7 @@ export class InvestmentAI {
     userId: string,
     type: 'profile_assessment' | 'recommendation' | 'simulation' | 'education',
     responseTime: number,
-    response: any
+    _response: any
   ): Promise<void> {
     try {
       await InvestmentRepository.createSession({

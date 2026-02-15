@@ -6,11 +6,7 @@ import { getActiveProvider } from '../../services/ai/ai-client.js'
 import { getMarketData, getMarketDataFull } from '../../services/market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
-import type {
-  ProfileAnswers,
-  InvestmentContext,
-  ChatMessage,
-} from '../../services/ai/prompts/types.js'
+import type { ProfileAnswers, InvestmentContext } from '../../services/ai/prompts/types.js'
 import {
   ProfileAnswersSchema,
   UpdateEmergencyFundMonthsSchema,
@@ -60,7 +56,7 @@ export const getOverview = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('No tienes acceso a esta cuenta', 403)
   }
 
-  const financialContext = await getAccountFinancialContext(accountId, userId)
+  const _financialContext = await getAccountFinancialContext(accountId, userId)
 
   const investmentProfile = await InvestmentRepository.getProfileByAccountId(accountId)
 
@@ -163,7 +159,7 @@ export const updateLiquidityReserve = asyncHandler(async (req: Request, res: Res
 export const analyzeProfile = asyncHandler(async (req: Request, res: Response) => {
   const { accountId } = req.params
   const userId = (req as any).user?.id
-  let answers = req.body as ProfileAnswers
+  const answers = req.body as ProfileAnswers
 
   const decodeHtmlEntities = (str: string) =>
     str.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
@@ -264,7 +260,7 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
 export const getRecommendations = asyncHandler(async (req: Request, res: Response) => {
   const { accountId } = req.params
   const userId = (req as any).user?.id
-  const { profile, monthlyAmount, includeExplanation } = req.body
+  const { profile, monthlyAmount, includeExplanation: _includeExplanation } = req.body
 
   if (!userId) {
     throw new AppError('No autorizado', 401)

@@ -40,12 +40,12 @@ export interface ResponsiveTransactionTableProps {
   total: number
   page: number
   totalPages: number
-  onPageChange: (page: number) => void
-  onCategoryClick?: (transaction: Transaction) => void
-  onEdit?: (transaction: Transaction) => void
-  onDelete?: (id: string) => void
-  onBulkDelete?: (ids: string[]) => void
-  onBulkCategoryChange?: (ids: string[], categoryId: string, subcategoryId?: string) => void
+  onPageChange: (_page: number) => void
+  onCategoryClick?: (_transaction: Transaction) => void
+  onEdit?: (_transaction: Transaction) => void
+  onDelete?: (_id: string) => void
+  onBulkDelete?: (_ids: string[]) => void
+  onBulkCategoryChange?: (_ids: string[], _categoryId: string, _subcategoryId?: string) => void
   categories?: any[]
   isLoading?: boolean
   showSubcategory?: boolean
@@ -72,21 +72,12 @@ export function ResponsiveTransactionTable({
   const [bulkCategoryId, setBulkCategoryId] = useState('')
   const [bulkSubcategoryId, setBulkSubcategoryId] = useState('')
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
-  }
-
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     const day = date.getDate()
     const month = MONTHS_ES[date.getMonth()]
     const year = date.getFullYear()
     return `${day} ${month} ${year}`
-  }
-
-  const formatDateShort = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
   }
 
   const hasActions = onEdit || onDelete || onBulkDelete || onBulkCategoryChange

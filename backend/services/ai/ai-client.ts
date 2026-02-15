@@ -284,7 +284,7 @@ export function getAIStatus(): AIStatus {
     }
   }
 
-  const configuredProvider = getConfiguredProvider()
+  const _configuredProvider = getConfiguredProvider()
   const client = new AIClient()
 
   return {

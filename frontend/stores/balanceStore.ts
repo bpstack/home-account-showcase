@@ -2,7 +2,6 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { createLocalDate, formatLocalDate } from '@/lib/date-utils'
 
 interface BalanceState {
   activeTab: 'balance' | 'income' | 'expenses'
@@ -10,16 +9,11 @@ interface BalanceState {
   customStartDate: string
   customEndDate: string
 
-  setActiveTab: (tab: 'balance' | 'income' | 'expenses') => void
-  setPeriod: (period: 'monthly' | 'yearly' | 'custom') => void
-  setCustomDates: (startDate: string, endDate: string) => void
+  setActiveTab: (_tab: 'balance' | 'income' | 'expenses') => void
+  setPeriod: (_period: 'monthly' | 'yearly' | 'custom') => void
+  setCustomDates: (_startDate: string, _endDate: string) => void
   reset: () => void
 }
-
-const currentYear = new Date().getFullYear()
-const currentMonth = new Date().getMonth()
-const defaultStartDate = formatLocalDate(createLocalDate(currentYear, currentMonth, 1))
-const defaultEndDate = formatLocalDate(createLocalDate(currentYear, currentMonth + 1, 0))
 
 export const useBalanceStore = create<BalanceState>()(
   persist(

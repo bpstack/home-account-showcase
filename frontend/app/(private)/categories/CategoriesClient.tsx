@@ -1,7 +1,6 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -65,26 +64,6 @@ interface SubcategoryForm {
 const emptyCategoryForm: CategoryForm = { name: '', color: '#3b82f6' }
 const emptySubcategoryForm: SubcategoryForm = { name: '' }
 
-function CategoriesSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-end gap-2">
-        <div className="h-10 w-40 bg-layer-2 rounded animate-pulse" />
-        <div className="h-10 w-40 bg-layer-2 rounded animate-pulse" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-layer-1 border border-layer-3 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-5 w-32 bg-layer-3 rounded animate-pulse" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function CategoriesPageFallback() {
   return (
     <div className="flex items-center justify-center py-12">
@@ -109,7 +88,6 @@ export default function CategoriesClient({ initialCategories }: CategoriesClient
 function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   const { account } = useAuth()
   const queryClient = useQueryClient()
-  const searchParams = useSearchParams()
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
 
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)

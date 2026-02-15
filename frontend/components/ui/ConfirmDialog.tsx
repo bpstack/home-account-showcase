@@ -3,12 +3,10 @@
 import React from 'react'
 import { Modal, ModalFooter } from './Modal'
 import { Button } from './Button'
-import { AlertTriangle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 interface ConfirmDialogProps {
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange: (_open: boolean) => void
   title: string
   description?: string
   children?: React.ReactNode
@@ -83,7 +81,7 @@ export function ConfirmDialog({
 
 interface ConfirmDeleteDialogProps {
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange: (_open: boolean) => void
   title?: string
   itemName?: string
   onConfirm: () => void
@@ -118,7 +116,7 @@ export function ConfirmDeleteDialog({
 
 interface ConfirmActionDialogProps {
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange: (_open: boolean) => void
   title: string
   description?: string
   confirmLabel?: string

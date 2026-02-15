@@ -17,7 +17,7 @@ import { logger } from '../../utils/logger.js'
 const CACHE_ENABLED = true
 
 export async function getMarketData(): Promise<MarketDataContext> {
-  const cacheDuration = getCacheDuration()
+  const _cacheDuration = getCacheDuration()
 
   if (CACHE_ENABLED) {
     const cached = await getCachedMarketData()

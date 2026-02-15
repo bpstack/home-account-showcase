@@ -150,7 +150,7 @@ function MarketSection({
   title: string
   items: any[]
   prefix: string
-  formatter: (v: number) => string
+  formatter: (_v: number) => string
 }) {
   if (!items || items.length === 0) return null
 
@@ -186,7 +186,7 @@ function MarketRow({
   value?: number | null
   change?: number | null
   prefix?: string
-  formatter?: (v: number) => string
+  formatter?: (_v: number) => string
 }) {
   const changeValue = change ?? 0
   const valueNumber = value ?? 0

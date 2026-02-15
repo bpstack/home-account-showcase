@@ -7,7 +7,7 @@ const API_URL = process.env.API_URL || 'http://localhost:3001/api'
 
 export class ServerApiError extends Error {
   constructor(
-    public status: number,
+    public _status: number,
     message: string
   ) {
     super(message)
@@ -19,7 +19,10 @@ export class ServerApiError extends Error {
  * Fetch autenticado para Server Components
  * Lee el accessToken de las cookies y lo envía al backend
  */
-export async function serverFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+export async function serverFetch<T>(
+  endpoint: string,
+  options?: globalThis.RequestInit
+): Promise<T> {
   const cookieStore = await cookies()
   const accessToken = cookieStore.get('accessToken')?.value
 

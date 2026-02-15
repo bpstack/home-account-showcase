@@ -2,7 +2,7 @@
 // Cacheo de datos de mercado en base de datos
 
 import db from '../../config/db.js'
-import type { MarketDataContext, MarketCacheEntry } from './types.js'
+import type { MarketDataContext } from './types.js'
 import crypto from 'crypto'
 import { logger } from '../../utils/logger.js'
 

@@ -13,7 +13,7 @@ interface FilterBarProps {
   /** Incluir selector de período personalizado */
   showDatePicker?: boolean
   /** Callback cuando se selecciona un DatePicker */
-  onDateRangeChange?: (startDate: string, endDate: string) => void
+  onDateRangeChange?: (_startDate: string, _endDate: string) => void
   /** Clases adicionales */
   className?: string
 }

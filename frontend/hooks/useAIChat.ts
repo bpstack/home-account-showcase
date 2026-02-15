@@ -3,12 +3,12 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { investmentApi, ChatSession, ChatMessage as ApiChatMessage } from '../lib/api/investment'
+import { investmentApi, ChatSession } from '../lib/api/investment'
 
 interface UseAIChatOptions {
   accountId: string
   sessionId?: string | null
-  onMessage?: (message: string) => void
+  onMessage?: (_message: string) => void
 }
 
 interface UseAIChatReturn {
@@ -17,7 +17,7 @@ interface UseAIChatReturn {
   isLoading: boolean
   isTyping: boolean
   error: string | null
-  sendMessage: (content: string) => Promise<void>
+  sendMessage: (_content: string) => Promise<void>
   createSession: () => Promise<ChatSession>
   clearChat: () => void
   clearSessionError: () => void

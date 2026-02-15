@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { Calendar, CalendarRange, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { CalendarRange, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './Button'
 import { formatLocalDate } from '@/lib/date-utils'
@@ -9,7 +9,7 @@ import { formatLocalDate } from '@/lib/date-utils'
 interface DatePickerProps {
   startDate?: string
   endDate?: string
-  onDatesChange?: (startDate: string, endDate: string) => void
+  onDatesChange?: (_startDate: string, _endDate: string) => void
   className?: string
   /** Modo compacto - solo muestra icono en el botón */
   compact?: boolean
@@ -41,7 +41,7 @@ export function DatePicker({
   className,
   compact = false,
   variant = 'default',
-  label,
+  label: _label,
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
@@ -52,7 +52,7 @@ export function DatePicker({
   })
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const today = new Date()
+  const today = useMemo(() => new Date(), [])
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {

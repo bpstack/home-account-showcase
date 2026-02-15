@@ -8,7 +8,6 @@ import {
   User,
   Users,
   TrendingUp,
-  X,
   Smartphone,
   Monitor,
   ArrowRight,
