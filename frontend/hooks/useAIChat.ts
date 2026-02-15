@@ -54,6 +54,7 @@ export function useAIChat({
     if (initialSessionId) {
       loadChatHistory(initialSessionId)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSessionId, accountId])
 
   const loadChatHistory = async (sessionId: string) => {

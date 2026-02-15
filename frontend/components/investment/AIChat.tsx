@@ -47,6 +47,7 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
   // Load sessions on mount
   useEffect(() => {
     loadSessions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId])
 
   // Close dropdown when clicking outside

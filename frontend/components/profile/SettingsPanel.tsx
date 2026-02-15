@@ -158,6 +158,7 @@ function AccountSettings() {
       loadMembers()
       loadInvitations()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.id])
 
   // ─── Data Loading ──────────────────────────────
