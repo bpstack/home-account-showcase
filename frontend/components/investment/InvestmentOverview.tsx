@@ -377,7 +377,9 @@ export function InvestmentOverview({
 
         {/* Trend and stats */}
         <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm pt-2 sm:pt-3 border-t border-border/40">
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/40 font-medium ${getTrendColor()}`}>
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/40 font-medium ${getTrendColor()}`}
+          >
             {getTrendIcon()}
             {financialSummary.trend === 'improving'
               ? 'Positiva'
@@ -386,12 +388,21 @@ export function InvestmentOverview({
                 : 'Estable'}
           </span>
           <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/40 text-muted-foreground">
-            📊 <span className="font-medium text-foreground">{financialSummary.historicalMonths}</span> meses
-            <InfoTooltip content="Meses de historial analizados." className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+            📊{' '}
+            <span className="font-medium text-foreground">{financialSummary.historicalMonths}</span>{' '}
+            meses
+            <InfoTooltip
+              content="Meses de historial analizados."
+              className="w-3.5 h-3.5 sm:w-3 sm:h-3"
+            />
           </span>
           <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/40 text-muted-foreground">
-            📅 <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span> déficit
-            <InfoTooltip content="Meses con gastos superiores a ingresos." className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+            📅 <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span>{' '}
+            déficit
+            <InfoTooltip
+              content="Meses con gastos superiores a ingresos."
+              className="w-3.5 h-3.5 sm:w-3 sm:h-3"
+            />
           </span>
         </div>
 
@@ -411,64 +422,6 @@ export function InvestmentOverview({
 // ========================
 // Subcomponents
 // ========================
-
-function MetricCard({
-  label,
-  value,
-  icon,
-  highlight = false,
-  subtitle,
-  tooltip,
-  subtitleTooltip,
-  className,
-}: {
-  label: string
-  value: string
-  icon?: React.ReactNode
-  highlight?: boolean
-  subtitle?: string
-  tooltip?: string
-  subtitleTooltip?: string
-  className?: string
-}) {
-  return (
-    <div
-      className={cn(
-        'p-2.5 sm:p-3 rounded-xl border flex flex-col relative min-w-0',
-        highlight
-          ? 'bg-emerald-500/5 border-emerald-500/10 dark:bg-emerald-500/10 dark:border-emerald-500/10'
-          : 'bg-card border-border/40 dark:bg-zinc-900 dark:border-white/5',
-        className
-      )}
-    >
-      {/* Header: Icon + Label */}
-      <div className="flex items-center gap-1 mb-1 sm:mb-1.5">
-        <div className={cn('shrink-0', highlight ? 'text-emerald-500' : 'text-muted-foreground')}>
-          {icon}
-        </div>
-        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          {label}
-        </span>
-        {tooltip && <InfoTooltip content={tooltip} className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />}
-      </div>
-
-      {/* Body: Value */}
-      <div className="text-sm sm:text-lg font-bold tracking-tight text-foreground truncate">
-        {value}
-      </div>
-
-      {/* Footer: Subtitle */}
-      {subtitle && (
-        <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
-          {subtitleTooltip ? (
-            <InfoTooltip content={subtitleTooltip} side="top" className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
-          ) : null}
-          <span>{subtitle}</span>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function MetricCell({
   label,
@@ -490,7 +443,9 @@ function MetricCell({
         <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           {label}
         </span>
-        {tooltip && <InfoTooltip content={tooltip} className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />}
+        {tooltip && (
+          <InfoTooltip content={tooltip} className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />
+        )}
       </div>
       <div className={cn('text-sm sm:text-lg font-bold tracking-tight truncate', color)}>
         {value}

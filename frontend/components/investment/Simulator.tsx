@@ -159,14 +159,19 @@ export function Simulator({
         <div className="w-full">
           <div className="h-60 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={result.chartData} margin={{ top: 20, right: 15, left: 5, bottom: 40 }}>
+              <LineChart
+                data={result.chartData}
+                margin={{ top: 20, right: 15, left: 5, bottom: 40 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="year"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                   tickLine={{ stroke: 'hsl(var(--border))' }}
                   axisLine={{ stroke: 'hsl(var(--border))' }}
-                  interval={params.years <= 10 ? 0 : params.years <= 20 ? 1 : Math.floor(params.years / 10)}
+                  interval={
+                    params.years <= 10 ? 0 : params.years <= 20 ? 1 : Math.floor(params.years / 10)
+                  }
                   label={{
                     value: 'Años',
                     position: 'bottom',
@@ -184,7 +189,11 @@ export function Simulator({
                     value: 'Miles €',
                     position: 'top',
                     offset: 10,
-                    style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10, textAnchor: 'start' },
+                    style: {
+                      fill: 'hsl(var(--muted-foreground))',
+                      fontSize: 10,
+                      textAnchor: 'start',
+                    },
                   }}
                 />
                 <Tooltip
