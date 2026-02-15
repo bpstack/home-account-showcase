@@ -1,84 +1,87 @@
 // components/ui/Tooltip.tsx
-// Tooltip component with proper accessibility
 
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 
 interface TooltipProps {
   content: string
   children: React.ReactNode
   side?: 'top' | 'bottom' | 'left' | 'right'
-  align?: 'start' | 'center' | 'end'
   className?: string
 }
 
-export function Tooltip({
-  content,
-  children,
-  side = 'top',
-  align = 'center',
-  className,
-}: TooltipProps) {
+export function Tooltip({ content, children, side = 'top', className }: TooltipProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
   const triggerRef = useRef<HTMLSpanElement>(null)
   const tooltipRef = useRef<HTMLSpanElement>(null)
 
+  // Calculate position after tooltip mounts
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current || !tooltipRef.current) {
+      setCoords(null)
+      return
+    }
+
+    const tr = triggerRef.current.getBoundingClientRect()
+    const tt = tooltipRef.current.getBoundingClientRect()
+    const pad = 8
+
+    let top = 0
+    let left = 0
+
+    switch (side) {
+      case 'top':
+        top = tr.top - tt.height - pad
+        left = tr.left + (tr.width - tt.width) / 2
+        break
+      case 'bottom':
+        top = tr.bottom + pad
+        left = tr.left + (tr.width - tt.width) / 2
+        break
+      case 'left':
+        top = tr.top + (tr.height - tt.height) / 2
+        left = tr.left - tt.width - pad
+        break
+      case 'right':
+        top = tr.top + (tr.height - tt.height) / 2
+        left = tr.right + pad
+        break
+    }
+
+    // Clamp to viewport
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    if (left < pad) left = pad
+    if (left + tt.width > vw - pad) left = vw - tt.width - pad
+    if (top < pad) top = pad
+    if (top + tt.height > vh - pad) top = vh - tt.height - pad
+
+    setCoords({ top, left })
+  }, [isOpen, side])
+
+  // Close on outside tap/click
   useEffect(() => {
-    if (!isOpen || !triggerRef.current || !tooltipRef.current) return
-
-    const updatePosition = () => {
-      const triggerRect = triggerRef.current!.getBoundingClientRect()
-      const tooltipRect = tooltipRef.current!.getBoundingClientRect()
-      const scrollX = window.scrollX
-      const scrollY = window.scrollY
-
-      let top = 0
-      let left = 0
-
-      switch (side) {
-        case 'top':
-          top = triggerRect.top + scrollY - tooltipRect.height - 8
-          break
-        case 'bottom':
-          top = triggerRect.bottom + scrollY + 8
-          break
-        case 'left':
-          left = triggerRect.left + scrollX - tooltipRect.width - 8
-          top = triggerRect.top + scrollY + (triggerRect.height - tooltipRect.height) / 2
-          break
-        case 'right':
-          left = triggerRect.right + scrollX + 8
-          top = triggerRect.top + scrollY + (triggerRect.height - tooltipRect.height) / 2
-          break
+    if (!isOpen) return
+    const handleOutside = (e: Event) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
       }
-
-      switch (align) {
-        case 'start':
-          left = triggerRect.left + scrollX
-          break
-        case 'center':
-          left = triggerRect.left + scrollX + (triggerRect.width - tooltipRect.width) / 2
-          break
-        case 'end':
-          left = triggerRect.right + scrollX - tooltipRect.width
-          break
-      }
-
-      setPosition({ top, left })
     }
-
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-
+    // Use setTimeout to avoid the current click/touch from immediately closing
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleOutside)
+      document.addEventListener('touchstart', handleOutside)
+    }, 0)
     return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
+      clearTimeout(timer)
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
     }
-  }, [isOpen, side, align])
+  }, [isOpen])
 
   return (
     <span
@@ -86,28 +89,32 @@ export function Tooltip({
       className="relative inline-flex"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
-      onFocus={() => setIsOpen(true)}
-      onBlur={() => setIsOpen(false)}
+      onClick={(e) => {
+        e.stopPropagation()
+        setIsOpen((prev) => !prev)
+      }}
     >
       {children}
-      {isOpen && (
-        <span
-          ref={tooltipRef}
-          role="tooltip"
-          className={cn(
-            'fixed z-[100] px-3 py-2 text-sm bg-popover text-popover-foreground rounded-md shadow-md shadow-black/5',
-            'max-w-xs break-words animate-in fade-in-0 zoom-in-95 duration-200',
-            'border border-border/50',
-            className
-          )}
-          style={{
-            top: position.top,
-            left: position.left,
-          }}
-        >
-          {content}
-        </span>
-      )}
+      {isOpen &&
+        createPortal(
+          <span
+            ref={tooltipRef}
+            role="tooltip"
+            className={cn(
+              'fixed z-[9999] px-3 py-2 text-sm bg-popover text-popover-foreground rounded-md shadow-md shadow-black/5 border border-border/50',
+              'w-max max-w-xs break-words',
+              coords ? 'visible' : 'invisible',
+              className
+            )}
+            style={{
+              top: coords?.top ?? -9999,
+              left: coords?.left ?? -9999,
+            }}
+          >
+            {content}
+          </span>,
+          document.body
+        )}
     </span>
   )
 }

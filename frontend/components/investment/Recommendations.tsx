@@ -107,21 +107,32 @@ export function Recommendations({
 
   return (
     <Card className="h-full border-border/50 bg-background/50 dark:bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-6 border-b border-border/40">
-        <CardTitle className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+      <CardHeader className="pb-4 sm:pb-6 border-b border-border/40">
+        <CardTitle>
+          <div className="flex items-center gap-2 sm:gap-3 sm:justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-2 bg-emerald-500/10 rounded-lg shrink-0">
+                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+              </div>
+              <span className="text-lg sm:text-xl font-bold tracking-tight">Plan de Inversión</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">Plan de Inversión</span>
+            <span className="hidden sm:inline-flex text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full border border-border/50 items-center gap-1">
+              {investmentPercentage}% ahorro
+              <InfoTooltip
+                content="Porcentaje de tu capacidad de ahorro destinado a inversión, según tu perfil de riesgo."
+                className="w-3 h-3"
+              />
+            </span>
           </div>
-          <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full border border-border/50 flex items-center gap-1">
-            {investmentPercentage}% ahorro
-            <InfoTooltip
-              content="Porcentaje de tu capacidad de ahorro destinado a inversión, según tu perfil de riesgo."
-              className="w-3 h-3"
-            />
-          </span>
+          <div className="flex justify-center sm:hidden mt-2">
+            <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full border border-border/50 inline-flex items-center gap-1">
+              {investmentPercentage}% ahorro
+              <InfoTooltip
+                content="Porcentaje de tu capacidad de ahorro destinado a inversión, según tu perfil de riesgo."
+                className="w-3.5 h-3.5"
+              />
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">

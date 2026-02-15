@@ -125,10 +125,10 @@ export default function InvestmentPage() {
       {/* Main content - Reorganized Layout */}
       <div className="space-y-4 sm:space-y-6">
         {/* Section 1: Análisis Financiero */}
-        <section className="p-1.5 sm:p-4 lg:p-6 rounded-lg sm:rounded-2xl bg-blue-50/30 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30">
-          <div className="flex items-center gap-2 mb-1.5 sm:mb-4 px-1 sm:px-0">
+        <section className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl bg-blue-50/30 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <div className="hidden sm:block h-1 w-12 bg-blue-500 rounded-full"></div>
-            <h2 className="text-xs sm:text-lg font-semibold text-blue-900 dark:text-blue-100">
+            <h2 className="text-sm sm:text-lg font-semibold text-blue-900 dark:text-blue-100">
               Análisis Financiero
             </h2>
           </div>
@@ -153,11 +153,11 @@ export default function InvestmentPage() {
         {/* Section 2: Herramientas de Planificación */}
         <section
           id="herramientas"
-          className="p-1.5 sm:p-4 lg:p-6 rounded-lg sm:rounded-2xl bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 scroll-mt-4"
+          className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 scroll-mt-4"
         >
-          <div className="flex items-center gap-2 mb-1.5 sm:mb-4 px-1 sm:px-0">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <div className="hidden sm:block h-1 w-12 bg-purple-500 rounded-full"></div>
-            <h2 className="text-xs sm:text-lg font-semibold text-purple-900 dark:text-purple-100">
+            <h2 className="text-sm sm:text-lg font-semibold text-purple-900 dark:text-purple-100">
               Herramientas de Planificación
             </h2>
           </div>
@@ -175,10 +175,10 @@ export default function InvestmentPage() {
         </section>
 
         {/* Section 3: Chat + Mercados */}
-        <section className="p-1.5 sm:p-4 lg:p-6 rounded-lg sm:rounded-2xl bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30">
-          <div className="flex items-center gap-2 mb-1.5 sm:mb-4 px-1 sm:px-0">
+        <section className="p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <div className="hidden sm:block h-1 w-12 bg-emerald-500 rounded-full"></div>
-            <h2 className="text-xs sm:text-lg font-semibold text-emerald-900 dark:text-emerald-100">
+            <h2 className="text-sm sm:text-lg font-semibold text-emerald-900 dark:text-emerald-100">
               Asistente y Mercados
             </h2>
           </div>

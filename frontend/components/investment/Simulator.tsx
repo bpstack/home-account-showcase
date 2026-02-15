@@ -155,35 +155,48 @@ export function Simulator({
           />
         </div>
 
-        {/* Chart - With horizontal scroll on mobile */}
-        <div className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-primary/30">
-          <div
-            className="h-56 sm:h-64"
-            style={{ minWidth: params.years > 10 ? `${params.years * 35}px` : '100%' }}
-          >
+        {/* Chart */}
+        <div className="w-full">
+          <div className="h-60 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={result.chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <LineChart data={result.chartData} margin={{ top: 20, right: 15, left: 5, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="year"
-                  className="text-xs"
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
-                  interval={params.years <= 10 ? 0 : Math.floor(params.years / 10)}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  tickLine={{ stroke: 'hsl(var(--border))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  interval={params.years <= 10 ? 0 : params.years <= 20 ? 1 : Math.floor(params.years / 10)}
+                  label={{
+                    value: 'Años',
+                    position: 'bottom',
+                    offset: 20,
+                    style: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 },
+                  }}
                 />
                 <YAxis
-                  className="text-xs"
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                  width={35}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  tickLine={{ stroke: 'hsl(var(--border))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}`}
+                  width={40}
+                  label={{
+                    value: 'Miles €',
+                    position: 'top',
+                    offset: 10,
+                    style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10, textAnchor: 'start' },
+                  }}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'var(--background)',
-                    border: '1px solid var(--border)',
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                     fontSize: '12px',
+                    color: 'hsl(var(--foreground))',
                   }}
                   formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
+                  labelFormatter={(label) => `Año ${label}`}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px' }} />
                 <Line

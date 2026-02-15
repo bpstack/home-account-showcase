@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 export interface SliderProps {
   value: number[]
-  onValueChange: (_value: number[]) => void
+  onValueChange: (value: number[]) => void
   min?: number
   max?: number
   step?: number
@@ -31,11 +31,11 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
           value={value[0]}
           onChange={(e) => onValueChange([Number(e.target.value)])}
           disabled={disabled}
-          className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+          className="slider-purple w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
         />
         {value[0] !== undefined && (
           <div
-            className="absolute pointer-events-none h-1 bg-primary rounded-full"
+            className="absolute top-1/2 -translate-y-1/2 pointer-events-none h-2 bg-purple-500 rounded-full"
             style={{
               left: 0,
               width: `${percentage}%`,
