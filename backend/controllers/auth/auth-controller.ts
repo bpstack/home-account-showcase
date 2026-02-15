@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
 import db from '../../config/db.js'
+import type { UserRow } from '../../models/auth/index.js'
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -155,7 +156,11 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const getKeys = asyncHandler(async (req: Request, res: Response) => {
-  const user = await UserRepository.getByIdWithKeySalt(req.user!.id)
+  const [rows] = await db.query<UserRow[]>(
+    `SELECT key_salt, verification_blob, bip39_verified FROM users WHERE id = ?`,
+    [req.user!.id]
+  )
+  const user = rows[0]
   if (!user) {
     throw new AppError('User not found', 404)
   }
@@ -166,6 +171,7 @@ export const getKeys = asyncHandler(async (req: Request, res: Response) => {
     success: true,
     key_salt: user.key_salt,
     verification_blob: user.verification_blob || null,
+    bip39_verified: user.bip39_verified || false,
     encrypted_keys: encryptedKeys,
   })
 })
@@ -252,4 +258,123 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   res.clearCookie('csrfToken', { path: '/' })
 
   res.status(200).json({ success: true, message: 'Session closed successfully' })
+})
+
+// ============================================
+// BIP39 RECOVERY ENDPOINTS
+// ============================================
+
+export const saveRecoveryBlob = asyncHandler(async (req: Request, res: Response) => {
+  const { recoveryBlob, recoverySalt } = req.body
+
+  if (!recoveryBlob || typeof recoveryBlob !== 'string') {
+    throw new AppError('Recovery blob is required', 400)
+  }
+  if (!recoverySalt || typeof recoverySalt !== 'string' || recoverySalt.length !== 64) {
+    throw new AppError('Recovery salt is required (64-char hex)', 400)
+  }
+
+  await db.query(
+    `UPDATE users SET recovery_blob = ?, recovery_salt = ?, bip39_verified = TRUE WHERE id = ?`,
+    [recoveryBlob, recoverySalt, req.user!.id]
+  )
+
+  res.status(200).json({ success: true })
+})
+
+export const getRecoveryInfo = asyncHandler(async (req: Request, res: Response) => {
+  const [rows] = await db.query<UserRow[]>(
+    `SELECT recovery_blob, recovery_salt, bip39_verified,
+            bip39_attempts, bip39_locked_until
+     FROM users WHERE id = ?`,
+    [req.user!.id]
+  )
+
+  const user = rows[0]
+  if (!user) throw new AppError('User not found', 404)
+
+  if (!user.recovery_blob || !user.recovery_salt) {
+    throw new AppError('BIP39 recovery not configured', 404)
+  }
+
+  // Check lockout
+  await UserRepository.checkBip39Attempt(req.user!.id)
+
+  res.status(200).json({
+    success: true,
+    recovery_blob: user.recovery_blob,
+    recovery_salt: user.recovery_salt,
+  })
+})
+
+export const recoverWithBip39 = asyncHandler(async (req: Request, res: Response) => {
+  const {
+    newKeySalt,
+    verificationBlob,
+    recoveryBlob,
+    reEncryptedKeys,
+  } = req.body
+
+  if (!newKeySalt || !verificationBlob || !recoveryBlob || !reEncryptedKeys?.length) {
+    throw new AppError('Missing required fields for recovery', 400)
+  }
+
+  const connection = await db.getConnection()
+
+  try {
+    await connection.beginTransaction()
+
+    // Update user: new key_salt, verification_blob, recovery_blob, reset attempts
+    await connection.query(
+      `UPDATE users
+       SET key_salt = ?, verification_blob = ?, recovery_blob = ?,
+           pin_attempts = 0, pin_locked_until = NULL,
+           bip39_attempts = 0, bip39_locked_until = NULL,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [newKeySalt, verificationBlob, recoveryBlob, req.user!.id]
+    )
+
+    // Update all account keys
+    for (const key of reEncryptedKeys) {
+      await connection.query(
+        `UPDATE account_keys
+         SET encrypted_key = ?, key_version = key_version + 1
+         WHERE account_id = ? AND user_id = ?`,
+        [key.encryptedKey, key.accountId, req.user!.id]
+      )
+    }
+
+    await connection.commit()
+
+    // Clear cookies to force re-login with new PIN
+    res.clearCookie('accessToken', { path: '/' })
+    res.clearCookie('refreshToken', { path: '/' })
+    res.clearCookie('csrfToken', { path: '/' })
+
+    res.status(200).json({
+      success: true,
+      message: 'Recovery successful. Please log in with your new PIN.',
+    })
+  } catch (error) {
+    await connection.rollback()
+    throw error
+  } finally {
+    connection.release()
+  }
+})
+
+export const recordFailedBip39 = asyncHandler(async (req: Request, res: Response) => {
+  const result = await UserRepository.recordFailedBip39Attempt(req.user!.id)
+  res.status(200).json({ success: true, ...result })
+})
+
+export const recordFailedPin = asyncHandler(async (req: Request, res: Response) => {
+  const result = await UserRepository.recordFailedPinAttempt(req.user!.id)
+  res.status(200).json({ success: true, ...result })
+})
+
+export const resetPinAttempts = asyncHandler(async (req: Request, res: Response) => {
+  await UserRepository.resetPinAttempts(req.user!.id)
+  res.status(200).json({ success: true })
 })

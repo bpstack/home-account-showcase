@@ -11,6 +11,12 @@ import {
   changePassword,
   changePin,
   saveVerificationBlob,
+  saveRecoveryBlob,
+  getRecoveryInfo,
+  recoverWithBip39,
+  recordFailedBip39,
+  recordFailedPin,
+  resetPinAttempts,
 } from '../../controllers/auth/auth-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
@@ -30,5 +36,13 @@ router.post('/change-password', authenticateToken, checkCSRF, changePassword)
 router.post('/change-pin', authenticateToken, checkCSRF, changePin)
 router.post('/verification-blob', authenticateToken, checkCSRF, saveVerificationBlob)
 router.post('/logout', authenticateToken, checkCSRF, logout)
+
+// Recovery routes (authenticated but crypto may be locked)
+router.get('/recovery-info', authenticateToken, getRecoveryInfo)
+router.post('/recovery-blob', authenticateToken, checkCSRF, saveRecoveryBlob)
+router.post('/recover-bip39', authenticateToken, checkCSRF, recoverWithBip39)
+router.post('/record-failed-bip39', authenticateToken, checkCSRF, recordFailedBip39)
+router.post('/record-failed-pin', authenticateToken, checkCSRF, recordFailedPin)
+router.post('/reset-pin-attempts', authenticateToken, checkCSRF, resetPinAttempts)
 
 export default router

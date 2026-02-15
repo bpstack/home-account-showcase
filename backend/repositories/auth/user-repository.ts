@@ -486,4 +486,118 @@ export class UserRepository {
     ])
     return rows[0]?.password_hash !== null
   }
+
+  // ============================================
+  // PIN LOCKOUT METHODS
+  // ============================================
+
+  /**
+   * Check and update PIN attempt counter. Returns remaining attempts.
+   * Throws AppError if locked out.
+   */
+  static async checkPinAttempt(userId: string): Promise<{ remaining: number }> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT pin_attempts, pin_locked_until FROM users WHERE id = ?`,
+      [userId]
+    )
+    const user = rows[0]
+    if (!user) throw new AppError('User not found', 404)
+
+    // Check if currently locked out
+    if (user.pin_locked_until && new Date(user.pin_locked_until) > new Date()) {
+      const minutesLeft = Math.ceil(
+        (new Date(user.pin_locked_until).getTime() - Date.now()) / 60000
+      )
+      throw new AppError(`PIN bloqueado. Intenta en ${minutesLeft} minutos.`, 429)
+    }
+
+    return { remaining: 5 - (user.pin_attempts || 0) }
+  }
+
+  /**
+   * Record a failed PIN attempt. Lock if >= 5 attempts.
+   */
+  static async recordFailedPinAttempt(userId: string): Promise<{ remaining: number; locked: boolean }> {
+    const [rows] = await db.query<UserRow[]>(`SELECT pin_attempts FROM users WHERE id = ?`, [userId])
+    const attempts = (rows[0]?.pin_attempts || 0) + 1
+    const locked = attempts >= 5
+
+    if (locked) {
+      await db.query(
+        `UPDATE users SET pin_attempts = ?, pin_locked_until = DATE_ADD(NOW(), INTERVAL 30 MINUTE) WHERE id = ?`,
+        [attempts, userId]
+      )
+    } else {
+      await db.query(`UPDATE users SET pin_attempts = ? WHERE id = ?`, [attempts, userId])
+    }
+
+    return { remaining: Math.max(0, 5 - attempts), locked }
+  }
+
+  /**
+   * Reset PIN attempts on successful unlock.
+   */
+  static async resetPinAttempts(userId: string): Promise<void> {
+    await db.query(`UPDATE users SET pin_attempts = 0, pin_locked_until = NULL WHERE id = ?`, [
+      userId,
+    ])
+  }
+
+  // ============================================
+  // BIP39 LOCKOUT METHODS
+  // ============================================
+
+  /**
+   * Record a failed BIP39 attempt. Lock if >= 5 attempts.
+   */
+  static async recordFailedBip39Attempt(
+    userId: string
+  ): Promise<{ remaining: number; locked: boolean }> {
+    const [rows] = await db.query<UserRow[]>(`SELECT bip39_attempts FROM users WHERE id = ?`, [
+      userId,
+    ])
+    const attempts = (rows[0]?.bip39_attempts || 0) + 1
+    const locked = attempts >= 5
+
+    if (locked) {
+      await db.query(
+        `UPDATE users SET bip39_attempts = ?, bip39_locked_until = DATE_ADD(NOW(), INTERVAL 30 MINUTE) WHERE id = ?`,
+        [attempts, userId]
+      )
+    } else {
+      await db.query(`UPDATE users SET bip39_attempts = ? WHERE id = ?`, [attempts, userId])
+    }
+
+    return { remaining: Math.max(0, 5 - attempts), locked }
+  }
+
+  /**
+   * Check BIP39 attempt status. Throws AppError if locked out.
+   */
+  static async checkBip39Attempt(userId: string): Promise<{ remaining: number }> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT bip39_attempts, bip39_locked_until FROM users WHERE id = ?`,
+      [userId]
+    )
+    const user = rows[0]
+    if (!user) throw new AppError('User not found', 404)
+
+    if (user.bip39_locked_until && new Date(user.bip39_locked_until) > new Date()) {
+      const minutesLeft = Math.ceil(
+        (new Date(user.bip39_locked_until).getTime() - Date.now()) / 60000
+      )
+      throw new AppError(`Recuperación bloqueada. Intenta en ${minutesLeft} minutos.`, 429)
+    }
+
+    return { remaining: 5 - (user.bip39_attempts || 0) }
+  }
+
+  /**
+   * Reset BIP39 attempts after successful recovery.
+   */
+  static async resetBip39Attempts(userId: string): Promise<void> {
+    await db.query(`UPDATE users SET bip39_attempts = 0, bip39_locked_until = NULL WHERE id = ?`, [
+      userId,
+    ])
+  }
 }
