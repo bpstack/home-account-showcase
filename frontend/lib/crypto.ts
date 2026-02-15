@@ -8,6 +8,9 @@
 
 import { argon2id } from '@noble/hashes/argon2.js'
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js'
+import { generateMnemonic, validateMnemonic } from '@scure/bip39'
+// eslint-disable-next-line import/extensions
+import { wordlist } from '@scure/bip39/wordlists/english.js'
 
 // ============================================
 // CONSTANTS
@@ -201,6 +204,123 @@ export async function verifyUserKey(
   } catch {
     return false
   }
+}
+
+// ============================================
+// BIP39 RECOVERY
+// ============================================
+
+/**
+ * Generate a 24-word BIP39 mnemonic phrase
+ * Uses 256 bits of entropy → 24 words
+ */
+export function generateBIP39Mnemonic(): string {
+  return generateMnemonic(wordlist, 256)
+}
+
+/**
+ * Validate a BIP39 mnemonic phrase
+ */
+export function validateBIP39Mnemonic(mnemonic: string): boolean {
+  return validateMnemonic(mnemonic, wordlist)
+}
+
+/**
+ * Derive a RecoveryKey from a BIP39 mnemonic using Argon2id.
+ * Uses a separate salt (recovery_salt) from the PIN salt (key_salt).
+ */
+export async function deriveRecoveryKey(
+  mnemonic: string,
+  recoverySaltHex: string
+): Promise<CryptoKey> {
+  const salt = hexToBytes(recoverySaltHex)
+  const passwordBytes = utf8ToBytes(mnemonic)
+
+  const derivedBytes = argon2id(passwordBytes, salt, {
+    ...ARGON2_OPTIONS,
+    dkLen: 32,
+  })
+
+  return crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(derivedBytes),
+    { name: 'AES-GCM', length: AES_KEY_LENGTH },
+    false,
+    ['encrypt', 'decrypt']
+  )
+}
+
+/**
+ * Generate recovery_blob: encrypt the raw UserKey bytes with RecoveryKey.
+ *
+ * IMPORTANT: The UserKey must be extractable for this to work.
+ * During recovery setup, we re-derive the UserKey as extractable.
+ */
+export async function generateRecoveryBlob(
+  userKeyRaw: Uint8Array,
+  recoveryKey: CryptoKey
+): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    recoveryKey,
+    toArrayBuffer(userKeyRaw)
+  )
+  const combined = new Uint8Array(iv.length + encrypted.byteLength)
+  combined.set(iv)
+  combined.set(new Uint8Array(encrypted), iv.length)
+  return bytesToBase64(combined)
+}
+
+/**
+ * Decrypt recovery_blob to get raw UserKey bytes, then import as CryptoKey.
+ */
+export async function decryptRecoveryBlob(
+  recoveryBlob: string,
+  recoveryKey: CryptoKey
+): Promise<CryptoKey> {
+  const combined = base64ToBytes(recoveryBlob)
+  const iv = combined.slice(0, IV_LENGTH)
+  const encrypted = combined.slice(IV_LENGTH)
+
+  const userKeyRaw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, recoveryKey, encrypted)
+
+  return crypto.subtle.importKey(
+    'raw',
+    userKeyRaw,
+    { name: 'AES-GCM', length: AES_KEY_LENGTH },
+    false, // non-extractable for normal use
+    ['encrypt', 'decrypt']
+  )
+}
+
+/**
+ * Derive UserKey as extractable (needed for generating recovery_blob).
+ * Same as deriveUserKey but with extractable = true.
+ */
+export async function deriveUserKeyExtractable(
+  password: string,
+  saltHex: string
+): Promise<{ key: CryptoKey; raw: Uint8Array }> {
+  const salt = hexToBytes(saltHex)
+  const passwordBytes = utf8ToBytes(password)
+
+  const derivedBytes = argon2id(passwordBytes, salt, {
+    ...ARGON2_OPTIONS,
+    dkLen: 32,
+  })
+
+  const raw = new Uint8Array(derivedBytes)
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(derivedBytes),
+    { name: 'AES-GCM', length: AES_KEY_LENGTH },
+    true, // extractable!
+    ['encrypt', 'decrypt']
+  )
+
+  return { key, raw }
 }
 
 // ============================================
