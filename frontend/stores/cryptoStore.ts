@@ -142,7 +142,7 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
       try {
         const accountKey = await decryptAccountKey(encryptedKey, userKey)
         newAccountKeys.set(accountId, { key: accountKey, version: keyVersion })
-      } catch (e) {
+      } catch (_e) {
         set({ userKey: null, accountKeys: new Map(), isUnlocked: false, error: 'Wrong password' })
         throw new Error('Wrong password')
       }

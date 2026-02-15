@@ -421,30 +421,29 @@ export default function ImportClient() {
       .replace(/[\u0300-\u036f]/g, '')
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const findBestMatch = (
-    fileCat: { category: string; subcategory: string },
-    categoryList: any[]
-  ): string | null => {
-    const bankText = normalizeText(`${fileCat.category} ${fileCat.subcategory}`)
-    for (const mapping of KEYWORD_MAPPINGS) {
-      if (mapping.keywords.some((kw) => bankText.includes(normalizeText(kw)))) {
-        const appCat = categoryList.find((c) =>
-          normalizeText(c.name).includes(normalizeText(mapping.category))
-        )
-        if (appCat?.subcategories) {
-          if (mapping.subcategory) {
-            const sub = appCat.subcategories.find((s: any) =>
-              normalizeText(s.name).includes(normalizeText(mapping.subcategory!))
-            )
-            if (sub) return sub.id
+  const findBestMatch = useCallback(
+    (fileCat: { category: string; subcategory: string }, categoryList: any[]): string | null => {
+      const bankText = normalizeText(`${fileCat.category} ${fileCat.subcategory}`)
+      for (const mapping of KEYWORD_MAPPINGS) {
+        if (mapping.keywords.some((kw) => bankText.includes(normalizeText(kw)))) {
+          const appCat = categoryList.find((c) =>
+            normalizeText(c.name).includes(normalizeText(mapping.category))
+          )
+          if (appCat?.subcategories) {
+            if (mapping.subcategory) {
+              const sub = appCat.subcategories.find((s: any) =>
+                normalizeText(s.name).includes(normalizeText(mapping.subcategory!))
+              )
+              if (sub) return sub.id
+            }
+            if (appCat.subcategories.length > 0) return appCat.subcategories[0].id
           }
-          if (appCat.subcategories.length > 0) return appCat.subcategories[0].id
         }
       }
-    }
-    return null
-  }
+      return null
+    },
+    []
+  )
 
   const initializeMappings = useCallback(
     (fileCategories: { category: string; subcategory: string }[]) => {
@@ -558,18 +557,6 @@ export default function ImportClient() {
       setParseResult(data)
 
       if (data.transactions.length > 0) {
-        // En una implementación real, inicializaríamos mappings aquí
-        // Pero initializeMappings ya se llama en un useEffect
-
-        if (aiAssistantEnabled) {
-          // Loop para categorización AI si faltan mappings
-          for (let i = 0; i < Math.min(data.transactions.length, 50); i++) {
-            const tx = data.transactions[i]
-            // Lógica simplificada de restauración para el ejemplo
-            // En producción restauraríamos el loop de SYNONYMS completo
-            void tx
-          }
-        }
         setStep('preview')
       } else {
         setError('No se encontraron transacciones')
@@ -1177,6 +1164,7 @@ export default function ImportClient() {
                           setFile(null)
                           setParseResult(null)
                           setMappings({})
+                          setImportResult(null)
                           setError(null)
                         }}
                         className="absolute top-2 right-2 md:hidden p-2 rounded-lg bg-white/10 text-text-secondary hover:bg-white/20 transition-colors"

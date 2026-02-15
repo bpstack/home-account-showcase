@@ -35,7 +35,7 @@ export default function InvitePage() {
   const router = useRouter()
   const token = params.token as string
 
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated } = useAuth()
   const [state, setState] = useState<InvitationState>('loading')
   const [invitation, setInvitation] = useState<InvitationData | null>(null)
   const [isAccepting, setIsAccepting] = useState(false)
@@ -46,6 +46,7 @@ export default function InvitePage() {
   // Cargar invitación al montar y re-evaluar cuando cambia auth/crypto
   useEffect(() => {
     loadInvitation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, isAuthenticated, isUnlocked])
 
   const loadInvitation = async () => {
@@ -114,7 +115,7 @@ export default function InvitePage() {
       await cryptoStore.unlockAccount(inv.account_id, encryptedForUser, 1)
 
       toast.success('¡Cifrado configurado correctamente!')
-    } catch (err) {
+    } catch (_err) {
       toast.error('No se pudo configurar el cifrado. Tendrás acceso limitado.')
     }
 
@@ -168,7 +169,7 @@ export default function InvitePage() {
 
           // Registrar en memoria para esta sesión
           await cryptoStore.unlockAccount(acceptResult.account.id, encryptedForUser, 1)
-        } catch (decryptError) {
+        } catch (_decryptError) {
           toast.error('No se pudo configurar el cifrado de la cuenta. Tendrás acceso limitado.')
         }
       }

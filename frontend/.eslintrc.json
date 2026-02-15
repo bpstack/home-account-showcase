@@ -5,14 +5,29 @@
     "es2021": true,
     "node": true
   },
-  "extends": ["next/core-web-vitals", "eslint:recommended", "plugin:prettier/recommended"],
-  "plugins": ["prettier"],
+  "extends": [
+    "next/core-web-vitals",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint", "prettier"],
   "globals": {
     "React": "readonly"
   },
   "rules": {
     "prettier/prettier": ["error"],
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-    "no-undef": ["error"]
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "@typescript-eslint/no-explicit-any": "off",
+    "no-undef": "off"
   }
 }

@@ -44,7 +44,10 @@ function AuthCallbackHandler() {
         // Añadir el savedRedirect como parámetro 'from' para que después del unlock
         // el usuario vaya al destino original
         let finalRedirect = redirect
-        if (savedRedirect && (redirect.startsWith('/unlock') || redirect.startsWith('/setup-pin'))) {
+        if (
+          savedRedirect &&
+          (redirect.startsWith('/unlock') || redirect.startsWith('/setup-pin'))
+        ) {
           const separator = redirect.includes('?') ? '&' : '?'
           finalRedirect = `${redirect}${separator}from=${encodeURIComponent(savedRedirect)}`
         } else if (savedRedirect) {

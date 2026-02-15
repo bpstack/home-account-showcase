@@ -114,7 +114,7 @@ export function InvestmentOverview({
       setSelectedMonths(months)
       await updateMonthsMutation.mutateAsync({ accountId, months })
       toast.success('Meses de respaldo actualizados')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Error al actualizar meses de respaldo')
     }
   }
@@ -132,7 +132,7 @@ export function InvestmentOverview({
       await updateLiquidityMutation.mutateAsync({ accountId, amount })
       setIsEditingFund(false)
       toast.success('Fondo de emergencia actualizado')
-    } catch (error) {
+    } catch (_error) {
       toast.error('Error al actualizar fondo de emergencia')
     }
   }

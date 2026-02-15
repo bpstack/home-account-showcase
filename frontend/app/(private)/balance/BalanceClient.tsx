@@ -34,8 +34,6 @@ const monthsFull = [
   'Diciembre',
 ]
 
-// const currentYearNow = new Date().getFullYear()
-
 // Tabs definidos fuera del componente para evitar recrearlos en cada render
 const balanceTabs = [
   { id: 'balance', label: 'Balance', icon: <Wallet className="h-4 w-4" /> },
@@ -514,12 +512,12 @@ function BalanceTabContent({
   stats: PeriodStats
   expensesByCategory: { name: string; color: string; amount: number }[]
   incomeByCategory: { name: string; color: string; amount: number }[]
-  formatCurrency: (_v: number) => string
+  formatCurrency: (v: number) => string
   data: PaginatedTransactions
-  setPage: (_p: number) => void
+  setPage: (p: number) => void
   showTransactions: boolean
-  setShowTransactions: (_s: boolean) => void
-  onCategoryClick: (_tx: Transaction) => void
+  setShowTransactions: (s: boolean) => void
+  onCategoryClick: (tx: Transaction) => void
   periodLabel: string
 }) {
   const savingsRate = stats.income > 0 ? ((stats.balance / stats.income) * 100).toFixed(1) : '0'
@@ -733,12 +731,12 @@ function IncomeTabContent({
   periodLabel,
 }: {
   stats: PeriodStats
-  formatCurrency: (_v: number) => string
+  formatCurrency: (v: number) => string
   data: PaginatedTransactions
-  setPage: (_p: number) => void
+  setPage: (p: number) => void
   showTransactions: boolean
-  setShowTransactions: (_s: boolean) => void
-  onCategoryClick: (_tx: Transaction) => void
+  setShowTransactions: (s: boolean) => void
+  onCategoryClick: (tx: Transaction) => void
   periodLabel: string
 }) {
   const incomeTypes = [
@@ -823,12 +821,12 @@ function ExpensesTabContent({
 }: {
   stats: PeriodStats
   expensesByCategory: { name: string; color: string; amount: number }[]
-  formatCurrency: (_v: number) => string
+  formatCurrency: (v: number) => string
   data: PaginatedTransactions
-  setPage: (_p: number) => void
+  setPage: (p: number) => void
   showTransactions: boolean
-  setShowTransactions: (_s: boolean) => void
-  onCategoryClick: (_tx: Transaction) => void
+  setShowTransactions: (s: boolean) => void
+  onCategoryClick: (tx: Transaction) => void
   periodLabel: string
 }) {
   const hasExpenses = stats.expenses > 0
@@ -919,10 +917,10 @@ function TransactionsSection({
   title,
 }: {
   data: PaginatedTransactions
-  setPage: (_p: number) => void
+  setPage: (p: number) => void
   showTransactions: boolean
-  setShowTransactions: (_s: boolean) => void
-  onCategoryClick: (_tx: Transaction) => void
+  setShowTransactions: (s: boolean) => void
+  onCategoryClick: (tx: Transaction) => void
   title: string
 }) {
   return (
