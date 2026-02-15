@@ -2,6 +2,7 @@
 
 import { useState, useRef, Suspense, useEffect } from 'react'
 import React from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
@@ -23,6 +24,7 @@ function UnlockForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [unlocked, setUnlocked] = useState(false)
   const [buttonPressed, setButtonPressed] = useState(false)
+  const [showRecoveryLink, setShowRecoveryLink] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -51,9 +53,39 @@ function UnlockForm() {
     setIsSubmitting(true)
     try {
       await unlock(password)
+
+      // Reset PIN attempts on successful unlock
+      await fetch('/api/proxy/auth/reset-pin-attempts', {
+        method: 'POST',
+        credentials: 'include',
+      })
+
       setUnlocked(true)
     } catch (err) {
       setIsSubmitting(false)
+
+      // Record failed PIN attempt
+      try {
+        const res = await fetch('/api/proxy/auth/record-failed-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        })
+        const data = await res.json()
+
+        if (data.locked) {
+          setError('PIN bloqueado por 30 minutos. Demasiados intentos fallidos.')
+          setShowRecoveryLink(true)
+          return
+        } else if (data.remaining <= 2) {
+          setError(`PIN incorrecto. Te quedan ${data.remaining} intentos.`)
+          setShowRecoveryLink(true)
+          return
+        }
+      } catch {
+        // Ignore tracking errors
+      }
+
       if (err instanceof ApiError && err.status === 401) {
         setError('Sesión expirada. Inicia sesión de nuevo.')
       } else if (err instanceof ApiError && err.status >= 500) {
@@ -64,7 +96,8 @@ function UnlockForm() {
         err instanceof Error &&
         (err.message.includes('Wrong password') || err.message.includes('User key not available'))
       ) {
-        setError('Contraseña incorrecta.')
+        setError('PIN incorrecto.')
+        setShowRecoveryLink(true)
       } else {
         setError('Error al desbloquear. Verifica tu contraseña.')
       }
@@ -246,6 +279,18 @@ function UnlockForm() {
                   Cerrar sesión
                 </button>
               </p>
+
+              {/* Recovery link - show after failed attempts or when locked */}
+              {(showRecoveryLink || error.includes('bloqueado')) && (
+                <p className="mt-3 text-center text-sm">
+                  <Link
+                    href="/recovery"
+                    className="text-amber-500 hover:text-amber-600 transition-colors font-medium"
+                  >
+                    ¿Olvidaste tu PIN?
+                  </Link>
+                </p>
+              )}
             </div>
           </div>
         </div>
