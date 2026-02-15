@@ -1,11 +1,35 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Edit2, Trash2, Loader2, Clock, CheckSquare, Square, Trash, Tag } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit2,
+  Trash2,
+  Loader2,
+  Clock,
+  CheckSquare,
+  Square,
+  Trash,
+  Tag,
+} from 'lucide-react'
 import { Button, Select } from '@/components/ui'
 import type { Transaction } from '@/lib/apiClient'
 
-const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const MONTHS_ES = [
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic',
+]
 
 export type TransactionWithOptimistic = Transaction & {
   _optimistic?: boolean
@@ -72,12 +96,12 @@ export function ResponsiveTransactionTable({
     if (selectedIds.size === transactions.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(transactions.map(tx => tx.id)))
+      setSelectedIds(new Set(transactions.map((tx) => tx.id)))
     }
   }, [transactions, selectedIds])
 
   const toggleSelect = useCallback((id: string) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(id)) {
         newSet.delete(id)
@@ -156,12 +180,13 @@ export function ResponsiveTransactionTable({
               )}
             </button>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-accent shrink-0">
-              {selectedIds.size} transacción{selectedIds.size > 1 ? 'es' : ''} seleccionada{selectedIds.size > 1 ? 's' : ''}
+              {selectedIds.size} transacción{selectedIds.size > 1 ? 'es' : ''} seleccionada
+              {selectedIds.size > 1 ? 's' : ''}
             </span>
-            
+
             <div className="flex flex-wrap items-center gap-2 flex-1">
               {onBulkCategoryChange && (
                 <>
@@ -195,7 +220,7 @@ export function ResponsiveTransactionTable({
                   </Button>
                 </>
               )}
-              
+
               {onBulkDelete && (
                 <Button
                   size="sm"
@@ -207,7 +232,7 @@ export function ResponsiveTransactionTable({
                   Eliminar
                 </Button>
               )}
-              
+
               <Button
                 size="sm"
                 variant="ghost"
@@ -283,11 +308,15 @@ export function ResponsiveTransactionTable({
                     </td>
                   )}
                   <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
-                    {tx._optimistic && <Clock className="h-3.5 w-3.5 inline-block mr-1 text-accent" />}
+                    {tx._optimistic && (
+                      <Clock className="h-3.5 w-3.5 inline-block mr-1 text-accent" />
+                    )}
                     {formatDate(tx.date)}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`text-xs font-medium ${tx._optimistic ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                    <span
+                      className={`text-xs font-medium ${tx._optimistic ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}
+                    >
                       {tx.description}
                     </span>
                   </td>
@@ -316,19 +345,27 @@ export function ResponsiveTransactionTable({
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">Sin categoria</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Sin categoria
+                        </span>
                       )}
                     </button>
                   </td>
                   <td className="px-3 py-2 text-right">
-                      <span className="text-text-secondary text-xs">
-                        {Number(tx.amount) >= 0 ? '+' : '-'}
-                      </span>
-                      <span className={`${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'} ml-1 text-sm`}>
-                        {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(Number(tx.amount)))}
-                      </span>
-                      <span className="text-text-secondary text-xs ml-1">€</span>
-                    </td>
+                    <span className="text-text-secondary text-xs">
+                      {Number(tx.amount) >= 0 ? '+' : '-'}
+                    </span>
+                    <span
+                      className={`${Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'} ml-1 text-sm`}
+                    >
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'decimal',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(Math.abs(Number(tx.amount)))}
+                    </span>
+                    <span className="text-text-secondary text-xs ml-1">€</span>
+                  </td>
                   {hasActions && (
                     <td className="px-3 py-2 text-right">
                       {tx._optimistic ? (
@@ -388,7 +425,7 @@ export function ResponsiveTransactionTable({
             </button>
           </div>
         )}
-        
+
         {transactions.map((tx) => (
           <div
             key={tx.id}
@@ -410,7 +447,7 @@ export function ResponsiveTransactionTable({
                   )}
                 </button>
               )}
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
@@ -420,17 +457,27 @@ export function ResponsiveTransactionTable({
                         Guardando...
                       </span>
                     )}
-                    <p className={`text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                    <p
+                      className={`text-sm font-medium flex-1 min-w-0 line-clamp-2 ${tx._optimistic ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}
+                    >
                       {tx.description}
                     </p>
                   </div>
-                  <span className={`text-sm shrink-0 ml-2 ${tx._optimistic ? 'text-gray-400' : Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}>
-                      <span className="text-text-secondary font-normal">{Number(tx.amount) >= 0 ? '+' : '-'}</span>
-                      <span className="ml-0.5 text-base">
-                        {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(Number(tx.amount)))}
-                      </span>
-                      <span className="text-text-secondary text-xs ml-0.5">€</span>
+                  <span
+                    className={`text-sm shrink-0 ml-2 ${tx._optimistic ? 'text-gray-400' : Number(tx.amount) >= 0 ? 'text-success' : 'text-danger'}`}
+                  >
+                    <span className="text-text-secondary font-normal">
+                      {Number(tx.amount) >= 0 ? '+' : '-'}
                     </span>
+                    <span className="ml-0.5 text-base">
+                      {new Intl.NumberFormat('es-ES', {
+                        style: 'decimal',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(Math.abs(Number(tx.amount)))}
+                    </span>
+                    <span className="text-text-secondary text-xs ml-0.5">€</span>
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                   <span>{formatDate(tx.date)}</span>
@@ -445,7 +492,9 @@ export function ResponsiveTransactionTable({
                   {showSubcategory && tx.subcategory_name && (
                     <>
                       <span>·</span>
-                      <span style={{ color: tx.category_color ? `${tx.category_color}99` : '#9ca3af' }}>
+                      <span
+                        style={{ color: tx.category_color ? `${tx.category_color}99` : '#9ca3af' }}
+                      >
                         {tx.subcategory_name}
                       </span>
                     </>
@@ -484,17 +533,10 @@ export function ResponsiveTransactionTable({
       {hasBulkActions && selectedIds.size > 0 && (
         <div className="md:hidden fixed bottom-4 left-4 right-4 bg-white dark:bg-[#151b23] border border-accent/30 rounded-lg shadow-lg p-3 z-50">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-accent">
-              {selectedIds.size} selected
-            </span>
+            <span className="text-sm font-medium text-accent">{selectedIds.size} selected</span>
             <div className="flex items-center gap-2">
               {onBulkDelete && (
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={handleBulkDelete}
-                  className="h-9"
-                >
+                <Button size="sm" variant="danger" onClick={handleBulkDelete} className="h-9">
                   <Trash className="h-4 w-4 mr-1" />
                   Delete
                 </Button>

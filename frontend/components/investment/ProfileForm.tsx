@@ -18,7 +18,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react'
 import { InfoTooltip } from '@/components/ui/Tooltip'
 
@@ -35,7 +35,7 @@ const STEPS = [
     field: 'age',
     min: 18,
     max: 99,
-    step: 1
+    step: 1,
   },
   {
     id: 'income',
@@ -43,7 +43,7 @@ const STEPS = [
     type: 'number',
     field: 'monthlyIncome',
     min: 0,
-    step: 100
+    step: 100,
   },
   {
     id: 'stability',
@@ -53,8 +53,8 @@ const STEPS = [
     options: [
       { value: 'high', label: 'Muy estable (funcionario, indefinido)' },
       { value: 'medium', label: 'Moderadamente estable (contrato largo)' },
-      { value: 'low', label: 'Inestable (freelance, comisiones)' }
-    ]
+      { value: 'low', label: 'Inestable (freelance, comisiones)' },
+    ],
   },
   {
     id: 'emergency',
@@ -65,8 +65,8 @@ const STEPS = [
     options: [
       { value: 'yes', label: 'Sí, completo (3+ meses de gastos)' },
       { value: 'partial', label: 'Parcial (1-3 meses)' },
-      { value: 'no', label: 'No tengo' }
-    ]
+      { value: 'no', label: 'No tengo' },
+    ],
   },
   {
     id: 'horizon',
@@ -76,8 +76,8 @@ const STEPS = [
     options: [
       { value: '<3', label: 'Menos de 3 años' },
       { value: '3-10', label: 'Entre 3 y 10 años' },
-      { value: '>10', label: 'Más de 10 años' }
-    ]
+      { value: '>10', label: 'Más de 10 años' },
+    ],
   },
   {
     id: 'reaction',
@@ -88,8 +88,8 @@ const STEPS = [
     options: [
       { value: 'sell', label: 'Vendería para evitar más pérdidas' },
       { value: 'hold', label: 'Mantendría esperando a que remonte' },
-      { value: 'buy_more', label: 'Compraría más aprovechando el precio bajo' }
-    ]
+      { value: 'buy_more', label: 'Compraría más aprovechando el precio bajo' },
+    ],
   },
   {
     id: 'experience',
@@ -100,13 +100,15 @@ const STEPS = [
       { value: 'none', label: 'Ninguna - Soy nuevo en esto' },
       { value: 'basic', label: 'Básica - Conozco los conceptos generales' },
       { value: 'intermediate', label: 'Intermedia - He invertido en fondos/ETF' },
-      { value: 'advanced', label: 'Avanzada - Conozco acciones, crypto, etc.' }
-    ]
-  }
+      { value: 'advanced', label: 'Avanzada - Conozco acciones, crypto, etc.' },
+    ],
+  },
 ]
 
 export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProps) {
-  const { data: investmentData, isLoading: profileLoading } = useInvestmentOverview(accountId, { refetchOnMount: false })
+  const { data: investmentData, isLoading: profileLoading } = useInvestmentOverview(accountId, {
+    refetchOnMount: false,
+  })
   const { metrics: financialSummary } = useFinancialMetrics(accountId)
   const [showForm, setShowForm] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
@@ -127,7 +129,7 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
         5: '3-10',
         10: '>10',
         15: '>10',
-        20: '>10'
+        20: '>10',
       }
       setAnswers({
         age: 30, // These would come from user's actual data
@@ -136,7 +138,7 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
         hasEmergencyFund: profile.hasEmergencyFund ? 'partial' : 'no',
         horizonYears: horizonMap[profile.horizonYears] || '3-10',
         reactionToDrop: 'hold',
-        experienceLevel: 'none'
+        experienceLevel: 'none',
       })
     }
   }, [profile, showForm, financialSummary])
@@ -144,19 +146,20 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
   const step = STEPS[currentStep]
   const progress = ((currentStep + 1) / STEPS.length) * 100
   const isLastStep = currentStep === STEPS.length - 1
-  const canGoNext = step.type === 'number' 
-    ? answers[step.field] !== undefined && answers[step.field] !== ''
-    : answers[step.field] !== undefined
+  const canGoNext =
+    step.type === 'number'
+      ? answers[step.field] !== undefined && answers[step.field] !== ''
+      : answers[step.field] !== undefined
 
   const handleAnswer = (value: any) => {
-    setAnswers(prev => ({ ...prev, [step.field]: value }))
+    setAnswers((prev) => ({ ...prev, [step.field]: value }))
   }
 
   const handleNext = () => {
     if (isLastStep) {
       submitForm()
     } else {
-      setCurrentStep(prev => prev + 1)
+      setCurrentStep((prev) => prev + 1)
     }
   }
 
@@ -169,7 +172,7 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
       }
       return
     }
-    setCurrentStep(prev => prev - 1)
+    setCurrentStep((prev) => prev - 1)
   }
 
   const submitForm = async () => {
@@ -182,21 +185,23 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
         horizonYears: answers.horizonYears,
         reactionToDrop: answers.reactionToDrop,
         experienceLevel: answers.experienceLevel,
-        financialMetrics: financialSummary ? {
-          avgMonthlyIncome: financialSummary.avgMonthlyIncome,
-          avgMonthlyExpenses: financialSummary.avgMonthlyExpenses,
-          savingsCapacity: financialSummary.savingsCapacity,
-          savingsRate: financialSummary.savingsRate,
-          historicalMonths: financialSummary.historicalMonths,
-          trend: financialSummary.trend,
-          deficitMonths: financialSummary.deficitMonths,
-        } : undefined,
+        financialMetrics: financialSummary
+          ? {
+              avgMonthlyIncome: financialSummary.avgMonthlyIncome,
+              avgMonthlyExpenses: financialSummary.avgMonthlyExpenses,
+              savingsCapacity: financialSummary.savingsCapacity,
+              savingsRate: financialSummary.savingsRate,
+              historicalMonths: financialSummary.historicalMonths,
+              trend: financialSummary.trend,
+              deficitMonths: financialSummary.deficitMonths,
+            }
+          : undefined,
       }
       console.log('[ProfileForm] Submitting:', payload)
 
       const result = await analyzeMutation.mutateAsync({
         accountId,
-        answers: payload
+        answers: payload,
       })
       setResult(result)
       setShowForm(false)
@@ -247,7 +252,10 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
               <div className="text-2xl font-bold text-primary">{profile.investmentPercentage}%</div>
               <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
                 Del ahorro a invertir
-                <InfoTooltip content="Porcentaje de tu capacidad de ahorro mensual que se recomienda destinar a inversión." className="w-3 h-3" />
+                <InfoTooltip
+                  content="Porcentaje de tu capacidad de ahorro mensual que se recomienda destinar a inversión."
+                  className="w-3 h-3"
+                />
               </div>
             </div>
             <div className="text-center">
@@ -256,7 +264,10 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
               </div>
               <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
                 Cantidad mensual
-                <InfoTooltip content="Cantidad mensual calculada como el ahorro del mes en curso × porcentaje de inversión." className="w-3 h-3" />
+                <InfoTooltip
+                  content="Cantidad mensual calculada como el ahorro del mes en curso × porcentaje de inversión."
+                  className="w-3 h-3"
+                />
               </div>
             </div>
           </div>
@@ -316,9 +327,7 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
         <div className="py-6 sm:py-8 min-h-[200px] sm:min-h-[250px]">
           {/* Question */}
           <h3 className="text-lg sm:text-xl font-semibold mb-2">{step.question}</h3>
-          {step.description && (
-            <p className="text-muted-foreground mb-6">{step.description}</p>
-          )}
+          {step.description && <p className="text-muted-foreground mb-6">{step.description}</p>}
 
           {/* Answer options */}
           <div className="space-y-3">
@@ -331,39 +340,40 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
                 value={answers[step.field] || ''}
                 onChange={(e) => handleAnswer(e.target.value)}
                 className="w-full p-3 text-lg border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
-                placeholder={
-                  step.field === 'age' ? 'Tu edad' : 'Ingresos mensuales (€)'
-                }
+                placeholder={step.field === 'age' ? 'Tu edad' : 'Ingresos mensuales (€)'}
                 onKeyDown={(e) => e.key === 'Enter' && canGoNext && handleNext()}
               />
             )}
 
-            {step.type === 'select' && step.options?.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => handleAnswer(option.value)}
-                className={cn(
-                  'w-full p-4 text-left border rounded-lg transition-all',
-                  answers[step.field] === option.value
-                    ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/30 ring-2 ring-purple-500'
-                    : 'hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    'w-5 h-5 rounded-full border-2 flex items-center justify-center',
+            {step.type === 'select' &&
+              step.options?.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleAnswer(option.value)}
+                  className={cn(
+                    'w-full p-4 text-left border rounded-lg transition-all',
                     answers[step.field] === option.value
-                      ? 'border-purple-500 bg-purple-500'
-                      : 'border-muted-foreground'
-                  )}>
-                    {answers[step.field] === option.value && (
-                      <CheckCircle2 className="h-3 w-3 text-white" />
-                    )}
+                      ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/30 ring-2 ring-purple-500'
+                      : 'hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        'w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                        answers[step.field] === option.value
+                          ? 'border-purple-500 bg-purple-500'
+                          : 'border-muted-foreground'
+                      )}
+                    >
+                      {answers[step.field] === option.value && (
+                        <CheckCircle2 className="h-3 w-3 text-white" />
+                      )}
+                    </div>
+                    <span>{option.label}</span>
                   </div>
-                  <span>{option.label}</span>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
           </div>
         </div>
 
@@ -406,17 +416,25 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
 // Subcomponents
 // ========================
 
-function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId: string; onUpdate: () => void }) {
+function ProfileResult({
+  result,
+  accountId,
+  onUpdate,
+}: {
+  result: any
+  accountId: string
+  onUpdate: () => void
+}) {
   const profileColors: Record<'conservative' | 'balanced' | 'dynamic', string> = {
     conservative: 'bg-blue-500',
     balanced: 'bg-yellow-500',
-    dynamic: 'bg-red-500'
+    dynamic: 'bg-red-500',
   }
 
   const profileLabels: Record<'conservative' | 'balanced' | 'dynamic', string> = {
     conservative: 'Conservador',
     balanced: 'Equilibrado',
-    dynamic: 'Dinámico'
+    dynamic: 'Dinámico',
   }
 
   const recommendedProfile = result.recommendedProfile as keyof typeof profileColors
@@ -424,10 +442,12 @@ function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId
   return (
     <Card className="mx-auto bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
       <CardHeader className="text-center">
-        <div className={cn(
-          'w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center',
-          profileColors[recommendedProfile]
-        )}>
+        <div
+          className={cn(
+            'w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center',
+            profileColors[recommendedProfile]
+          )}
+        >
           <span className="text-3xl font-bold text-white">
             {recommendedProfile.charAt(0).toUpperCase()}
           </span>
@@ -435,9 +455,7 @@ function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId
         <CardTitle className="text-2xl text-purple-700 dark:text-purple-300">
           Perfil: {profileLabels[recommendedProfile]}
         </CardTitle>
-        <p className="text-muted-foreground">
-          Confianza: {Math.round(result.confidence * 100)}%
-        </p>
+        <p className="text-muted-foreground">Confianza: {Math.round(result.confidence * 100)}%</p>
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -447,9 +465,7 @@ function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId
             <User className="h-4 w-4" />
             Análisis personalizado
           </h4>
-          <p className="text-sm text-muted-foreground">
-            {result.reasoning}
-          </p>
+          <p className="text-sm text-muted-foreground">{result.reasoning}</p>
         </div>
 
         {/* Investment percentages */}
@@ -458,17 +474,13 @@ function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {result.investmentPercentage}%
             </div>
-            <div className="text-sm text-muted-foreground">
-              Del ahorro a invertir
-            </div>
+            <div className="text-sm text-muted-foreground">Del ahorro a invertir</div>
           </div>
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center border border-blue-100">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {formatCurrency(result.monthlyInvestable)}
             </div>
-            <div className="text-sm text-muted-foreground">
-              Cantidad mensual
-            </div>
+            <div className="text-sm text-muted-foreground">Cantidad mensual</div>
           </div>
         </div>
 
@@ -480,10 +492,18 @@ function ProfileResult({ result, accountId, onUpdate }: { result: any; accountId
               Análisis de tu historial
             </h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Meses analizados: <strong>{result.historicalInsights.monthsAnalyzed}</strong></div>
-              <div>Tendencia: <strong>{result.historicalInsights.trend}</strong></div>
-              <div>Mejor mes: <strong>{result.historicalInsights.bestMonth}</strong></div>
-              <div>Peor mes: <strong>{result.historicalInsights.worstMonth}</strong></div>
+              <div>
+                Meses analizados: <strong>{result.historicalInsights.monthsAnalyzed}</strong>
+              </div>
+              <div>
+                Tendencia: <strong>{result.historicalInsights.trend}</strong>
+              </div>
+              <div>
+                Mejor mes: <strong>{result.historicalInsights.bestMonth}</strong>
+              </div>
+              <div>
+                Peor mes: <strong>{result.historicalInsights.worstMonth}</strong>
+              </div>
             </div>
           </div>
         )}
@@ -524,7 +544,7 @@ function formatCurrency(amount: number): string {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   }).format(amount)
 }
 
@@ -532,17 +552,19 @@ function RiskBadge({ profile }: { profile: string }) {
   const colors: Record<string, string> = {
     conservative: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     balanced: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    dynamic: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+    dynamic: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   }
 
   const labels: Record<string, string> = {
     conservative: 'Conservador',
     balanced: 'Equilibrado',
-    dynamic: 'Dinámico'
+    dynamic: 'Dinámico',
   }
 
   return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium ${colors[profile] || colors.balanced}`}>
+    <span
+      className={`px-3 py-1 rounded-full text-sm font-medium ${colors[profile] || colors.balanced}`}
+    >
       {labels[profile] || labels.balanced}
     </span>
   )

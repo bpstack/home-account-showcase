@@ -60,9 +60,9 @@ export const CURRENCY_PAIRS = ['USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'] as cons
 export const INDEX_SYMBOLS: Record<string, string> = {
   SP500: 'SPY',
   MSCI: 'URTH',
-  NASDAQ: 'QQQ'
+  NASDAQ: 'QQQ',
 } as const
 
-export type CryptoCoin = typeof CRYPTO_COINS[number]
-export type CurrencyPair = typeof CURRENCY_PAIRS[number]
+export type CryptoCoin = (typeof CRYPTO_COINS)[number]
+export type CurrencyPair = (typeof CURRENCY_PAIRS)[number]
 export type IndexSymbol = keyof typeof INDEX_SYMBOLS

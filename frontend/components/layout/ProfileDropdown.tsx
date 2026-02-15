@@ -3,7 +3,16 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { User, LogOut, ChevronDown, Building2, ExternalLink, Plus, Loader2, Check } from 'lucide-react'
+import {
+  User,
+  LogOut,
+  ChevronDown,
+  Building2,
+  ExternalLink,
+  Plus,
+  Loader2,
+  Check,
+} from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
 import { toast } from 'sonner'
@@ -29,7 +38,14 @@ export function ProfileDropdown() {
   const accountMenuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { user, account, accounts: allAccounts, switchAccount, logout, isSwitchingAccount } = useAuth()
+  const {
+    user,
+    account,
+    accounts: allAccounts,
+    switchAccount,
+    logout,
+    isSwitchingAccount,
+  } = useAuth()
 
   // Contar cuentas donde el usuario es owner
   const ownedAccountsCount = allAccounts.filter((a) => a.role === 'owner').length
@@ -83,7 +99,9 @@ export function ProfileDropdown() {
       // Verificar que el usuario está desbloqueado
       const cryptoStore = useCryptoStore.getState()
       if (!cryptoStore.userKey) {
-        setCreateError('Error: No se pudo obtener la clave de usuario. Intenta cerrar sesión y volver a entrar.')
+        setCreateError(
+          'Error: No se pudo obtener la clave de usuario. Intenta cerrar sesión y volver a entrar.'
+        )
         setIsCreating(false)
         return
       }
@@ -118,7 +136,7 @@ export function ProfileDropdown() {
     } catch (error) {
       setCreateError((error as Error).message || 'Error al crear la cuenta')
       toast.error('Error al crear la cuenta', {
-        description: (error as Error).message
+        description: (error as Error).message,
       })
     } finally {
       setIsCreating(false)
@@ -140,7 +158,7 @@ export function ProfileDropdown() {
       toast.success('Has abandonado la cuenta correctamente')
     } catch (error) {
       toast.error('Error al abandonar la cuenta', {
-        description: (error as Error).message
+        description: (error as Error).message,
       })
     } finally {
       setIsLeaving(false)
@@ -159,12 +177,17 @@ export function ProfileDropdown() {
           {user.name.charAt(0).toUpperCase()}
         </div>
         <div className="hidden md:flex flex-col items-start">
-          <span className="text-base font-medium text-foreground leading-none">{currentAccount?.name || 'Sin cuenta'}</span>
-          <span className="text-sm text-muted-foreground leading-none mt-0.5">{account?.role === 'owner' ? 'Propietario' : 'Miembro'}</span>
+          <span className="text-base font-medium text-foreground leading-none">
+            {currentAccount?.name || 'Sin cuenta'}
+          </span>
+          <span className="text-sm text-muted-foreground leading-none mt-0.5">
+            {account?.role === 'owner' ? 'Propietario' : 'Miembro'}
+          </span>
         </div>
         <ChevronDown
-          className={`hidden md:block h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
-            }`}
+          className={`hidden md:block h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
         />
       </button>
 
@@ -192,8 +215,9 @@ export function ProfileDropdown() {
                     <span className="font-medium">{currentAccount?.name}</span>
                   </div>
                   <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isAccountMenuOpen ? 'rotate-180' : ''
-                      }`}
+                    className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                      isAccountMenuOpen ? 'rotate-180' : ''
+                    }`}
                   />
                 </button>
 
@@ -206,10 +230,11 @@ export function ProfileDropdown() {
                           key={acc.id}
                           onClick={() => handleSwitchAccount(acc.id)}
                           disabled={isSwitchingAccount || isActive}
-                          className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${isActive
+                          className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
+                            isActive
                               ? 'bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium cursor-default'
                               : 'text-foreground hover:bg-muted'
-                            }`}
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             <span>{acc.name}</span>

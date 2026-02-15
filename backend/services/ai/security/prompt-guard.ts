@@ -45,8 +45,8 @@ const CRITICAL_PATTERNS = [
   /\bexec\s*\(/i,
   /<script[\s>]/i,
   /javascript:/i,
-  /\{\{\s*.*\s*\}\}/,  // Template injection
-  /\$\{.*\}/,  // Template literal injection
+  /\{\{\s*.*\s*\}\}/, // Template injection
+  /\$\{.*\}/, // Template literal injection
 ]
 
 // High-risk patterns - strong warning

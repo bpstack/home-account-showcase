@@ -108,7 +108,8 @@ export function validateAIOutput(
 
   // If blocked, return safe error message
   if (blocked) {
-    sanitizedOutput = 'Lo siento, no puedo procesar esta respuesta. Por favor, reformula tu pregunta.'
+    sanitizedOutput =
+      'Lo siento, no puedo procesar esta respuesta. Por favor, reformula tu pregunta.'
   }
 
   return {
@@ -132,28 +133,16 @@ function sanitizeOutput(output: string): string {
   )
 
   // Redact potential passwords
-  sanitized = sanitized.replace(
-    /(password\s*[:=]\s*["']?)[^\s"']+/gi,
-    '$1[REDACTED]'
-  )
+  sanitized = sanitized.replace(/(password\s*[:=]\s*["']?)[^\s"']+/gi, '$1[REDACTED]')
 
   // Redact file paths
-  sanitized = sanitized.replace(
-    /[A-Za-z]:\\[^\s]+\.(ts|js|json|env)/gi,
-    '[FILE_PATH_REDACTED]'
-  )
+  sanitized = sanitized.replace(/[A-Za-z]:\\[^\s]+\.(ts|js|json|env)/gi, '[FILE_PATH_REDACTED]')
 
   // Redact email addresses (keep domain for context)
-  sanitized = sanitized.replace(
-    /[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-    '[EMAIL]@$1'
-  )
+  sanitized = sanitized.replace(/[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '[EMAIL]@$1')
 
   // Redact potential credit card numbers
-  sanitized = sanitized.replace(
-    /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g,
-    '[CARD_REDACTED]'
-  )
+  sanitized = sanitized.replace(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[CARD_REDACTED]')
 
   // Redact potential phone numbers
   sanitized = sanitized.replace(
@@ -209,7 +198,10 @@ export function checkUnauthorizedFinancialData(
 /**
  * Validate JSON output structure
  */
-export function validateJSONOutput(output: string, requiredFields: string[]): {
+export function validateJSONOutput(
+  output: string,
+  requiredFields: string[]
+): {
   valid: boolean
   issues: string[]
   parsed?: any
@@ -225,7 +217,7 @@ export function validateJSONOutput(output: string, requiredFields: string[]): {
     const parsed = JSON.parse(jsonStr.trim())
 
     // Check required fields
-    const missingFields = requiredFields.filter(field => !(field in parsed))
+    const missingFields = requiredFields.filter((field) => !(field in parsed))
     if (missingFields.length > 0) {
       return {
         valid: false,

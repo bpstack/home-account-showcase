@@ -106,7 +106,8 @@ export async function checkInputSecurity(
       sanitizedInput: '',
       threats,
       blocked: true,
-      blockReason: 'Your message contains patterns that are not allowed. Please rephrase your question.',
+      blockReason:
+        'Your message contains patterns that are not allowed. Please rephrase your question.',
     }
   }
 

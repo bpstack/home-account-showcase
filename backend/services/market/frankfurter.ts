@@ -19,13 +19,18 @@ export async function getCurrencyRates(
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json'
-      }
+        Accept: 'application/json',
+      },
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error('FRANKFURTER', 'getCurrencyRates', `API error: ${response.status}`, new Error(errorText))
+      logger.error(
+        'FRANKFURTER',
+        'getCurrencyRates',
+        `API error: ${response.status}`,
+        new Error(errorText)
+      )
       return getFallbackCurrencyRates(currencies)
     }
 
@@ -38,14 +43,14 @@ export async function getCurrencyRates(
     for (const currency of currencies) {
       if (data.rates && data.rates[currency]) {
         const rate = data.rates[currency]
-        
+
         const change24h = await getCurrencyChange24h(currency)
 
         result[currency] = {
           pair: `EUR/${currency}`,
           rate: rate,
           change24h: change24h,
-          source: 'frankfurter'
+          source: 'frankfurter',
         }
       }
     }
@@ -53,7 +58,7 @@ export async function getCurrencyRates(
     return result
   } catch (error) {
     const elapsed = Date.now() - startTime
-      logger.error('FRANKFURTER', 'getCurrencyRates', `Error after ${elapsed}ms`, error as Error)
+    logger.error('FRANKFURTER', 'getCurrencyRates', `Error after ${elapsed}ms`, error as Error)
     return getFallbackCurrencyRates(currencies)
   }
 }
@@ -66,12 +71,12 @@ async function getCurrencyChange24h(currency: CurrencyPair): Promise<number> {
   try {
     const url = `${FRANKFURTER_BASE}/${dateStr}?from=EUR&to=${currency}`
     const response = await fetch(url)
-    
+
     if (!response.ok) return 0
 
     const data = await response.json()
     const yesterdayRate = data.rates?.[currency]
-    
+
     if (yesterdayRate) {
       const currentUrl = `${FRANKFURTER_BASE}/latest?from=EUR&to=${currency}`
       const currentResponse = await fetch(currentUrl)
@@ -85,7 +90,7 @@ async function getCurrencyChange24h(currency: CurrencyPair): Promise<number> {
   } catch (error) {
     logger.warn('FRANKFURTER', 'getCurrencyChange24h', `Could not fetch 24h change for ${currency}`)
   }
-  
+
   return 0
 }
 
@@ -97,38 +102,38 @@ function getFallbackCurrencyRates(currencies: CurrencyPair[]): Record<CurrencyPa
       pair: 'EUR/USD',
       rate: 1.042,
       change24h: 0.15,
-      source: 'frankfurter'
+      source: 'frankfurter',
     },
     GBP: {
       pair: 'EUR/GBP',
       rate: 0.862,
       change24h: -0.08,
-      source: 'frankfurter'
+      source: 'frankfurter',
     },
     JPY: {
       pair: 'EUR/JPY',
       rate: 163.5,
       change24h: 0.1,
-      source: 'frankfurter'
+      source: 'frankfurter',
     },
     CHF: {
       pair: 'EUR/CHF',
       rate: 0.94,
       change24h: 0.05,
-      source: 'frankfurter'
+      source: 'frankfurter',
     },
     CAD: {
       pair: 'EUR/CAD',
       rate: 1.48,
       change24h: -0.1,
-      source: 'frankfurter'
+      source: 'frankfurter',
     },
     AUD: {
       pair: 'EUR/AUD',
       rate: 1.62,
       change24h: 0.2,
-      source: 'frankfurter'
-    }
+      source: 'frankfurter',
+    },
   }
 
   const result: Record<CurrencyPair, CurrencyRate> = {} as Record<CurrencyPair, CurrencyRate>

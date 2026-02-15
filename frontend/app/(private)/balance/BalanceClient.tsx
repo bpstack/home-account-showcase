@@ -133,16 +133,16 @@ function BalanceSkeleton() {
         </div>
         <div className="border rounded-md">
           {[1, 2, 3, 4, 5].map((i) => (
-             <div key={i} className="flex items-center justify-between p-4 border-b last:border-0">
-               <div className="flex gap-4">
-                 <Skeleton className="h-10 w-10 rounded-full" />
-                 <div className="space-y-2">
-                   <Skeleton className="h-4 w-32" />
-                   <Skeleton className="h-3 w-24" />
-                 </div>
-               </div>
-               <Skeleton className="h-4 w-20" />
-             </div>
+            <div key={i} className="flex items-center justify-between p-4 border-b last:border-0">
+              <div className="flex gap-4">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <Skeleton className="h-4 w-20" />
+            </div>
           ))}
         </div>
       </div>
@@ -186,7 +186,10 @@ function BalanceContent({
   } = useBalanceStore()
 
   const hasActiveFilters =
-    selectedMonth !== null || selectedYear !== new Date().getFullYear() || period !== 'monthly' || activeTab !== 'balance'
+    selectedMonth !== null ||
+    selectedYear !== new Date().getFullYear() ||
+    period !== 'monthly' ||
+    activeTab !== 'balance'
 
   const clearFilters = () => {
     resetFilters()
@@ -255,10 +258,7 @@ function BalanceContent({
 
   // Calculate type filter directly based on activeTab
   const typeFilter: 'income' | 'expense' | undefined =
-    activeTab === 'income' ? 'income' :
-    activeTab === 'expenses' ? 'expense' :
-    undefined
-
+    activeTab === 'income' ? 'income' : activeTab === 'expenses' ? 'expense' : undefined
 
   const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(
     account?.id || '',
@@ -573,15 +573,22 @@ function BalanceTabContent({
         </Card>
 
         {/* Ahorro */}
-        <Card className={`bg-gradient-to-br ${stats.balance >= 0 ? 'from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20 border-blue-200/50 dark:border-blue-800/30' : 'from-orange-50/80 to-amber-50/50 dark:from-orange-950/30 dark:to-amber-950/20 border-orange-200/50 dark:border-orange-800/30'}`}>
+        <Card
+          className={`bg-gradient-to-br ${stats.balance >= 0 ? 'from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20 border-blue-200/50 dark:border-blue-800/30' : 'from-orange-50/80 to-amber-50/50 dark:from-orange-950/30 dark:to-amber-950/20 border-orange-200/50 dark:border-orange-800/30'}`}
+        >
           <CardContent className="py-4 px-4 text-center">
             <p className="text-xs text-muted-foreground mb-1">Ahorro</p>
-            <p className={`text-xl sm:text-2xl font-bold ${stats.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
-              {stats.balance >= 0 ? '+' : ''}{formatCurrency(stats.balance)}
+            <p
+              className={`text-xl sm:text-2xl font-bold ${stats.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}
+            >
+              {stats.balance >= 0 ? '+' : ''}
+              {formatCurrency(stats.balance)}
             </p>
             <div className="flex items-center justify-center gap-3 mt-3">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
-                <PiggyBank className={`h-3 w-3 ${stats.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`} />
+                <PiggyBank
+                  className={`h-3 w-3 ${stats.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}
+                />
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
                 {periodLabel}
@@ -834,7 +841,8 @@ function ExpensesTabContent({
   periodLabel: string
 }) {
   const hasExpenses = stats.expenses > 0
-  const expensePercentage = stats.income > 0 ? ((stats.expenses / stats.income) * 100).toFixed(1) : null
+  const expensePercentage =
+    stats.income > 0 ? ((stats.expenses / stats.income) * 100).toFixed(1) : null
 
   return (
     <div className="space-y-6">
@@ -934,7 +942,9 @@ function TransactionsSection({
       >
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <h3 className="text-sm sm:text-base font-semibold text-text-primary shrink-0">{title}</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-text-primary shrink-0">
+              {title}
+            </h3>
             <span className="text-xs text-text-secondary bg-layer-2 px-2 py-0.5 rounded-full shrink-0">
               {data.total}
             </span>

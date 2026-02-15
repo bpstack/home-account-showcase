@@ -12,6 +12,10 @@
     "declaration": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.ts", "types/**/*.d.ts", "../docs/Accounts+Encriptation/check-latest-transaction-simple.ts"],
+  "include": [
+    "**/*.ts",
+    "types/**/*.d.ts",
+    "../docs/Accounts+Encriptation/check-latest-transaction-simple.ts"
+  ],
   "exclude": ["node_modules", "dist", "docs"]
 }

@@ -88,7 +88,7 @@ async function flushEventBuffer(): Promise<void> {
   ensureLogDirectory()
 
   const events = eventBuffer.splice(0, eventBuffer.length)
-  const logLines = events.map(event => JSON.stringify(event)).join('\n') + '\n'
+  const logLines = events.map((event) => JSON.stringify(event)).join('\n') + '\n'
 
   try {
     fs.appendFileSync(SECURITY_LOG_FILE, logLines, 'utf-8')
@@ -124,7 +124,8 @@ export async function getUserSecurityEvents(
     const lines = content.trim().split('\n').filter(Boolean)
 
     const events: SecurityEvent[] = []
-    for (const line of lines.slice(-1000)) { // Only check last 1000 lines
+    for (const line of lines.slice(-1000)) {
+      // Only check last 1000 lines
       try {
         const event = JSON.parse(line) as SecurityEvent
         if (event.userId === userId) {
@@ -137,7 +138,12 @@ export async function getUserSecurityEvents(
 
     return events.slice(-limit)
   } catch (error) {
-    logger.error('AI_AUDIT', 'getUserSecurityEvents', 'Failed to read security events', error as Error)
+    logger.error(
+      'AI_AUDIT',
+      'getUserSecurityEvents',
+      'Failed to read security events',
+      error as Error
+    )
     return []
   }
 }
@@ -189,8 +195,7 @@ export async function getSecurityStats(
 
         // Count by threat level
         if (event.threatLevel) {
-          stats.byThreatLevel[event.threatLevel] =
-            (stats.byThreatLevel[event.threatLevel] || 0) + 1
+          stats.byThreatLevel[event.threatLevel] = (stats.byThreatLevel[event.threatLevel] || 0) + 1
         }
 
         // Count by user

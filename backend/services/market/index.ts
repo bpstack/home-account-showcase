@@ -5,7 +5,13 @@ import { getCryptoPrices } from './coinGecko.js'
 import { getCurrencyRates } from './frankfurter.js'
 import { getSP500, getMSCIWorld, getNASDAQ } from './alphaVantage.js'
 import { getCachedMarketData, cacheMarketData, getCacheDuration } from './market-cache.js'
-import type { MarketData, MarketDataContext, CryptoPrice, CurrencyRate, MarketIndex } from './types.js'
+import type {
+  MarketData,
+  MarketDataContext,
+  CryptoPrice,
+  CurrencyRate,
+  MarketIndex,
+} from './types.js'
 import { logger } from '../../utils/logger.js'
 
 const CACHE_ENABLED = true
@@ -29,36 +35,42 @@ export async function getMarketData(): Promise<MarketDataContext> {
     getCurrencyRates(['USD', 'GBP']),
     getSP500(),
     getMSCIWorld(),
-    getNASDAQ()
+    getNASDAQ(),
   ])
 
-  const crypto = cryptoData.status === 'fulfilled' ? cryptoData.value : {} as Record<string, { price: number; change24h: number }>
-  const currencies = currencyData.status === 'fulfilled' ? currencyData.value : {} as Record<string, { rate: number; change24h?: number}>
+  const crypto =
+    cryptoData.status === 'fulfilled'
+      ? cryptoData.value
+      : ({} as Record<string, { price: number; change24h: number }>)
+  const currencies =
+    currencyData.status === 'fulfilled'
+      ? currencyData.value
+      : ({} as Record<string, { rate: number; change24h?: number }>)
 
   const result: MarketDataContext = {
     sp500: {
       value: sp500.status === 'fulfilled' ? sp500.value.value : 5890,
-      change24h: sp500.status === 'fulfilled' ? sp500.value.change24h : 0
+      change24h: sp500.status === 'fulfilled' ? sp500.value.change24h : 0,
     },
     msciWorld: {
       value: msci.status === 'fulfilled' ? msci.value.value : 3450,
-      change24h: msci.status === 'fulfilled' ? msci.value.change24h : 0
+      change24h: msci.status === 'fulfilled' ? msci.value.change24h : 0,
     },
     nasdaq: {
       value: nasdaq.status === 'fulfilled' ? nasdaq.value.value : 19250,
-      change24h: nasdaq.status === 'fulfilled' ? nasdaq.value.change24h : 0
+      change24h: nasdaq.status === 'fulfilled' ? nasdaq.value.change24h : 0,
     },
     btc: {
       value: crypto.bitcoin?.price || 98500,
-      change24h: crypto.bitcoin?.change24h || 0
+      change24h: crypto.bitcoin?.change24h || 0,
     },
     eth: {
       value: crypto.ethereum?.price || 3450,
-      change24h: crypto.ethereum?.change24h || 0
+      change24h: crypto.ethereum?.change24h || 0,
     },
     eurUsd: currencies.USD?.rate || 1.042,
     eurGbp: currencies.GBP?.rate || 0.862,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   }
 
   const elapsed = Date.now() - startTime
@@ -71,7 +83,9 @@ export async function getMarketData(): Promise<MarketDataContext> {
   return result
 }
 
-export async function getMarketDataFull(): Promise<MarketData & { marketTrend: 'alcista' | 'bajista' | 'neutral' }> {
+export async function getMarketDataFull(): Promise<
+  MarketData & { marketTrend: 'alcista' | 'bajista' | 'neutral' }
+> {
   const context = await getMarketData()
 
   // Reuse data from context to avoid double API calls
@@ -81,15 +95,15 @@ export async function getMarketDataFull(): Promise<MarketData & { marketTrend: '
       name: 'Bitcoin',
       price: context.btc.value,
       change24h: context.btc.change24h,
-      source: 'coingecko' as const
+      source: 'coingecko' as const,
     },
     {
       symbol: 'ethereum',
       name: 'Ethereum',
       price: context.eth.value,
       change24h: context.eth.change24h,
-      source: 'coingecko' as const
-    }
+      source: 'coingecko' as const,
+    },
   ]
 
   const currencyData = [
@@ -97,14 +111,14 @@ export async function getMarketDataFull(): Promise<MarketData & { marketTrend: '
       pair: 'USD',
       rate: context.eurUsd,
       change24h: 0,
-      source: 'frankfurter' as const
+      source: 'frankfurter' as const,
     },
     {
       pair: 'GBP',
       rate: context.eurGbp,
       change24h: 0,
-      source: 'frankfurter' as const
-    }
+      source: 'frankfurter' as const,
+    },
   ]
 
   const indices = [
@@ -113,37 +127,35 @@ export async function getMarketDataFull(): Promise<MarketData & { marketTrend: '
       name: 'S&P 500',
       value: context.sp500.value,
       change24h: context.sp500.change24h,
-      source: 'alphavantage' as const
+      source: 'alphavantage' as const,
     },
     {
       symbol: 'MSCI',
       name: 'MSCI World',
       value: context.msciWorld.value,
       change24h: context.msciWorld.change24h,
-      source: 'alphavantage' as const
+      source: 'alphavantage' as const,
     },
     {
       symbol: 'NDX',
       name: 'NASDAQ',
       value: context.nasdaq.value,
       change24h: context.nasdaq.change24h,
-      source: 'alphavantage' as const
-    }
+      source: 'alphavantage' as const,
+    },
   ]
 
   const allChanges: number[] = []
 
-  indices.forEach(i => allChanges.push(i.change24h))
-  cryptoData.forEach(c => allChanges.push(c.change24h))
+  indices.forEach((i) => allChanges.push(i.change24h))
+  cryptoData.forEach((c) => allChanges.push(c.change24h))
 
   // Calculate trend as before...
-  const avgChange = allChanges.length > 0
-    ? allChanges.reduce((a, b) => a + b, 0) / allChanges.length
-    : 0
+  const avgChange =
+    allChanges.length > 0 ? allChanges.reduce((a, b) => a + b, 0) / allChanges.length : 0
 
   const marketTrend: 'alcista' | 'bajista' | 'neutral' =
-    avgChange > 0.5 ? 'alcista' :
-    avgChange < -0.5 ? 'bajista' : 'neutral'
+    avgChange > 0.5 ? 'alcista' : avgChange < -0.5 ? 'bajista' : 'neutral'
 
   return {
     cryptocurrencies: cryptoData,
@@ -151,7 +163,7 @@ export async function getMarketDataFull(): Promise<MarketData & { marketTrend: '
     indices: indices,
     cachedAt: new Date().toISOString(),
     cacheExpiresIn: getCacheDuration().seconds,
-    marketTrend
+    marketTrend,
   }
 }
 
@@ -182,7 +194,7 @@ export async function getQuickSummary(): Promise<{
     data.msciWorld.change24h,
     data.nasdaq.change24h,
     data.btc.change24h,
-    data.eth.change24h
+    data.eth.change24h,
   ]
 
   const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length
@@ -191,19 +203,20 @@ export async function getQuickSummary(): Promise<{
   const allItems = [
     { name: 'S&P 500', change: data.sp500.change24h },
     { name: 'MSCI World', change: data.msciWorld.change24h },
-    { name: 'Bitcoin', change: data.btc.change24h }
+    { name: 'Bitcoin', change: data.btc.change24h },
   ]
 
-  const topMover = allItems.reduce((max, item) =>
-    Math.abs(item.change) > Math.abs(max.change) ? item : max
-  , allItems[0])
+  const topMover = allItems.reduce(
+    (max, item) => (Math.abs(item.change) > Math.abs(max.change) ? item : max),
+    allItems[0]
+  )
 
   const sentiment = avgChange > 1 ? 'bullish' : avgChange < -1 ? 'bearish' : 'neutral'
 
   return {
     trending,
     topMover,
-    marketSentiment: sentiment
+    marketSentiment: sentiment,
   }
 }
 

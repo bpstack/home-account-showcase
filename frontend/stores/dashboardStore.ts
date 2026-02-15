@@ -11,13 +11,12 @@ interface DashboardState {
   period: DashboardPeriod
   customStartDate: string
   customEndDate: string
-  
+
   setActiveTab: (tab: DashboardTab) => void
   setPeriod: (period: DashboardPeriod) => void
   setCustomDates: (startDate: string, endDate: string) => void
   reset: () => void
 }
-
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
@@ -40,7 +39,6 @@ export const useDashboardStore = create<DashboardState>()(
           customStartDate: '',
           customEndDate: '',
         }),
-
     }),
     {
       name: 'dashboard-storage',
@@ -50,7 +48,6 @@ export const useDashboardStore = create<DashboardState>()(
         customStartDate: state.customStartDate,
         customEndDate: state.customEndDate,
       }),
-
     }
   )
 )

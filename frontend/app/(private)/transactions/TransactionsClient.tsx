@@ -282,11 +282,7 @@ function TransactionsContent({
     }
 
     return { income: 0, expenses: 0 }
-  }, [
-    statsData,
-    allFilteredTransactions,
-    isSearching,
-  ])
+  }, [statsData, allFilteredTransactions, isSearching])
 
   const { data: categoriesData } = useCategories(account?.id || '', {
     initialData: initialCategories ? { categories: initialCategories as any } : undefined,
@@ -405,25 +401,22 @@ function TransactionsContent({
   }
 
   const handleConfirmBulkDelete = () => {
-    toast.promise(
-      Promise.all(bulkIds.map(id => deleteMutation.mutateAsync(id))),
-      {
-        loading: `Eliminando ${bulkIds.length} transacciones...`,
-        success: () => {
-          invalidateTransactions()
-          setBulkDeleteDialogOpen(false)
-          setBulkIds([])
-          return `${bulkIds.length} transacciones eliminadas`
-        },
-        error: 'Error al eliminar algunas transacciones',
-      }
-    )
+    toast.promise(Promise.all(bulkIds.map((id) => deleteMutation.mutateAsync(id))), {
+      loading: `Eliminando ${bulkIds.length} transacciones...`,
+      success: () => {
+        invalidateTransactions()
+        setBulkDeleteDialogOpen(false)
+        setBulkIds([])
+        return `${bulkIds.length} transacciones eliminadas`
+      },
+      error: 'Error al eliminar algunas transacciones',
+    })
   }
 
   // Bulk category change - works directly without modal
   const handleBulkCategoryChange = (ids: string[], categoryId: string, subcategoryId?: string) => {
     if (!account) return
-    
+
     toast.promise(
       bulkUpdateByIdsMutation.mutateAsync({
         account_id: account.id,
@@ -674,80 +667,83 @@ function TransactionsContent({
                   step="0.01"
                   placeholder="0.00"
                   value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                className="pr-8"
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  className="pr-8"
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  €
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Categoría</label>
+                <Select
+                  options={[
+                    { value: '', label: 'Seleccionar...' },
+                    ...categories.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  value={form.category_id}
+                  onChange={(e) =>
+                    setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Subcategoría</label>
+                <Select
+                  options={[
+                    { value: '', label: 'Seleccionar...' },
+                    ...subcategoryList.map((s) => ({ value: s.id, label: s.name })),
+                  ]}
+                  value={form.subcategory_id}
+                  onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
+                  disabled={!form.category_id}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Descripción</label>
+              <Input
+                placeholder="Ej: Alquiler enero"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
                 required
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                €
-              </span>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Categoría</label>
-              <Select
-                options={[
-                  { value: '', label: 'Seleccionar...' },
-                  ...categories.map((c) => ({ value: c.id, label: c.name })),
-                ]}
-                value={form.category_id}
-                onChange={(e) =>
-                  setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
-                }
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Subcategoría</label>
-              <Select
-                options={[
-                  { value: '', label: 'Seleccionar...' },
-                  ...subcategoryList.map((s) => ({ value: s.id, label: s.name })),
-                ]}
-                value={form.subcategory_id}
-                onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
-                disabled={!form.category_id}
-              />
-            </div>
-          </div>
+            <ModalFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                isLoading={createMutation.isPending || updateMutation.isPending}
+              >
+                {editingId ? 'Guardar Cambios' : 'Crear Transacción'}
+              </Button>
+            </ModalFooter>
+          </form>
+        </Modal>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Descripción</label>
-            <Input
-              placeholder="Ej: Alquiler enero"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              required
-            />
-          </div>
-
-          <ModalFooter>
-            <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
-              {editingId ? 'Guardar Cambios' : 'Crear Transacción'}
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
-
-      {account && (
-        <CategoryChangeModal
-          isOpen={isCategoryModalOpen}
-          onClose={() => {
-            setCategoryModalOpen(false)
-            setSelectedTransaction(null)
-          }}
-          transaction={selectedTransaction}
-          accountId={account.id}
-          allTransactions={txData?.transactions || []}
-          onSuccess={() => invalidateTransactions()}
-        />
-      )}
-    </div>
+        {account && (
+          <CategoryChangeModal
+            isOpen={isCategoryModalOpen}
+            onClose={() => {
+              setCategoryModalOpen(false)
+              setSelectedTransaction(null)
+            }}
+            transaction={selectedTransaction}
+            accountId={account.id}
+            allTransactions={txData?.transactions || []}
+            onSuccess={() => invalidateTransactions()}
+          />
+        )}
+      </div>
     </div>
   )
 }

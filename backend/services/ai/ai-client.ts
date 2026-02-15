@@ -4,7 +4,12 @@
 import type { AIProviderConfig, AIProviderType, IAIProvider, AIStatus } from './types.js'
 import { PROVIDER_DEFAULTS } from './types.js'
 import { createProvider, getProviderConfigFromEnv } from './providers/index.js'
-import { getPersistedProvider, setPersistedProvider, initializeAISettings, hasPersistedSettings } from './ai-settings.js'
+import {
+  getPersistedProvider,
+  setPersistedProvider,
+  initializeAISettings,
+  hasPersistedSettings,
+} from './ai-settings.js'
 import { AppError } from '../../utils/app-error.js'
 import { logger } from '../../utils/logger.js'
 
@@ -12,19 +17,21 @@ import { logger } from '../../utils/logger.js'
  * Clean up common AI JSON issues before parsing
  */
 function cleanJSON(jsonStr: string): string {
-  return jsonStr
-    // Replace N/A with 0 (unquoted values)
-    .replace(/"([^"]+)":\s*N\/A\b/gi, '"$1": 0')
-    // Remove trailing commas before } or ]
-    .replace(/,\s*([}\]])/g, '$1')
-    // Remove single-line comments
-    .replace(/\/\/.*$/gm, '')
-    // Remove multi-line comments
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    // Fix unquoted boolean-like values
-    .replace(/:\s*True\b/gi, ': true')
-    .replace(/:\s*False\b/gi, ': false')
-    .replace(/:\s*None\b/gi, ': null')
+  return (
+    jsonStr
+      // Replace N/A with 0 (unquoted values)
+      .replace(/"([^"]+)":\s*N\/A\b/gi, '"$1": 0')
+      // Remove trailing commas before } or ]
+      .replace(/,\s*([}\]])/g, '$1')
+      // Remove single-line comments
+      .replace(/\/\/.*$/gm, '')
+      // Remove multi-line comments
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      // Fix unquoted boolean-like values
+      .replace(/:\s*True\b/gi, ': true')
+      .replace(/:\s*False\b/gi, ': false')
+      .replace(/:\s*None\b/gi, ': null')
+  )
 }
 
 // Initialize settings on module load
@@ -156,19 +163,30 @@ export class AIClient {
     }
 
     const startTime = Date.now()
-    logger.info('AI_CLIENT', 'sendPrompt', `Sending prompt (${prompt.length} chars) to ${this.getProviderName()}`)
+    logger.info(
+      'AI_CLIENT',
+      'sendPrompt',
+      `Sending prompt (${prompt.length} chars) to ${this.getProviderName()}`
+    )
 
     try {
       const response = await this.provider.sendPrompt(prompt)
       const elapsed = Date.now() - startTime
-      logger.info('AI_CLIENT', 'sendPrompt', `Response received in ${elapsed}ms from ${this.getProviderName()}`)
+      logger.info(
+        'AI_CLIENT',
+        'sendPrompt',
+        `Response received in ${elapsed}ms from ${this.getProviderName()}`
+      )
       return response
-
     } catch (error) {
       logger.error('AI_CLIENT', 'sendPrompt', `Attempt ${retryCount + 1} failed`, error as Error)
 
       if (retryCount < this.config.maxRetries) {
-        logger.info('AI_CLIENT', 'sendPrompt', `Retrying... (${retryCount + 1}/${this.config.maxRetries})`)
+        logger.info(
+          'AI_CLIENT',
+          'sendPrompt',
+          `Retrying... (${retryCount + 1}/${this.config.maxRetries})`
+        )
         await this.delay(2000 * (retryCount + 1))
         return this.sendPrompt(prompt, retryCount + 1)
       }
@@ -231,7 +249,12 @@ export class AIClient {
       }
     }
 
-    logger.error('AI_CLIENT', 'parseJSON', 'Failed to parse response', new Error('No valid JSON found'))
+    logger.error(
+      'AI_CLIENT',
+      'parseJSON',
+      'Failed to parse response',
+      new Error('No valid JSON found')
+    )
     throw new AppError('No valid JSON found in response', 500)
   }
 
@@ -251,9 +274,7 @@ export function getAIStatus(): AIStatus {
   for (const type of providerTypes) {
     const config = getProviderConfigFromEnv(type)
     const enabled = isProviderEnabled(type)
-    const hasApiKey = type === 'ollama'
-      ? true
-      : !!config.apiKey
+    const hasApiKey = type === 'ollama' ? true : !!config.apiKey
 
     providers[type] = {
       configured: hasApiKey,
@@ -291,7 +312,8 @@ export async function testProviderConnection(providerType: AIProviderType): Prom
     if (providerType === 'ollama') {
       return {
         success: false,
-        error: 'Ollama is only available in local environment. In production, select another provider (Groq, Claude, or Gemini).'
+        error:
+          'Ollama is only available in local environment. In production, select another provider (Groq, Claude, or Gemini).',
       }
     }
     return { success: false, error: `Provider ${providerType} is not enabled in this environment` }
@@ -319,7 +341,12 @@ export async function testProviderConnection(providerType: AIProviderType): Prom
       responseTime,
     }
   } catch (error) {
-      logger.error('AI_CLIENT', 'testProviderConnection', `Error testing ${providerType}`, error as Error)
+    logger.error(
+      'AI_CLIENT',
+      'testProviderConnection',
+      `Error testing ${providerType}`,
+      error as Error
+    )
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -360,9 +387,17 @@ export function logAIStatus(): void {
 
       if (type === 'ollama') {
         const baseUrl = config.baseUrl || 'http://localhost:11434'
-        logger.info('AI_CLIENT', 'logAIStatus', `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} @ ${baseUrl} (${isConfigured ? 'configured' : 'not configured'})`)
+        logger.info(
+          'AI_CLIENT',
+          'logAIStatus',
+          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} @ ${baseUrl} (${isConfigured ? 'configured' : 'not configured'})`
+        )
       } else {
-        logger.info('AI_CLIENT', 'logAIStatus', `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} (${isConfigured ? 'configured' : 'not configured'})`)
+        logger.info(
+          'AI_CLIENT',
+          'logAIStatus',
+          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} (${isConfigured ? 'configured' : 'not configured'})`
+        )
       }
     }
   }

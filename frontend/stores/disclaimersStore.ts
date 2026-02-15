@@ -14,8 +14,9 @@ export const useDisclaimersStore = create<{
   get visible() {
     return this.showRecommendations || this.showChat
   },
-  toggle: () => set((state) => ({
-    showRecommendations: !state.showRecommendations,
-    showChat: !state.showChat
-  })),
+  toggle: () =>
+    set((state) => ({
+      showRecommendations: !state.showRecommendations,
+      showChat: !state.showChat,
+    })),
 }))

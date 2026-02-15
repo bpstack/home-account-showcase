@@ -16,14 +16,18 @@ const pipelineAsync = promisify(pipeline)
 /**
  * Validate file content to prevent malicious uploads
  */
-export const validateFileContent = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const validateFileContent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<any> => {
   try {
     if (!req.file) {
       return next()
     }
 
     const { buffer, mimetype, originalname } = req.file
-    
+
     if (buffer.length > 5 * 1024 * 1024) {
       return res.status(400).json({
         success: false,
@@ -34,8 +38,8 @@ export const validateFileContent = async (req: Request, res: Response, next: Nex
     if (mimetype === 'text/csv' || originalname.toLowerCase().endsWith('.csv')) {
       await validateCSV(buffer)
     } else if (
-      mimetype.includes('excel') || 
-      originalname.toLowerCase().endsWith('.xls') || 
+      mimetype.includes('excel') ||
+      originalname.toLowerCase().endsWith('.xls') ||
       originalname.toLowerCase().endsWith('.xlsx')
     ) {
       await validateExcel(buffer)
@@ -56,7 +60,7 @@ export const validateFileContent = async (req: Request, res: Response, next: Nex
  */
 async function validateCSV(buffer: Buffer): Promise<void> {
   const content = buffer.toString('utf-8')
-  
+
   const dangerousPatterns = [
     /^\s*=[^=]/,
     /^\s*\+[^+]/,
@@ -70,7 +74,7 @@ async function validateCSV(buffer: Buffer): Promise<void> {
   ]
 
   const lines = content.split('\n').slice(0, 10)
-  
+
   for (const line of lines) {
     for (const pattern of dangerousPatterns) {
       if (pattern.test(line)) {
@@ -91,7 +95,7 @@ async function validateCSV(buffer: Buffer): Promise<void> {
 async function validateExcel(buffer: Buffer): Promise<void> {
   try {
     const workbook = xlsx.read(buffer, { type: 'buffer' })
-    
+
     if (workbook.SheetNames.length > 10) {
       throw new AppError('Too many sheets in Excel file', 400)
     }
@@ -99,14 +103,14 @@ async function validateExcel(buffer: Buffer): Promise<void> {
     for (const sheetName of workbook.SheetNames) {
       const worksheet = workbook.Sheets[sheetName]
       const range = xlsx.utils.decode_range(worksheet['!ref'] || 'A1:A1')
-      
-      if ((range.e.r - range.s.r + 1) > 10000) {
+
+      if (range.e.r - range.s.r + 1 > 10000) {
         throw new AppError('Too many rows in Excel sheet', 400)
       }
 
       for (const cellAddress in worksheet) {
         if (cellAddress[0] === '!') continue
-        
+
         const cell = worksheet[cellAddress]
         if (cell.f) {
           const formula = cell.f.toLowerCase()
@@ -121,7 +125,7 @@ async function validateExcel(buffer: Buffer): Promise<void> {
             'vbscript',
           ]
 
-          if (dangerousFormulas.some(f => formula.includes(f))) {
+          if (dangerousFormulas.some((f) => formula.includes(f))) {
             throw new AppError('Potentially dangerous formula detected in Excel', 400)
           }
         }

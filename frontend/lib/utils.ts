@@ -14,7 +14,10 @@ export function formatCurrency(amount: number, currency: string = 'EUR'): string
   }).format(amount)
 }
 
-export function formatDistanceToNow(date: Date | string, options?: { addSuffix?: boolean }): string {
+export function formatDistanceToNow(
+  date: Date | string,
+  options?: { addSuffix?: boolean }
+): string {
   const now = new Date()
   const then = new Date(date)
   const diffMs = now.getTime() - then.getTime()

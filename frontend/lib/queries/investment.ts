@@ -15,11 +15,14 @@ export function useInvestmentOverview(accountId: string, options?: { refetchOnMo
     queryFn: () => investmentApi.getOverview(accountId),
     staleTime: 0, // staleTime = 0 according to architecture for financial data
     refetchOnMount: options?.refetchOnMount ?? true,
-    enabled: !!accountId
+    enabled: !!accountId,
   })
 }
 
-export function useMarketPrices(accountId: string, options?: { autoRefresh?: boolean; refetchOnMount?: boolean }) {
+export function useMarketPrices(
+  accountId: string,
+  options?: { autoRefresh?: boolean; refetchOnMount?: boolean }
+) {
   const autoRefresh = options?.autoRefresh ?? false
   return useQuery({
     queryKey: ['investment', 'market-prices', accountId],
@@ -28,7 +31,7 @@ export function useMarketPrices(accountId: string, options?: { autoRefresh?: boo
     refetchInterval: autoRefresh ? 15 * 1000 : undefined,
     refetchOnWindowFocus: false,
     refetchOnMount: options?.refetchOnMount ?? true,
-    enabled: !!accountId
+    enabled: !!accountId,
   })
 }
 
@@ -40,7 +43,7 @@ export function useRecommendations(
     queryKey: ['investment', 'recommendations', accountId, options],
     queryFn: () => investmentApi.getRecommendations(accountId, options),
     staleTime: 0, // staleTime = 0 for recommendations
-    enabled: !!accountId
+    enabled: !!accountId,
   })
 }
 
@@ -49,7 +52,7 @@ export function useChatHistory(accountId: string, sessionId: string) {
     queryKey: ['investment', 'chat', 'history', sessionId],
     queryFn: () => investmentApi.getChatHistory(accountId, sessionId),
     staleTime: 30 * 1000, // 30 seconds - chat is dynamic
-    enabled: !!accountId && !!sessionId
+    enabled: !!accountId && !!sessionId,
   })
 }
 
@@ -66,8 +69,10 @@ export function useAnalyzeProfile() {
     onSuccess: (_, variables) => {
       // Invalidate overview to reflect new profile
       queryClient.invalidateQueries({ queryKey: ['investment', 'overview', variables.accountId] })
-      queryClient.invalidateQueries({ queryKey: ['investment', 'recommendations', variables.accountId] })
-    }
+      queryClient.invalidateQueries({
+        queryKey: ['investment', 'recommendations', variables.accountId],
+      })
+    },
   })
 }
 
@@ -78,7 +83,7 @@ export function useCreateChatSession() {
     mutationFn: (accountId: string) => investmentApi.createChatSession(accountId),
     onSuccess: (_, accountId) => {
       queryClient.invalidateQueries({ queryKey: ['investment', 'chat', accountId] })
-    }
+    },
   })
 }
 
@@ -89,13 +94,13 @@ export function useSendChatMessage(accountId: string, sessionId: string) {
     mutationFn: (message: string) => investmentApi.sendChatMessage(accountId, sessionId, message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investment', 'chat', 'history', sessionId] })
-    }
+    },
   })
 }
 
 export function useExplainConcept(accountId: string) {
   return useMutation({
-    mutationFn: (concept: string) => investmentApi.explainConcept(accountId, concept)
+    mutationFn: (concept: string) => investmentApi.explainConcept(accountId, concept),
   })
 }
 
@@ -108,7 +113,7 @@ export function useUpdateEmergencyFundMonths() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['investment', 'overview', variables.accountId] })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    }
+    },
   })
 }
 
@@ -121,7 +126,7 @@ export function useUpdateLiquidityReserve() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['investment', 'overview', variables.accountId] })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    }
+    },
   })
 }
 
@@ -138,6 +143,6 @@ export function useInvestmentData(accountId: string) {
     marketPrices,
     isLoading: overview.isLoading || marketPrices.isLoading,
     isError: overview.isError || marketPrices.isError,
-    error: overview.error || marketPrices.error
+    error: overview.error || marketPrices.error,
   }
 }

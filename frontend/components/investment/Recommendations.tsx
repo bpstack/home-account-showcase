@@ -23,7 +23,12 @@ interface RecommendationsProps {
   selectedMonthSavings?: number
 }
 
-export function Recommendations({ accountId, profile, monthlyAmount, selectedMonthSavings }: RecommendationsProps) {
+export function Recommendations({
+  accountId,
+  profile,
+  monthlyAmount,
+  selectedMonthSavings,
+}: RecommendationsProps) {
   const router = useRouter()
   const { data, isLoading, isError, refetch } = useRecommendations(
     accountId,
@@ -114,7 +119,10 @@ export function Recommendations({ accountId, profile, monthlyAmount, selectedMon
           </div>
           <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full border border-border/50 flex items-center gap-1">
             {investmentPercentage}% ahorro
-            <InfoTooltip content="Porcentaje de tu capacidad de ahorro destinado a inversión, según tu perfil de riesgo." className="w-3 h-3" />
+            <InfoTooltip
+              content="Porcentaje de tu capacidad de ahorro destinado a inversión, según tu perfil de riesgo."
+              className="w-3 h-3"
+            />
           </span>
         </CardTitle>
       </CardHeader>
@@ -129,7 +137,10 @@ export function Recommendations({ accountId, profile, monthlyAmount, selectedMon
             </div>
             <div className="text-[9px] sm:text-xs font-semibold text-muted-foreground mt-0.5 sm:mt-1 uppercase tracking-wider flex items-center justify-center gap-0.5">
               Mensual
-              <InfoTooltip content="Cantidad mensual recomendada para invertir. Calculada como capacidad de ahorro × porcentaje de inversión." className="w-3 h-3" />
+              <InfoTooltip
+                content="Cantidad mensual recomendada para invertir. Calculada como capacidad de ahorro × porcentaje de inversión."
+                className="w-3 h-3"
+              />
             </div>
           </div>
           <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-center">
@@ -138,7 +149,10 @@ export function Recommendations({ accountId, profile, monthlyAmount, selectedMon
             </div>
             <div className="text-[9px] sm:text-xs font-medium text-emerald-600/80 dark:text-emerald-400/80 mt-0.5 sm:mt-1 flex items-center justify-center gap-0.5">
               R. Variable
-              <InfoTooltip content="Renta variable: acciones y criptomonedas. Mayor riesgo pero mayor potencial de rentabilidad a largo plazo." className="w-3 h-3" />
+              <InfoTooltip
+                content="Renta variable: acciones y criptomonedas. Mayor riesgo pero mayor potencial de rentabilidad a largo plazo."
+                className="w-3 h-3"
+              />
             </div>
           </div>
           <div className="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col justify-center">
@@ -147,7 +161,10 @@ export function Recommendations({ accountId, profile, monthlyAmount, selectedMon
             </div>
             <div className="text-[9px] sm:text-xs font-medium text-blue-600/80 dark:text-blue-400/80 mt-0.5 sm:mt-1 flex items-center justify-center gap-0.5">
               R. Fija
-              <InfoTooltip content="Renta fija: bonos y liquidez. Menor riesgo con rendimientos más estables y predecibles." className="w-3 h-3" />
+              <InfoTooltip
+                content="Renta fija: bonos y liquidez. Menor riesgo con rendimientos más estables y predecibles."
+                className="w-3 h-3"
+              />
             </div>
           </div>
         </div>

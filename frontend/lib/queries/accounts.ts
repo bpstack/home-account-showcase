@@ -22,9 +22,8 @@ export function useAccount() {
     enabled: !!user, // Solo ejecutar si hay usuario
   })
 
-  const defaultAccount = accountsData?.find((acc) => acc.id === selectedAccountId)
-    || accountsData?.[0]
-    || null
+  const defaultAccount =
+    accountsData?.find((acc) => acc.id === selectedAccountId) || accountsData?.[0] || null
 
   return {
     data: {

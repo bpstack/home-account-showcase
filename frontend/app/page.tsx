@@ -4,7 +4,16 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
 import { ThemeToggle } from '@/components/ui'
-import { User, Users, TrendingUp, X, Smartphone, Monitor, ArrowRight, CheckCircle2 } from 'lucide-react'
+import {
+  User,
+  Users,
+  TrendingUp,
+  X,
+  Smartphone,
+  Monitor,
+  ArrowRight,
+  CheckCircle2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function HomePage() {
@@ -39,22 +48,24 @@ export default function HomePage() {
     <div className="min-h-[100dvh] lg:h-[100dvh] lg:overflow-hidden bg-background text-foreground transition-colors duration-500">
       {/* Subtle color accents in background */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className={cn(
-          "absolute -top-40 -left-40 w-80 h-80 rounded-full blur-[100px] transition-all duration-1000",
-          showAccounts ? "bg-violet-500/20" : "bg-emerald-500/20 dark:bg-emerald-500/10"
-        )} />
-        <div className={cn(
-          "absolute -bottom-40 -right-40 w-80 h-80 rounded-full blur-[100px] transition-all duration-1000",
-          showAccounts ? "bg-blue-500/20" : "bg-blue-500/20 dark:bg-blue-500/10"
-        )} />
+        <div
+          className={cn(
+            'absolute -top-40 -left-40 w-80 h-80 rounded-full blur-[100px] transition-all duration-1000',
+            showAccounts ? 'bg-violet-500/20' : 'bg-emerald-500/20 dark:bg-emerald-500/10'
+          )}
+        />
+        <div
+          className={cn(
+            'absolute -bottom-40 -right-40 w-80 h-80 rounded-full blur-[100px] transition-all duration-1000',
+            showAccounts ? 'bg-blue-500/20' : 'bg-blue-500/20 dark:bg-blue-500/10'
+          )}
+        />
       </div>
 
       {/* Main Grid */}
       <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr,1.2fr] gap-0">
-
         {/* LEFT PANEL - Content */}
         <div className="relative flex flex-col justify-between p-6 sm:p-8 lg:p-12 min-h-[100dvh] lg:min-h-0">
-
           {/* Header */}
           <header className="flex items-center justify-between">
             <div className="flex items-center gap-6">
@@ -95,8 +106,8 @@ export default function HomePage() {
 
               {/* Description */}
               <p className="text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
-                Gestiona gastos, ingresos e inversiones de tu familia
-                en un solo lugar. Simple y privado.
+                Gestiona gastos, ingresos e inversiones de tu familia en un solo lugar. Simple y
+                privado.
               </p>
 
               {/* CTA Buttons */}
@@ -113,7 +124,12 @@ export default function HomePage() {
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 8l4 4m0 0l-4 4m4-4H3"
+                      />
                     </svg>
                   </span>
                 </Link>
@@ -126,7 +142,6 @@ export default function HomePage() {
                   </span>
                 </Link>
               </div>
-
             </div>
           </div>
 
@@ -142,12 +157,12 @@ export default function HomePage() {
                 <div key={index} className="flex items-center gap-6 sm:gap-10">
                   {index > 0 && <div className="w-px h-6 bg-border -ml-6 sm:-ml-10" />}
                   <div className="group cursor-default">
-                    <p className={`text-base sm:text-lg font-bold transition-all duration-300 group-hover:scale-105 origin-left ${stat.color}`}>
+                    <p
+                      className={`text-base sm:text-lg font-bold transition-all duration-300 group-hover:scale-105 origin-left ${stat.color}`}
+                    >
                       {stat.value}
                     </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">
-                      {stat.label}
-                    </p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">{stat.label}</p>
                   </div>
                 </div>
               ))}
@@ -158,10 +173,10 @@ export default function HomePage() {
               onMouseEnter={() => setShowAccounts(true)}
               onMouseLeave={() => setShowAccounts(false)}
               className={cn(
-                "flex lg:hidden items-center gap-2 text-sm px-3 py-1.5 rounded-full transition-all duration-300",
-                showAccounts 
-                  ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" 
-                  : "text-muted-foreground hover:text-blue-500"
+                'flex lg:hidden items-center gap-2 text-sm px-3 py-1.5 rounded-full transition-all duration-300',
+                showAccounts
+                  ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                  : 'text-muted-foreground hover:text-blue-500'
               )}
             >
               <Users className="w-4 h-4" />
@@ -175,7 +190,10 @@ export default function HomePage() {
         <div className="relative bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 p-6 sm:p-8 lg:p-0 flex items-center justify-center overflow-hidden">
           {/* Animated gradient orbs */}
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/20 dark:bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div
+            className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/20 dark:bg-blue-500/10 rounded-full blur-3xl animate-pulse"
+            style={{ animationDelay: '1s' }}
+          />
 
           {/* Grid pattern */}
           <div
@@ -188,29 +206,39 @@ export default function HomePage() {
           />
 
           {/* Dashboard/Accounts Preview container */}
-          <div className={cn(
-            "relative transition-all duration-700 ease-out",
-            showMobile
-              ? 'w-[300px] h-[620px]'
-              : 'w-full max-w-2xl lg:max-w-none lg:w-[95%] lg:h-[85%]'
-          )}>
+          <div
+            className={cn(
+              'relative transition-all duration-700 ease-out',
+              showMobile
+                ? 'w-[300px] h-[620px]'
+                : 'w-full max-w-2xl lg:max-w-none lg:w-[95%] lg:h-[85%]'
+            )}
+          >
             {/* Shadow layer */}
-            <div className={cn(
-              "absolute inset-0 rounded-2xl blur-xl transition-all duration-700 bg-gradient-to-br",
-              showAccounts ? "from-violet-500/20 to-blue-500/20" : "from-emerald-500/20 to-blue-500/20",
-              showMobile ? 'scale-110' : 'translate-x-4 translate-y-4'
-            )} />
+            <div
+              className={cn(
+                'absolute inset-0 rounded-2xl blur-xl transition-all duration-700 bg-gradient-to-br',
+                showAccounts
+                  ? 'from-violet-500/20 to-blue-500/20'
+                  : 'from-emerald-500/20 to-blue-500/20',
+                showMobile ? 'scale-110' : 'translate-x-4 translate-y-4'
+              )}
+            />
 
             {/* Main container mockup */}
-            <div className={cn(
-              "relative bg-card border border-border shadow-2xl overflow-hidden transition-all duration-700 h-full",
-              showMobile ? 'rounded-[2.5rem]' : 'rounded-2xl'
-            )}>
+            <div
+              className={cn(
+                'relative bg-card border border-border shadow-2xl overflow-hidden transition-all duration-700 h-full',
+                showMobile ? 'rounded-[2.5rem]' : 'rounded-2xl'
+              )}
+            >
               {/* Chrome Header */}
-              <div className={cn(
-                "flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/50 transition-all duration-500",
-                showMobile ? 'justify-center rounded-t-[2.5rem]' : ''
-              )}>
+              <div
+                className={cn(
+                  'flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/50 transition-all duration-500',
+                  showMobile ? 'justify-center rounded-t-[2.5rem]' : ''
+                )}
+              >
                 {showMobile ? (
                   <div className="w-24 h-6 bg-foreground/90 rounded-full" />
                 ) : (
@@ -232,45 +260,53 @@ export default function HomePage() {
               </div>
 
               {/* Content Area - Screenshots or Accounts List */}
-              <div className={cn(
-                "relative transition-all duration-700 h-full",
-                showMobile ? 'h-[calc(100%-52px)]' : 'lg:h-[calc(100%-48px)]'
-              )}>
+              <div
+                className={cn(
+                  'relative transition-all duration-700 h-full',
+                  showMobile ? 'h-[calc(100%-52px)]' : 'lg:h-[calc(100%-48px)]'
+                )}
+              >
                 {/* 1. ACCOUNTS VIEW (Show when showAccounts is true) */}
-                <div className={cn(
-                  "absolute inset-0 z-20 bg-background/95 backdrop-blur-sm p-8 flex flex-col transition-all duration-500",
-                  showAccounts ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
-                )}>
+                <div
+                  className={cn(
+                    'absolute inset-0 z-20 bg-background/95 backdrop-blur-sm p-8 flex flex-col transition-all duration-500',
+                    showAccounts
+                      ? 'opacity-100 translate-y-0'
+                      : 'opacity-0 translate-y-4 pointer-events-none'
+                  )}
+                >
                   <div className="mb-8">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">Tipos de cuenta</h3>
-                    <p className="text-muted-foreground mt-2">Gestiona múltiples perfiles financieros de forma independiente</p>
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">
+                      Tipos de cuenta
+                    </h3>
+                    <p className="text-muted-foreground mt-2">
+                      Gestiona múltiples perfiles financieros de forma independiente
+                    </p>
                   </div>
-                  
+
                   <div className="grid gap-4">
                     {accountTypes.map((account, index) => (
                       <div
                         key={index}
                         className={cn(
-                          "group flex items-center gap-6 p-5 rounded-2xl border border-border bg-card transition-all duration-300",
+                          'group flex items-center gap-6 p-5 rounded-2xl border border-border bg-card transition-all duration-300',
                           account.borderColor,
-                          "hover:shadow-lg hover:-translate-y-1"
+                          'hover:shadow-lg hover:-translate-y-1'
                         )}
                       >
-                        <div className={cn(
-                          "w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3",
-                          account.color
-                        )}>
+                        <div
+                          className={cn(
+                            'w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3',
+                            account.color
+                          )}
+                        >
                           <account.icon className="w-7 h-7" />
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-lg font-bold text-foreground">
-                            {account.title}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {account.description}
-                          </p>
+                          <h4 className="text-lg font-bold text-foreground">{account.title}</h4>
+                          <p className="text-sm text-muted-foreground">{account.description}</p>
                         </div>
-                        <Link 
+                        <Link
                           href="/login"
                           className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all"
                         >
@@ -287,17 +323,19 @@ export default function HomePage() {
                 </div>
 
                 {/* 2. SCREENSHOTS (Visible when not in accounts view) */}
-                <div className={cn(
-                  "relative h-full transition-all duration-500 bg-black",
-                  showAccounts ? "opacity-0 scale-95 blur-sm" : "opacity-100 scale-100 blur-0"
-                )}>
+                <div
+                  className={cn(
+                    'relative h-full transition-all duration-500 bg-black',
+                    showAccounts ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'
+                  )}
+                >
                   {/* Desktop image */}
                   <Image
                     src="/hero-desktop.png"
                     alt="Dashboard de Home Account"
                     fill
                     className={cn(
-                      "object-contain transition-all duration-500",
+                      'object-contain transition-all duration-500',
                       showMobile ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
                     )}
                     style={{ transform: 'scaleY(1.05)', transformOrigin: 'top center' }}
@@ -309,7 +347,7 @@ export default function HomePage() {
                     alt="App móvil de Home Account"
                     fill
                     className={cn(
-                      "object-contain object-center transition-all duration-500",
+                      'object-contain object-center transition-all duration-500',
                       showMobile ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
                     )}
                   />
@@ -327,7 +365,7 @@ export default function HomePage() {
             }}
             onMouseLeave={() => setShowMobile(false)}
             className={cn(
-              "hidden lg:flex items-center gap-2 absolute top-8 right-8 rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border",
+              'hidden lg:flex items-center gap-2 absolute top-8 right-8 rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border',
               showMobile
                 ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white border-transparent'
                 : 'bg-card border-border hover:border-emerald-500'
@@ -343,22 +381,24 @@ export default function HomePage() {
 
           {/* Floating pill - Multiple accounts */}
           <button
-             onMouseEnter={() => {
-               setShowAccounts(true)
-               setShowMobile(false)
-             }}
-             onMouseLeave={() => setShowAccounts(false)}
-             className={cn(
-               "hidden lg:flex items-center gap-2 absolute top-8 left-8 border rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer group",
-               showAccounts
-                 ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white border-transparent'
-                 : 'bg-card border-border hover:border-blue-500'
-             )}
+            onMouseEnter={() => {
+              setShowAccounts(true)
+              setShowMobile(false)
+            }}
+            onMouseLeave={() => setShowAccounts(false)}
+            className={cn(
+              'hidden lg:flex items-center gap-2 absolute top-8 left-8 border rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer group',
+              showAccounts
+                ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white border-transparent'
+                : 'bg-card border-border hover:border-blue-500'
+            )}
           >
-            <Users className={cn(
-              "w-4 h-4 transition-transform duration-300 group-hover:rotate-12",
-              showAccounts ? "text-white" : "text-blue-500"
-            )} />
+            <Users
+              className={cn(
+                'w-4 h-4 transition-transform duration-300 group-hover:rotate-12',
+                showAccounts ? 'text-white' : 'text-blue-500'
+              )}
+            />
             <span className="text-sm font-medium">Múltiples cuentas</span>
           </button>
         </div>
@@ -366,6 +406,3 @@ export default function HomePage() {
     </div>
   )
 }
-
-
-

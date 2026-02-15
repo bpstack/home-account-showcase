@@ -47,7 +47,12 @@ const MONTHS_OPTIONS = [
   { value: 60, label: '60 meses' },
 ]
 
-export function InvestmentOverview({ accountId, filterMonth, filterYear, onFilterChange }: InvestmentOverviewProps) {
+export function InvestmentOverview({
+  accountId,
+  filterMonth,
+  filterYear,
+  onFilterChange,
+}: InvestmentOverviewProps) {
   const { data: investmentData, isLoading: isInvestmentLoading } = useInvestmentOverview(accountId)
   const { metrics: financialSummary, isLoading: isMetricsLoading } = useFinancialMetrics(accountId)
   const isAccountUnlocked = useCryptoStore((s) => s.isAccountUnlocked)
@@ -179,7 +184,9 @@ export function InvestmentOverview({ accountId, filterMonth, filterYear, onFilte
               className="text-xs sm:text-sm border-none bg-muted/50 rounded-lg px-2 py-1 cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
             >
               {MONTHS_ES.map((m, i) => (
-                <option key={i} value={i}>{m}</option>
+                <option key={i} value={i}>
+                  {m}
+                </option>
               ))}
             </select>
             <select
@@ -188,7 +195,9 @@ export function InvestmentOverview({ accountId, filterMonth, filterYear, onFilte
               className="text-xs sm:text-sm border-none bg-muted/50 rounded-lg px-2 py-1 cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
             >
               {availableYears.map((y) => (
-                <option key={y} value={y}>{y}</option>
+                <option key={y} value={y}>
+                  {y}
+                </option>
               ))}
             </select>
           </div>
@@ -244,7 +253,10 @@ export function InvestmentOverview({ accountId, filterMonth, filterYear, onFilte
             <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Media mensual
             </span>
-            <InfoTooltip content="Promedios calculados con todas tus transacciones históricas" className="w-3 h-3" />
+            <InfoTooltip
+              content="Promedios calculados con todas tus transacciones históricas"
+              className="w-3 h-3"
+            />
           </div>
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="text-center">
@@ -328,7 +340,10 @@ export function InvestmentOverview({ accountId, filterMonth, filterYear, onFilte
             <div className="flex justify-between text-[10px] sm:text-xs items-center">
               <span className="text-muted-foreground flex items-center gap-0.5">
                 Progreso
-                <InfoTooltip content="Porcentaje del fondo de emergencia completado. Meta = gastos mensuales × meses configurados." className="w-3 h-3" />
+                <InfoTooltip
+                  content="Porcentaje del fondo de emergencia completado. Meta = gastos mensuales × meses configurados."
+                  className="w-3 h-3"
+                />
               </span>
               <span className="font-semibold">{savingsProgress.toFixed(0)}%</span>
             </div>
@@ -380,16 +395,25 @@ export function InvestmentOverview({ accountId, filterMonth, filterYear, onFilte
           <div className="text-muted-foreground text-center p-1.5 sm:p-2 rounded-lg bg-muted/30">
             <span className="inline-flex items-center gap-0.5">
               📊{' '}
-              <span className="font-medium text-foreground">{financialSummary.historicalMonths}</span>{' '}
+              <span className="font-medium text-foreground">
+                {financialSummary.historicalMonths}
+              </span>{' '}
               meses
-              <InfoTooltip content="Meses de historial de transacciones analizados para calcular tus métricas financieras." className="w-3 h-3" />
+              <InfoTooltip
+                content="Meses de historial de transacciones analizados para calcular tus métricas financieras."
+                className="w-3 h-3"
+              />
             </span>
           </div>
           <div className="text-muted-foreground text-center p-1.5 sm:p-2 rounded-lg bg-muted/30">
             <span className="inline-flex items-center gap-0.5">
-              📅 <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span>{' '}
+              📅{' '}
+              <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span>{' '}
               déficit
-              <InfoTooltip content="Número de meses en los que tus gastos superaron a tus ingresos." className="w-3 h-3" />
+              <InfoTooltip
+                content="Número de meses en los que tus gastos superaron a tus ingresos."
+                className="w-3 h-3"
+              />
             </span>
           </div>
         </div>

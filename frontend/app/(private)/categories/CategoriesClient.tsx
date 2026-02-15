@@ -300,159 +300,159 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   return (
     <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
       <div className="px-4 md:px-6 py-6">
-      {error && (
-        <div className="mb-4 p-4 bg-danger/10 border border-danger/30 rounded-lg flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-danger" />
-          <span className="text-sm text-danger">{error}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              createCategoryMutation.reset()
-              updateCategoryMutation.reset()
-              deleteCategoryMutation.reset()
-              addDefaultsMutation.reset()
-            }}
-            className="ml-auto"
+        {error && (
+          <div className="mb-4 p-4 bg-danger/10 border border-danger/30 rounded-lg flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-danger" />
+            <span className="text-sm text-danger">{error}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                createCategoryMutation.reset()
+                updateCategoryMutation.reset()
+                deleteCategoryMutation.reset()
+                addDefaultsMutation.reset()
+              }}
+              className="ml-auto"
+            >
+              ×
+            </Button>
+          </div>
+        )}
+
+        {!isLoadingCategories && !hasCategories && (
+          <div className="mb-6 p-6 bg-layer-2 border border-layer-3 rounded-lg text-center">
+            <h3 className="text-lg font-medium text-text-primary mb-2">Sin categorías definidas</h3>
+            <p className="text-sm text-text-secondary mb-4">
+              Agrega las categorías por defecto basadas en tu control de gastos 2025
+            </p>
+            <Button onClick={handleAddDefaultCategories} isLoading={addDefaultsMutation.isPending}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Agregar categorías por defecto
+            </Button>
+          </div>
+        )}
+
+        <div className="flex justify-center gap-4 mb-6">
+          <button
+            onClick={handleAddDefaultCategories}
+            disabled={addDefaultsMutation.isPending}
+            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
           >
-            ×
-          </Button>
+            <RefreshCw className="h-4 w-4 text-accent stroke-[2.5]" />
+            Restablecer categorías
+          </button>
+          <button
+            onClick={openCreateCategoryModal}
+            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <Plus className="h-4 w-4 text-accent stroke-[2.5]" />
+            Nueva categoría
+          </button>
         </div>
-      )}
 
-      {!isLoadingCategories && !hasCategories && (
-        <div className="mb-6 p-6 bg-layer-2 border border-layer-3 rounded-lg text-center">
-          <h3 className="text-lg font-medium text-text-primary mb-2">Sin categorías definidas</h3>
-          <p className="text-sm text-text-secondary mb-4">
-            Agrega las categorías por defecto basadas en tu control de gastos 2025
-          </p>
-          <Button onClick={handleAddDefaultCategories} isLoading={addDefaultsMutation.isPending}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Agregar categorías por defecto
-          </Button>
-        </div>
-      )}
+        {isLoadingCategories ? (
+          <div className="text-center py-12 text-text-secondary">Cargando categorías...</div>
+        ) : hasCategories ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {categoryList.map((category) => {
+              const isExpanded = expandedCategories.includes(category.id)
+              const subcategories = getSubcategories(category)
 
-      <div className="flex justify-center gap-4 mb-6">
-        <button
-          onClick={handleAddDefaultCategories}
-          disabled={addDefaultsMutation.isPending}
-          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className="h-4 w-4 text-accent stroke-[2.5]" />
-          Restablecer categorías
-        </button>
-        <button
-          onClick={openCreateCategoryModal}
-          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
-        >
-          <Plus className="h-4 w-4 text-accent stroke-[2.5]" />
-          Nueva categoría
-        </button>
-      </div>
-
-      {isLoadingCategories ? (
-        <div className="text-center py-12 text-text-secondary">Cargando categorías...</div>
-      ) : hasCategories ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {categoryList.map((category) => {
-            const isExpanded = expandedCategories.includes(category.id)
-            const subcategories = getSubcategories(category)
-
-            return (
-              <Card key={category.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <button
-                      onClick={() => toggleCategory(category.id)}
-                      className="flex items-center gap-3 text-left"
-                    >
-                      <div
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      <CardTitle className="text-base">{category.name}</CardTitle>
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-text-secondary" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-text-secondary" />
-                      )}
-                    </button>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEditCategoryModal(category)}
+              return (
+                <Card key={category.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => toggleCategory(category.id)}
+                        className="flex items-center gap-3 text-left"
                       >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-danger hover:text-danger"
-                        onClick={() => handleDeleteClick(category)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                {isExpanded && (
-                  <CardContent className="pt-2">
-                    <div className="space-y-2 pl-7">
-                      {subcategories.map((sub) => (
                         <div
-                          key={sub.id}
-                          className="flex items-center justify-between py-2 px-3 bg-layer-2 rounded-md"
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        <CardTitle className="text-base">{category.name}</CardTitle>
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4 text-text-secondary" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-text-secondary" />
+                        )}
+                      </button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditCategoryModal(category)}
                         >
-                          <span className="text-sm text-text-primary">{sub.name}</span>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => openEditSubcategoryModal(sub, category.id)}
-                            >
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-danger hover:text-danger"
-                              onClick={() => handleDeleteSubcategory(sub)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-text-secondary"
-                        onClick={() => openCreateSubcategoryModal(category.id)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Añadir subcategoría
-                      </Button>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-danger hover:text-danger"
+                          onClick={() => handleDeleteClick(category)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </CardContent>
-                )}
+                  </CardHeader>
 
-                {!isExpanded && (
-                  <CardContent className="pt-0">
-                    <p className="text-sm text-text-secondary">
-                      {subcategories.length} subcategorías
-                    </p>
-                  </CardContent>
-                )}
-              </Card>
-            )
-          })}
-        </div>
-      ) : null}
+                  {isExpanded && (
+                    <CardContent className="pt-2">
+                      <div className="space-y-2 pl-7">
+                        {subcategories.map((sub) => (
+                          <div
+                            key={sub.id}
+                            className="flex items-center justify-between py-2 px-3 bg-layer-2 rounded-md"
+                          >
+                            <span className="text-sm text-text-primary">{sub.name}</span>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => openEditSubcategoryModal(sub, category.id)}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-danger hover:text-danger"
+                                onClick={() => handleDeleteSubcategory(sub)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-text-secondary"
+                          onClick={() => openCreateSubcategoryModal(category.id)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Añadir subcategoría
+                        </Button>
+                      </div>
+                    </CardContent>
+                  )}
+
+                  {!isExpanded && (
+                    <CardContent className="pt-0">
+                      <p className="text-sm text-text-secondary">
+                        {subcategories.length} subcategorías
+                      </p>
+                    </CardContent>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
 
       <Modal

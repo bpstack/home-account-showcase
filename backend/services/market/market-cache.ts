@@ -27,11 +27,15 @@ export async function getCachedMarketData(): Promise<MarketDataContext | null> {
 
     const rawData = rows[0].data
     const cached = typeof rawData === 'string' ? JSON.parse(rawData) : rawData
-    logger.info('MARKET_CACHE', 'getCachedMarketData', `Using cached data from ${rows[0].cached_at}`)
+    logger.info(
+      'MARKET_CACHE',
+      'getCachedMarketData',
+      `Using cached data from ${rows[0].cached_at}`
+    )
 
     return {
       ...cached,
-      lastUpdated: rows[0].cached_at
+      lastUpdated: rows[0].cached_at,
     }
   } catch (error) {
     logger.error('MARKET_CACHE', 'getCachedMarketData', 'Error reading cache', error as Error)
@@ -54,7 +58,11 @@ export async function cacheMarketData(data: MarketDataContext): Promise<void> {
       [id, 'aggregate', 'multiple', JSON.stringify(data), expiresAt]
     )
 
-    logger.info('MARKET_CACHE', 'cacheMarketData', `Cached market data, expires at ${expiresAt.toISOString()}`)
+    logger.info(
+      'MARKET_CACHE',
+      'cacheMarketData',
+      `Cached market data, expires at ${expiresAt.toISOString()}`
+    )
   } catch (error) {
     logger.error('MARKET_CACHE', 'cacheMarketData', 'Error caching data', error as Error)
   }
@@ -80,27 +88,28 @@ export async function getCachedSymbol(
     const rawData = rows[0].data
     return {
       data: typeof rawData === 'string' ? JSON.parse(rawData) : rawData,
-      cachedAt: rows[0].cached_at
+      cachedAt: rows[0].cached_at,
     }
   } catch (error) {
-    logger.error('MARKET_CACHE', 'getCachedSymbol', `Error reading cache for ${symbol}/${source}`, error as Error)
+    logger.error(
+      'MARKET_CACHE',
+      'getCachedSymbol',
+      `Error reading cache for ${symbol}/${source}`,
+      error as Error
+    )
     return null
   }
 }
 
-export async function cacheSymbol(
-  symbol: string,
-  source: string,
-  data: any
-): Promise<void> {
+export async function cacheSymbol(symbol: string, source: string, data: any): Promise<void> {
   const id = crypto.randomUUID()
   const expiresAt = new Date(Date.now() + CACHE_DURATION_MS)
 
   try {
-    await db.query(
-      `DELETE FROM market_data_cache WHERE symbol = ? AND source = ?`,
-      [symbol, source]
-    )
+    await db.query(`DELETE FROM market_data_cache WHERE symbol = ? AND source = ?`, [
+      symbol,
+      source,
+    ])
 
     await db.query(
       `INSERT INTO market_data_cache (id, symbol, source, data, cached_at, expires_at)
@@ -114,18 +123,21 @@ export async function cacheSymbol(
 
 export async function clearExpiredCache(): Promise<number> {
   try {
-    const [result] = await db.query<any>(
-      `DELETE FROM market_data_cache WHERE expires_at < NOW()`
-    )
-    
+    const [result] = await db.query<any>(`DELETE FROM market_data_cache WHERE expires_at < NOW()`)
+
     const deleted = (result as any).affectedRows
     if (deleted > 0) {
       logger.info('MARKET_CACHE', 'clearExpiredCache', `Cleared ${deleted} expired cache entries`)
     }
-    
+
     return deleted
   } catch (error) {
-    logger.error('MARKET_CACHE', 'clearExpiredCache', 'Error clearing expired cache', error as Error)
+    logger.error(
+      'MARKET_CACHE',
+      'clearExpiredCache',
+      'Error clearing expired cache',
+      error as Error
+    )
     return 0
   }
 }
@@ -136,9 +148,7 @@ export async function getCacheStats(): Promise<{
   validEntries: number
 }> {
   try {
-    const [totalRows] = await db.query<any[]>(
-      `SELECT COUNT(*) as total FROM market_data_cache`
-    )
+    const [totalRows] = await db.query<any[]>(`SELECT COUNT(*) as total FROM market_data_cache`)
 
     const [expiredRows] = await db.query<any[]>(
       `SELECT COUNT(*) as expired FROM market_data_cache WHERE expires_at < NOW()`
@@ -147,7 +157,7 @@ export async function getCacheStats(): Promise<{
     return {
       totalEntries: totalRows[0]?.total || 0,
       expiredEntries: expiredRows[0]?.expired || 0,
-      validEntries: (totalRows[0]?.total || 0) - (expiredRows[0]?.expired || 0)
+      validEntries: (totalRows[0]?.total || 0) - (expiredRows[0]?.expired || 0),
     }
   } catch (error) {
     logger.error('MARKET_CACHE', 'getCacheStats', 'Error getting stats', error as Error)
@@ -159,6 +169,6 @@ export function getCacheDuration(): { ms: number; seconds: number; minutes: numb
   return {
     ms: CACHE_DURATION_MS,
     seconds: CACHE_DURATION_SECONDS,
-    minutes: CACHE_DURATION_MS / 60000
+    minutes: CACHE_DURATION_MS / 60000,
   }
 }

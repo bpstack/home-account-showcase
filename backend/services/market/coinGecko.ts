@@ -8,7 +8,7 @@ const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
 const COIN_INFO: Record<CryptoCoin, { name: string; symbol: string }> = {
   bitcoin: { name: 'Bitcoin', symbol: 'BTC' },
-  ethereum: { name: 'Ethereum', symbol: 'ETH' }
+  ethereum: { name: 'Ethereum', symbol: 'ETH' },
 }
 
 export async function getCryptoPrices(
@@ -24,19 +24,24 @@ export async function getCryptoPrices(
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json'
-      }
+        Accept: 'application/json',
+      },
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error('COINGECKO', 'getCryptoPrices', `API error: ${response.status}`, new Error(errorText))
-      
+      logger.error(
+        'COINGECKO',
+        'getCryptoPrices',
+        `API error: ${response.status}`,
+        new Error(errorText)
+      )
+
       if (response.status === 429) {
         logger.warn('COINGECKO', 'getCryptoPrices', 'Rate limit hit, using fallback values')
         return getFallbackCryptoPrices(coins)
       }
-      
+
       return getFallbackCryptoPrices(coins)
     }
 
@@ -56,7 +61,7 @@ export async function getCryptoPrices(
           change24h: coinData.eur_24h_change || 0,
           volume24h: coinData.eur_24h_vol,
           marketCap: coinData.eur_market_cap,
-          source: 'coingecko'
+          source: 'coingecko',
         }
       }
     }
@@ -64,29 +69,29 @@ export async function getCryptoPrices(
     return result
   } catch (error) {
     const elapsed = Date.now() - startTime
-      logger.error('COINGECKO', 'getCryptoPrices', `Error after ${elapsed}ms`, error as Error)
+    logger.error('COINGECKO', 'getCryptoPrices', `Error after ${elapsed}ms`, error as Error)
     return getFallbackCryptoPrices(coins)
   }
 }
 
 function getFallbackCryptoPrices(coins: CryptoCoin[]): Record<CryptoCoin, CryptoPrice> {
   logger.warn('COINGECKO', 'getFallbackCryptoPrices', 'Using fallback prices')
-  
+
   const fallbackPrices: Record<CryptoCoin, CryptoPrice> = {
     bitcoin: {
       symbol: 'BTC',
       name: 'Bitcoin',
       price: 98500,
       change24h: 0,
-      source: 'coingecko'
+      source: 'coingecko',
     },
     ethereum: {
       symbol: 'ETH',
       name: 'Ethereum',
       price: 3450,
       change24h: 0,
-      source: 'coingecko'
-    }
+      source: 'coingecko',
+    },
   }
 
   const result: Record<CryptoCoin, CryptoPrice> = {} as Record<CryptoCoin, CryptoPrice>
@@ -122,7 +127,7 @@ export async function getTopCryptos(limit: number = 10): Promise<CryptoPrice[]> 
       change24h: coin.price_change_percentage_24h || 0,
       volume24h: coin.total_volume,
       marketCap: coin.market_cap,
-      source: 'coingecko' as const
+      source: 'coingecko' as const,
     }))
   } catch (error) {
     logger.error('COINGECKO', 'getTopCryptos', 'Error fetching top cryptos', error as Error)

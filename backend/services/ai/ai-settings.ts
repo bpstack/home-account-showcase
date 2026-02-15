@@ -92,5 +92,9 @@ export function setPersistedProvider(provider: AIProviderType): void {
  */
 export function initializeAISettings(): void {
   cachedSettings = loadSettings()
-  logger.info('AI_SETTINGS', 'initializeAISettings', `Initialized with provider: ${cachedSettings.activeProvider}`)
+  logger.info(
+    'AI_SETTINGS',
+    'initializeAISettings',
+    `Initialized with provider: ${cachedSettings.activeProvider}`
+  )
 }

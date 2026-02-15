@@ -60,7 +60,10 @@ function UnlockForm() {
         setError('Error del servidor. Inténtalo de nuevo en unos minutos.')
       } else if (err instanceof TypeError && err.message.includes('fetch')) {
         setError('Sin conexión. Verifica tu internet.')
-      } else if (err instanceof Error && (err.message.includes('Wrong password') || err.message.includes('User key not available'))) {
+      } else if (
+        err instanceof Error &&
+        (err.message.includes('Wrong password') || err.message.includes('User key not available'))
+      ) {
         setError('Contraseña incorrecta.')
       } else {
         setError('Error al desbloquear. Verifica tu contraseña.')
@@ -210,9 +213,7 @@ function UnlockForm() {
                   type="submit"
                   disabled={isSubmitting || !password}
                   className={`group relative w-full h-12 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-150 hover:shadow-lg hover:shadow-amber-500/30 disabled:opacity-70 disabled:cursor-not-allowed sm:h-10 ${
-                    buttonPressed
-                      ? 'scale-95 shadow-inner brightness-90'
-                      : 'hover:scale-[1.02]'
+                    buttonPressed ? 'scale-95 shadow-inner brightness-90' : 'hover:scale-[1.02]'
                   }`}
                 >
                   <span

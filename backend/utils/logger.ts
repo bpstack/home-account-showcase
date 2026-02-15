@@ -1,6 +1,6 @@
 /**
  * Logger estructurado para el backend
- * 
+ *
  * Formato de salida:
  * {
  *   level: 'info' | 'warn' | 'error' | 'debug',
@@ -10,7 +10,7 @@
  *   message: string,
  *   context: { userId?, accountId?, requestId?, elapsed?, error?, stack? }
  * }
- * 
+ *
  * En desarrollo: output coloreado con colores
  * En producción: JSON estructurado
  */
@@ -44,24 +44,24 @@ function formatTimestamp(): string {
 
 function formatContext(context: LogContext): string {
   if (Object.keys(context).length === 0) return ''
-  
+
   const cleanContext = { ...context }
   delete cleanContext.error
   delete cleanContext.stack
-  
+
   const parts: string[] = []
-  
+
   if (cleanContext.userId) parts.push(`userId=${cleanContext.userId}`)
   if (cleanContext.accountId) parts.push(`accountId=${cleanContext.accountId}`)
   if (cleanContext.requestId) parts.push(`requestId=${cleanContext.requestId}`)
   if (cleanContext.elapsed !== undefined) parts.push(`elapsed=${cleanContext.elapsed}ms`)
-  
+
   Object.entries(cleanContext).forEach(([key, value]) => {
     if (!['userId', 'accountId', 'requestId', 'elapsed'].includes(key) && value !== undefined) {
       parts.push(`${key}=${String(value)}`)
     }
   })
-  
+
   return parts.length > 0 ? ' ' + parts.join(' ') : ''
 }
 
@@ -75,30 +75,30 @@ function formatError(error: string, stack?: string): string {
 
 function colorize(level: LogLevel, message: string): string {
   const colors: Record<LogLevel, string> = {
-    info: '\x1b[32m',  // verde
-    warn: '\x1b[33m',  // amarillo
+    info: '\x1b[32m', // verde
+    warn: '\x1b[33m', // amarillo
     error: '\x1b[31m', // rojo
     debug: '\x1b[36m', // cyan
   }
   const reset = '\x1b[0m'
-  
+
   return `${colors[level]}[${level.toUpperCase()}]${reset} ${message}`
 }
 
 function output(entry: LogEntry): void {
   const { level, module, operation, message, context } = entry
-  
+
   // Formatear contexto
   let contextStr = formatContext(context)
-  
+
   // Añadir error si existe
   if (context.error) {
     const errorStr = formatError(context.error, context.stack)
     contextStr += ` error=${errorStr}`
   }
-  
+
   const fullMessage = `[${module}] ${operation}: ${message}${contextStr}`
-  
+
   if (isProduction) {
     // Producción: JSON estructurado
     console.log(JSON.stringify(entry))

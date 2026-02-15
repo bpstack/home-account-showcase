@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { BACKEND_URL, isAllowedOrigin, accessTokenCookieOptions, csrfTokenCookieOptions } from '../config'
+import {
+  BACKEND_URL,
+  isAllowedOrigin,
+  accessTokenCookieOptions,
+  csrfTokenCookieOptions,
+} from '../config'
 
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin')
@@ -28,10 +33,7 @@ export async function POST(req: NextRequest) {
 
     if (!backendRes.ok) {
       // Refresh falló - limpiar cookies
-      const response = NextResponse.json(
-        { error: data.error || 'Token expirado' },
-        { status: 401 }
-      )
+      const response = NextResponse.json({ error: data.error || 'Token expirado' }, { status: 401 })
       response.cookies.delete('accessToken')
       response.cookies.delete('refreshToken')
       response.cookies.delete('csrfToken')

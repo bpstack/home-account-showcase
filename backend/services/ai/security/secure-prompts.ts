@@ -138,7 +138,7 @@ export function containsRestrictedTopic(message: string): {
   topics: string[]
 } {
   const lowerMessage = message.toLowerCase()
-  const foundTopics = RESTRICTED_TOPICS.filter(topic =>
+  const foundTopics = RESTRICTED_TOPICS.filter((topic) =>
     lowerMessage.includes(topic.toLowerCase())
   )
 

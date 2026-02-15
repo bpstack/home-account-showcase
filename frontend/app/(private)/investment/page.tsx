@@ -45,8 +45,14 @@ export default function InvestmentPage() {
 
   const { data: accounts, isLoading: accountsLoading } = useAccount()
   const defaultAccountId = accounts?.defaultAccount?.id
-  const { data: overviewData } = useInvestmentOverview(defaultAccountId ?? '', { refetchOnMount: false })
-  const riskProfile = overviewData?.profile?.riskProfile as 'conservative' | 'balanced' | 'dynamic' | undefined
+  const { data: overviewData } = useInvestmentOverview(defaultAccountId ?? '', {
+    refetchOnMount: false,
+  })
+  const riskProfile = overviewData?.profile?.riskProfile as
+    | 'conservative'
+    | 'balanced'
+    | 'dynamic'
+    | undefined
 
   // Filter state — lifted here so InvestmentOverview and Recommendations stay in sync
   const now = new Date()
@@ -128,16 +134,27 @@ export default function InvestmentPage() {
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-6 items-stretch">
             <div className="flex flex-col min-w-0">
-              <InvestmentOverview accountId={defaultAccountId} filterMonth={filterMonth} filterYear={filterYear} onFilterChange={handleFilterChange} />
+              <InvestmentOverview
+                accountId={defaultAccountId}
+                filterMonth={filterMonth}
+                filterYear={filterYear}
+                onFilterChange={handleFilterChange}
+              />
             </div>
             <div className="flex flex-col min-w-0">
-              <Recommendations accountId={defaultAccountId} selectedMonthSavings={selectedMonthSavings} />
+              <Recommendations
+                accountId={defaultAccountId}
+                selectedMonthSavings={selectedMonthSavings}
+              />
             </div>
           </div>
         </section>
 
         {/* Section 2: Herramientas de Planificación */}
-        <section id="herramientas" className="p-1.5 sm:p-4 lg:p-6 rounded-lg sm:rounded-2xl bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 scroll-mt-4">
+        <section
+          id="herramientas"
+          className="p-1.5 sm:p-4 lg:p-6 rounded-lg sm:rounded-2xl bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 scroll-mt-4"
+        >
           <div className="flex items-center gap-2 mb-1.5 sm:mb-4 px-1 sm:px-0">
             <div className="hidden sm:block h-1 w-12 bg-purple-500 rounded-full"></div>
             <h2 className="text-xs sm:text-lg font-semibold text-purple-900 dark:text-purple-100">
@@ -149,7 +166,10 @@ export default function InvestmentPage() {
               <Simulator accountId={defaultAccountId} riskProfile={riskProfile} />
             </div>
             <div id="perfil-form" className="flex flex-col min-w-0 scroll-mt-4">
-              <ProfileForm accountId={defaultAccountId} selectedMonthSavings={selectedMonthSavings} />
+              <ProfileForm
+                accountId={defaultAccountId}
+                selectedMonthSavings={selectedMonthSavings}
+              />
             </div>
           </div>
         </section>

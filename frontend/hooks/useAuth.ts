@@ -101,7 +101,7 @@ export function useAuth() {
         // 4. Invalidar queries que dependen de la cuenta
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['transactions'] }),
-          queryClient.invalidateQueries({ queryKey: ['categories'] })
+          queryClient.invalidateQueries({ queryKey: ['categories'] }),
         ])
 
         // 5. Refresh Server Components (ahora la cookie ya está en el servidor)

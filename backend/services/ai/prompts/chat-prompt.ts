@@ -21,7 +21,7 @@ export function buildChatPrompt(
 ): string {
   const historyText = chatHistory
     .slice(-15) // Últimos 15 mensajes para mantener contexto
-    .map(m => `${m.role}: ${m.content}`)
+    .map((m) => `${m.role}: ${m.content}`)
     .join('\n')
 
   // Wrap user question for safety
@@ -95,7 +95,7 @@ export function parseChatResponse(text: string): ChatResult {
       .replace(/```json/g, '')
       .replace(/```/g, '')
       .trim()
-    
+
     return JSON.parse(cleaned) as ChatResult
   } catch (error) {
     const err = error as Error
@@ -105,7 +105,7 @@ export function parseChatResponse(text: string): ChatResult {
       relatedConcepts: [],
       usedMarketData: false,
       usedFinancialData: false,
-      needsDisclaimer: false
+      needsDisclaimer: false,
     }
   }
 }

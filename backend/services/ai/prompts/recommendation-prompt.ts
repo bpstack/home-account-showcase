@@ -16,7 +16,7 @@ export function buildRecommendationPrompt(
   const allocationRules = {
     conservative: { stocks: 30, bonds: 50, crypto: 5, cash: 15 },
     balanced: { stocks: 55, bonds: 30, crypto: 5, cash: 10 },
-    dynamic: { stocks: 70, bonds: 15, crypto: 10, cash: 5 }
+    dynamic: { stocks: 70, bonds: 15, crypto: 10, cash: 5 },
   }
 
   const allocation = allocationRules[profile]
@@ -46,10 +46,10 @@ export function buildRecommendationPrompt(
 # DISTRIBUCIÓN RECOMENDADA (${profile.toUpperCase()})
 | Activo | Porcentaje | Monto Mensual |
 |--------|------------|---------------|
-| Acciones/ETFs | ${allocation.stocks}% | ${(monthlyAmount * allocation.stocks / 100).toFixed(2)}€ |
-| Renta Fija | ${allocation.bonds}% | ${(monthlyAmount * allocation.bonds / 100).toFixed(2)}€ |
-| Cripto | ${allocation.crypto}% | ${(monthlyAmount * allocation.crypto / 100).toFixed(2)}€ |
-| Liquidez | ${allocation.cash}% | ${(monthlyAmount * allocation.cash / 100).toFixed(2)}€ |
+| Acciones/ETFs | ${allocation.stocks}% | ${((monthlyAmount * allocation.stocks) / 100).toFixed(2)}€ |
+| Renta Fija | ${allocation.bonds}% | ${((monthlyAmount * allocation.bonds) / 100).toFixed(2)}€ |
+| Cripto | ${allocation.crypto}% | ${((monthlyAmount * allocation.crypto) / 100).toFixed(2)}€ |
+| Liquidez | ${allocation.cash}% | ${((monthlyAmount * allocation.cash) / 100).toFixed(2)}€ |
 
 # INSTRUCCIONES
 
@@ -112,11 +112,16 @@ export function parseRecommendationResponse(text: string): RecommendationResult 
       .replace(/```json/g, '')
       .replace(/```/g, '')
       .trim()
-    
+
     return JSON.parse(cleaned) as RecommendationResult
   } catch (error) {
     const err = error as Error
-    logger.error('AI_RECOMMENDATION_PROMPT', 'parseRecommendationResponse', 'Error parsing response', err)
+    logger.error(
+      'AI_RECOMMENDATION_PROMPT',
+      'parseRecommendationResponse',
+      'Error parsing response',
+      err
+    )
     throw new AppError('Could not parse recommendations', 500)
   }
 }

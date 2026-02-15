@@ -26,7 +26,11 @@ export class OllamaProvider implements IAIProvider {
   }
 
   async sendPrompt(prompt: string): Promise<string> {
-    logger.info('AI_OLLAMA', 'sendPrompt', `Sending prompt (${prompt.length} chars) to ${this.baseUrl}`)
+    logger.info(
+      'AI_OLLAMA',
+      'sendPrompt',
+      `Sending prompt (${prompt.length} chars) to ${this.baseUrl}`
+    )
     const startTime = Date.now()
 
     const url = `${this.baseUrl}/api/generate`
@@ -81,8 +85,16 @@ export class OllamaProvider implements IAIProvider {
           throw new AppError(`Ollama request timeout after ${this.config.timeout}ms`, 504)
         }
         if (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed')) {
-          logger.error('AI_OLLAMA', 'sendPrompt', `Ollama not accessible at ${this.baseUrl}`, new Error('Connection refused'))
-          throw new AppError(`Ollama not accessible at ${this.baseUrl}. Is Docker/Ollama running?`, 503)
+          logger.error(
+            'AI_OLLAMA',
+            'sendPrompt',
+            `Ollama not accessible at ${this.baseUrl}`,
+            new Error('Connection refused')
+          )
+          throw new AppError(
+            `Ollama not accessible at ${this.baseUrl}. Is Docker/Ollama running?`,
+            503
+          )
         }
       }
 
@@ -98,7 +110,12 @@ export class OllamaProvider implements IAIProvider {
       })
 
       if (!response.ok) {
-        logger.error('AI_OLLAMA', 'checkHealth', `Health check failed: ${response.status}`, new Error('Health check failed'))
+        logger.error(
+          'AI_OLLAMA',
+          'checkHealth',
+          `Health check failed: ${response.status}`,
+          new Error('Health check failed')
+        )
         return { ok: false, error: `Ollama returned ${response.status}` }
       }
 
@@ -107,7 +124,12 @@ export class OllamaProvider implements IAIProvider {
       const modelNames = models.map((m: { name: string }) => m.name)
 
       if (!modelNames.some((name: string) => name.includes(this.config.model.split(':')[0]))) {
-        logger.error('AI_OLLAMA', 'checkHealth', `Model ${this.config.model} not found`, new Error('Model not found'))
+        logger.error(
+          'AI_OLLAMA',
+          'checkHealth',
+          `Model ${this.config.model} not found`,
+          new Error('Model not found')
+        )
         return {
           ok: false,
           error: `Model ${this.config.model} not found. Available: ${modelNames.join(', ')}`,

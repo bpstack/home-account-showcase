@@ -137,7 +137,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   } = useDashboardStore()
 
   const { setCreateModalOpen } = useTransactionsStore()
-  const { data: hasAnyTransactions, isLoading: isLoadingCheck } = useHasAnyTransactions(account?.id || '')
+  const { data: hasAnyTransactions, isLoading: isLoadingCheck } = useHasAnyTransactions(
+    account?.id || ''
+  )
 
   const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
 
@@ -569,13 +571,13 @@ function OverviewTab({
 
   const incomeByCategory = incomeByType
     ? Object.entries(incomeByType)
-      .filter(([, value]) => value > 0)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .map((item, index) => ({
-        ...item,
-        color: incomeColors[index % incomeColors.length],
-      }))
+        .filter(([, value]) => value > 0)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .map((item, index) => ({
+          ...item,
+          color: incomeColors[index % incomeColors.length],
+        }))
     : []
 
   const calculateChange = (current: number, previous: number) => {
@@ -618,7 +620,11 @@ function OverviewTab({
             >
               <span className="text-text-secondary">{type === 'income' ? '+' : '-'}</span>
               <span className="ml-1 text-xl sm:text-2xl">
-                {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(current)}
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'decimal',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(current)}
               </span>
               <span className="text-text-secondary ml-1">€</span>
             </p>
@@ -633,7 +639,11 @@ function OverviewTab({
               <span className="text-xs sm:text-sm">
                 <span className="text-text-secondary">{change.isPositive ? '+' : '-'}</span>
                 <span className="ml-1">
-                  {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(change.value))}
+                  {new Intl.NumberFormat('es-ES', {
+                    style: 'decimal',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(Math.abs(change.value))}
                 </span>
                 <span className="text-text-secondary ml-1">€</span>
               </span>
@@ -844,7 +854,9 @@ function HistoryTab({
                               <span className="text-text-secondary">
                                 {hasData ? (balance >= 0 ? '+' : '-') : ''}
                               </span>
-                              <span className={`text-sm ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                              <span
+                                className={`text-sm ${balance >= 0 ? 'text-success' : 'text-danger'}`}
+                              >
                                 {hasData ? Math.abs(balance).toFixed(2) : '-'}
                               </span>
                               {hasData && <span className="text-text-secondary ml-1">€</span>}
@@ -883,7 +895,9 @@ function HistoryTab({
                           <p className="text-text-secondary text-xs mb-1">Ingresos</p>
                           <p>
                             <span className="text-text-secondary">+</span>
-                            <span className="text-success text-sm ml-1">{hasData ? item.income.toFixed(2) : '-'}</span>
+                            <span className="text-success text-sm ml-1">
+                              {hasData ? item.income.toFixed(2) : '-'}
+                            </span>
                             {hasData && <span className="text-text-secondary ml-1">€</span>}
                           </p>
                         </div>
@@ -891,7 +905,9 @@ function HistoryTab({
                           <p className="text-text-secondary text-xs mb-1">Gastos</p>
                           <p>
                             <span className="text-text-secondary">-</span>
-                            <span className="text-danger text-sm ml-1">{hasData ? item.expenses.toFixed(2) : '-'}</span>
+                            <span className="text-danger text-sm ml-1">
+                              {hasData ? item.expenses.toFixed(2) : '-'}
+                            </span>
                             {hasData && <span className="text-text-secondary ml-1">€</span>}
                           </p>
                         </div>
@@ -901,7 +917,9 @@ function HistoryTab({
                             <span className="text-text-secondary">
                               {hasData ? (balance >= 0 ? '+' : '-') : ''}
                             </span>
-                            <span className={`text-sm ml-1 ${balance >= 0 ? 'text-success' : 'text-danger'}`}>
+                            <span
+                              className={`text-sm ml-1 ${balance >= 0 ? 'text-success' : 'text-danger'}`}
+                            >
                               {hasData ? Math.abs(balance).toFixed(2) : '-'}
                             </span>
                             {hasData && <span className="text-text-secondary ml-1">€</span>}
@@ -927,21 +945,42 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
   const [drillCategory, setDrillCategory] = useState<string | null>(null)
 
   const fmt = (v: number) =>
-    new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+    new Intl.NumberFormat('es-ES', {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(v)
 
   const categoriesWithSubs = useMemo(() => {
-    const map = new Map<string, { name: string; color: string; amount: number; subcategories: { name: string; amount: number; count: number }[] }>()
+    const map = new Map<
+      string,
+      {
+        name: string
+        color: string
+        amount: number
+        subcategories: { name: string; amount: number; count: number }[]
+      }
+    >()
     for (const item of summary) {
       const catName = item.category_name || 'Sin categoría'
       const amt = Math.abs(Number(item.total_amount))
       let cat = map.get(catName)
       if (!cat) {
-        cat = { name: catName, color: item.category_color || '#6B7280', amount: 0, subcategories: [] }
+        cat = {
+          name: catName,
+          color: item.category_color || '#6B7280',
+          amount: 0,
+          subcategories: [],
+        }
         map.set(catName, cat)
       }
       cat.amount += amt
       if (item.subcategory_name) {
-        cat.subcategories.push({ name: item.subcategory_name, amount: amt, count: item.transaction_count })
+        cat.subcategories.push({
+          name: item.subcategory_name,
+          amount: amt,
+          count: item.transaction_count,
+        })
       }
     }
     const result = Array.from(map.values())
@@ -982,10 +1021,12 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
                     >
                       <span className="text-text-primary font-medium flex items-center gap-1">
                         {item.name}
-                        {hasSubs && (isExpanded
-                          ? <ChevronUp className="h-3.5 w-3.5 text-text-secondary" />
-                          : <ChevronDown className="h-3.5 w-3.5 text-text-secondary" />
-                        )}
+                        {hasSubs &&
+                          (isExpanded ? (
+                            <ChevronUp className="h-3.5 w-3.5 text-text-secondary" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-text-secondary" />
+                          ))}
                       </span>
                       <span className="text-text-secondary">
                         {fmt(item.amount)} € ({percentage.toFixed(1)}%)
@@ -1012,7 +1053,11 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
                               <div className="h-2.5 bg-layer-2 rounded-full overflow-hidden">
                                 <div
                                   className="h-full rounded-full transition-all"
-                                  style={{ width: `${subPct}%`, backgroundColor: item.color, opacity: 0.7 }}
+                                  style={{
+                                    width: `${subPct}%`,
+                                    backgroundColor: item.color,
+                                    opacity: 0.7,
+                                  }}
                                 />
                               </div>
                             </div>
@@ -1047,7 +1092,8 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
                     {hasSubs && <ChevronDown className="h-4 w-4 text-text-secondary ml-auto" />}
                   </div>
                   <p className="text-2xl font-bold text-text-primary">
-                    {fmt(item.amount)} <span className="text-text-secondary text-lg font-normal">€</span>
+                    {fmt(item.amount)}{' '}
+                    <span className="text-text-secondary text-lg font-normal">€</span>
                   </p>
                   <p className="text-sm text-text-secondary">{percentage.toFixed(1)}% del total</p>
                 </CardContent>
@@ -1074,11 +1120,15 @@ function StatsTab({ summary }: { summary: CategorySummary[] }) {
                 <Card key={sub.name} hover>
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: drillData.color, opacity: 0.7 }} />
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: drillData.color, opacity: 0.7 }}
+                      />
                       <span className="font-medium text-text-primary">{sub.name}</span>
                     </div>
                     <p className="text-2xl font-bold text-text-primary">
-                      {fmt(sub.amount)} <span className="text-text-secondary text-lg font-normal">€</span>
+                      {fmt(sub.amount)}{' '}
+                      <span className="text-text-secondary text-lg font-normal">€</span>
                     </p>
                     <div className="flex justify-between text-sm text-text-secondary">
                       <span>{subPct.toFixed(1)}% de la categoría</span>
@@ -1146,13 +1196,15 @@ function SavingsTab({
           <CardContent className="py-4 px-4 text-center">
             {/* Ahorro principal */}
             <div className="mb-3">
-              <div className="text-xs text-muted-foreground mb-1">
-                Ahorro mensual
-              </div>
+              <div className="text-xs text-muted-foreground mb-1">Ahorro mensual</div>
               <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                 <span className="text-text-secondary">{stats.balance >= 0 ? '+' : '-'}</span>
                 <span className="ml-1">
-                  {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(savingsAmount))}
+                  {new Intl.NumberFormat('es-ES', {
+                    style: 'decimal',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(Math.abs(savingsAmount))}
                 </span>
                 <span className="text-text-secondary ml-1">EUR</span>
               </p>
@@ -1201,7 +1253,11 @@ function SavingsTab({
               <span>
                 <span className="text-text-secondary">{stats.balance >= 0 ? '+' : '-'}</span>
                 <span className={`ml-1 ${stats.balance >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(savingsAmount))}
+                  {new Intl.NumberFormat('es-ES', {
+                    style: 'decimal',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(Math.abs(savingsAmount))}
                 </span>
                 <span className="text-text-secondary ml-1">€</span>
               </span>
@@ -1227,7 +1283,11 @@ function SavingsTab({
                 <span className="font-semibold text-blue-600 dark:text-blue-400">
                   <span className="text-text-secondary">+</span>
                   <span className="ml-1">
-                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'decimal',
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(
                       period === 'year' || period === 'all' ? savingsAmount : savingsAmount * 12
                     )}
                   </span>
@@ -1235,27 +1295,33 @@ function SavingsTab({
                 </span>
               </div>
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
-                <span className="text-xs text-muted-foreground">
-                  Objetivo 30%
-                </span>
+                <span className="text-xs text-muted-foreground">Objetivo 30%</span>
                 <span className="font-semibold text-green-600">
                   <span className="text-text-secondary">+</span>
                   <span className="ml-1">
-                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-                      period === 'year' || period === 'all' ? stats.income * 0.3 : stats.income * 0.3 * 12
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'decimal',
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(
+                      period === 'year' || period === 'all'
+                        ? stats.income * 0.3
+                        : stats.income * 0.3 * 12
                     )}
                   </span>
                   <span className="text-text-secondary ml-1">€</span>
                 </span>
               </div>
               <div className="flex items-center justify-between sm:flex-col sm:text-center">
-                <span className="text-xs text-muted-foreground">
-                  Con inversión 5%
-                </span>
+                <span className="text-xs text-muted-foreground">Con inversión 5%</span>
                 <span className="font-semibold text-primary">
                   <span className="text-text-secondary">+</span>
                   <span className="ml-1">
-                    {new Intl.NumberFormat('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'decimal',
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(
                       period === 'year' || period === 'all'
                         ? savingsAmount * 1.05
                         : savingsAmount * 12 * 1.05

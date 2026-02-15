@@ -18,19 +18,14 @@ interface FilterBarProps {
   className?: string
 }
 
-export function FilterBar({ 
-  showYearFilter = true, 
-  showMonthFilter = true, 
+export function FilterBar({
+  showYearFilter = true,
+  showMonthFilter = true,
   showDatePicker = false,
   onDateRangeChange,
-  className 
+  className,
 }: FilterBarProps) {
-  const {
-    selectedYear,
-    selectedMonth,
-    setYear,
-    setMonth,
-  } = useFiltersStore()
+  const { selectedYear, selectedMonth, setYear, setMonth } = useFiltersStore()
 
   const currentYear = new Date().getFullYear()
   const monthOptions = [
@@ -57,7 +52,7 @@ export function FilterBar({
   const handleDatesChange = (startDate: string, endDate: string) => {
     // Cuando se usa DatePicker, limpiamos mes y año seleccionados
     setMonth(null)
-    
+
     // Llamar al callback si existe
     if (onDateRangeChange) {
       onDateRangeChange(startDate, endDate)
@@ -91,12 +86,7 @@ export function FilterBar({
       )}
 
       {/* DatePicker para rango personalizado */}
-      {showDatePicker && (
-        <DatePicker
-          variant="tab"
-          onDatesChange={handleDatesChange}
-        />
-      )}
+      {showDatePicker && <DatePicker variant="tab" onDatesChange={handleDatesChange} />}
     </div>
   )
 }

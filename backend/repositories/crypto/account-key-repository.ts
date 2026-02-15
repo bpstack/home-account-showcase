@@ -122,9 +122,9 @@ export class AccountKeyRepository {
     )
   }
 
-/**
-    * Delete all keys for a user
-    */
+  /**
+   * Delete all keys for a user
+   */
   static async deleteAllForUser(userId: string): Promise<void> {
     await db.query(`DELETE FROM account_keys WHERE user_id = ?`, [userId])
   }

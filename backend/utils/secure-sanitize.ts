@@ -16,20 +16,55 @@ purify.setConfig({
   USE_PROFILES: { html: true },
   ALLOWED_TAGS: [
     // Only allow basic text formatting tags
-    'b', 'strong', 'i', 'em', 'u', 's', 'br', 'p', 'span', 'div'
+    'b',
+    'strong',
+    'i',
+    'em',
+    'u',
+    's',
+    'br',
+    'p',
+    'span',
+    'div',
   ],
   ALLOWED_ATTR: [
     // Only allow basic styling attributes
-    'style', 'class'
+    'style',
+    'class',
   ],
   FORBID_TAGS: [
-    'script', 'iframe', 'object', 'embed', 'form', 'input', 'button',
-    'link', 'meta', 'base', 'applet', 'frame', 'frameset', 'noframes'
+    'script',
+    'iframe',
+    'object',
+    'embed',
+    'form',
+    'input',
+    'button',
+    'link',
+    'meta',
+    'base',
+    'applet',
+    'frame',
+    'frameset',
+    'noframes',
   ],
   FORBID_ATTR: [
-    'onerror', 'onload', 'onclick', 'onmouseover', 'onsubmit', 'onfocus',
-    'onblur', 'onchange', 'onselect', 'onkeydown', 'onkeypress', 'onkeyup',
-    'href', 'src', 'action', 'formaction'
+    'onerror',
+    'onload',
+    'onclick',
+    'onmouseover',
+    'onsubmit',
+    'onfocus',
+    'onblur',
+    'onchange',
+    'onselect',
+    'onkeydown',
+    'onkeypress',
+    'onkeyup',
+    'href',
+    'src',
+    'action',
+    'formaction',
   ],
   SANITIZE_DOM: true,
   FORCE_BODY: true,
@@ -76,7 +111,7 @@ function basicEscape(input: string): string {
  */
 export function sanitizeForStorage(input: string | null | undefined): string {
   if (!input || typeof input !== 'string') return ''
-  
+
   try {
     const tempPurify = DOMPurify(window)
     tempPurify.setConfig({
@@ -85,7 +120,7 @@ export function sanitizeForStorage(input: string | null | undefined): string {
       ALLOWED_ATTR: [],
       FORCE_BODY: true,
     })
-    
+
     return tempPurify.sanitize(input.trim())
   } catch (error) {
     logger.warn('SECURE_SANITIZE', 'sanitizeForStorage', 'DOMPurify storage sanitization failed')
@@ -105,25 +140,18 @@ export function sanitizeForStorage(input: string | null | undefined): string {
  */
 export function sanitizeURL(input: string | null | undefined): string {
   if (!input || typeof input !== 'string') return ''
-  
+
   const sanitized = input.trim()
-  
+
   // Block dangerous URL schemes
-  const dangerousSchemes = [
-    'javascript:',
-    'vbscript:', 
-    'data:',
-    'file:',
-    'ftp:',
-    'telnet:',
-  ]
-  
+  const dangerousSchemes = ['javascript:', 'vbscript:', 'data:', 'file:', 'ftp:', 'telnet:']
+
   for (const scheme of dangerousSchemes) {
     if (sanitized.toLowerCase().startsWith(scheme)) {
       return ''
     }
   }
-  
+
   return sanitized
 }
 
@@ -132,15 +160,15 @@ export function sanitizeURL(input: string | null | undefined): string {
  */
 export function detectUnicodeBypass(input: string): boolean {
   if (!input) return false
-  
+
   // Check for unicode escapes that could bypass regex filters
   const unicodeScriptPatterns = [
-    /\\u003cscript\\u003e/i,  // <script>
+    /\\u003cscript\\u003e/i, // <script>
     /\\u003c\\u002fscript\\u003e/i, // </script>
     /\\u006a\\u0061\\u0076\\u0061\\u0073\\u0063\\u0072\\u0069\\u0070\\u0074/i, // javascript
   ]
-  
-  return unicodeScriptPatterns.some(pattern => pattern.test(input))
+
+  return unicodeScriptPatterns.some((pattern) => pattern.test(input))
 }
 
 export default {

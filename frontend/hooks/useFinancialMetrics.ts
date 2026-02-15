@@ -27,9 +27,9 @@ export interface FinancialSummary {
 
 export function useFinancialMetrics(accountId: string) {
   const { data: investmentData, isLoading: isInvestmentLoading } = useInvestmentOverview(accountId)
-  const { data: txData, isLoading: isTxLoading } = useTransactions({ 
-    account_id: accountId, 
-    limit: 10000 // High limit for accurate stats
+  const { data: txData, isLoading: isTxLoading } = useTransactions({
+    account_id: accountId,
+    limit: 10000, // High limit for accurate stats
   })
 
   const transactions = txData?.transactions
@@ -70,13 +70,13 @@ export function useFinancialMetrics(accountId: string) {
     transactions.forEach((t) => {
       const amount = Number(t.amount)
       const month = t.date.split('T')[0].slice(0, 7)
-      
+
       if (amount > 0) {
         monthlyIncome[month] = (monthlyIncome[month] || 0) + amount
       } else {
         monthlyExpenses[month] = (monthlyExpenses[month] || 0) + Math.abs(amount)
       }
-      
+
       monthlySavings[month] = (monthlySavings[month] || 0) + amount
     })
 
@@ -87,15 +87,17 @@ export function useFinancialMetrics(accountId: string) {
     const avgMonthlyExpenses = totalExpenses / count
 
     const savingsCapacity = Math.max(0, avgMonthlyIncome - avgMonthlyExpenses)
-    const savingsRate = avgMonthlyIncome > 0 
-      ? (savingsCapacity / avgMonthlyIncome) * 100 
-      : 0
+    const savingsRate = avgMonthlyIncome > 0 ? (savingsCapacity / avgMonthlyIncome) * 100 : 0
 
     const savingsValues = Object.values(monthlySavings)
-    const trend = savingsValues.length >= 2
-      ? (savingsValues[savingsValues.length - 1] > savingsValues[0] ? 'improving' : 
-         savingsValues[savingsValues.length - 1] < savingsValues[0] ? 'declining' : 'stable')
-      : 'stable'
+    const trend =
+      savingsValues.length >= 2
+        ? savingsValues[savingsValues.length - 1] > savingsValues[0]
+          ? 'improving'
+          : savingsValues[savingsValues.length - 1] < savingsValues[0]
+            ? 'declining'
+            : 'stable'
+        : 'stable'
 
     const deficitMonths = savingsValues.filter((s) => s < 0).length
 
@@ -113,7 +115,9 @@ export function useFinancialMetrics(accountId: string) {
     const currentMonthSavings = Math.max(0, currentMonthIncome - currentMonthExpenses)
 
     // Build monthly breakdown for period selection
-    const allMonthKeys = [...new Set([...Object.keys(monthlyIncome), ...Object.keys(monthlyExpenses)])].sort()
+    const allMonthKeys = [
+      ...new Set([...Object.keys(monthlyIncome), ...Object.keys(monthlyExpenses)]),
+    ].sort()
     const monthlyBreakdown: Record<string, MonthlyData> = {}
     for (const key of allMonthKeys) {
       const inc = monthlyIncome[key] || 0
@@ -143,8 +147,8 @@ export function useFinancialMetrics(accountId: string) {
     }
   }, [transactions, investmentData])
 
-  return { 
-    metrics, 
-    isLoading: isInvestmentLoading || isTxLoading 
+  return {
+    metrics,
+    isLoading: isInvestmentLoading || isTxLoading,
   }
 }

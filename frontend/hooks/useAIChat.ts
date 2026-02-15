@@ -33,14 +33,14 @@ interface ChatMessage {
 export function useAIChat({
   accountId,
   sessionId: initialSessionId,
-  onMessage
+  onMessage,
 }: UseAIChatOptions): UseAIChatReturn {
   const [session, setSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const queryClient = useQueryClient()
   const messagesRef = useRef<ChatMessage[]>([])
 
@@ -66,13 +66,13 @@ export function useAIChat({
         id: `msg-${i}`,
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
-        timestamp: m.createdAt ? new Date(m.createdAt) : new Date()
+        timestamp: m.createdAt ? new Date(m.createdAt) : new Date(),
       }))
 
       setSession({
         sessionId: history.sessionId,
         provider: 'claude',
-        createdAt: history.createdAt
+        createdAt: history.createdAt,
       })
 
       setMessages(loadedMessages)
@@ -106,8 +106,9 @@ export function useAIChat({
       const systemMessage: ChatMessage = {
         id: 'system-1',
         role: 'system',
-        content: 'Soy tu asistente de inversión. Puedo explicarte conceptos financieros, analizar tu situación y responder preguntas sobre los mercados actuales. ¿En qué puedo ayudarte?',
-        timestamp: new Date()
+        content:
+          'Soy tu asistente de inversión. Puedo explicarte conceptos financieros, analizar tu situación y responder preguntas sobre los mercados actuales. ¿En qué puedo ayudarte?',
+        timestamp: new Date(),
       }
       setMessages([systemMessage])
 
@@ -121,78 +122,84 @@ export function useAIChat({
     }
   }, [accountId])
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (!content.trim()) return
 
-    let currentSessionId = session?.sessionId || initialSessionId
+      let currentSessionId = session?.sessionId || initialSessionId
 
-    if (!currentSessionId) {
-      const newSession = await createSession()
-      currentSessionId = newSession.sessionId
-    }
-
-    if (!currentSessionId) {
-      setError('No hay sesión de chat activa')
-      return
-    }
-
-    const sendToApi = async (sessionId: string) => {
-      // Add user message
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: content.trim(),
-        timestamp: new Date()
+      if (!currentSessionId) {
+        const newSession = await createSession()
+        currentSessionId = newSession.sessionId
       }
 
-      setMessages(prev => [...prev, userMessage])
-      onMessage?.(content.trim())
-
-      // Send to API
-      const response = await investmentApi.sendChatMessage(accountId, sessionId, content.trim())
-
-      // Add assistant message
-      const assistantMessage: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: response.reply,
-        timestamp: new Date()
+      if (!currentSessionId) {
+        setError('No hay sesión de chat activa')
+        return
       }
 
-      setMessages(prev => [...prev, assistantMessage])
-
-      // Invalidate chat history query
-      queryClient.invalidateQueries({ queryKey: ['investment', 'chat', 'history', sessionId] })
-    }
-
-    try {
-      setIsTyping(true)
-      setError(null)
-      await sendToApi(currentSessionId)
-    } catch (err: any) {
-      // Si la sesión no existe, crear una nueva y reintentar
-      if (err.message === 'Sesión no encontrada' || err.message?.includes('no encontrada')) {
-        console.log('[AIChat] Sesión no encontrada, creando nueva sesión...')
-        try {
-          const newSession = await createSession()
-          setMessages([]) // Limpiar mensajes anteriores
-          await sendToApi(newSession.sessionId)
-          return
-        } catch (createErr) {
-          console.error('[AIChat] Error al crear nueva sesión:', createErr)
-          setError('Error al crear sesión de chat')
+      const sendToApi = async (sessionId: string) => {
+        // Add user message
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: content.trim(),
+          timestamp: new Date(),
         }
-      } else if (err.message?.includes('Límite de peticiones') || err.message?.includes('rate limit')) {
-        console.warn('[AIChat] Rate limit exceeded:', err.message)
-        setError(err.message)
-      } else {
-        console.error('Error sending message:', err)
-        setError('Error al enviar el mensaje. Por favor, inténtalo de nuevo.')
+
+        setMessages((prev) => [...prev, userMessage])
+        onMessage?.(content.trim())
+
+        // Send to API
+        const response = await investmentApi.sendChatMessage(accountId, sessionId, content.trim())
+
+        // Add assistant message
+        const assistantMessage: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: response.reply,
+          timestamp: new Date(),
+        }
+
+        setMessages((prev) => [...prev, assistantMessage])
+
+        // Invalidate chat history query
+        queryClient.invalidateQueries({ queryKey: ['investment', 'chat', 'history', sessionId] })
       }
-    } finally {
-      setIsTyping(false)
-    }
-  }, [session, initialSessionId, accountId, createSession, onMessage, queryClient])
+
+      try {
+        setIsTyping(true)
+        setError(null)
+        await sendToApi(currentSessionId)
+      } catch (err: any) {
+        // Si la sesión no existe, crear una nueva y reintentar
+        if (err.message === 'Sesión no encontrada' || err.message?.includes('no encontrada')) {
+          console.log('[AIChat] Sesión no encontrada, creando nueva sesión...')
+          try {
+            const newSession = await createSession()
+            setMessages([]) // Limpiar mensajes anteriores
+            await sendToApi(newSession.sessionId)
+            return
+          } catch (createErr) {
+            console.error('[AIChat] Error al crear nueva sesión:', createErr)
+            setError('Error al crear sesión de chat')
+          }
+        } else if (
+          err.message?.includes('Límite de peticiones') ||
+          err.message?.includes('rate limit')
+        ) {
+          console.warn('[AIChat] Rate limit exceeded:', err.message)
+          setError(err.message)
+        } else {
+          console.error('Error sending message:', err)
+          setError('Error al enviar el mensaje. Por favor, inténtalo de nuevo.')
+        }
+      } finally {
+        setIsTyping(false)
+      }
+    },
+    [session, initialSessionId, accountId, createSession, onMessage, queryClient]
+  )
 
   const clearChat = useCallback(() => {
     setMessages([])
@@ -213,7 +220,7 @@ export function useAIChat({
     sendMessage,
     createSession,
     clearChat,
-    clearSessionError
+    clearSessionError,
   }
 }
 
@@ -226,5 +233,5 @@ export const QUICK_QUESTIONS = [
   '¿Qué es un fondo indexado?',
   '¿Qué es el interés compuesto?',
   '¿Cómo funciona un ETF?',
-  '¿Qué es el perfil de riesgo?'
+  '¿Qué es el perfil de riesgo?',
 ]

@@ -78,10 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body
-        suppressHydrationWarning
-        className="antialiased font-sans bg-white dark:bg-[#010409]"
-      >
+      <body suppressHydrationWarning className="antialiased font-sans bg-white dark:bg-[#010409]">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <Providers>{children}</Providers>
           <Toaster richColors position="top-center" />

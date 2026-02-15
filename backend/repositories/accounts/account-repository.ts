@@ -257,7 +257,12 @@ export class AccountRepository {
       return { categories: categoriesCount, subcategories: subcategoriesCount }
     } catch (error) {
       await connection.rollback()
-      logger.error('ACCOUNT_REPO', 'copyDefaultCategories', 'Error copying default categories', error as Error)
+      logger.error(
+        'ACCOUNT_REPO',
+        'copyDefaultCategories',
+        'Error copying default categories',
+        error as Error
+      )
       throw new AppError('Error copying default categories', 500)
     } finally {
       connection.release()
@@ -267,7 +272,11 @@ export class AccountRepository {
   /**
    * Crear account con owner Y copiar categorías por defecto
    */
-  static async createWithDefaults({ name, userId, encryptedAccountKey }: CreateAccountDTO): Promise<{
+  static async createWithDefaults({
+    name,
+    userId,
+    encryptedAccountKey,
+  }: CreateAccountDTO): Promise<{
     account: Account
     categoriesCopied: { categories: number; subcategories: number }
   }> {
@@ -348,7 +357,12 @@ export class AccountRepository {
       }
     } catch (error) {
       await connection.rollback()
-      logger.error('ACCOUNT_REPO', 'createWithDefaults', 'Error creating account with defaults', error as Error)
+      logger.error(
+        'ACCOUNT_REPO',
+        'createWithDefaults',
+        'Error creating account with defaults',
+        error as Error
+      )
       throw new AppError('Internal error creating account', 500)
     } finally {
       connection.release()

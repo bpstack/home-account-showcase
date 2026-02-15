@@ -68,7 +68,10 @@ export class GeminiProvider implements IAIProvider {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         logger.error('AI_GEMINI', 'sendPrompt', `API error: ${response.status}`, errorData)
-        throw new AppError(`Gemini API error: ${response.status} - ${errorData?.error?.message || response.statusText}`, response.status)
+        throw new AppError(
+          `Gemini API error: ${response.status} - ${errorData?.error?.message || response.statusText}`,
+          response.status
+        )
       }
 
       const data: GeminiResponse = await response.json()

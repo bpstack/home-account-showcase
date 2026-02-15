@@ -23,12 +23,15 @@ export interface IAIProvider {
 export interface AIStatus {
   enabled: boolean
   activeProvider: string
-  providers: Record<string, {
-    configured: boolean
-    enabled: boolean
-    model: string
-    baseUrl?: string
-  }>
+  providers: Record<
+    string,
+    {
+      configured: boolean
+      enabled: boolean
+      model: string
+      baseUrl?: string
+    }
+  >
 }
 
 export interface ParsedTransactionAI {

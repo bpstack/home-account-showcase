@@ -83,7 +83,10 @@ export const parseTransactions = asyncHandler(async (req: Request, res: Response
   })
 
   if (!securityCheck.allowed) {
-    throw new AppError(securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad', 403)
+    throw new AppError(
+      securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad',
+      403
+    )
   }
 
   if (!isAIEnabled()) {
@@ -172,16 +175,19 @@ export const categorizeTransactions = asyncHandler(async (req: Request, res: Res
     throw new AppError('transactions es requerido y debe ser un array no vacío', 400)
   }
 
-  const allDescriptions = transactions.map(tx => tx.description).join(' | ')
+  const allDescriptions = transactions.map((tx) => tx.description).join(' | ')
   const securityCheck = await checkInputSecurity(userId, allDescriptions, {
     endpoint: '/api/ai/categorize',
   })
 
   if (!securityCheck.allowed) {
-    throw new AppError(securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad', 403)
+    throw new AppError(
+      securityCheck.blockReason || 'Solicitud bloqueada por motivos de seguridad',
+      403
+    )
   }
 
-  const sanitizedTransactions = transactions.map(tx => ({
+  const sanitizedTransactions = transactions.map((tx) => ({
     ...tx,
     description: tx.description.replace(/[<>{}[\]]/g, ''),
   }))

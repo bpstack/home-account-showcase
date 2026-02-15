@@ -19,7 +19,7 @@ export function Tooltip({
   children,
   side = 'top',
   align = 'center',
-  className
+  className,
 }: TooltipProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState({ top: 0, left: 0 })
@@ -102,7 +102,7 @@ export function Tooltip({
           )}
           style={{
             top: position.top,
-            left: position.left
+            left: position.left,
           }}
         >
           {content}
@@ -116,7 +116,7 @@ export function Tooltip({
 export function InfoTooltip({
   content,
   side,
-  className
+  className,
 }: {
   content: string
   side?: 'top' | 'bottom' | 'left' | 'right'

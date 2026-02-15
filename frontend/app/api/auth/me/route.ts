@@ -95,7 +95,9 @@ export async function GET(req: NextRequest) {
 }
 
 // Helper para intentar refresh del token
-async function tryRefresh(refreshToken: string): Promise<{ success: boolean; accessToken?: string }> {
+async function tryRefresh(
+  refreshToken: string
+): Promise<{ success: boolean; accessToken?: string }> {
   try {
     const refreshRes = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: 'POST',

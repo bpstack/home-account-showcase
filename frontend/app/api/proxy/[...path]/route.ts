@@ -34,7 +34,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ path
   return handleProxy(req, await params, 'PUT')
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
   return handleProxy(req, await params, 'DELETE')
 }
 
@@ -43,7 +46,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pa
 }
 
 // Helper para intentar refresh del token
-async function tryRefresh(refreshToken: string): Promise<{ success: boolean; accessToken?: string; csrfToken?: string }> {
+async function tryRefresh(
+  refreshToken: string
+): Promise<{ success: boolean; accessToken?: string; csrfToken?: string }> {
   try {
     const refreshRes = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: 'POST',
@@ -77,11 +82,7 @@ async function tryRefresh(refreshToken: string): Promise<{ success: boolean; acc
   }
 }
 
-async function handleProxy(
-  req: NextRequest,
-  params: { path: string[] },
-  method: string
-) {
+async function handleProxy(req: NextRequest, params: { path: string[] }, method: string) {
   try {
     const path = params.path.join('/')
     const url = new URL(req.url)

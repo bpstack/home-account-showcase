@@ -10,7 +10,12 @@ export interface ParsedTransaction {
   bank_subcategory: string | null
 }
 
-export type FileType = 'control_gastos' | 'movimientos_cc' | 'csv_revolut' | 'csv_generic' | 'unknown'
+export type FileType =
+  | 'control_gastos'
+  | 'movimientos_cc'
+  | 'csv_revolut'
+  | 'csv_generic'
+  | 'unknown'
 
 export interface ParseResult {
   success: boolean
@@ -31,10 +36,7 @@ function excelDateToISO(serial: number): string {
   return date.toISOString().split('T')[0]
 }
 
-function parseControlGastos(
-  workbook: XLSX.WorkBook,
-  sheetName?: string
-): ParseResult {
+function parseControlGastos(workbook: XLSX.WorkBook, sheetName?: string): ParseResult {
   const monthSheets = [
     'Enero',
     'Febrero',
@@ -50,9 +52,7 @@ function parseControlGastos(
     'Diciembre',
   ]
 
-  const availableMonths = workbook.SheetNames.filter((name) =>
-    monthSheets.includes(name.trim())
-  )
+  const availableMonths = workbook.SheetNames.filter((name) => monthSheets.includes(name.trim()))
 
   const targetSheet = sheetName || availableMonths[0]
 
@@ -81,10 +81,7 @@ function parseControlGastos(
     if (
       row &&
       Array.isArray(row) &&
-      row.some(
-        (cell) =>
-          typeof cell === 'string' && cell.toUpperCase().includes('CATEGORÍA')
-      )
+      row.some((cell) => typeof cell === 'string' && cell.toUpperCase().includes('CATEGORÍA'))
     ) {
       headerRowIndex = i
       break
@@ -111,8 +108,7 @@ function parseControlGastos(
     const [category, subcategory, dateValue, description, amount] = row
 
     // Skip empty or summary rows
-    if (!category || !dateValue || amount === undefined || amount === null)
-      continue
+    if (!category || !dateValue || amount === undefined || amount === null) continue
     if (typeof category !== 'string') continue
 
     try {
@@ -125,8 +121,7 @@ function parseControlGastos(
         continue
       }
 
-      const parsedAmount =
-        typeof amount === 'number' ? amount : parseFloat(String(amount))
+      const parsedAmount = typeof amount === 'number' ? amount : parseFloat(String(amount))
       if (isNaN(parsedAmount)) continue
 
       // Sanitize text fields to prevent injection attacks
@@ -193,10 +188,7 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
     if (
       row &&
       Array.isArray(row) &&
-      row.some(
-        (cell) =>
-          typeof cell === 'string' && cell.toUpperCase().includes('F. VALOR')
-      )
+      row.some((cell) => typeof cell === 'string' && cell.toUpperCase().includes('F. VALOR'))
     ) {
       headerRowIndex = i
       break
@@ -226,8 +218,10 @@ function parseMovimientosCC(workbook: XLSX.WorkBook): ParseResult {
       } else if (upper === 'CATEGORÍA' || upper === 'CATEGORIA') {
         colIndices.category = idx
       }
-      if (upper.includes('DESCRIPCIÓN') || upper.includes('DESCRIPCION') || upper === 'CONCEPTO') colIndices.description = idx
-      if (upper.includes('IMPORTE') || upper === 'CANTIDAD' || upper === 'AMOUNT') colIndices.amount = idx
+      if (upper.includes('DESCRIPCIÓN') || upper.includes('DESCRIPCION') || upper === 'CONCEPTO')
+        colIndices.description = idx
+      if (upper.includes('IMPORTE') || upper === 'CANTIDAD' || upper === 'AMOUNT')
+        colIndices.amount = idx
     }
   })
 
@@ -336,13 +330,15 @@ function detectDelimiter(content: string): ',' | ';' | '\t' {
   const firstLine = content.split(/\r?\n/)[0]
 
   const delimiters = [',', ';', '\t'] as const
-  const counts = delimiters.map(d => ({
+  const counts = delimiters.map((d) => ({
     delimiter: d,
-    count: (firstLine.match(new RegExp(d === '\t' ? '\t' : `\\${d}`, 'g')) || []).length
+    count: (firstLine.match(new RegExp(d === '\t' ? '\t' : `\\${d}`, 'g')) || []).length,
   }))
 
   const best = counts.sort((a, b) => b.count - a.count)[0]
-  console.log(`[Import] CSV delimiter detection: comma=${counts[0].count}, semicolon=${counts[1].count}, tab=${counts[2].count} → selected: "${best.delimiter}"`)
+  console.log(
+    `[Import] CSV delimiter detection: comma=${counts[0].count}, semicolon=${counts[1].count}, tab=${counts[2].count} → selected: "${best.delimiter}"`
+  )
   return best.delimiter
 }
 
@@ -366,11 +362,18 @@ function parseCSVLine(line: string, delimiter: ',' | ';' | '\t' = ','): string[]
   return result
 }
 
-function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVColumnMapping | null } {
-  const headerLower = headers.map(h => h.toLowerCase().trim())
+function detectCSVFormat(headers: string[]): {
+  format: CSVFormat
+  mapping: CSVColumnMapping | null
+} {
+  const headerLower = headers.map((h) => h.toLowerCase().trim())
 
   // Revolut format detection
-  if (headerLower.includes('completed date') && headerLower.includes('type') && headerLower.includes('amount')) {
+  if (
+    headerLower.includes('completed date') &&
+    headerLower.includes('type') &&
+    headerLower.includes('amount')
+  ) {
     return {
       format: 'revolut',
       mapping: {
@@ -378,35 +381,47 @@ function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVCo
         description: headerLower.indexOf('description'),
         amount: headerLower.indexOf('amount'),
         category: headerLower.indexOf('type'),
-      }
+      },
     }
   }
 
   // Generic CSV - flexible column detection
   // Date patterns: fecha, date, f. valor, mi_fecha, fecha_operacion, etc.
-  const dateIdx = headerLower.findIndex(h =>
-    h.includes('date') || h.includes('fecha') || h.includes('valor') || h.includes('dia')
+  const dateIdx = headerLower.findIndex(
+    (h) => h.includes('date') || h.includes('fecha') || h.includes('valor') || h.includes('dia')
   )
 
   // Description patterns: descripcion, description, concepto, detalle, texto, movimiento
-  const descIdx = headerLower.findIndex(h =>
-    h.includes('description') || h.includes('descripcion') || h.includes('descripción') ||
-    h.includes('concepto') || h.includes('detalle') || h.includes('texto') ||
-    h.includes('movimiento') || h.includes('operacion')
+  const descIdx = headerLower.findIndex(
+    (h) =>
+      h.includes('description') ||
+      h.includes('descripcion') ||
+      h.includes('descripción') ||
+      h.includes('concepto') ||
+      h.includes('detalle') ||
+      h.includes('texto') ||
+      h.includes('movimiento') ||
+      h.includes('operacion')
   )
 
   // Amount patterns: importe, amount, cantidad, monto, valor, euro
-  const amountIdx = headerLower.findIndex(h =>
-    h.includes('amount') || h.includes('importe') || h.includes('cantidad') ||
-    h.includes('monto') || h.includes('euro') || h.includes('valor')
+  const amountIdx = headerLower.findIndex(
+    (h) =>
+      h.includes('amount') ||
+      h.includes('importe') ||
+      h.includes('cantidad') ||
+      h.includes('monto') ||
+      h.includes('euro') ||
+      h.includes('valor')
   )
 
   // Category patterns
-  const categoryIdx = headerLower.findIndex(h =>
-    h === 'category' || h === 'categoría' || h === 'categoria' || h === 'type' || h === 'tipo'
+  const categoryIdx = headerLower.findIndex(
+    (h) =>
+      h === 'category' || h === 'categoría' || h === 'categoria' || h === 'type' || h === 'tipo'
   )
-  const subcategoryIdx = headerLower.findIndex(h =>
-    h === 'subcategory' || h === 'subcategoría' || h === 'subcategoria'
+  const subcategoryIdx = headerLower.findIndex(
+    (h) => h === 'subcategory' || h === 'subcategoría' || h === 'subcategoria'
   )
 
   // If we found all 3 required fields
@@ -419,7 +434,7 @@ function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVCo
         amount: amountIdx,
         category: categoryIdx !== -1 ? categoryIdx : undefined,
         subcategory: subcategoryIdx !== -1 ? subcategoryIdx : undefined,
-      }
+      },
     }
   }
 
@@ -427,8 +442,10 @@ function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVCo
   if (headers.length >= 3) {
     // Check if first column looks like a date
     const firstHeader = headerLower[0]
-    const hasDateLikeFirst = firstHeader.includes('fecha') || firstHeader.includes('date') ||
-                             /\d/.test(firstHeader) === false // No numbers in header
+    const hasDateLikeFirst =
+      firstHeader.includes('fecha') ||
+      firstHeader.includes('date') ||
+      /\d/.test(firstHeader) === false // No numbers in header
 
     if (hasDateLikeFirst) {
       return {
@@ -439,7 +456,7 @@ function detectCSVFormat(headers: string[]): { format: CSVFormat; mapping: CSVCo
           amount: headers.length - 1, // Last column is usually amount
           category: undefined,
           subcategory: undefined,
-        }
+        },
       }
     }
   }
@@ -502,7 +519,7 @@ function parseAmount(value: string): number | null {
 }
 
 function parseCSVFile(content: string): ParseResult {
-  const lines = content.split(/\r?\n/).filter(line => line.trim())
+  const lines = content.split(/\r?\n/).filter((line) => line.trim())
 
   if (lines.length < 2) {
     return {
@@ -526,7 +543,8 @@ function parseCSVFile(content: string): ParseResult {
       categories: [],
       errors: [
         'No se pudieron detectar las columnas requeridas (date, description, amount). ' +
-        'Columnas encontradas: ' + headers.join(', ')
+          'Columnas encontradas: ' +
+          headers.join(', '),
       ],
     }
   }
@@ -568,8 +586,12 @@ function parseCSVFile(content: string): ParseResult {
     }
 
     // Optional fields (also sanitized)
-    const category = mapping.category !== undefined ? sanitizeCSVValue(row[mapping.category] || '') || null : null
-    const subcategory = mapping.subcategory !== undefined ? sanitizeCSVValue(row[mapping.subcategory] || '') || null : null
+    const category =
+      mapping.category !== undefined ? sanitizeCSVValue(row[mapping.category] || '') || null : null
+    const subcategory =
+      mapping.subcategory !== undefined
+        ? sanitizeCSVValue(row[mapping.subcategory] || '') || null
+        : null
 
     transactions.push({
       date,
@@ -614,9 +636,7 @@ function parseCSVFile(content: string): ParseResult {
 
 // ============ EXCEL PARSING ============
 
-function detectFileType(
-  workbook: XLSX.WorkBook
-): 'control_gastos' | 'movimientos_cc' | 'unknown' {
+function detectFileType(workbook: XLSX.WorkBook): 'control_gastos' | 'movimientos_cc' | 'unknown' {
   // Check for Control de Gastos (has month sheets)
   const monthSheets = [
     'Enero',
@@ -646,10 +666,7 @@ function detectFileType(
     if (
       row &&
       Array.isArray(row) &&
-      row.some(
-        (cell) =>
-          typeof cell === 'string' && cell.toUpperCase().includes('F. VALOR')
-      )
+      row.some((cell) => typeof cell === 'string' && cell.toUpperCase().includes('F. VALOR'))
     ) {
       return 'movimientos_cc'
     }
@@ -658,11 +675,7 @@ function detectFileType(
   return 'unknown'
 }
 
-export function parseFile(
-  buffer: Buffer,
-  filename: string,
-  sheetName?: string
-): ParseResult {
+export function parseFile(buffer: Buffer, filename: string, sheetName?: string): ParseResult {
   const extension = filename.toLowerCase().split('.').pop()
 
   // CSV files
@@ -714,10 +727,7 @@ export function parseFile(
 }
 
 // Backwards compatibility
-export function parseExcelFile(
-  buffer: Buffer,
-  sheetName?: string
-): ParseResult {
+export function parseExcelFile(buffer: Buffer, sheetName?: string): ParseResult {
   return parseFile(buffer, 'file.xlsx', sheetName)
 }
 

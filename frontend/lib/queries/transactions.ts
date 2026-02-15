@@ -154,15 +154,22 @@ export function useTransactionStats(
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
 
   // Fetch all transactions for the period (they get decrypted automatically)
-  const { data: txData, isLoading, error } = useTransactions({
-    account_id: accountId,
-    start_date: startDate,
-    end_date: endDate,
-    subcategory_id: options?.subcategory_id,
-    limit: 10000, // Get all transactions for stats calculation
-  }, {
-    enabled: options?.enabled
-  })
+  const {
+    data: txData,
+    isLoading,
+    error,
+  } = useTransactions(
+    {
+      account_id: accountId,
+      start_date: startDate,
+      end_date: endDate,
+      subcategory_id: options?.subcategory_id,
+      limit: 10000, // Get all transactions for stats calculation
+    },
+    {
+      enabled: options?.enabled,
+    }
+  )
 
   // Calculate stats client-side
   const stats = txData?.transactions ? calculateStatsFromTransactions(txData.transactions) : null
@@ -193,13 +200,16 @@ interface UseTransactionSummaryOptions {
  * Calculate summary by category from transactions (client-side)
  */
 function calculateSummaryFromTransactions(transactions: Transaction[]): SummaryResponse['summary'] {
-  const summaryMap = new Map<string, {
-    category_name: string
-    category_color: string
-    subcategory_name: string
-    total_amount: number
-    transaction_count: number
-  }>()
+  const summaryMap = new Map<
+    string,
+    {
+      category_name: string
+      category_color: string
+      subcategory_name: string
+      total_amount: number
+      transaction_count: number
+    }
+  >()
 
   for (const t of transactions) {
     const categoryName = t.category_name || 'Sin categoría'
@@ -234,7 +244,11 @@ export function useTransactionSummary(
   options?: UseTransactionSummaryOptions
 ) {
   // Fetch all transactions for the period (they get decrypted automatically)
-  const { data: txData, isLoading, error } = useTransactions({
+  const {
+    data: txData,
+    isLoading,
+    error,
+  } = useTransactions({
     account_id: accountId,
     start_date: startDate,
     end_date: endDate,
@@ -242,7 +256,9 @@ export function useTransactionSummary(
   })
 
   // Calculate summary client-side
-  const summary = txData?.transactions ? calculateSummaryFromTransactions(txData.transactions) : null
+  const summary = txData?.transactions
+    ? calculateSummaryFromTransactions(txData.transactions)
+    : null
 
   return {
     data: summary ? { success: true, summary } : options?.initialData,
@@ -403,7 +419,20 @@ function calculateMonthlySummaryFromTransactions(
   transactions: Transaction[],
   year: number
 ): MonthlySummaryItem[] {
-  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+  const monthNames = [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
+  ]
 
   // Initialize all months
   const monthlyData: Record<number, { income: number; expenses: number }> = {}
@@ -439,7 +468,11 @@ function calculateMonthlySummaryFromTransactions(
  */
 export function useMonthlySummary(accountId: string, year: number) {
   // Fetch all transactions for the year
-  const { data: txData, isLoading, error } = useTransactions({
+  const {
+    data: txData,
+    isLoading,
+    error,
+  } = useTransactions({
     account_id: accountId,
     start_date: `${year}-01-01`,
     end_date: `${year}-12-31`,
@@ -451,7 +484,9 @@ export function useMonthlySummary(accountId: string, year: number) {
     : null
 
   return {
-    data: monthlySummary ? { success: true, monthlySummary } as MonthlySummaryResponse : undefined,
+    data: monthlySummary
+      ? ({ success: true, monthlySummary } as MonthlySummaryResponse)
+      : undefined,
     isLoading,
     error,
   }
@@ -479,7 +514,20 @@ function calculateBalanceHistoryFromTransactions(
   transactions: Transaction[],
   year: number
 ): BalanceHistoryItem[] {
-  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+  const monthNames = [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
+  ]
   const today = new Date()
   const currentMonth = today.getMonth()
   const currentYear = today.getFullYear()
@@ -519,7 +567,11 @@ function calculateBalanceHistoryFromTransactions(
  */
 export function useBalanceHistory(accountId: string, year: number) {
   // Fetch all transactions for the year
-  const { data: txData, isLoading, error } = useTransactions({
+  const {
+    data: txData,
+    isLoading,
+    error,
+  } = useTransactions({
     account_id: accountId,
     start_date: `${year}-01-01`,
     end_date: `${year}-12-31`,
@@ -531,7 +583,9 @@ export function useBalanceHistory(accountId: string, year: number) {
     : null
 
   return {
-    data: balanceHistory ? { success: true, balanceHistory } as BalanceHistoryResponse : undefined,
+    data: balanceHistory
+      ? ({ success: true, balanceHistory } as BalanceHistoryResponse)
+      : undefined,
     isLoading,
     error,
   }
@@ -546,7 +600,7 @@ export function useHasAnyTransactions(accountId: string) {
         limit: 1,
         offset: 0,
         start_date: '2000-01-01',
-        end_date: '2100-12-31'
+        end_date: '2100-12-31',
       })
       return response.transactions.length > 0
     },

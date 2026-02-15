@@ -34,8 +34,12 @@ export function DatePickerSimple({
   placeholder = 'Seleccionar fecha',
 }: DatePickerSimpleProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState(value ? new Date(value).getMonth() : new Date().getMonth())
-  const [selectedYear, setSelectedYear] = useState(value ? new Date(value).getFullYear() : new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(
+    value ? new Date(value).getMonth() : new Date().getMonth()
+  )
+  const [selectedYear, setSelectedYear] = useState(
+    value ? new Date(value).getFullYear() : new Date().getFullYear()
+  )
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const today = new Date()
@@ -150,7 +154,10 @@ export function DatePickerSimple({
           <span className={cn(!value && 'text-muted-foreground')}>{displayValue}</span>
         </div>
         <ChevronDown
-          className={cn('h-4 w-4 text-muted-foreground transition-transform duration-200', isOpen && 'rotate-180')}
+          className={cn(
+            'h-4 w-4 text-muted-foreground transition-transform duration-200',
+            isOpen && 'rotate-180'
+          )}
         />
       </button>
 
@@ -189,10 +196,7 @@ export function DatePickerSimple({
           {/* Week days */}
           <div className="grid grid-cols-7 gap-0.5 mb-1">
             {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'].map((day) => (
-              <div
-                key={day}
-                className="text-center text-[10px] text-muted-foreground font-medium"
-              >
+              <div key={day} className="text-center text-[10px] text-muted-foreground font-medium">
                 {day}
               </div>
             ))}

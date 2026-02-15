@@ -39,7 +39,10 @@ function LoginForm() {
   }
 
   // Para OAuth, necesitamos la URL base sin /api
-  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/api$/, '')
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(
+    /\/api$/,
+    ''
+  )
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground relative overflow-hidden sm:p-4">

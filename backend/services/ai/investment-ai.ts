@@ -6,21 +6,14 @@ import type { AIProviderType } from './types.js'
 import {
   buildProfileAssessmentPrompt,
   parseProfileAssessmentResponse,
-  ProfileAnswers
+  ProfileAnswers,
 } from './prompts/profile-prompt.js'
 import {
   buildRecommendationPrompt,
-  parseRecommendationResponse
+  parseRecommendationResponse,
 } from './prompts/recommendation-prompt.js'
-import {
-  buildChatPrompt,
-  parseChatResponse,
-  buildSystemMessage
-} from './prompts/chat-prompt.js'
-import {
-  buildEducationPrompt,
-  parseEducationResponse
-} from './prompts/education-prompt.js'
+import { buildChatPrompt, parseChatResponse, buildSystemMessage } from './prompts/chat-prompt.js'
+import { buildEducationPrompt, parseEducationResponse } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
   MarketDataContext,
@@ -29,7 +22,7 @@ import {
   RecommendationResult,
   ChatResult,
   ChatMessage,
-  EducationResult
+  EducationResult,
 } from './prompts/types.js'
 import { getMarketData } from '../market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
@@ -134,9 +127,10 @@ export class InvestmentAI {
     }
 
     const systemMessage = buildSystemMessage(context)
-    const enrichedHistory = chatHistory.length === 0
-      ? [{ role: 'system', content: systemMessage } as ChatMessage, ...chatHistory]
-      : chatHistory
+    const enrichedHistory =
+      chatHistory.length === 0
+        ? [{ role: 'system', content: systemMessage } as ChatMessage, ...chatHistory]
+        : chatHistory
 
     const prompt = buildChatPrompt(message, context, enrichedHistory)
 
@@ -164,18 +158,25 @@ export class InvestmentAI {
       session = await InvestmentRepository.createChatSession({
         account_id: accountId,
         user_id: userId,
-        provider: getActiveProvider()
+        provider: getActiveProvider(),
       })
       logger.info('INVESTMENT_AI', 'chatWithSession', `New session created: ${session.id}`)
     }
 
-    const history = await InvestmentRepository.getChatMessagesForContext(session.id, 20) as ChatMessage[]
+    const history = (await InvestmentRepository.getChatMessagesForContext(
+      session.id,
+      20
+    )) as ChatMessage[]
     logger.info('INVESTMENT_AI', 'chatWithSession', `History messages: ${history.length}`)
 
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Getting market data')
     const marketData = await getMarketData()
     const investmentProfile = await InvestmentRepository.getProfileByAccountId(accountId)
-    logger.info('INVESTMENT_AI', 'chatWithSession', `Market data ready, profile: ${investmentProfile?.risk_profile || 'none'}`)
+    logger.info(
+      'INVESTMENT_AI',
+      'chatWithSession',
+      `Market data ready, profile: ${investmentProfile?.risk_profile || 'none'}`
+    )
 
     const chatContext: ChatContext = {
       accountId,
@@ -186,12 +187,14 @@ export class InvestmentAI {
         emergencyFundCurrent: financialContext.emergencyFundCurrent,
         emergencyFundGoal: financialContext.emergencyFundGoal,
         historicalMonths: financialContext.historicalMonths,
-        trend: financialContext.trend
+        trend: financialContext.trend,
       },
-      investmentProfile: investmentProfile ? {
-        risk_profile: investmentProfile.risk_profile
-      } : undefined,
-      marketPrices: marketData
+      investmentProfile: investmentProfile
+        ? {
+            risk_profile: investmentProfile.risk_profile,
+          }
+        : undefined,
+      marketPrices: marketData,
     }
 
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Calling chat')
@@ -201,13 +204,13 @@ export class InvestmentAI {
     await InvestmentRepository.addChatMessage({
       session_id: session.id,
       role: 'user',
-      content: message
+      content: message,
     })
 
     await InvestmentRepository.addChatMessage({
       session_id: session.id,
       role: 'assistant',
-      content: result.answer
+      content: result.answer,
     })
 
     const messageCount = history.length + 2
@@ -236,15 +239,11 @@ export class InvestmentAI {
     }
 
     const marketData = await getMarketData()
-    const prompt = buildEducationPrompt(
-      concept,
-      userLevel,
-      {
-        sp500: marketData.sp500.value,
-        btc: marketData.btc.value,
-        eurUsd: marketData.eurUsd
-      }
-    )
+    const prompt = buildEducationPrompt(concept, userLevel, {
+      sp500: marketData.sp500.value,
+      btc: marketData.btc.value,
+      eurUsd: marketData.eurUsd,
+    })
 
     return this.client.sendPromptJSON(prompt)
   }
@@ -262,7 +261,7 @@ export class InvestmentAI {
         userId,
         type,
         providerUsed: this.getProviderName(),
-        responseTimeMs: responseTime
+        responseTimeMs: responseTime,
       })
     } catch (error) {
       logger.error('INVESTMENT_AI', 'logInvestmentSession', 'Error logging session', error as Error)

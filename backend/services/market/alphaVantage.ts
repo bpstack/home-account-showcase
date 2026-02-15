@@ -12,7 +12,7 @@ const INDEX_INFO: Record<string, { name: string; symbol: string }> = {
   MSCI: { name: 'MSCI World', symbol: 'URTH' },
   NASDAQ: { name: 'NASDAQ', symbol: 'QQQ' },
   DOW: { name: 'Dow Jones', symbol: 'DIA' },
-  NIKKEI: { name: 'Nikkei 225', symbol: '^N225' }
+  NIKKEI: { name: 'Nikkei 225', symbol: '^N225' },
 }
 
 export async function getIndexPrice(
@@ -25,7 +25,12 @@ export async function getIndexPrice(
 
   const index = INDEX_INFO[indexKey]
   if (!index) {
-    logger.error('ALPHA_VANTAGE', 'getIndexPrice', `Unknown index: ${indexKey}`, new Error('Unknown index'))
+    logger.error(
+      'ALPHA_VANTAGE',
+      'getIndexPrice',
+      `Unknown index: ${indexKey}`,
+      new Error('Unknown index')
+    )
     return null
   }
 
@@ -39,7 +44,12 @@ export async function getIndexPrice(
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error('ALPHA_VANTAGE', 'getIndexPrice', `API error: ${response.status}`, new Error(errorText))
+      logger.error(
+        'ALPHA_VANTAGE',
+        'getIndexPrice',
+        `API error: ${response.status}`,
+        new Error(errorText)
+      )
       return getFallbackIndexPrice(indexKey)
     }
 
@@ -61,11 +71,11 @@ export async function getIndexPrice(
       name: index.name,
       value: price,
       change24h: changePercent,
-      source: 'alphavantage'
+      source: 'alphavantage',
     }
   } catch (error) {
     const elapsed = Date.now() - startTime
-      logger.error('ALPHA_VANTAGE', 'getIndexPrice', `Error after ${elapsed}ms`, error as Error)
+    logger.error('ALPHA_VANTAGE', 'getIndexPrice', `Error after ${elapsed}ms`, error as Error)
     return getFallbackIndexPrice(indexKey)
   } finally {
     await delay(1500)
@@ -111,55 +121,61 @@ function getFallbackIndexPrice(indexKey: string): MarketIndex {
       name: 'S&P 500',
       value: 5890.25,
       change24h: 2.3,
-      source: 'alphavantage'
+      source: 'alphavantage',
     },
     MSCI: {
       symbol: 'MSCI',
       name: 'MSCI World',
-      value: 3450.80,
+      value: 3450.8,
       change24h: 1.8,
-      source: 'alphavantage'
+      source: 'alphavantage',
     },
     NASDAQ: {
       symbol: 'NASDAQ',
       name: 'NASDAQ',
-      value: 19250.50,
+      value: 19250.5,
       change24h: 3.1,
-      source: 'alphavantage'
+      source: 'alphavantage',
     },
     DOW: {
       symbol: 'DOW',
       name: 'Dow Jones',
-      value: 42500.00,
+      value: 42500.0,
       change24h: 1.5,
-      source: 'alphavantage'
+      source: 'alphavantage',
     },
     NIKKEI: {
       symbol: 'NIKKEI',
       name: 'Nikkei 225',
-      value: 39200.00,
+      value: 39200.0,
       change24h: -0.5,
-      source: 'alphavantage'
-    }
+      source: 'alphavantage',
+    },
   }
 
-  return fallbacks[indexKey] || {
-    symbol: indexKey,
-    name: INDEX_INFO[indexKey]?.name || indexKey,
-    value: 0,
-    change24h: 0,
-    source: 'alphavantage'
-  }
+  return (
+    fallbacks[indexKey] || {
+      symbol: indexKey,
+      name: INDEX_INFO[indexKey]?.name || indexKey,
+      value: 0,
+      change24h: 0,
+      source: 'alphavantage',
+    }
+  )
 }
 
-export function getAlphaVantageStatus(): { configured: boolean; dailyLimit: number; remaining: number } {
+export function getAlphaVantageStatus(): {
+  configured: boolean
+  dailyLimit: number
+  remaining: number
+} {
   return {
     configured: !!API_KEY,
     dailyLimit: 25,
-    remaining: API_KEY ? 25 : 0
+    remaining: API_KEY ? 25 : 0,
   }
 }
 
 function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }

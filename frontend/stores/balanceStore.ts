@@ -9,7 +9,7 @@ interface BalanceState {
   period: 'monthly' | 'yearly' | 'custom'
   customStartDate: string
   customEndDate: string
-  
+
   setActiveTab: (tab: 'balance' | 'income' | 'expenses') => void
   setPeriod: (period: 'monthly' | 'yearly' | 'custom') => void
   setCustomDates: (startDate: string, endDate: string) => void
@@ -31,10 +31,11 @@ export const useBalanceStore = create<BalanceState>()(
 
       setActiveTab: (tab) => set({ activeTab: tab }),
       setPeriod: (period) => set({ period }),
-      setCustomDates: (startDate, endDate) => set({ 
-        customStartDate: startDate, 
-        customEndDate: endDate 
-      }),
+      setCustomDates: (startDate, endDate) =>
+        set({
+          customStartDate: startDate,
+          customEndDate: endDate,
+        }),
 
       reset: () =>
         set({

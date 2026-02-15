@@ -6,16 +6,23 @@ import { getActiveProvider } from '../../services/ai/ai-client.js'
 import { getMarketData, getMarketDataFull } from '../../services/market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
-import type { ProfileAnswers, InvestmentContext, ChatMessage } from '../../services/ai/prompts/types.js'
+import type {
+  ProfileAnswers,
+  InvestmentContext,
+  ChatMessage,
+} from '../../services/ai/prompts/types.js'
 import {
   ProfileAnswersSchema,
   UpdateEmergencyFundMonthsSchema,
   UpdateLiquidityReserveSchema,
-  ChatMessageSchema
+  ChatMessageSchema,
 } from './validation.js'
 import { checkInputSecurity, checkOutputSecurity } from '../../services/ai/security/index.js'
 
-async function getAccountFinancialContext(accountId: string, userId: string): Promise<InvestmentContext> {
+async function getAccountFinancialContext(
+  accountId: string,
+  userId: string
+): Promise<InvestmentContext> {
   const investmentProfile = await InvestmentRepository.getProfileByAccountId(accountId)
 
   return {
@@ -32,9 +39,11 @@ async function getAccountFinancialContext(accountId: string, userId: string): Pr
     deficitMonths: 0,
     investmentPercentage: investmentProfile?.investment_percentage || 20,
     horizonYears: investmentProfile?.horizon_years || 5,
-    experienceLevel: investmentProfile?.experience_level as 'none' | 'basic' | 'intermediate' | 'advanced' || 'none',
+    experienceLevel:
+      (investmentProfile?.experience_level as 'none' | 'basic' | 'intermediate' | 'advanced') ||
+      'none',
     transactionCategories: {},
-    recentTransactions: []
+    recentTransactions: [],
   }
 }
 
@@ -61,19 +70,21 @@ export const getOverview = asyncHandler(async (req: Request, res: Response) => {
     success: true,
     data: {
       accountId,
-      profile: investmentProfile ? {
-        riskProfile: investmentProfile.risk_profile,
-        horizonYears: investmentProfile.horizon_years,
-        hasEmergencyFund: investmentProfile.has_emergency_fund,
-        investmentPercentage: investmentProfile.investment_percentage,
-        monthlyInvestable: investmentProfile.monthly_investable,
-        liquidityReserve: investmentProfile.liquidity_reserve,
-        emergencyFundMonths: investmentProfile.emergency_fund_months
-      } : null,
+      profile: investmentProfile
+        ? {
+            riskProfile: investmentProfile.risk_profile,
+            horizonYears: investmentProfile.horizon_years,
+            hasEmergencyFund: investmentProfile.has_emergency_fund,
+            investmentPercentage: investmentProfile.investment_percentage,
+            monthlyInvestable: investmentProfile.monthly_investable,
+            liquidityReserve: investmentProfile.liquidity_reserve,
+            emergencyFundMonths: investmentProfile.emergency_fund_months,
+          }
+        : null,
       marketPrices: marketData,
       aiEnabled: true,
-      activeProvider: getActiveProvider()
-    }
+      activeProvider: getActiveProvider(),
+    },
   })
 })
 
@@ -104,12 +115,12 @@ export const updateEmergencyFundMonths = asyncHandler(async (req: Request, res: 
     investment_percentage: 20,
     has_emergency_fund: true,
     experience_level: 'none',
-    horizon_years: 5
+    horizon_years: 5,
   })
 
   res.status(200).json({
     success: true,
-    message: 'Meses del fondo de emergencia actualizados'
+    message: 'Meses del fondo de emergencia actualizados',
   })
 })
 
@@ -140,12 +151,12 @@ export const updateLiquidityReserve = asyncHandler(async (req: Request, res: Res
     investment_percentage: 20,
     has_emergency_fund: true,
     experience_level: 'none',
-    horizon_years: 5
+    horizon_years: 5,
   })
 
   res.status(200).json({
     success: true,
-    message: 'Fondo de emergencia actualizado'
+    message: 'Fondo de emergencia actualizado',
   })
 })
 
@@ -215,15 +226,15 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
   const result = await ai.assessProfile(answers, financialContext)
 
   const profileMap: Record<string, 'conservative' | 'balanced' | 'dynamic'> = {
-    'conservador': 'conservative',
-    'conservative': 'conservative',
-    'equilibrado': 'balanced',
-    'balanced': 'balanced',
-    'dinámico': 'dynamic',
-    'dinamico': 'dynamic',
-    'dynamic': 'dynamic',
-    'agresivo': 'dynamic',
-    'aggressive': 'dynamic'
+    conservador: 'conservative',
+    conservative: 'conservative',
+    equilibrado: 'balanced',
+    balanced: 'balanced',
+    dinámico: 'dynamic',
+    dinamico: 'dynamic',
+    dynamic: 'dynamic',
+    agresivo: 'dynamic',
+    aggressive: 'dynamic',
   }
 
   const dbProfile = profileMap[result.recommendedProfile?.toLowerCase()] || 'balanced'
@@ -231,7 +242,7 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
   const horizonYearsMap: Record<string, number> = {
     '<3': 2,
     '3-10': 5,
-    '>10': 15
+    '>10': 15,
   }
   const horizonYearsNum = horizonYearsMap[answers.horizonYears] || 5
 
@@ -241,12 +252,12 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
     investment_percentage: result.investmentPercentage,
     has_emergency_fund: answers.hasEmergencyFund !== 'no',
     experience_level: answers.experienceLevel,
-    horizon_years: horizonYearsNum
+    horizon_years: horizonYearsNum,
   })
 
   res.status(200).json({
     success: true,
-    data: result
+    data: result,
   })
 })
 
@@ -271,18 +282,24 @@ export const getRecommendations = asyncHandler(async (req: Request, res: Respons
     throw new AppError('IA no disponible', 503)
   }
 
-  const monthlyInvest = monthlyAmount || (financialContext.savingsCapacity * (financialContext.investmentPercentage / 100))
+  const monthlyInvest =
+    monthlyAmount ||
+    financialContext.savingsCapacity * (financialContext.investmentPercentage / 100)
 
   const result = await ai.generateRecommendations(
-    profile || (financialContext.investmentPercentage <= 10 ? 'conservative' : 
-             financialContext.investmentPercentage >= 30 ? 'dynamic' : 'balanced'),
+    profile ||
+      (financialContext.investmentPercentage <= 10
+        ? 'conservative'
+        : financialContext.investmentPercentage >= 30
+          ? 'dynamic'
+          : 'balanced'),
     monthlyInvest,
     financialContext
   )
 
   res.status(200).json({
     success: true,
-    data: result
+    data: result,
   })
 })
 
@@ -303,7 +320,7 @@ export const getMarketPrices = asyncHandler(async (req: Request, res: Response) 
 
   res.status(200).json({
     success: true,
-    data
+    data,
   })
 })
 
@@ -323,7 +340,7 @@ export const createChatSession = asyncHandler(async (req: Request, res: Response
   const session = await InvestmentRepository.createChatSession({
     account_id: accountId,
     user_id: userId,
-    provider: getActiveProvider()
+    provider: getActiveProvider(),
   })
 
   res.status(200).json({
@@ -331,8 +348,8 @@ export const createChatSession = asyncHandler(async (req: Request, res: Response
     data: {
       sessionId: session.id,
       provider: session.provider,
-      createdAt: session.created_at
-    }
+      createdAt: session.created_at,
+    },
   })
 })
 
@@ -391,8 +408,8 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
     data: {
       reply: safeReply,
       relatedConcepts: result.relatedConcepts,
-      needsDisclaimer: result.needsDisclaimer
-    }
+      needsDisclaimer: result.needsDisclaimer,
+    },
   })
 })
 
@@ -420,15 +437,15 @@ export const getChatHistory = asyncHandler(async (req: Request, res: Response) =
     success: true,
     data: {
       sessionId: session.id,
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         role: m.role,
         content: m.content,
-        createdAt: m.created_at
+        createdAt: m.created_at,
       })),
       messageCount: session.message_count,
       createdAt: session.created_at,
-      lastMessageAt: session.last_message_at
-    }
+      lastMessageAt: session.last_message_at,
+    },
   })
 })
 
@@ -471,8 +488,8 @@ export const explainConcept = asyncHandler(async (req: Request, res: Response) =
     success: true,
     data: {
       ...result,
-      explanation: outputCheck.safe ? result.explanation : outputCheck.sanitizedOutput
-    }
+      explanation: outputCheck.safe ? result.explanation : outputCheck.sanitizedOutput,
+    },
   })
 })
 
@@ -493,13 +510,13 @@ export const getChatSessions = asyncHandler(async (req: Request, res: Response) 
 
   res.status(200).json({
     success: true,
-    data: sessions.map(s => ({
+    data: sessions.map((s) => ({
       sessionId: s.id,
       provider: s.provider,
       messageCount: s.message_count,
       createdAt: s.created_at,
-      lastMessageAt: s.last_message_at
-    }))
+      lastMessageAt: s.last_message_at,
+    })),
   })
 })
 
@@ -526,6 +543,6 @@ export const deleteChatSession = asyncHandler(async (req: Request, res: Response
 
   res.status(200).json({
     success: true,
-    message: 'Sesión eliminada correctamente'
+    message: 'Sesión eliminada correctamente',
   })
 })

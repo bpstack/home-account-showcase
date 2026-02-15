@@ -1,200 +1,199 @@
-"use client";
+'use client'
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from 'react'
 
 interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
 interface NavigatorWithStandalone extends Navigator {
-  standalone?: boolean;
-  getInstalledRelatedApps?: () => Promise<{ platform: string; url?: string; id?: string }[]>;
+  standalone?: boolean
+  getInstalledRelatedApps?: () => Promise<{ platform: string; url?: string; id?: string }[]>
 }
 
 interface WindowWithMSStream extends Window {
-  MSStream?: unknown;
+  MSStream?: unknown
 }
 
-const STORAGE_KEY_DISMISSED = "home-account-install-prompt-dismissed";
-const STORAGE_KEY_IOS_SHOWN = "home-account-ios-instructions-shown";
-const STORAGE_KEY_INSTALLED = "home-account-already-installed";
+const STORAGE_KEY_DISMISSED = 'home-account-install-prompt-dismissed'
+const STORAGE_KEY_IOS_SHOWN = 'home-account-ios-instructions-shown'
+const STORAGE_KEY_INSTALLED = 'home-account-already-installed'
 
 function isRunningAsStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  if (window.matchMedia("(display-mode: standalone)").matches) return true;
-  if ((window.navigator as NavigatorWithStandalone).standalone === true) return true;
-  if (window.matchMedia("(display-mode: fullscreen)").matches) return true;
-  if (window.matchMedia("(display-mode: minimal-ui)").matches) return true;
-  return false;
+  if (typeof window === 'undefined') return false
+  if (window.matchMedia('(display-mode: standalone)').matches) return true
+  if ((window.navigator as NavigatorWithStandalone).standalone === true) return true
+  if (window.matchMedia('(display-mode: fullscreen)').matches) return true
+  if (window.matchMedia('(display-mode: minimal-ui)').matches) return true
+  return false
 }
 
 function isIOSDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  const ua = window.navigator.userAgent.toLowerCase();
-  const isIOS = /iphone|ipad|ipod/.test(ua);
-  const notMSStream = !(window as WindowWithMSStream).MSStream;
-  return isIOS && notMSStream;
+  if (typeof window === 'undefined') return false
+  const ua = window.navigator.userAgent.toLowerCase()
+  const isIOS = /iphone|ipad|ipod/.test(ua)
+  const notMSStream = !(window as WindowWithMSStream).MSStream
+  return isIOS && notMSStream
 }
 
 async function checkInstalledRelatedApps(): Promise<boolean> {
-  if (typeof window === "undefined") return false;
-  const nav = window.navigator as NavigatorWithStandalone;
-  if (!nav.getInstalledRelatedApps) return false;
+  if (typeof window === 'undefined') return false
+  const nav = window.navigator as NavigatorWithStandalone
+  if (!nav.getInstalledRelatedApps) return false
 
   try {
-    const relatedApps = await nav.getInstalledRelatedApps();
-    return relatedApps.length > 0;
+    const relatedApps = await nav.getInstalledRelatedApps()
+    return relatedApps.length > 0
   } catch {
-    return false;
+    return false
   }
 }
 
 export default function InstallPrompt() {
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(true); // Start true to prevent flash
+  const [showPrompt, setShowPrompt] = useState(false)
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [isInstalled, setIsInstalled] = useState(true) // Start true to prevent flash
 
-  const isIOS = isIOSDevice();
+  const isIOS = isIOSDevice()
 
   const checkInstallationStatus = useCallback(async () => {
     // If running as standalone app, it's definitely installed
     if (isRunningAsStandalone()) {
-      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
-      return true;
+      localStorage.setItem(STORAGE_KEY_INSTALLED, 'true')
+      return true
     }
 
     // Check localStorage for previous installation
-    if (localStorage.getItem(STORAGE_KEY_INSTALLED) === "true") {
-      return true;
+    if (localStorage.getItem(STORAGE_KEY_INSTALLED) === 'true') {
+      return true
     }
 
     // Use getInstalledRelatedApps API if available (Chrome/Edge)
-    const hasRelatedApp = await checkInstalledRelatedApps();
+    const hasRelatedApp = await checkInstalledRelatedApps()
     if (hasRelatedApp) {
-      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
-      return true;
+      localStorage.setItem(STORAGE_KEY_INSTALLED, 'true')
+      return true
     }
 
-    return false;
-  }, []);
+    return false
+  }, [])
 
   /* -------- initial check -------- */
   useEffect(() => {
     const init = async () => {
-      const installed = await checkInstallationStatus();
-      setIsInstalled(installed);
+      const installed = await checkInstallationStatus()
+      setIsInstalled(installed)
 
       if (installed) {
-        setShowPrompt(false);
-        return;
+        setShowPrompt(false)
+        return
       }
 
       // Check if user previously dismissed the prompt
-      const dismissed = localStorage.getItem(STORAGE_KEY_DISMISSED);
+      const dismissed = localStorage.getItem(STORAGE_KEY_DISMISSED)
       if (dismissed && !isIOS) {
-        setShowPrompt(false);
-        return;
+        setShowPrompt(false)
+        return
       }
 
       // For iOS, show after delay; for others, wait for beforeinstallprompt
       if (isIOS) {
-        const iosShown = localStorage.getItem(STORAGE_KEY_IOS_SHOWN);
+        const iosShown = localStorage.getItem(STORAGE_KEY_IOS_SHOWN)
         if (!iosShown) {
-          setTimeout(() => setShowPrompt(true), 3000);
+          setTimeout(() => setShowPrompt(true), 3000)
         }
       }
-    };
-
-    init();
-  }, [isIOS, checkInstallationStatus]);
-
-  useEffect(() => {
-    if (isIOS || isInstalled) return;
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Only show if not dismissed and not installed
-      const dismissed = localStorage.getItem(STORAGE_KEY_DISMISSED);
-      if (!dismissed) {
-        setShowPrompt(true);
-      }
-    };
-
-    const handleAppInstalled = () => {
-      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
-      setIsInstalled(true);
-      setShowPrompt(false);
-      setDeferredPrompt(null);
-    };
-
-    const mediaQuery = window.matchMedia("(display-mode: standalone)");
-    const handleMediaChange = (e: MediaQueryListEvent) => {
-      if (e.matches) {
-        localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
-        setIsInstalled(true);
-        setShowPrompt(false);
-      }
-    };
-
-    if (mediaQuery.matches) {
-      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
-      setIsInstalled(true);
-      setShowPrompt(false);
     }
 
-    mediaQuery.addEventListener("change", handleMediaChange);
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleAppInstalled);
+    init()
+  }, [isIOS, checkInstallationStatus])
+
+  useEffect(() => {
+    if (isIOS || isInstalled) return
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault()
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
+      // Only show if not dismissed and not installed
+      const dismissed = localStorage.getItem(STORAGE_KEY_DISMISSED)
+      if (!dismissed) {
+        setShowPrompt(true)
+      }
+    }
+
+    const handleAppInstalled = () => {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, 'true')
+      setIsInstalled(true)
+      setShowPrompt(false)
+      setDeferredPrompt(null)
+    }
+
+    const mediaQuery = window.matchMedia('(display-mode: standalone)')
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        localStorage.setItem(STORAGE_KEY_INSTALLED, 'true')
+        setIsInstalled(true)
+        setShowPrompt(false)
+      }
+    }
+
+    if (mediaQuery.matches) {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, 'true')
+      setIsInstalled(true)
+      setShowPrompt(false)
+    }
+
+    mediaQuery.addEventListener('change', handleMediaChange)
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", handleAppInstalled);
-      mediaQuery.removeEventListener("change", handleMediaChange);
-    };
-  }, [isIOS, isInstalled]);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
+      mediaQuery.removeEventListener('change', handleMediaChange)
+    }
+  }, [isIOS, isInstalled])
 
   const handleInstallClick = async () => {
     if (isIOS) {
-      setShowIOSInstructions(true);
-      localStorage.setItem(STORAGE_KEY_IOS_SHOWN, "true");
-      return;
+      setShowIOSInstructions(true)
+      localStorage.setItem(STORAGE_KEY_IOS_SHOWN, 'true')
+      return
     }
 
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) return
 
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt.prompt()
+    const { outcome } = await deferredPrompt.userChoice
 
-    if (outcome === "accepted") {
-      localStorage.setItem(STORAGE_KEY_INSTALLED, "true");
+    if (outcome === 'accepted') {
+      localStorage.setItem(STORAGE_KEY_INSTALLED, 'true')
     }
 
-    setDeferredPrompt(null);
-    setShowPrompt(false);
-  };
+    setDeferredPrompt(null)
+    setShowPrompt(false)
+  }
 
   const handleClose = () => {
     if (isIOS) {
-      setShowIOSInstructions(false);
-      localStorage.setItem(STORAGE_KEY_IOS_SHOWN, "true");
+      setShowIOSInstructions(false)
+      localStorage.setItem(STORAGE_KEY_IOS_SHOWN, 'true')
     } else {
       // Save dismissal for non-iOS so prompt doesn't reappear
-      localStorage.setItem(STORAGE_KEY_DISMISSED, "true");
+      localStorage.setItem(STORAGE_KEY_DISMISSED, 'true')
     }
-    setShowPrompt(false);
-  };
+    setShowPrompt(false)
+  }
 
   // Don't render anything if installed
   if (isInstalled) {
-    return null;
+    return null
   }
 
   if (!showPrompt) {
-    return null;
+    return null
   }
 
   return (
@@ -250,7 +249,8 @@ export default function InstallPrompt() {
                   1
                 </span>
                 <span className="pt-0.5">
-                  Pulsa el botón <strong style={{color: '#007AFF'}}>⬆️ Compartir</strong> en la barra inferior de Safari
+                  Pulsa el botón <strong style={{ color: '#007AFF' }}>⬆️ Compartir</strong> en la
+                  barra inferior de Safari
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -258,7 +258,8 @@ export default function InstallPrompt() {
                   2
                 </span>
                 <span className="pt-0.5">
-                  Desplázate hacia abajo y toca <strong>&quot;Añadir a pantalla de inicio&quot;</strong>
+                  Desplázate hacia abajo y toca{' '}
+                  <strong>&quot;Añadir a pantalla de inicio&quot;</strong>
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -281,5 +282,5 @@ export default function InstallPrompt() {
         </div>
       )}
     </>
-  );
+  )
 }

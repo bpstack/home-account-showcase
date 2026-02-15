@@ -57,24 +57,13 @@ export function ConfirmDialog({
   const style = variantStyles[variant]
 
   return (
-    <Modal
-      isOpen={open}
-      onClose={() => onOpenChange(false)}
-      title={title}
-      size={size}
-    >
+    <Modal isOpen={open} onClose={() => onOpenChange(false)} title={title} size={size}>
       <div className="space-y-4">
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        )}
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
         {children}
       </div>
       <ModalFooter>
-        <Button
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          disabled={isLoading}
-        >
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
           {cancelLabel}
         </Button>
         <Button

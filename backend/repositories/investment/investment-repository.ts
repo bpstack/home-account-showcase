@@ -15,7 +15,7 @@ import type {
   CreateInvestmentProfileDTO,
   UpdateInvestmentProfileDTO,
   CreateAIChatSessionDTO,
-  CreateAIChatMessageDTO
+  CreateAIChatMessageDTO,
 } from '../../models/market/index.js'
 
 export class InvestmentRepository {
@@ -46,7 +46,7 @@ export class InvestmentRepository {
         data.investment_percentage || 20,
         data.horizon_years || 5,
         data.has_emergency_fund || false,
-        data.experience_level || 'none'
+        data.experience_level || 'none',
       ]
     )
 
@@ -111,7 +111,10 @@ export class InvestmentRepository {
   static async upsertProfile(data: CreateInvestmentProfileDTO): Promise<InvestmentProfile> {
     const existing = await this.getProfileByAccountId(data.account_id)
     if (existing) {
-      return this.updateProfile(data.account_id, data as UpdateInvestmentProfileDTO) as Promise<InvestmentProfile>
+      return this.updateProfile(
+        data.account_id,
+        data as UpdateInvestmentProfileDTO
+      ) as Promise<InvestmentProfile>
     }
     return this.createProfile(data)
   }
@@ -144,7 +147,7 @@ export class InvestmentRepository {
         data.promptTokens || null,
         data.responseTokens || null,
         data.responseTimeMs || null,
-        data.costEstimate || null
+        data.costEstimate || null,
       ]
     )
 
@@ -220,10 +223,7 @@ export class InvestmentRepository {
     return rows
   }
 
-  static async updateChatSession(
-    sessionId: string,
-    messageCount: number
-  ): Promise<void> {
+  static async updateChatSession(sessionId: string, messageCount: number): Promise<void> {
     await db.query(
       `UPDATE ai_chat_sessions
        SET message_count = ?, last_message_at = NOW()
@@ -282,14 +282,16 @@ export class InvestmentRepository {
     limit: number = 20
   ): Promise<Array<{ role: string; content: string }>> {
     const messages = await this.getChatMessagesBySession(sessionId, limit)
-    return messages.map(m => ({
+    return messages.map((m) => ({
       role: m.role,
-      content: m.content
+      content: m.content,
     }))
   }
 
   static async deleteChatMessagesBySession(sessionId: string): Promise<number> {
-    const [result] = await db.query(`DELETE FROM ai_chat_messages WHERE session_id = ?`, [sessionId])
+    const [result] = await db.query(`DELETE FROM ai_chat_messages WHERE session_id = ?`, [
+      sessionId,
+    ])
     return (result as any).affectedRows
   }
 }

@@ -11,7 +11,17 @@ import { Input } from '@/components/ui/Input'
 import { useAIChat, QUICK_QUESTIONS } from '@/hooks/useAIChat'
 import { investmentApi } from '@/lib/api/investment'
 import { DisclaimerAlert } from './DisclaimerAlert'
-import { Send, MessageCircle, Bot, User, Loader2, Trash2, ChevronDown, History, X } from 'lucide-react'
+import {
+  Send,
+  MessageCircle,
+  Bot,
+  User,
+  Loader2,
+  Trash2,
+  ChevronDown,
+  History,
+  X,
+} from 'lucide-react'
 import { formatCurrency, formatDistanceToNow, cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
@@ -31,16 +41,8 @@ interface ChatSessionInfo {
 }
 
 export function AIChat({ accountId, sessionId = null, className = '' }: AIChatProps) {
-  const {
-    messages,
-    isLoading,
-    isTyping,
-    error,
-    sendMessage,
-    createSession,
-    clearChat,
-    session
-  } = useAIChat({ accountId, sessionId })
+  const { messages, isLoading, isTyping, error, sendMessage, createSession, clearChat, session } =
+    useAIChat({ accountId, sessionId })
 
   const [input, setInput] = useState('')
   const [sessions, setSessions] = useState<ChatSessionInfo[]>([])
@@ -157,10 +159,10 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
                 className="h-8 px-2 gap-1"
               >
                 <History className="h-4 w-4" />
-                <span className="text-xs">
-
-                </span>
-                <ChevronDown className={cn('h-3 w-3 transition-transform', showSessions && 'rotate-180')} />
+                <span className="text-xs"></span>
+                <ChevronDown
+                  className={cn('h-3 w-3 transition-transform', showSessions && 'rotate-180')}
+                />
               </Button>
 
               {showSessions && (
@@ -178,46 +180,46 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
                   </div>
 
                   {isLoadingSessions ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      Cargando...
-                    </div>
-                  ) : sessions.filter(s => s.messageCount > 0).length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">Cargando...</div>
+                  ) : sessions.filter((s) => s.messageCount > 0).length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
                       Sin conversaciones guardadas
                     </div>
                   ) : (
                     sessions
-                      .filter(s => s.messageCount > 0)
+                      .filter((s) => s.messageCount > 0)
                       .map((s) => (
-                      <div
-                        key={s.sessionId}
-                        className={cn(
-                          'flex items-center justify-between p-2 hover:bg-muted cursor-pointer group',
-                          session?.sessionId === s.sessionId && 'bg-muted/60'
-                        )}
-                        onClick={() => handleSelectSession(s.sessionId)}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            {s.messageCount === 0 ? 'Nueva' : `${s.messageCount} mensajes`}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(s.lastMessageAt || s.createdAt), { addSuffix: true })}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 ml-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteSession(s.sessionId)
-                          }}
+                        <div
+                          key={s.sessionId}
+                          className={cn(
+                            'flex items-center justify-between p-2 hover:bg-muted cursor-pointer group',
+                            session?.sessionId === s.sessionId && 'bg-muted/60'
+                          )}
+                          onClick={() => handleSelectSession(s.sessionId)}
                         >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">
+                              {s.messageCount === 0 ? 'Nueva' : `${s.messageCount} mensajes`}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(s.lastMessageAt || s.createdAt), {
+                                addSuffix: true,
+                              })}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteSession(s.sessionId)
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))
                   )}
                 </div>
               )}
@@ -226,7 +228,6 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
 
           <Button variant="ghost" size="sm" onClick={handleNewChat} className="text-xs">
             <MessageCircle className="h-4 w-4" />
-            
           </Button>
         </div>
       </CardHeader>
@@ -235,27 +236,30 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           {isLoading ? (
-             <div className="space-y-4 p-4">
-               {[...Array(3)].map((_, i) => (
-                 <div key={i} className={`flex flex-col max-w-[85%] ${i % 2 === 0 ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                   <Skeleton className="h-12 w-full rounded-2xl" />
-                   <Skeleton className="h-3 w-20 mt-1" />
-                 </div>
-               ))}
-             </div>
+            <div className="space-y-4 p-4">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col max-w-[85%] ${i % 2 === 0 ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+                >
+                  <Skeleton className="h-12 w-full rounded-2xl" />
+                  <Skeleton className="h-3 w-20 mt-1" />
+                </div>
+              ))}
+            </div>
           ) : messages.length === 0 ? (
             <EmptyState onStart={createSession} />
           ) : (
             messages
-            .filter((m) => m.role !== 'system' || messages.length <= 1)
-            .map((message, index) => (
-              <ChatBubble
-                key={message.id || index}
-                role={message.role}
-                content={message.content}
-                timestamp={message.timestamp}
-              />
-            ))
+              .filter((m) => m.role !== 'system' || messages.length <= 1)
+              .map((message, index) => (
+                <ChatBubble
+                  key={message.id || index}
+                  role={message.role}
+                  content={message.content}
+                  timestamp={message.timestamp}
+                />
+              ))
           )}
 
           {isTyping && <TypingIndicator />}
@@ -348,7 +352,7 @@ function EmptyState({ onStart }: { onStart: () => void }) {
 function ChatBubble({
   role,
   content,
-  timestamp
+  timestamp,
 }: {
   role: 'user' | 'assistant' | 'system'
   content: string
@@ -357,10 +361,12 @@ function ChatBubble({
   const isUser = role === 'user'
 
   return (
-    <div className={cn(
-      'flex flex-col max-w-[90%] sm:max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300',
-      isUser ? 'ml-auto items-end' : 'mr-auto items-start'
-    )}>
+    <div
+      className={cn(
+        'flex flex-col max-w-[90%] sm:max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300',
+        isUser ? 'ml-auto items-end' : 'mr-auto items-start'
+      )}
+    >
       <div
         className={cn(
           'px-4 py-3 text-sm shadow-sm',
@@ -386,9 +392,18 @@ function TypingIndicator() {
   return (
     <div className="flex items-center gap-2 text-muted-foreground">
       <div className="flex items-center gap-1">
-        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+          style={{ animationDelay: '0ms' }}
+        />
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+          style={{ animationDelay: '150ms' }}
+        />
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+          style={{ animationDelay: '300ms' }}
+        />
       </div>
       <span className="text-sm">Escribiendo...</span>
     </div>
@@ -401,12 +416,7 @@ export function AIChatCompact({ accountId, sessionId = null }: AIChatProps) {
 
   if (!isOpen) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setIsOpen(true)}
-        className="gap-2"
-      >
+      <Button variant="outline" size="sm" onClick={() => setIsOpen(true)} className="gap-2">
         <MessageCircle className="h-4 w-4" />
         Asesor IA
       </Button>
@@ -417,12 +427,7 @@ export function AIChatCompact({ accountId, sessionId = null }: AIChatProps) {
     <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-background rounded-xl shadow-2xl overflow-hidden">
         <div className="flex justify-end p-2 border-b">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsOpen(false)}
-            className="h-8 w-8"
-          >
+          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
         </div>

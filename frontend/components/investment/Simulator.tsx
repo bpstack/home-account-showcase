@@ -147,9 +147,24 @@ export function Simulator({
 
         {/* Results - More compact */}
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-          <ResultCard label="Pesimista" value={result.conservative} color="#ef4444" tooltip="Resultado con el rendimiento mínimo del perfil seleccionado" />
-          <ResultCard label="Esperado" value={result.expected} color="#22c55e" tooltip="Resultado con el rendimiento medio esperado del perfil" />
-          <ResultCard label="Optimista" value={result.optimistic} color="#3b82f6" tooltip="Resultado con el rendimiento máximo del perfil seleccionado" />
+          <ResultCard
+            label="Pesimista"
+            value={result.conservative}
+            color="#ef4444"
+            tooltip="Resultado con el rendimiento mínimo del perfil seleccionado"
+          />
+          <ResultCard
+            label="Esperado"
+            value={result.expected}
+            color="#22c55e"
+            tooltip="Resultado con el rendimiento medio esperado del perfil"
+          />
+          <ResultCard
+            label="Optimista"
+            value={result.optimistic}
+            color="#3b82f6"
+            tooltip="Resultado con el rendimiento máximo del perfil seleccionado"
+          />
         </div>
 
         {/* Chart - With horizontal scroll on mobile */}

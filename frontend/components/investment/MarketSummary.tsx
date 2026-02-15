@@ -14,7 +14,10 @@ interface MarketSummaryProps {
 }
 
 export function MarketSummary({ accountId }: MarketSummaryProps) {
-  const { data, isLoading, isError, refetch, isFetching } = useMarketPrices(accountId, { autoRefresh: false, refetchOnMount: false })
+  const { data, isLoading, isError, refetch, isFetching } = useMarketPrices(accountId, {
+    autoRefresh: false,
+    refetchOnMount: false,
+  })
   const [showTooltip, setShowTooltip] = useState(false)
 
   if (isError) {
@@ -27,9 +30,7 @@ export function MarketSummary({ accountId }: MarketSummaryProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-2 text-sm text-muted-foreground">
-            Error al cargar
-          </div>
+          <div className="text-center py-2 text-sm text-muted-foreground">Error al cargar</div>
         </CardContent>
       </Card>
     )
@@ -65,11 +66,7 @@ export function MarketSummary({ accountId }: MarketSummaryProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {isLoading ? (
-          <MarketSummarySkeleton />
-        ) : data ? (
-          <MarketSummaryContent data={data} />
-        ) : null}
+        {isLoading ? <MarketSummarySkeleton /> : data ? <MarketSummaryContent data={data} /> : null}
       </CardContent>
     </Card>
   )
@@ -119,23 +116,25 @@ function TrendBadge({ trend }: { trend?: 'alcista' | 'bajista' | 'neutral' }) {
   const isBullish = trend === 'alcista'
 
   return (
-    <div className={cn(
-      'flex items-center gap-2 px-3 py-2 rounded-lg border',
-      isBullish
-        ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50'
-        : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50'
-    )}>
+    <div
+      className={cn(
+        'flex items-center gap-2 px-3 py-2 rounded-lg border',
+        isBullish
+          ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50'
+          : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50'
+      )}
+    >
       {isBullish ? (
         <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
       ) : (
         <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
       )}
-      <span className={cn(
-        'text-sm font-medium',
-        isBullish
-          ? 'text-emerald-700 dark:text-emerald-300'
-          : 'text-red-700 dark:text-red-300'
-      )}>
+      <span
+        className={cn(
+          'text-sm font-medium',
+          isBullish ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'
+        )}
+      >
         Mercado {trend === 'alcista' ? 'alcista' : 'bajista'}
       </span>
     </div>
@@ -146,7 +145,7 @@ function MarketSection({
   title,
   items,
   prefix,
-  formatter
+  formatter,
 }: {
   title: string
   items: any[]
@@ -181,7 +180,7 @@ function MarketRow({
   value,
   change,
   prefix = '',
-  formatter = (v: number) => v.toLocaleString()
+  formatter = (v: number) => v.toLocaleString(),
 }: {
   name: string
   value?: number | null
@@ -195,20 +194,29 @@ function MarketRow({
   const isNeutral = Math.abs(changeValue) < 0.1
 
   return (
-    <div className={cn(
-      'grid grid-cols-[1fr_auto_auto] xs:grid-cols-[1fr_75px_55px] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 items-center py-1 px-1 sm:px-1.5 rounded transition-colors',
-      'hover:bg-muted/40'
-    )}>
-      <span className="text-[10px] sm:text-xs font-medium text-foreground/80 truncate" title={name}>{name}</span>
-      <span className="text-[10px] sm:text-xs font-mono text-foreground/80 text-right">
-        {prefix}{formatter(valueNumber)}
+    <div
+      className={cn(
+        'grid grid-cols-[1fr_auto_auto] xs:grid-cols-[1fr_75px_55px] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 items-center py-1 px-1 sm:px-1.5 rounded transition-colors',
+        'hover:bg-muted/40'
+      )}
+    >
+      <span className="text-[10px] sm:text-xs font-medium text-foreground/80 truncate" title={name}>
+        {name}
       </span>
-      <span className={cn(
-        'text-[9px] sm:text-xs font-medium px-1 sm:px-1.5 py-0.5 rounded text-center',
-        isNeutral && 'bg-muted/60 text-muted-foreground',
-        isPositive && changeValue > 0.1 && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-        !isPositive && changeValue < -0.1 && 'bg-red-500/15 text-red-600 dark:text-red-400'
-      )}>
+      <span className="text-[10px] sm:text-xs font-mono text-foreground/80 text-right">
+        {prefix}
+        {formatter(valueNumber)}
+      </span>
+      <span
+        className={cn(
+          'text-[9px] sm:text-xs font-medium px-1 sm:px-1.5 py-0.5 rounded text-center',
+          isNeutral && 'bg-muted/60 text-muted-foreground',
+          isPositive &&
+            changeValue > 0.1 &&
+            'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+          !isPositive && changeValue < -0.1 && 'bg-red-500/15 text-red-600 dark:text-red-400'
+        )}
+      >
         {isNeutral ? '0.00%' : `${isPositive ? '+' : ''}${changeValue.toFixed(2)}%`}
       </span>
     </div>
@@ -221,7 +229,10 @@ function MarketSummarySkeleton() {
       <div className="space-y-0.5">
         <div className="h-4 w-12 bg-muted rounded border-b border-border" />
         {[1, 2, 3].map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5">
+          <div
+            key={i}
+            className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5"
+          >
             <div className="h-3 bg-muted rounded" />
             <div className="h-3 w-12 sm:w-auto bg-muted rounded" />
             <div className="h-3 w-10 sm:w-auto bg-muted rounded" />
@@ -231,7 +242,10 @@ function MarketSummarySkeleton() {
       <div className="space-y-0.5">
         <div className="h-4 w-16 bg-muted rounded border-b border-border" />
         {[1, 2].map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5">
+          <div
+            key={i}
+            className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5"
+          >
             <div className="h-3 bg-muted rounded" />
             <div className="h-3 w-12 sm:w-auto bg-muted rounded" />
             <div className="h-3 w-10 sm:w-auto bg-muted rounded" />
@@ -241,7 +255,10 @@ function MarketSummarySkeleton() {
       <div className="space-y-0.5">
         <div className="h-4 w-14 bg-muted rounded border-b border-border" />
         {[1, 2].map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5">
+          <div
+            key={i}
+            className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_85px_65px] gap-1 sm:gap-2 py-1 px-1 sm:px-1.5"
+          >
             <div className="h-3 bg-muted rounded" />
             <div className="h-3 w-12 sm:w-auto bg-muted rounded" />
             <div className="h-3 w-10 sm:w-auto bg-muted rounded" />

@@ -19,7 +19,10 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfToken || '',
-        Cookie: [accessToken ? `accessToken=${accessToken}` : '', refreshToken ? `refreshToken=${refreshToken}` : '']
+        Cookie: [
+          accessToken ? `accessToken=${accessToken}` : '',
+          refreshToken ? `refreshToken=${refreshToken}` : '',
+        ]
           .filter(Boolean)
           .join('; '),
       },

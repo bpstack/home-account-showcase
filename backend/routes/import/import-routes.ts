@@ -29,9 +29,10 @@ const upload = multer({
 
     // Verificar ambos: tipo MIME y extensión del archivo
     const hasValidMimeType = allowedTypes.includes(file.mimetype)
-    const hasValidExtension = allowedExtensions.some((e) => 
-      file.originalname.toLowerCase().endsWith(e))
-    
+    const hasValidExtension = allowedExtensions.some((e) =>
+      file.originalname.toLowerCase().endsWith(e)
+    )
+
     // Siempre verificar que la extensión coincida con el tipo MIME
     if (!hasValidMimeType || !hasValidExtension) {
       cb(new Error('Solo se permiten archivos Excel (.xls, .xlsx) o CSV (.csv)'))
@@ -45,7 +46,14 @@ const upload = multer({
 import { validateFileContent } from '../../services/import/file-validation.js'
 
 // Parse uploaded file and return preview
-router.post('/parse', authenticateToken, importFileRateLimiter, upload.single('file'), validateFileContent, parseFile)
+router.post(
+  '/parse',
+  authenticateToken,
+  importFileRateLimiter,
+  upload.single('file'),
+  validateFileContent,
+  parseFile
+)
 
 // Confirm import with category mappings
 router.post('/confirm', authenticateToken, checkCSRF, confirmImport)

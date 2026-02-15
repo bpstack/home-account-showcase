@@ -41,7 +41,12 @@ export const oauthCallback = asyncHandler(async (req: Request, res: Response) =>
           avatar: profile.avatar,
         })
 
-        user = { ...existingByEmail, oauth_provider: profile.provider, oauth_id: profile.id, avatar_url: profile.avatar }
+        user = {
+          ...existingByEmail,
+          oauth_provider: profile.provider,
+          oauth_id: profile.id,
+          avatar_url: profile.avatar,
+        }
       } else {
         logger.info('AUTH', 'oauthCallback', 'Updating OAuth info for existing user', {
           userId: existingByEmail.id,
@@ -54,7 +59,12 @@ export const oauthCallback = asyncHandler(async (req: Request, res: Response) =>
           avatar: profile.avatar,
         })
 
-        user = { ...existingByEmail, oauth_provider: profile.provider, oauth_id: profile.id, avatar_url: profile.avatar }
+        user = {
+          ...existingByEmail,
+          oauth_provider: profile.provider,
+          oauth_id: profile.id,
+          avatar_url: profile.avatar,
+        }
       }
     } else {
       logger.info('AUTH', 'oauthCallback', 'Creating new OAuth user', {

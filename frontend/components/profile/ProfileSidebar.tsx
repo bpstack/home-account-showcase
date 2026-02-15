@@ -83,15 +83,11 @@ export function ProfileSidebar() {
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center text-white text-2xl font-bold mb-4">
             {user.name.charAt(0).toUpperCase()}
           </div>
-          <h3 className="text-lg font-semibold text-foreground mb-1">
-            {user.name}
-          </h3>
+          <h3 className="text-lg font-semibold text-foreground mb-1">{user.name}</h3>
           <p className="text-sm text-muted-foreground mb-4">{user.email}</p>
           <div className="w-full px-4 py-3 bg-muted/50 rounded-lg">
             <p className="text-xs text-muted-foreground mb-1">Cuenta</p>
-            <p className="text-sm font-medium text-foreground">
-              {account?.name || 'Sin cuenta'}
-            </p>
+            <p className="text-sm font-medium text-foreground">{account?.name || 'Sin cuenta'}</p>
           </div>
         </div>
       </div>
@@ -108,9 +104,7 @@ export function ProfileSidebar() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-gray-400" />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Nombre
-              </span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Nombre</span>
             </div>
             {!isEditingName && (
               <button
@@ -118,7 +112,12 @@ export function ProfileSidebar() {
                 className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
                 </svg>
               </button>
             )}
@@ -184,12 +183,14 @@ export function ProfileSidebar() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <NavButton
           icon={
-            <div className={cn(
-              'p-2 rounded-md',
-              activePanel === 'settings'
-                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-            )}>
+            <div
+              className={cn(
+                'p-2 rounded-md',
+                activePanel === 'settings'
+                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+              )}
+            >
               <Settings className="w-4 h-4" />
             </div>
           }
@@ -227,10 +228,7 @@ function NavButton({
       <div className="flex items-center gap-3">
         {icon}
         <div>
-          <p className={cn(
-            'text-sm font-medium',
-            active ? 'text-primary' : 'text-foreground'
-          )}>
+          <p className={cn('text-sm font-medium', active ? 'text-primary' : 'text-foreground')}>
             {label}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>

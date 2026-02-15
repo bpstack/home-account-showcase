@@ -1,4 +1,4 @@
-import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
+import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
 import {
   Serwist,
   CacheFirst,
@@ -6,20 +6,17 @@ import {
   StaleWhileRevalidate,
   CacheableResponsePlugin,
   ExpirationPlugin,
-} from "serwist";
+} from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
-    __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
-    addEventListener(
-      type: string,
-      listener: EventListenerOrEventListenerObject,
-    ): void;
-    skipWaiting(): void;
+    __SW_MANIFEST: (PrecacheEntry | string)[] | undefined
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject): void
+    skipWaiting(): void
   }
 }
 
-declare const self: WorkerGlobalScope;
+declare const self: WorkerGlobalScope
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -28,10 +25,9 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
-      matcher: ({ url }) =>
-        url.hostname === "api.open-meteo.com",
+      matcher: ({ url }) => url.hostname === 'api.open-meteo.com',
       handler: new StaleWhileRevalidate({
-        cacheName: "home-account-v1-api",
+        cacheName: 'home-account-v1-api',
         plugins: [
           new CacheableResponsePlugin({
             statuses: [0, 200],
@@ -45,9 +41,9 @@ const serwist = new Serwist({
       }),
     },
     {
-      matcher: ({ request }) => request.mode === "navigate",
+      matcher: ({ request }) => request.mode === 'navigate',
       handler: new NetworkFirst({
-        cacheName: "home-account-v1-pages",
+        cacheName: 'home-account-v1-pages',
         plugins: [
           new CacheableResponsePlugin({
             statuses: [0, 200],
@@ -62,12 +58,10 @@ const serwist = new Serwist({
     },
     {
       matcher: ({ request }) =>
-        request.destination === "image" ||
-        /\.(png|jpg|jpeg|svg|gif|webp|ico)$/i.test(
-          new URL(request.url).pathname,
-        ),
+        request.destination === 'image' ||
+        /\.(png|jpg|jpeg|svg|gif|webp|ico)$/i.test(new URL(request.url).pathname),
       handler: new CacheFirst({
-        cacheName: "home-account-v1-images",
+        cacheName: 'home-account-v1-images',
         plugins: [
           new CacheableResponsePlugin({
             statuses: [0, 200],
@@ -81,10 +75,9 @@ const serwist = new Serwist({
       }),
     },
     {
-      matcher: ({ request }) =>
-        request.destination === "style" || request.destination === "script",
+      matcher: ({ request }) => request.destination === 'style' || request.destination === 'script',
       handler: new CacheFirst({
-        cacheName: "home-account-v1-static",
+        cacheName: 'home-account-v1-static',
         plugins: [
           new CacheableResponsePlugin({
             statuses: [0, 200],
@@ -99,10 +92,9 @@ const serwist = new Serwist({
     },
     {
       matcher: ({ url }) =>
-        url.hostname === "fonts.googleapis.com" ||
-        url.hostname === "fonts.gstatic.com",
+        url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com',
       handler: new CacheFirst({
-        cacheName: "home-account-v1-fonts",
+        cacheName: 'home-account-v1-fonts',
         plugins: [
           new CacheableResponsePlugin({
             statuses: [0, 200],
@@ -116,13 +108,15 @@ const serwist = new Serwist({
       }),
     },
   ],
-});
+})
 
-serwist.addEventListeners();
+serwist.addEventListeners()
 
-(self as unknown as { addEventListener(type: string, listener: (event: Event) => void): void }).addEventListener("message", (event: Event) => {
-  const messageEvent = event as MessageEvent;
-  if (messageEvent.data && messageEvent.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
+;(
+  self as unknown as { addEventListener(type: string, listener: (event: Event) => void): void }
+).addEventListener('message', (event: Event) => {
+  const messageEvent = event as MessageEvent
+  if (messageEvent.data && messageEvent.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
   }
-});
+})

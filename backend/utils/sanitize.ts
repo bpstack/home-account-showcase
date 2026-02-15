@@ -86,7 +86,7 @@ export function sanitizeCSVValue(value: string | null | undefined): string {
   const dangerousPrefixes = ['=', '+', '-', '@', '|', '\t', '\r', '\n']
   const firstChar = sanitized.charAt(0)
 
-    if (dangerousPrefixes.includes(firstChar)) {
+  if (dangerousPrefixes.includes(firstChar)) {
     if (firstChar === '-' && /^-[\d.,]+$/.test(sanitized)) {
       return sanitized
     }
@@ -94,7 +94,11 @@ export function sanitizeCSVValue(value: string | null | undefined): string {
       return sanitized
     }
 
-    logger.warn('SANITIZE', 'sanitizeCSVValue', `CSV/Formula Injection attempt detected and sanitized: "${sanitized.substring(0, 50)}..."`)
+    logger.warn(
+      'SANITIZE',
+      'sanitizeCSVValue',
+      `CSV/Formula Injection attempt detected and sanitized: "${sanitized.substring(0, 50)}..."`
+    )
     return sanitized.substring(1).trim()
   }
 
@@ -128,9 +132,11 @@ export function sanitizeEmail(email: string | null | undefined): string {
 export function sanitizeFilename(filename: string | null | undefined): string {
   if (!filename || typeof filename !== 'string') return 'unnamed'
 
-  return filename
-    .replace(/[<>:"/\\|?*]/g, '') // Remove invalid filename characters
-    .replace(/\.\./g, '') // Remove path traversal attempts
-    .replace(/^\.+/, '') // Remove leading dots
-    .trim() || 'unnamed'
+  return (
+    filename
+      .replace(/[<>:"/\\|?*]/g, '') // Remove invalid filename characters
+      .replace(/\.\./g, '') // Remove path traversal attempts
+      .replace(/^\.+/, '') // Remove leading dots
+      .trim() || 'unnamed'
+  )
 }

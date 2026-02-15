@@ -54,15 +54,19 @@ ${Object.entries(context.transactionCategories)
   .join('\n')}
 
 # RESPUESTAS DEL CUESTIONARIO
-${JSON.stringify({
-  edad: answers.age,
-  ingresosMensuales: answers.monthlyIncome,
-  estabilidadLaboral: answers.jobStability,
-  tieneFondoEmergencia: answers.hasEmergencyFund,
-  horizonteTemporal: answers.horizonYears,
-  reaccionCaida20: answers.reactionToDrop,
-  experienciaInversion: answers.experienceLevel
-}, null, 2)}
+${JSON.stringify(
+  {
+    edad: answers.age,
+    ingresosMensuales: answers.monthlyIncome,
+    estabilidadLaboral: answers.jobStability,
+    tieneFondoEmergencia: answers.hasEmergencyFund,
+    horizonteTemporal: answers.horizonYears,
+    reaccionCaida20: answers.reactionToDrop,
+    experienciaInversion: answers.experienceLevel,
+  },
+  null,
+  2
+)}
 
 # INSTRUCCIONES
 
@@ -122,11 +126,16 @@ export function parseProfileAssessmentResponse(text: string): ProfileAssessmentR
       .replace(/```json/g, '')
       .replace(/```/g, '')
       .trim()
-    
+
     return JSON.parse(cleaned) as ProfileAssessmentResult
   } catch (error) {
     const err = error as Error
-    logger.error('AI_PROFILE_PROMPT', 'parseProfileAssessmentResponse', 'Error parsing response', err)
+    logger.error(
+      'AI_PROFILE_PROMPT',
+      'parseProfileAssessmentResponse',
+      'Error parsing response',
+      err
+    )
     throw new AppError('Could not parse profile assessment response', 500)
   }
 }

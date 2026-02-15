@@ -3,11 +3,7 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
-    optimizePackageImports: [
-      'lucide-react',
-      'recharts',
-      '@tanstack/react-query',
-    ],
+    optimizePackageImports: ['lucide-react', 'recharts', '@tanstack/react-query'],
   },
   // Disable caching in development
   headers: async () => {
@@ -15,9 +11,7 @@ const nextConfig: NextConfig = {
       return [
         {
           source: '/:path*',
-          headers: [
-            { key: 'Cache-Control', value: 'no-store, must-revalidate' },
-          ],
+          headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
         },
       ]
     }

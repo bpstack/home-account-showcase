@@ -10,7 +10,7 @@ interface TransactionsState {
   period: 'monthly' | 'yearly' | 'custom'
   customStartDate: string
   customEndDate: string
-  
+
   setPage: (page: number) => void
   setCreateModalOpen: (open: boolean) => void
   setCategoryModalOpen: (open: boolean) => void
@@ -18,7 +18,6 @@ interface TransactionsState {
   setCustomDates: (startDate: string, endDate: string) => void
   reset: () => void
 }
-
 
 export const useTransactionsStore = create<TransactionsState>()(
   persist(
@@ -45,7 +44,6 @@ export const useTransactionsStore = create<TransactionsState>()(
           customStartDate: '',
           customEndDate: '',
         }),
-
     }),
     {
       name: 'transactions-storage',
@@ -55,7 +53,6 @@ export const useTransactionsStore = create<TransactionsState>()(
         customStartDate: state.customStartDate,
         customEndDate: state.customEndDate,
       }),
-
     }
   )
 )

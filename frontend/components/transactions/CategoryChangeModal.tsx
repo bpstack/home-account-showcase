@@ -29,9 +29,7 @@ export function CategoryChangeModal({
   const matchingTransactionIds = useMemo(() => {
     if (!transaction || !applyToAll) return []
     const pattern = transaction.description.toLowerCase()
-    return allTransactions
-      .filter((t) => t.description.toLowerCase() === pattern)
-      .map((t) => t.id)
+    return allTransactions.filter((t) => t.description.toLowerCase() === pattern).map((t) => t.id)
   }, [transaction, applyToAll, allTransactions])
 
   const affectedCount = applyToAll ? matchingTransactionIds.length : 1
@@ -70,9 +68,8 @@ export function CategoryChangeModal({
 
     try {
       // Use IDs-based update (works with encrypted data)
-      const idsToUpdate = applyToAll && matchingTransactionIds.length > 0
-        ? matchingTransactionIds
-        : [transaction.id]
+      const idsToUpdate =
+        applyToAll && matchingTransactionIds.length > 0 ? matchingTransactionIds : [transaction.id]
 
       await bulkUpdateMutation.mutateAsync({
         account_id: accountId,
@@ -150,7 +147,9 @@ export function CategoryChangeModal({
                 className="mt-1 h-4 w-4 rounded border-layer-3 text-accent focus:ring-accent"
               />
               <div>
-                <p className="text-sm text-text-primary">Aplicar a todas las transacciones similares</p>
+                <p className="text-sm text-text-primary">
+                  Aplicar a todas las transacciones similares
+                </p>
                 <p className="text-xs text-text-secondary">
                   Cambiara la categoria de todas las transacciones con descripcion similar
                 </p>
@@ -190,10 +189,7 @@ export function CategoryChangeModal({
         <Button variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button
-          onClick={handleSave}
-          disabled={bulkUpdateMutation.isPending}
-        >
+        <Button onClick={handleSave} disabled={bulkUpdateMutation.isPending}>
           {bulkUpdateMutation.isPending ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

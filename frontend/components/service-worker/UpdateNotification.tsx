@@ -1,39 +1,39 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
 
 export default function UpdateNotification() {
-  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
 
   useEffect(() => {
     const handleUpdateAvailable = () => {
-      setShowUpdateNotification(true);
-    };
+      setShowUpdateNotification(true)
+    }
 
-    window.addEventListener("swUpdateAvailable", handleUpdateAvailable);
+    window.addEventListener('swUpdateAvailable', handleUpdateAvailable)
 
     return () => {
-      window.removeEventListener("swUpdateAvailable", handleUpdateAvailable);
-    };
-  }, []);
+      window.removeEventListener('swUpdateAvailable', handleUpdateAvailable)
+    }
+  }, [])
 
   const handleUpdate = () => {
-    if ("serviceWorker" in navigator) {
+    if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistration().then((registration) => {
         if (registration?.waiting) {
-          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' })
         }
-      });
+      })
     }
-    window.location.reload();
-  };
+    window.location.reload()
+  }
 
   const handleDismiss = () => {
-    setShowUpdateNotification(false);
-  };
+    setShowUpdateNotification(false)
+  }
 
-  if (!showUpdateNotification) return null;
+  if (!showUpdateNotification) return null
 
   return (
     <div
@@ -45,7 +45,7 @@ export default function UpdateNotification() {
         className={`
           bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 rounded-lg shadow-2xl
           transition-all duration-300 cursor-pointer
-          ${isHovered ? "scale-105 shadow-amber-500/25" : ""}
+          ${isHovered ? 'scale-105 shadow-amber-500/25' : ''}
         `}
         onClick={handleUpdate}
       >
@@ -57,8 +57,8 @@ export default function UpdateNotification() {
           <span className="text-sm font-medium">Nueva versión disponible</span>
           <button
             onClick={(e) => {
-              e.stopPropagation();
-              handleUpdate();
+              e.stopPropagation()
+              handleUpdate()
             }}
             className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm font-medium transition-colors"
           >
@@ -66,8 +66,8 @@ export default function UpdateNotification() {
           </button>
           <button
             onClick={(e) => {
-              e.stopPropagation();
-              handleDismiss();
+              e.stopPropagation()
+              handleDismiss()
             }}
             className="text-white/70 hover:text-white ml-1"
             aria-label="Cerrar"
@@ -77,5 +77,5 @@ export default function UpdateNotification() {
         </div>
       </div>
     </div>
-  );
+  )
 }

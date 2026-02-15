@@ -166,7 +166,9 @@ export const bulkUpdateCategorySchema = z.object({
  */
 export const bulkUpdateByIdsSchema = z.object({
   account_id: z.string().uuid('account_id debe ser un UUID válido'),
-  transaction_ids: z.array(z.string().uuid('Cada ID debe ser un UUID válido')).min(1, 'Se requiere al menos un ID'),
+  transaction_ids: z
+    .array(z.string().uuid('Cada ID debe ser un UUID válido'))
+    .min(1, 'Se requiere al menos un ID'),
   subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').nullable(),
 })
 

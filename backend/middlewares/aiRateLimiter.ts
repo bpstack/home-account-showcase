@@ -22,7 +22,7 @@ const WINDOW_MS = 60 * 60 * 1000 // 1 hour
 
 // Limits per provider (per hour)
 const PROVIDER_LIMITS: Record<AIProviderType, number> = {
-  ollama: Infinity,  // Unlimited (local)
+  ollama: Infinity, // Unlimited (local)
   groq: 15,
   claude: 5,
   gemini: 5,
@@ -47,7 +47,10 @@ function getRateLimitKey(userId: string, provider: AIProviderType): string {
 /**
  * Check if request should be rate limited
  */
-function checkRateLimit(userId: string, provider: AIProviderType): {
+function checkRateLimit(
+  userId: string,
+  provider: AIProviderType
+): {
   allowed: boolean
   remaining: number
   resetTime: number | null
@@ -127,11 +130,13 @@ function isCategorizeAfterParse(userId: string): boolean {
  * - isCategorize: true for categorize endpoint (check parse combo)
  * - isParse: true for parse endpoint (mark for combo)
  */
-export function aiRateLimiter(options: {
-  skipRateLimit?: boolean
-  isParse?: boolean
-  isCategorize?: boolean
-} = {}) {
+export function aiRateLimiter(
+  options: {
+    skipRateLimit?: boolean
+    isParse?: boolean
+    isCategorize?: boolean
+  } = {}
+) {
   return (req: Request, res: Response, next: NextFunction): void => {
     // Skip if explicitly disabled
     if (options.skipRateLimit) {
@@ -148,7 +153,11 @@ export function aiRateLimiter(options: {
 
     // Categorize after parse is free
     if (options.isCategorize && isCategorizeAfterParse(userId)) {
-      logger.info('AI_RATE_LIMITER', 'aiRateLimiter', `Categorize free (after parse) for user ${userId}`)
+      logger.info(
+        'AI_RATE_LIMITER',
+        'aiRateLimiter',
+        `Categorize free (after parse) for user ${userId}`
+      )
       return next()
     }
 
@@ -173,7 +182,11 @@ export function aiRateLimiter(options: {
       markParseOperation(userId)
     }
 
-    logger.info('AI_RATE_LIMITER', 'aiRateLimiter', `${provider}: ${remaining}/${limit} remaining for user ${userId}`)
+    logger.info(
+      'AI_RATE_LIMITER',
+      'aiRateLimiter',
+      `${provider}: ${remaining}/${limit} remaining for user ${userId}`
+    )
 
     next()
   }

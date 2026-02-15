@@ -3,7 +3,7 @@
 
 // Usar proxy en cliente para evitar problemas de cookies cross-site
 const isClient = typeof window !== 'undefined'
-const API_URL = isClient ? '/api/proxy' : (process.env.API_URL || 'http://localhost:3001/api')
+const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
 
 async function investmentRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${endpoint}`, {
@@ -165,7 +165,9 @@ export interface MarketDataResponse {
 export const investmentApi = {
   // Get overview
   getOverview: async (accountId: string): Promise<InvestmentOverview> => {
-    const data = await investmentRequest<{ data: InvestmentOverview }>(`/investment/${accountId}/overview`)
+    const data = await investmentRequest<{ data: InvestmentOverview }>(
+      `/investment/${accountId}/overview`
+    )
     return data.data
   },
 
@@ -186,11 +188,17 @@ export const investmentApi = {
   },
 
   // Analyze profile
-  analyzeProfile: async (accountId: string, answers: ProfileAnswers): Promise<ProfileAssessmentResult> => {
-    const data = await investmentRequest<{ data: ProfileAssessmentResult }>(`/investment/${accountId}/analyze-profile`, {
-      method: 'POST',
-      body: JSON.stringify(answers),
-    })
+  analyzeProfile: async (
+    accountId: string,
+    answers: ProfileAnswers
+  ): Promise<ProfileAssessmentResult> => {
+    const data = await investmentRequest<{ data: ProfileAssessmentResult }>(
+      `/investment/${accountId}/analyze-profile`,
+      {
+        method: 'POST',
+        body: JSON.stringify(answers),
+      }
+    )
     return data.data
   },
 
@@ -199,56 +207,80 @@ export const investmentApi = {
     accountId: string,
     options?: { profile?: string; monthlyAmount?: number; includeExplanation?: boolean }
   ): Promise<RecommendationResult> => {
-    const data = await investmentRequest<{ data: RecommendationResult }>(`/investment/${accountId}/recommendations`, {
-      method: 'POST',
-      body: JSON.stringify(options || {}),
-    })
+    const data = await investmentRequest<{ data: RecommendationResult }>(
+      `/investment/${accountId}/recommendations`,
+      {
+        method: 'POST',
+        body: JSON.stringify(options || {}),
+      }
+    )
     return data.data
   },
 
   // Get market prices
   getMarketPrices: async (accountId: string): Promise<MarketDataResponse> => {
-    const data = await investmentRequest<{ data: MarketDataResponse }>(`/investment/${accountId}/market-prices`)
+    const data = await investmentRequest<{ data: MarketDataResponse }>(
+      `/investment/${accountId}/market-prices`
+    )
     return data.data
   },
 
   // Chat - create session
   createChatSession: async (accountId: string): Promise<ChatSession> => {
-    const data = await investmentRequest<{ data: ChatSession }>(`/investment/${accountId}/chat/session`, {
-      method: 'POST',
-    })
+    const data = await investmentRequest<{ data: ChatSession }>(
+      `/investment/${accountId}/chat/session`,
+      {
+        method: 'POST',
+      }
+    )
     return data.data
   },
 
   // Chat - send message
-  sendChatMessage: async (accountId: string, sessionId: string, message: string): Promise<ChatResponse> => {
-    const data = await investmentRequest<{ data: ChatResponse }>(`/investment/${accountId}/chat/${sessionId}/message`, {
-      method: 'POST',
-      body: JSON.stringify({ message }),
-    })
+  sendChatMessage: async (
+    accountId: string,
+    sessionId: string,
+    message: string
+  ): Promise<ChatResponse> => {
+    const data = await investmentRequest<{ data: ChatResponse }>(
+      `/investment/${accountId}/chat/${sessionId}/message`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      }
+    )
     return data.data
   },
 
   // Chat - get history
-  getChatHistory: async (accountId: string, sessionId: string): Promise<{
+  getChatHistory: async (
+    accountId: string,
+    sessionId: string
+  ): Promise<{
     sessionId: string
     messages: ChatMessage[]
     messageCount: number
     createdAt: string
     lastMessageAt?: string
   }> => {
-    const data = await investmentRequest<{ data: any }>(`/investment/${accountId}/chat/${sessionId}/history`)
+    const data = await investmentRequest<{ data: any }>(
+      `/investment/${accountId}/chat/${sessionId}/history`
+    )
     return data.data
   },
 
   // Chat - get all sessions
-  getChatSessions: async (accountId: string): Promise<Array<{
-    sessionId: string
-    provider: string
-    messageCount: number
-    createdAt: string
-    lastMessageAt?: string
-  }>> => {
+  getChatSessions: async (
+    accountId: string
+  ): Promise<
+    Array<{
+      sessionId: string
+      provider: string
+      messageCount: number
+      createdAt: string
+      lastMessageAt?: string
+    }>
+  > => {
     const data = await investmentRequest<{ data: any[] }>(`/investment/${accountId}/chat/sessions`)
     return data.data
   },
@@ -262,7 +294,9 @@ export const investmentApi = {
 
   // Education - explain concept
   explainConcept: async (accountId: string, concept: string): Promise<any> => {
-    const data = await investmentRequest<{ data: any }>(`/investment/${accountId}/education?q=${encodeURIComponent(concept)}`)
+    const data = await investmentRequest<{ data: any }>(
+      `/investment/${accountId}/education?q=${encodeURIComponent(concept)}`
+    )
     return data.data
-  }
+  },
 }
