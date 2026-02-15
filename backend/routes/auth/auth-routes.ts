@@ -17,10 +17,12 @@ import {
   recordFailedBip39,
   recordFailedPin,
   resetPinAttempts,
+  forgotPassword,
+  resetPassword,
 } from '../../controllers/auth/auth-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
-import { loginRateLimiter, registerRateLimiter } from '../../middlewares/rateLimiter.js'
+import { loginRateLimiter, registerRateLimiter, passwordResetRateLimiter } from '../../middlewares/rateLimiter.js'
 
 const router: Router = Router()
 
@@ -28,6 +30,10 @@ const router: Router = Router()
 router.post('/register', registerRateLimiter, register) // Rate limiting en registro
 router.post('/login', loginRateLimiter, login) // Rate limiting en login
 router.post('/refresh', refresh)
+
+// Password reset routes (public)
+router.post('/forgot-password', passwordResetRateLimiter, forgotPassword)
+router.post('/reset-password', passwordResetRateLimiter, resetPassword)
 
 // Rutas protegidas
 router.get('/me', authenticateToken, me)

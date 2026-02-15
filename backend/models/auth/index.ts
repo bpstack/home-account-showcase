@@ -22,13 +22,15 @@ export interface UserRow extends User, RowDataPacket {
   password_hash?: string
   key_salt: string
   verification_blob?: string | null
-  recovery_blob?: string | null // NEW: UserKey encrypted with RecoveryKey
-  recovery_salt?: string | null // NEW: Salt for BIP39 key derivation
-  bip39_verified?: boolean // NEW: User confirmed they saved their phrase
-  pin_attempts?: number // NEW: Server-side PIN lockout counter
-  pin_locked_until?: Date | null // NEW: PIN lockout expiry
-  bip39_attempts?: number // NEW: Server-side BIP39 lockout counter
-  bip39_locked_until?: Date | null // NEW: BIP39 lockout expiry
+  recovery_blob?: string | null // UserKey encrypted with RecoveryKey
+  recovery_salt?: string | null // Salt for BIP39 key derivation
+  bip39_verified?: boolean // User confirmed they saved their phrase
+  pin_attempts?: number // Server-side PIN lockout counter
+  pin_locked_until?: Date | null // PIN lockout expiry
+  bip39_attempts?: number // Server-side BIP39 lockout counter
+  bip39_locked_until?: Date | null // BIP39 lockout expiry
+  reset_token_hash?: string | null // NEW: Hash of password reset token
+  reset_token_expires?: Date | null // NEW: Expiry of password reset token
   oauth_provider?: 'local' | 'google' | 'github'
   oauth_id?: string
   avatar_url?: string

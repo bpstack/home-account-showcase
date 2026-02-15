@@ -1,7 +1,10 @@
 import { Request, Response } from 'express'
+import * as crypto from 'crypto'
+import * as bcrypt from 'bcrypt'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
 import db from '../../config/db.js'
+import { SALT_ROUNDS } from '../../config/config.js'
 import type { UserRow } from '../../models/auth/index.js'
 import {
   generateAccessToken,
@@ -9,6 +12,8 @@ import {
   verifyToken,
 } from '../../services/auth/tokenService.js'
 import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
+import { sendPasswordResetEmail } from '../../services/email/email-service.js'
+import { logger } from '../../utils/logger.js'
 import {
   registerSchema,
   loginSchema,
@@ -377,4 +382,128 @@ export const recordFailedPin = asyncHandler(async (req: Request, res: Response) 
 export const resetPinAttempts = asyncHandler(async (req: Request, res: Response) => {
   await UserRepository.resetPinAttempts(req.user!.id)
   res.status(200).json({ success: true })
+})
+
+// ============================================
+// PASSWORD RESET ENDPOINTS
+// ============================================
+
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body
+
+  if (!email || typeof email !== 'string') {
+    throw new AppError('Email is required', 400)
+  }
+
+  // ALWAYS return success (anti-enumeration)
+  // Do the work in the background
+  const [rows] = await db.query<UserRow[]>(
+    `SELECT id, name, email, oauth_provider, password_hash FROM users WHERE email = ?`,
+    [email.trim().toLowerCase()]
+  )
+
+  const user = rows[0]
+
+  if (user) {
+    // Don't allow reset for OAuth-only users (they have no password)
+    if (user.oauth_provider && user.oauth_provider !== 'local' && !user.password_hash) {
+      // Silently skip — don't reveal that the account is OAuth
+    } else {
+      // Generate token
+      const rawToken = crypto.randomBytes(32).toString('hex')
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex')
+      const expires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+      // Store hash in DB
+      await db.query(
+        `UPDATE users SET reset_token_hash = ?, reset_token_expires = ? WHERE id = ?`,
+        [tokenHash, expires, user.id]
+      )
+
+      // Build reset link
+      const appUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+      const resetLink = `${appUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`
+
+      // Send email (fire and forget to avoid timing leaks)
+      sendPasswordResetEmail({
+        toEmail: user.email,
+        toName: user.name || 'Usuario',
+        resetLink,
+      }).catch((err) => {
+        logger.error('AUTH', 'forgotPassword', 'Failed to send reset email', String(err))
+      })
+    }
+  }
+
+  // Always return same response
+  res.status(200).json({
+    success: true,
+    message: 'Si el email existe, recibirás instrucciones para restablecer tu contraseña.',
+  })
+})
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email, token, newPassword } = req.body
+
+  if (!email || !token || !newPassword) {
+    throw new AppError('Email, token, and new password are required', 400)
+  }
+
+  if (newPassword.length < 6) {
+    throw new AppError('La contraseña debe tener al menos 6 caracteres', 400)
+  }
+
+  // Hash the incoming token to compare with DB
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+
+  const [rows] = await db.query<UserRow[]>(
+    `SELECT id, reset_token_hash, reset_token_expires
+     FROM users
+     WHERE email = ? AND reset_token_hash IS NOT NULL`,
+    [email.trim().toLowerCase()]
+  )
+
+  const user = rows[0]
+
+  if (!user) {
+    throw new AppError('Token inválido o expirado', 400)
+  }
+
+  // Constant-time comparison
+  const hashMatch = crypto.timingSafeEqual(
+    Buffer.from(tokenHash, 'hex'),
+    Buffer.from(user.reset_token_hash!, 'hex')
+  )
+
+  if (!hashMatch) {
+    throw new AppError('Token inválido o expirado', 400)
+  }
+
+  // Check expiry
+  if (!user.reset_token_expires || new Date(user.reset_token_expires) < new Date()) {
+    // Clear expired token
+    await db.query(
+      `UPDATE users SET reset_token_hash = NULL, reset_token_expires = NULL WHERE id = ?`,
+      [user.id]
+    )
+    throw new AppError('Token expirado. Solicita un nuevo enlace.', 400)
+  }
+
+  // Hash new password and update
+  const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
+
+  await db.query(
+    `UPDATE users
+     SET password_hash = ?,
+         reset_token_hash = NULL,
+         reset_token_expires = NULL,
+         updated_at = NOW()
+     WHERE id = ?`,
+    [hashedPassword, user.id]
+  )
+
+  res.status(200).json({
+    success: true,
+    message: 'Contraseña actualizada. Ya puedes iniciar sesión.',
+  })
 })

@@ -99,3 +99,19 @@ export const invitationRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 })
+
+/**
+ * Rate limiter para password reset
+ * Previene abuso del endpoint de recuperación
+ * Ventana: 15 minutos, máximo 3 intentos por IP
+ */
+export const passwordResetRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 3, // Máximo 3 solicitudes por IP
+  message: {
+    success: false,
+    error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
