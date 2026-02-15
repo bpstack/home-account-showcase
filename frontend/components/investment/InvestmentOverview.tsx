@@ -27,6 +27,7 @@ import { Tooltip, InfoTooltip } from '@/components/ui/Tooltip'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
 import { MONTHS_ES } from '@/lib/constants'
+import { FilterSelect } from '@/components/ui/Select'
 
 interface InvestmentOverviewProps {
   accountId: string
@@ -177,29 +178,19 @@ export function InvestmentOverview({
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-base sm:text-lg font-bold tracking-tight">Resumen</CardTitle>
           {/* Month/Year filter */}
-          <div className="flex items-center gap-1.5">
-            <select
-              value={filterMonth}
+          <div className="flex items-center gap-1">
+            <FilterSelect
+              variant="tab"
+              options={MONTHS_ES.map((m, i) => ({ value: String(i), label: m }))}
+              value={String(filterMonth)}
               onChange={(e) => onFilterChange(parseInt(e.target.value), filterYear)}
-              className="text-xs sm:text-sm border-none bg-muted/50 rounded-lg px-2 py-1 cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {MONTHS_ES.map((m, i) => (
-                <option key={i} value={i}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filterYear}
+            />
+            <FilterSelect
+              variant="tab"
+              options={availableYears.map((y) => ({ value: String(y), label: String(y) }))}
+              value={String(filterYear)}
               onChange={(e) => onFilterChange(filterMonth, parseInt(e.target.value))}
-              className="text-xs sm:text-sm border-none bg-muted/50 rounded-lg px-2 py-1 cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {availableYears.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           {profile && <RiskBadge profile={profile.riskProfile} />}
         </div>
@@ -224,58 +215,62 @@ export function InvestmentOverview({
           <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors shrink-0 ml-2" />
         </Link>
 
-        {/* Selected Month Metrics */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
-          <MetricCard
-            label="Ingresos"
-            value={formatCurrency(selectedMonthData?.income ?? 0)}
-            icon={<Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />}
-            tooltip={`Ingresos de ${MONTHS_ES[filterMonth]} ${filterYear}`}
-          />
-          <MetricCard
-            label="Gastos"
-            value={formatCurrency(selectedMonthData?.expenses ?? 0)}
-            icon={<TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />}
-            tooltip={`Gastos de ${MONTHS_ES[filterMonth]} ${filterYear}`}
-          />
-          <MetricCard
-            label="Ahorro"
-            value={formatCurrency(selectedMonthData?.savings ?? 0)}
-            icon={<PiggyBank className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500" />}
-            highlight
-            tooltip={`Ahorro de ${MONTHS_ES[filterMonth]} ${filterYear} (ingresos - gastos)`}
-          />
+        {/* Selected Month Metrics — horizontal list on mobile, cards on desktop */}
+        <div className="rounded-xl border border-border/40 bg-card dark:bg-zinc-900 dark:border-white/5 overflow-hidden">
+          <div className="flex items-stretch divide-x divide-border/40 dark:divide-white/5">
+            <MetricCell
+              label="Ingresos"
+              value={formatCurrency(selectedMonthData?.income ?? 0)}
+              color="text-blue-600 dark:text-blue-400"
+              icon={<Wallet className="h-4 w-4 text-blue-500" />}
+              tooltip={`Ingresos de ${MONTHS_ES[filterMonth]} ${filterYear}`}
+            />
+            <MetricCell
+              label="Gastos"
+              value={formatCurrency(selectedMonthData?.expenses ?? 0)}
+              color="text-red-600 dark:text-red-400"
+              icon={<TrendingDown className="h-4 w-4 text-red-500" />}
+              tooltip={`Gastos de ${MONTHS_ES[filterMonth]} ${filterYear}`}
+            />
+            <MetricCell
+              label="Ahorro"
+              value={formatCurrency(selectedMonthData?.savings ?? 0)}
+              color="text-emerald-600 dark:text-emerald-400"
+              icon={<PiggyBank className="h-4 w-4 text-emerald-500" />}
+              tooltip={`Ahorro de ${MONTHS_ES[filterMonth]} ${filterYear} (ingresos - gastos)`}
+            />
+          </div>
         </div>
 
-        {/* Monthly Averages - Separate row for visibility */}
-        <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-muted/30 border border-border/30">
-          <div className="flex items-center gap-1 mb-2">
+        {/* Monthly Averages */}
+        <div className="rounded-xl border border-border/30 bg-muted/30 overflow-hidden">
+          <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1">
             <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Media mensual
             </span>
             <InfoTooltip
               content="Promedios calculados con todas tus transacciones históricas"
-              className="w-3 h-3"
+              className="w-3.5 h-3.5 sm:w-3 sm:h-3"
             />
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
-            <div className="text-center">
+          <div className="flex items-stretch divide-x divide-border/30">
+            <div className="flex-1 text-center py-2 px-1">
               <div className="text-sm sm:text-base font-bold text-blue-600 dark:text-blue-400">
                 {formatCurrency(financialSummary.avgMonthlyIncome)}
               </div>
-              <div className="text-[9px] sm:text-xs text-muted-foreground">Ingresos</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Ingresos</div>
             </div>
-            <div className="text-center">
+            <div className="flex-1 text-center py-2 px-1">
               <div className="text-sm sm:text-base font-bold text-red-600 dark:text-red-400">
                 {formatCurrency(financialSummary.avgMonthlyExpenses)}
               </div>
-              <div className="text-[9px] sm:text-xs text-muted-foreground">Gastos</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Gastos</div>
             </div>
-            <div className="text-center">
+            <div className="flex-1 text-center py-2 px-1">
               <div className="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(financialSummary.savingsCapacity)}
               </div>
-              <div className="text-[9px] sm:text-xs text-muted-foreground">
+              <div className="text-[10px] sm:text-xs text-muted-foreground">
                 Ahorro · {financialSummary.savingsRate.toFixed(0)}%
               </div>
             </div>
@@ -342,7 +337,7 @@ export function InvestmentOverview({
                 Progreso
                 <InfoTooltip
                   content="Porcentaje del fondo de emergencia completado. Meta = gastos mensuales × meses configurados."
-                  className="w-3 h-3"
+                  className="w-3.5 h-3.5 sm:w-3 sm:h-3"
                 />
               </span>
               <span className="font-semibold">{savingsProgress.toFixed(0)}%</span>
@@ -380,42 +375,24 @@ export function InvestmentOverview({
           </select>
         </div>
 
-        {/* Trend and stats - More compact */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-3 text-[10px] sm:text-sm pt-2 sm:pt-3 border-t border-border/40">
-          <div className="flex items-center gap-1 sm:gap-2 justify-center p-1.5 sm:p-2 rounded-lg bg-muted/30">
+        {/* Trend and stats */}
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm pt-2 sm:pt-3 border-t border-border/40">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/40 font-medium ${getTrendColor()}`}>
             {getTrendIcon()}
-            <span className={`font-medium ${getTrendColor()}`}>
-              {financialSummary.trend === 'improving'
-                ? 'Positiva'
-                : financialSummary.trend === 'declining'
-                  ? 'Negativa'
-                  : 'Estable'}
-            </span>
-          </div>
-          <div className="text-muted-foreground text-center p-1.5 sm:p-2 rounded-lg bg-muted/30">
-            <span className="inline-flex items-center gap-0.5">
-              📊{' '}
-              <span className="font-medium text-foreground">
-                {financialSummary.historicalMonths}
-              </span>{' '}
-              meses
-              <InfoTooltip
-                content="Meses de historial de transacciones analizados para calcular tus métricas financieras."
-                className="w-3 h-3"
-              />
-            </span>
-          </div>
-          <div className="text-muted-foreground text-center p-1.5 sm:p-2 rounded-lg bg-muted/30">
-            <span className="inline-flex items-center gap-0.5">
-              📅{' '}
-              <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span>{' '}
-              déficit
-              <InfoTooltip
-                content="Número de meses en los que tus gastos superaron a tus ingresos."
-                className="w-3 h-3"
-              />
-            </span>
-          </div>
+            {financialSummary.trend === 'improving'
+              ? 'Positiva'
+              : financialSummary.trend === 'declining'
+                ? 'Negativa'
+                : 'Estable'}
+          </span>
+          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/40 text-muted-foreground">
+            📊 <span className="font-medium text-foreground">{financialSummary.historicalMonths}</span> meses
+            <InfoTooltip content="Meses de historial analizados." className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+          </span>
+          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/40 text-muted-foreground">
+            📅 <span className="font-medium text-foreground">{financialSummary.deficitMonths}</span> déficit
+            <InfoTooltip content="Meses con gastos superiores a ingresos." className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+          </span>
         </div>
 
         {financialSummary.deficitMonths > 3 && (
@@ -457,7 +434,7 @@ function MetricCard({
   return (
     <div
       className={cn(
-        'p-2 sm:p-3 rounded-lg sm:rounded-xl border flex flex-col relative overflow-hidden min-w-0',
+        'p-2.5 sm:p-3 rounded-xl border flex flex-col relative min-w-0',
         highlight
           ? 'bg-emerald-500/5 border-emerald-500/10 dark:bg-emerald-500/10 dark:border-emerald-500/10'
           : 'bg-card border-border/40 dark:bg-zinc-900 dark:border-white/5',
@@ -469,10 +446,10 @@ function MetricCard({
         <div className={cn('shrink-0', highlight ? 'text-emerald-500' : 'text-muted-foreground')}>
           {icon}
         </div>
-        <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           {label}
         </span>
-        {tooltip && <InfoTooltip content={tooltip} className="w-3 h-3 shrink-0" />}
+        {tooltip && <InfoTooltip content={tooltip} className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />}
       </div>
 
       {/* Body: Value */}
@@ -484,11 +461,40 @@ function MetricCard({
       {subtitle && (
         <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
           {subtitleTooltip ? (
-            <InfoTooltip content={subtitleTooltip} side="top" className="w-3 h-3" />
+            <InfoTooltip content={subtitleTooltip} side="top" className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
           ) : null}
           <span>{subtitle}</span>
         </div>
       )}
+    </div>
+  )
+}
+
+function MetricCell({
+  label,
+  value,
+  color,
+  icon,
+  tooltip,
+}: {
+  label: string
+  value: string
+  color: string
+  icon: React.ReactNode
+  tooltip?: string
+}) {
+  return (
+    <div className="flex-1 py-2.5 px-2 sm:px-3 text-center min-w-0">
+      <div className="flex items-center justify-center gap-1 mb-1">
+        <span className="hidden sm:block shrink-0">{icon}</span>
+        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {label}
+        </span>
+        {tooltip && <InfoTooltip content={tooltip} className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />}
+      </div>
+      <div className={cn('text-sm sm:text-lg font-bold tracking-tight truncate', color)}>
+        {value}
+      </div>
     </div>
   )
 }

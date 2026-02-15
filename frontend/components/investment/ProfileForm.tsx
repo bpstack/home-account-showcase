@@ -206,63 +206,15 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
     setCurrentStep(0)
   }
 
-  // Show existing profile result
+  // Show existing profile result - always visible with all info
   if (profile && !showForm && !result) {
     return (
-      <Card className="bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
-        <CardHeader>
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300 text-sm sm:text-base min-w-0">
-              <User className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-              <span className="truncate">Perfil de Riesgo</span>
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleUpdateProfile}
-              className="gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-100 shrink-0 px-2 sm:px-3"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Actualizar</span>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Profile Badge */}
-          <div className="flex items-center gap-3 mb-4">
-            <RiskBadge profile={profile.riskProfile} />
-            <span className="text-sm text-muted-foreground">
-              {profile.horizonYears} años de horizonte
-            </span>
-          </div>
-
-          {/* Investment settings */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{profile.investmentPercentage}%</div>
-              <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
-                Del ahorro a invertir
-                <InfoTooltip
-                  content="Porcentaje de tu capacidad de ahorro mensual que se recomienda destinar a inversión."
-                  className="w-3 h-3"
-                />
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(((selectedMonthSavings ?? 0) * profile.investmentPercentage) / 100)}
-              </div>
-              <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
-                Cantidad mensual
-                <InfoTooltip
-                  content="Cantidad mensual calculada como el ahorro del mes en curso × porcentaje de inversión."
-                  className="w-3 h-3"
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileView
+        profile={profile}
+        selectedMonthSavings={selectedMonthSavings}
+        onUpdate={handleUpdateProfile}
+        financialSummary={financialSummary}
+      />
     )
   }
 
@@ -406,6 +358,149 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
 // Subcomponents
 // ========================
 
+function ProfileView({
+  profile,
+  selectedMonthSavings,
+  onUpdate,
+  financialSummary,
+}: {
+  profile: any
+  selectedMonthSavings?: number
+  onUpdate: () => void
+  financialSummary: any
+}) {
+  const profileColors: Record<string, string> = {
+    conservative: 'bg-blue-500',
+    balanced: 'bg-yellow-500',
+    dynamic: 'bg-red-500',
+  }
+
+  const profileLabels: Record<string, string> = {
+    conservative: 'Conservador',
+    balanced: 'Equilibrado',
+    dynamic: 'Dinámico',
+  }
+
+  const hasWarnings = financialSummary?.deficitMonths > 3
+  const hasLowSavings = (financialSummary?.savingsRate ?? 0) < 10
+
+  return (
+    <Card className="bg-gradient-to-br from-purple-50/50 to-violet-50/30 dark:from-purple-950/20 dark:to-violet-950/10 border-purple-200/50 dark:border-purple-800/30">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300 text-sm sm:text-base min-w-0">
+            <User className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+            <span className="truncate">Perfil de Riesgo</span>
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onUpdate}
+            className="gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-100 shrink-0 px-2 sm:px-3"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Actualizar</span>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Profile Badge & Horizon */}
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              'w-12 h-12 rounded-full flex items-center justify-center',
+              profileColors[profile.riskProfile] || profileColors.balanced
+            )}
+          >
+            <span className="text-xl font-bold text-white">
+              {profile.riskProfile?.charAt(0).toUpperCase() || 'B'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-foreground">
+              {profileLabels[profile.riskProfile] || profileLabels.balanced}
+            </div>
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {profile.horizonYears} años de horizonte
+            </div>
+          </div>
+        </div>
+
+        {/* Investment settings */}
+        <div className="grid grid-cols-2 gap-3 p-3 bg-muted/50 rounded-lg">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-primary">{profile.investmentPercentage}%</div>
+            <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
+              Del ahorro a invertir
+              <InfoTooltip
+                content="Porcentaje de tu capacidad de ahorro mensual que se recomienda destinar a inversión."
+                className="w-3 h-3"
+              />
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(((selectedMonthSavings ?? 0) * profile.investmentPercentage) / 100)}
+            </div>
+            <div className="text-xs text-muted-foreground flex items-center justify-center gap-0.5">
+              Cantidad mensual
+              <InfoTooltip
+                content="Cantidad mensual calculada como el ahorro del mes en curso × porcentaje de inversión."
+                className="w-3 h-3"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Financial context */}
+        <div className="p-3 bg-white/50 dark:bg-gray-800/30 rounded-lg border border-purple-100 dark:border-purple-800/30">
+          <h4 className="font-medium mb-2 flex items-center gap-2 text-purple-700 dark:text-purple-300 text-sm">
+            <User className="h-4 w-4" />
+            Análisis de tu perfil
+          </h4>
+          <p className="text-sm text-muted-foreground">
+            Basado en {financialSummary?.historicalMonths || 0} meses de historial financiero, tu
+            perfil <strong>{profileLabels[profile.riskProfile] || 'Equilibrado'}</strong> está
+            adaptado a tu situación. Tu capacidad de ahorro del{' '}
+            <strong>{(financialSummary?.savingsRate ?? 0).toFixed(0)}%</strong> determina el
+            porcentaje recomendado.
+          </p>
+        </div>
+
+        {/* Warnings */}
+        {(hasWarnings || hasLowSavings) && (
+          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-100 dark:border-yellow-800/30">
+            <h4 className="font-medium mb-2 flex items-center gap-2 text-yellow-800 dark:text-yellow-200 text-sm">
+              <Shield className="h-4 w-4" />
+              Consideraciones
+            </h4>
+            <ul className="list-disc list-inside text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
+              {hasWarnings && (
+                <li>
+                  Has tenido {financialSummary.deficitMonths} meses con gastos superiores a ingresos
+                </li>
+              )}
+              {hasLowSavings && (
+                <li>Tu tasa de ahorro es baja. Considera aumentar tu capacidad de ahorro</li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        {/* Confidence indicator */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+          <span>Perfil calculado</span>
+          <span className="flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3 text-green-500" />
+            Actualizado
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function ProfileResult({
   result,
   accountId: _accountId,
@@ -536,26 +631,4 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount)
-}
-
-function RiskBadge({ profile }: { profile: string }) {
-  const colors: Record<string, string> = {
-    conservative: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    balanced: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    dynamic: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  }
-
-  const labels: Record<string, string> = {
-    conservative: 'Conservador',
-    balanced: 'Equilibrado',
-    dynamic: 'Dinámico',
-  }
-
-  return (
-    <span
-      className={`px-3 py-1 rounded-full text-sm font-medium ${colors[profile] || colors.balanced}`}
-    >
-      {labels[profile] || labels.balanced}
-    </span>
-  )
 }

@@ -158,7 +158,7 @@ function FilterSelect({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:left-0 top-auto sm:top-full mt-1 sm:min-w-[200px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
+          <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:left-0 top-auto sm:top-full mt-1 sm:min-w-[200px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 custom-scrollbar">
             {options.map((option, index) => {
               const isSelected = value === option.value
 
@@ -222,7 +222,7 @@ function FilterSelect({
       </button>
 
       {isOpen && (
-        <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:left-0 top-auto sm:top-full mt-1 sm:min-w-full sm:w-[250px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 no-scrollbar">
+        <div className="fixed sm:absolute inset-x-2 sm:inset-x-auto sm:left-0 top-auto sm:top-full mt-1 sm:min-w-full sm:w-[250px] max-h-[400px] overflow-y-auto bg-popover border border-border rounded-lg shadow-xl z-[100] py-1 custom-scrollbar">
           {options.map((option, index) => {
             const isSelected = value === option.value
 
