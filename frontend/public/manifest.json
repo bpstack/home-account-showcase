@@ -1,6 +1,6 @@
 {
   "name": "Home Account",
-  "short_name": "Home Account",
+  "short_name": "HomeAccount",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -32,10 +32,10 @@
       "purpose": "any"
     },
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

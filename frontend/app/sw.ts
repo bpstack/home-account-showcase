@@ -3,7 +3,6 @@ import {
   Serwist,
   CacheFirst,
   NetworkFirst,
-  StaleWhileRevalidate,
   CacheableResponsePlugin,
   ExpirationPlugin,
 } from 'serwist'
@@ -27,22 +26,7 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
-    {
-      matcher: ({ url }) => url.hostname === 'api.open-meteo.com',
-      handler: new StaleWhileRevalidate({
-        cacheName: 'home-account-v1-api',
-        plugins: [
-          new CacheableResponsePlugin({
-            statuses: [0, 200],
-          }),
-          new ExpirationPlugin({
-            maxEntries: 50,
-            maxAgeSeconds: 30 * 60,
-            purgeOnQuotaError: true,
-          }),
-        ],
-      }),
-    },
+    // Navigation requests (HTML pages)
     {
       matcher: ({ request }) => request.mode === 'navigate',
       handler: new NetworkFirst({
