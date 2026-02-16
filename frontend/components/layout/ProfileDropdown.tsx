@@ -12,6 +12,7 @@ import {
   Plus,
   Loader2,
   Check,
+  Wallet,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
@@ -173,8 +174,8 @@ export function ProfileDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-lg transition-colors duration-200 hover:bg-muted border border-transparent hover:border-border"
       >
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-semibold">
-          {user.name.charAt(0).toUpperCase()}
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+          <Wallet className="h-4 w-4" />
         </div>
         <div className="hidden md:flex flex-col items-start">
           <span className="text-base font-medium text-foreground leading-none">
