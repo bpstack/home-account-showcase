@@ -18,6 +18,7 @@ import importRoutes from './routes/import/import-routes.js'
 import aiRoutes from './routes/ai/ai-routes.js'
 import investmentRoutes from './routes/investment/investment-routes.js'
 import cryptoRoutes from './routes/crypto/crypto-routes.js'
+import budgetRoutes from './routes/budget/budget-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
 import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
 import { AppError } from './utils/app-error.js'
@@ -93,6 +94,7 @@ app.use('/api/transactions', transactionRoutes)
 app.use('/api/import', importRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/investment', investmentRoutes)
+app.use('/api/budget', budgetRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
