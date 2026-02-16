@@ -11,6 +11,7 @@ import {
   deriveUserKeyExtractable,
   generateRecoveryBlob,
 } from '@/lib/crypto'
+import { toast } from 'sonner'
 
 function SetupPinForm() {
   const [pin, setPin] = useState('')
@@ -140,8 +141,14 @@ function SetupPinForm() {
 
           {/* Copy button */}
           <button
-            onClick={() => navigator.clipboard.writeText(mnemonic)}
-            className="w-full py-2 text-sm border border-layer-3 rounded-lg hover:bg-layer-2"
+            onClick={async () => {
+              await navigator.clipboard.writeText(mnemonic)
+              toast.success('Frase copiada al portapapeles', {
+                duration: 3000,
+                style: { background: '#22c55e', border: 'none', color: 'white' },
+              })
+            }}
+            className="w-full py-2 text-sm border border-layer-3 rounded-lg hover:bg-layer-2 transition-all duration-200 active:scale-[0.98]"
           >
             Copiar al portapapeles
           </button>

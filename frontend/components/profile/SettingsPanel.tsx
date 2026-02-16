@@ -75,11 +75,6 @@ export function SettingsPanel() {
 
   return (
     <div className="h-full max-w-[1400px]">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-foreground">Configuración</h2>
-        <p className="text-sm text-muted-foreground mt-1">Gestiona los ajustes de tu cuenta</p>
-      </div>
-
       <div className="border-b border-border mb-6">
         <nav className="flex flex-wrap gap-2 md:gap-4 md:overflow-x-auto">
           {tabs.map((tab) => (
