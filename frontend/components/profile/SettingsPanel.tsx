@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts, auth } from '@/lib/apiClient'
+import { useBudgets, useCreateBudget, useUpdateBudget, useDeleteBudget } from '@/lib/queries/budget'
+import { useCategories } from '@/lib/queries/categories'
+import { useTransactions } from '@/lib/queries/transactions'
 import { Button, Input } from '@/components/ui'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Modal, ModalFooter } from '@/components/ui/Modal'
@@ -38,7 +41,7 @@ interface Invitation {
   created_at: string
 }
 
-type SettingsTab = 'account' | 'budget' | 'savings' | 'security' | 'ia'
+type SettingsTab = 'account' | 'budget' | 'security' | 'ia'
 
 const tabs: { id: SettingsTab; label: string; description: string }[] = [
   { id: 'account', label: 'Cuenta', description: 'Gestiona tu cuenta y miembros' },
@@ -47,11 +50,6 @@ const tabs: { id: SettingsTab; label: string; description: string }[] = [
     id: 'budget',
     label: 'Presupuesto',
     description: 'Establecer los límites de gastos dependiendo la categoría seleccionada',
-  },
-  {
-    id: 'savings',
-    label: 'Ahorro e Inversión',
-    description: 'Qué parte destinaremos al ahorro y qué parte a Inversión',
   },
   { id: 'security', label: 'Seguridad', description: 'Aumentar la seguridad de mi cuenta' },
 ]
@@ -104,13 +102,12 @@ export function SettingsPanel() {
         {activeTab === 'account' && <AccountSettings />}
         {activeTab === 'ia' && <AISettings />}
         {activeTab === 'budget' && <BudgetSettings />}
-        {activeTab === 'savings' && <SavingsSettings />}
         {activeTab === 'security' && (
           <div className="space-y-6">
-            <ChangePinSection />
             {(!user?.oauth_provider || user.oauth_provider === 'local') && (
               <ChangePasswordSection />
             )}
+            <ChangePinSection />
           </div>
         )}
       </div>
@@ -662,33 +659,437 @@ function AccountSettings() {
 }
 
 function BudgetSettings() {
-  return (
-    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Presupuesto</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Establecer los límites de gastos dependiendo la categoría seleccionada
-        </p>
-      </div>
-      <div className="p-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Próximamente...</p>
-      </div>
-    </div>
-  )
-}
+  const { account } = useAuth()
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const [showModal, setShowModal] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState({
+    category_id: '',
+    amount: '',
+    period: 'monthly' as const,
+    alert_threshold: 80,
+  })
 
-function SavingsSettings() {
+  const accountId = account?.id
+
+  // Get budget config (limits per category)
+  const { data: budgets, isLoading: budgetsLoading, refetch } = useBudgets(accountId)
+  const { data: categoriesData } = useCategories(accountId || '')
+  const categories = categoriesData?.categories || []
+
+  // Get decrypted transactions for the selected month to calculate spending
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+  const endOfMonth = new Date(year, month, 0)
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`
+
+  const { data: transactionsData, isLoading: transactionsLoading } = useTransactions(
+    {
+      account_id: accountId || '',
+      start_date: startDate,
+      end_date: endDate,
+      limit: 10000,
+    },
+    { enabled: !!accountId }
+  )
+
+  const createBudget = useCreateBudget()
+  const updateBudget = useUpdateBudget()
+  const deleteBudget = useDeleteBudget()
+
+  // Calculate spending per category client-side
+  const budgetsWithSpending = useMemo(() => {
+    if (!budgets || !categories || !transactionsData) return []
+
+    const transactions = transactionsData.transactions || []
+
+    // Group transactions by category
+    const spendingByCategory: Record<string, number> = {}
+
+    transactions.forEach((tx) => {
+      if (tx.amount >= 0) return // Only expenses (negative amounts)
+
+      // Find category of this transaction (via subcategory)
+      const subcategory = categories.find((c) =>
+        c.subcategories?.some((sc) => sc.id === tx.subcategory_id)
+      )
+
+      if (subcategory) {
+        if (!spendingByCategory[subcategory.id]) {
+          spendingByCategory[subcategory.id] = 0
+        }
+        spendingByCategory[subcategory.id] += Math.abs(tx.amount)
+      }
+    })
+
+    // Combine budgets with calculated spending
+    return budgets.map((budget) => {
+      const category = categories.find((c: any) => c.id === budget.category_id)
+      const budgetAmount = Number(budget.amount)
+      const alertThreshold = Number(budget.alert_threshold)
+      const spent = spendingByCategory[budget.category_id] || 0
+      const percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0
+      const remaining = budgetAmount - spent
+
+      let status: 'normal' | 'warning' | 'exceeded' = 'normal'
+      if (percentage > 100) {
+        status = 'exceeded'
+      } else if (percentage >= alertThreshold) {
+        status = 'warning'
+      }
+
+      return {
+        ...budget,
+        amount: budgetAmount,
+        alert_threshold: alertThreshold,
+        categoryName: category?.name || 'Unknown',
+        categoryColor: category?.color || '#888',
+        spent,
+        remaining,
+        percentage,
+        status,
+      }
+    })
+  }, [budgets, categories, transactionsData])
+
+  const isLoading = budgetsLoading || transactionsLoading
+  const unbudgeted = categories.filter((c: any) => !budgets?.some((b) => b.category_id === c.id))
+
+  const totalBudget = (budgetsWithSpending || []).reduce(
+    (sum, b) => sum + (Number(b.amount) || 0),
+    0
+  )
+  const totalSpent = (budgetsWithSpending || []).reduce((sum, b) => sum + (Number(b.spent) || 0), 0)
+  const totalPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
+
+  const openNew = () => {
+    setEditingId(null)
+    setForm({
+      category_id: unbudgeted[0]?.id || '',
+      amount: '',
+      period: 'monthly',
+      alert_threshold: 80,
+    })
+    setShowModal(true)
+  }
+
+  const openEdit = (b: any) => {
+    setEditingId(b.id)
+    setForm({
+      category_id: b.category_id,
+      amount: String(b.amount),
+      period: b.period,
+      alert_threshold: Number(b.alert_threshold),
+    })
+    setShowModal(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!account?.id) return
+
+    try {
+      if (editingId) {
+        await updateBudget.mutateAsync({
+          id: editingId,
+          payload: {
+            account_id: account.id,
+            amount: parseFloat(form.amount),
+            period: form.period,
+            alert_threshold: form.alert_threshold,
+          },
+        })
+        toast.success('Presupuesto actualizado')
+      } else {
+        await createBudget.mutateAsync({
+          account_id: account.id,
+          category_id: form.category_id,
+          amount: parseFloat(form.amount),
+          period: form.period,
+          alert_threshold: form.alert_threshold,
+        })
+        toast.success('Presupuesto creado')
+      }
+      setShowModal(false)
+      setEditingId(null)
+      refetch()
+    } catch (error: any) {
+      toast.error(error.message)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!account?.id) return
+
+    try {
+      await deleteBudget.mutateAsync({ id, accountId: account.id })
+      toast.success('Presupuesto eliminado')
+      refetch()
+    } catch (error: any) {
+      toast.error(error.message)
+    }
+  }
+
+  const getBarColor = (status: string) => {
+    if (status === 'exceeded') return 'bg-red-500'
+    if (status === 'warning') return 'bg-amber-500'
+    return 'bg-emerald-500'
+  }
+
   return (
-    <div className="bg-white dark:bg-[#161b22] rounded-lg border border-gray-200 dark:border-[#30363d]">
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-[#30363d]">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Ahorro e Inversión</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Qué parte destinaremos al ahorro y qué parte a Inversión
-        </p>
+    <div className="bg-card border border-border rounded-xl">
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">Presupuesto</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Límites de gasto por categoría</p>
       </div>
-      <div className="p-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Próximamente...</p>
+
+      {/* Summary */}
+      {budgetsWithSpending && budgetsWithSpending.length > 0 && (
+        <div className="px-4 py-3 border-b border-border bg-muted/30">
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-muted-foreground">Total presupuesto:</span>
+            <span className="font-medium">€{(totalBudget || 0).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-muted-foreground">Total gastado:</span>
+            <span className={`font-medium ${totalSpent > totalBudget ? 'text-red-500' : ''}`}>
+              €{(totalSpent || 0).toFixed(2)}
+            </span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all ${
+                totalPercentage > 100
+                  ? 'bg-red-500'
+                  : totalPercentage > 80
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+              }`}
+              style={{ width: `${Math.min(totalPercentage, 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 text-right">
+            {(totalPercentage || 0).toFixed(1)}% usado
+          </p>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="p-3 flex items-center gap-2 border-b border-border">
+        <select
+          value={month}
+          onChange={(e) => setMonth(Number(e.target.value))}
+          className="h-8 text-xs border border-border rounded-lg px-2 bg-background"
+        >
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {new Date(0, i).toLocaleDateString('es', { month: 'long' })}
+            </option>
+          ))}
+        </select>
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className="h-8 text-xs border border-border rounded-lg px-2 bg-background"
+        >
+          {[2024, 2025, 2026, 2027].map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={openNew}
+          disabled={unbudgeted.length === 0}
+          className="ml-auto h-8 px-3 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+        >
+          + Añadir
+        </button>
       </div>
+
+      {/* List */}
+      <div className="p-3">
+        {isLoading ? (
+          <div className="py-8 text-center">
+            <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
+          </div>
+        ) : budgetsWithSpending.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Sin presupuestos configurados
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {budgetsWithSpending.map((b) => (
+              <div key={b.id} className="p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: b.categoryColor }}
+                    />
+                    <span className="text-sm font-medium">{b.categoryName}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => openEdit(b)}
+                      className="p-1 text-muted-foreground hover:text-foreground"
+                      title="Editar"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(b.id)}
+                      className="p-1 text-muted-foreground hover:text-red-500"
+                      title="Eliminar"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                  <div
+                    className={`h-full transition-all ${getBarColor(b.status)}`}
+                    style={{ width: `${Math.min(b.percentage, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>
+                    €{b.spent.toFixed(2)} / €{b.amount.toFixed(2)}
+                  </span>
+                  <span
+                    className={
+                      b.status === 'exceeded'
+                        ? 'text-red-500'
+                        : b.status === 'warning'
+                          ? 'text-amber-500'
+                          : ''
+                    }
+                  >
+                    {b.percentage.toFixed(1)}%
+                  </span>
+                </div>
+                {b.remaining < 0 && (
+                  <p className="text-xs text-red-500 mt-1">
+                    €{Math.abs(b.remaining).toFixed(2)} sobre presupuesto
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false)
+          setEditingId(null)
+        }}
+        title={editingId ? 'Editar presupuesto' : 'Nuevo presupuesto'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Categoría</label>
+            {editingId ? (
+              <p className="mt-1 h-10 px-3 flex items-center text-sm text-muted-foreground border border-border rounded-lg bg-muted/30">
+                {categories.find((c: any) => c.id === form.category_id)?.name || form.category_id}
+              </p>
+            ) : (
+              <select
+                value={form.category_id}
+                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                className="w-full mt-1 h-10 px-3 border border-border rounded-lg bg-background"
+                required
+              >
+                <option value="">Seleccionar...</option>
+                {unbudgeted.map((c: any) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Cantidad (€)</label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              className="mt-1"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Periodo</label>
+            <select
+              value={form.period}
+              onChange={(e) => setForm({ ...form, period: e.target.value as any })}
+              className="w-full mt-1 h-10 px-3 border border-border rounded-lg bg-background"
+            >
+              <option value="weekly">Semanal</option>
+              <option value="monthly">Mensual</option>
+              <option value="yearly">Anual</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Alerta al {form.alert_threshold}%</label>
+            <input
+              type="range"
+              min="50"
+              max="100"
+              value={form.alert_threshold}
+              onChange={(e) => setForm({ ...form, alert_threshold: Number(e.target.value) })}
+              className="w-full mt-2"
+            />
+          </div>
+          <ModalFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowModal(false)
+                setEditingId(null)
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={createBudget.isPending || updateBudget.isPending}>
+              {(createBudget.isPending || updateBudget.isPending) && (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              )}
+              {editingId ? 'Guardar' : 'Crear'}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
     </div>
   )
 }
@@ -740,7 +1141,7 @@ function ChangePinSection() {
       try {
         await decryptAccountKey(encrypted_keys[0].encrypted_key, currentUK)
       } catch {
-        setMessage({ type: 'error', text: 'PIN o contraseña actual incorrectos' })
+        setMessage({ type: 'error', text: 'PIN actual incorrecto' })
         setIsLoading(false)
         return
       }
@@ -806,7 +1207,7 @@ function ChangePinSection() {
           <Input
             id="currentPin"
             type="password"
-            label="PIN o contraseña actual"
+            label="PIN actual"
             value={currentPin}
             onChange={(e) => setCurrentPin(e.target.value)}
             required

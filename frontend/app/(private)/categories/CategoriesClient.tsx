@@ -37,9 +37,11 @@ import {
   AlertCircle,
   AlertTriangle,
   Loader2,
+  Wallet,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Category, Subcategory } from '@/lib/apiClient'
+import Link from 'next/link'
 
 const COLORS = [
   '#22c55e',
@@ -431,6 +433,23 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             })}
           </div>
         ) : null}
+
+        {hasCategories && (
+          <Link
+            href="/profile?panel=settings&tab=budget"
+            className="mt-8 flex items-center justify-center gap-3 p-6 bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/30 rounded-xl hover:from-accent/20 hover:to-primary/20 transition-all group"
+          >
+            <div className="p-3 bg-accent/20 rounded-full group-hover:scale-110 transition-transform">
+              <Wallet className="h-6 w-6 text-accent" />
+            </div>
+            <div className="text-center">
+              <p className="font-medium text-text-primary">¿Necesitas un presupuesto?</p>
+              <p className="text-sm text-text-secondary">
+                Crea tu propio presupuesto según las categorías y controla tus gastos
+              </p>
+            </div>
+          </Link>
+        )}
       </div>
 
       <Modal
