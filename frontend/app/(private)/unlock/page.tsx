@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, Suspense, useEffect } from 'react'
-import React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'

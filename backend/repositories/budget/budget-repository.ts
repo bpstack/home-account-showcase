@@ -2,7 +2,11 @@
 
 import { randomUUID } from 'crypto'
 import db from '../../config/db.js'
-import type { CategoryBudgetRow, CreateBudgetDTO, UpdateBudgetDTO } from '../../models/budget/index.js'
+import type {
+  CategoryBudgetRow,
+  CreateBudgetDTO,
+  UpdateBudgetDTO,
+} from '../../models/budget/index.js'
 import { AppError } from '../../utils/app-error.js'
 
 export class BudgetRepository {
@@ -31,7 +35,10 @@ export class BudgetRepository {
   /**
    * Obtener presupuesto por categoría
    */
-  static async getByCategoryId(accountId: string, categoryId: string): Promise<CategoryBudgetRow | null> {
+  static async getByCategoryId(
+    accountId: string,
+    categoryId: string
+  ): Promise<CategoryBudgetRow | null> {
     const [rows] = await db.query<CategoryBudgetRow[]>(
       `SELECT * FROM category_budgets WHERE account_id = ? AND category_id = ?`,
       [accountId, categoryId]
