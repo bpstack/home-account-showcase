@@ -176,7 +176,10 @@ export const auth = {
     })
     const data = await response.json()
     if (!response.ok) {
-      throw new ApiError(response.status, data.error || 'Error de autenticación')
+      const error = new ApiError(response.status, data.error || 'Error de autenticación')
+      ;(error as any).code = data.code
+      ;(error as any).email = data.email
+      throw error
     }
 
     if (typeof window !== 'undefined' && data.csrfToken) {
@@ -185,7 +188,13 @@ export const auth = {
 
     return data as {
       success: boolean
-      user: { id: string; email: string; name: string; oauth_provider?: string }
+      user: {
+        id: string
+        email: string
+        name: string
+        oauth_provider?: string
+        email_verified?: boolean
+      }
       key_salt: string
       verification_blob: string | null
       encrypted_keys: Array<{
@@ -243,7 +252,17 @@ export const auth = {
     if (!response.ok) {
       throw new ApiError(response.status, data.error || 'No autenticado')
     }
-    return data as { success: boolean; user: { id: string; email: string; name: string } }
+    return data as {
+      success: boolean
+      user: {
+        id: string
+        email: string
+        name: string
+        oauth_provider?: string
+        email_verified?: boolean
+        pending_email?: string | null
+      }
+    }
   },
 
   logout: async () => {
@@ -381,6 +400,41 @@ export const auth = {
       document.cookie = 'csrfToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     }
 
+    return data as { success: boolean; message: string }
+  },
+
+  changeEmail: async (newEmail: string) => {
+    const csrfToken = getCSRFToken()
+    const response = await fetch(`${AUTH_PROXY_URL}/change-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+      body: JSON.stringify({ newEmail }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al cambiar email')
+    }
+    return data as { success: boolean; message: string }
+  },
+
+  cancelEmailChange: async () => {
+    const csrfToken = getCSRFToken()
+    const response = await fetch(`${AUTH_PROXY_URL}/cancel-email-change`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || 'Error al cancelar cambio de email')
+    }
     return data as { success: boolean; message: string }
   },
 }

@@ -5,6 +5,8 @@ export interface User {
   email: string
   name: string
   oauth_provider?: 'local' | 'google' | 'github'
+  email_verified?: boolean
+  pending_email?: string | null
 }
 
 interface AuthState {
@@ -13,6 +15,7 @@ interface AuthState {
   isLoggingOut: boolean
   authError: string | null
   selectedAccountId: string | null
+  hasSeparatePin: boolean
 
   setLoggingIn: (_value: boolean) => void
   setRegistering: (_value: boolean) => void
@@ -20,6 +23,7 @@ interface AuthState {
   setAuthError: (_error: string | null) => void
   clearError: () => void
   setSelectedAccountId: (_accountId: string | null) => void
+  setHasSeparatePin: (_value: boolean) => void
 
   isSwitchingAccount: boolean
   setSwitchingAccount: (_value: boolean) => void
@@ -27,6 +31,7 @@ interface AuthState {
 
 const LAST_ACCOUNT_KEY = 'last_account_id'
 const ACCOUNT_COOKIE_NAME = 'selectedAccountId'
+const HAS_SEPARATE_PIN_KEY = 'has_separate_pin'
 
 function getLastAccountId(): string | null {
   if (typeof window === 'undefined') return null
@@ -49,6 +54,18 @@ function clearLastAccountId(): void {
   }
 }
 
+function getHasSeparatePin(): boolean {
+  if (typeof window === 'undefined') return true
+  const stored = localStorage.getItem(HAS_SEPARATE_PIN_KEY)
+  return stored === null ? true : stored === 'true'
+}
+
+function saveHasSeparatePin(value: boolean): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(HAS_SEPARATE_PIN_KEY, value ? 'true' : 'false')
+  }
+}
+
 export const AUTH_QUERY_KEYS = {
   user: ['auth', 'user'] as const,
   account: ['auth', 'account'] as const,
@@ -61,6 +78,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoggingOut: false,
   authError: null,
   selectedAccountId: null,
+  hasSeparatePin: getHasSeparatePin(),
 
   setLoggingIn: (value) => set({ isLoggingIn: value }),
   setRegistering: (value) => set({ isRegistering: value }),
@@ -75,6 +93,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     } else {
       clearLastAccountId()
     }
+  },
+
+  setHasSeparatePin: (value) => {
+    set({ hasSeparatePin: value })
+    saveHasSeparatePin(value)
   },
 
   isSwitchingAccount: false,
