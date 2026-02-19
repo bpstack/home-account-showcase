@@ -13,6 +13,7 @@ import {
 } from '../../services/auth/tokenService.js'
 import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
 import { sendPasswordResetEmail } from '../../services/email/email-service.js'
+import { sendVerificationTokenEmail } from './email-verification-controller.js'
 import { logger } from '../../utils/logger.js'
 import {
   registerSchema,
@@ -63,14 +64,15 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     encryptedAccountKey,
   })
 
-  const accessToken = await generateAccessToken({ id: result.id, email: result.email })
-  const refreshToken = await generateRefreshToken({ id: result.id, email: result.email })
-  const csrfToken = generateCSRFToken()
+  // Send verification email (don't block registration if it fails)
+  const emailSent = await sendVerificationTokenEmail(result.id, email, name)
+  if (!emailSent) {
+    logger.warn('AUTH', 'register', 'Verification email failed but user created', {
+      userId: result.id,
+    })
+  }
 
-  res.cookie('accessToken', accessToken, accessTokenCookieOptions)
-  res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
-  res.cookie('csrfToken', csrfToken, csrfCookieOptions)
-
+  // Don't generate tokens - user must verify email first
   const user = {
     id: result.id,
     email: result.email,
@@ -80,10 +82,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(201).json({
     success: true,
+    message: 'Cuenta creada. Revisa tu email para verificar tu cuenta.',
+    emailVerified: false,
     user,
+    // Include key_salt and accountId so frontend can complete encryption setup
+    // before redirecting to verify-sent (no session tokens, just crypto setup)
     key_salt: result.key_salt,
     accountId: result.accountId,
-    csrfToken,
   })
 })
 
@@ -95,6 +100,19 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   const { email, password } = validationResult.data as LoginInput
   const userWithSalt = await UserRepository.login({ email, password })
+
+  // Check if email is verified
+  const isVerified = await UserRepository.isEmailVerified(userWithSalt.id)
+  if (!isVerified) {
+    res.status(403).json({
+      success: false,
+      error: 'Debes verificar tu email antes de iniciar sesión.',
+      code: 'EMAIL_NOT_VERIFIED',
+      email: userWithSalt.email,
+    })
+    return
+  }
+
   const encryptedKeys = await AccountKeyRepository.getByUserId(userWithSalt.id)
 
   const accessToken = await generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
@@ -112,6 +130,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     id: userWithSalt.id,
     email: userWithSalt.email,
     name: userWithSalt.name,
+    email_verified: userWithSalt.email_verified,
     created_at: userWithSalt.created_at,
     updated_at: userWithSalt.updated_at,
   }
@@ -313,12 +332,7 @@ export const getRecoveryInfo = asyncHandler(async (req: Request, res: Response) 
 })
 
 export const recoverWithBip39 = asyncHandler(async (req: Request, res: Response) => {
-  const {
-    newKeySalt,
-    verificationBlob,
-    recoveryBlob,
-    reEncryptedKeys,
-  } = req.body
+  const { newKeySalt, verificationBlob, recoveryBlob, reEncryptedKeys } = req.body
 
   if (!newKeySalt || !verificationBlob || !recoveryBlob || !reEncryptedKeys?.length) {
     throw new AppError('Missing required fields for recovery', 400)

@@ -16,6 +16,8 @@ export interface User {
   avatar_url?: string
   created_at: Date
   updated_at?: Date
+  email_verified?: boolean // Email verification status
+  pending_email?: string | null // New email pending confirmation (email change flow)
 }
 
 export interface UserRow extends User, RowDataPacket {
@@ -29,8 +31,15 @@ export interface UserRow extends User, RowDataPacket {
   pin_locked_until?: Date | null // PIN lockout expiry
   bip39_attempts?: number // Server-side BIP39 lockout counter
   bip39_locked_until?: Date | null // BIP39 lockout expiry
-  reset_token_hash?: string | null // NEW: Hash of password reset token
-  reset_token_expires?: Date | null // NEW: Expiry of password reset token
+  reset_token_hash?: string | null // Hash of password reset token
+  reset_token_expires?: Date | null // Expiry of password reset token
+  email_verified?: boolean // Email verification status
+  verification_token?: string | null // Email verification token
+  verification_token_expires?: Date | null // Email verification token expiry
+  // Email change
+  pending_email?: string | null // New email pending verification
+  email_change_token?: string | null // Token for email change verification
+  email_change_token_expires?: Date | null // Expiry of email change token
   oauth_provider?: 'local' | 'google' | 'github'
   oauth_id?: string
   avatar_url?: string

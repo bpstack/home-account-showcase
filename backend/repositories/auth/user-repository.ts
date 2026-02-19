@@ -107,9 +107,11 @@ export class UserRepository {
   static async login({
     email,
     password,
-  }: LoginDTO): Promise<User & { key_salt: string; verification_blob: string | null }> {
+  }: LoginDTO): Promise<
+    User & { key_salt: string; verification_blob: string | null; email_verified: boolean }
+  > {
     const [rows] = await db.query<UserRow[]>(
-      `SELECT id, email, name, password_hash, key_salt, verification_blob, created_at, updated_at
+      `SELECT id, email, name, password_hash, key_salt, verification_blob, email_verified, created_at, updated_at
        FROM users
        WHERE email = ?`,
       [email]
@@ -136,6 +138,7 @@ export class UserRepository {
       name: user.name,
       key_salt: user.key_salt,
       verification_blob: user.verification_blob ?? null,
+      email_verified: user.email_verified === true || (user.email_verified as unknown) === 1,
       created_at: user.created_at,
       updated_at: user.updated_at,
     }
@@ -146,7 +149,7 @@ export class UserRepository {
    */
   static async getById(id: string): Promise<User | null> {
     const [rows] = await db.query<UserRow[]>(
-      `SELECT id, email, name, oauth_provider, created_at, updated_at
+      `SELECT id, email, name, oauth_provider, email_verified, pending_email, created_at, updated_at
        FROM users
        WHERE id = ?`,
       [id]
@@ -441,14 +444,15 @@ export class UserRepository {
 
   /**
    * Crear usuario desde OAuth (sin password)
+   * OAuth users have email_verified = true since OAuth provider already verified
    */
   static async createOAuth(data: CreateOAuthUserDTO): Promise<User & { key_salt: string }> {
     const userId = crypto.randomUUID()
     const keySalt = crypto.randomBytes(32).toString('hex')
 
     await db.query(
-      `INSERT INTO users (id, email, name, key_salt, oauth_provider, oauth_id, avatar_url, password_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+      `INSERT INTO users (id, email, name, key_salt, oauth_provider, oauth_id, avatar_url, password_hash, email_verified)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, TRUE)`,
       [userId, data.email, data.name, keySalt, data.provider, data.oauthId, data.avatar || null]
     )
 
@@ -517,8 +521,12 @@ export class UserRepository {
   /**
    * Record a failed PIN attempt. Lock if >= 5 attempts.
    */
-  static async recordFailedPinAttempt(userId: string): Promise<{ remaining: number; locked: boolean }> {
-    const [rows] = await db.query<UserRow[]>(`SELECT pin_attempts FROM users WHERE id = ?`, [userId])
+  static async recordFailedPinAttempt(
+    userId: string
+  ): Promise<{ remaining: number; locked: boolean }> {
+    const [rows] = await db.query<UserRow[]>(`SELECT pin_attempts FROM users WHERE id = ?`, [
+      userId,
+    ])
     const attempts = (rows[0]?.pin_attempts || 0) + 1
     const locked = attempts >= 5
 
@@ -599,5 +607,236 @@ export class UserRepository {
     await db.query(`UPDATE users SET bip39_attempts = 0, bip39_locked_until = NULL WHERE id = ?`, [
       userId,
     ])
+  }
+
+  // ============================================
+  // EMAIL VERIFICATION METHODS
+  // ============================================
+
+  /**
+   * Buscar usuario por email (para reenvío de verificación)
+   */
+  static async findByEmail(email: string): Promise<UserRow | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, name, email_verified, oauth_provider
+       FROM users WHERE email = ?`,
+      [email.toLowerCase().trim()]
+    )
+    return rows[0] || null
+  }
+
+  /**
+   * Guardar token de verificación para un usuario
+   */
+  static async setVerificationToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    await db.query(
+      `UPDATE users
+       SET verification_token = ?, verification_token_expires = ?
+       WHERE id = ?`,
+      [token, expiresAt, userId]
+    )
+    logger.info('USER_REPO', 'setVerificationToken', 'Token set', { userId })
+  }
+
+  /**
+   * Verificar token y obtener usuario
+   * Retorna null si el token es inválido o expirado
+   */
+  static async verifyEmailToken(token: string, email: string): Promise<UserRow | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT * FROM users
+       WHERE email = ?
+         AND verification_token = ?
+         AND verification_token_expires > NOW()`,
+      [email.toLowerCase().trim(), token]
+    )
+
+    if (!rows[0]) {
+      logger.warn('USER_REPO', 'verifyEmailToken', 'Invalid or expired token', { email })
+      return null
+    }
+
+    return rows[0]
+  }
+
+  /**
+   * Marcar email como verificado y limpiar token
+   */
+  static async markEmailAsVerified(userId: string): Promise<void> {
+    await db.query(
+      `UPDATE users
+       SET email_verified = TRUE,
+           verification_token = NULL,
+           verification_token_expires = NULL
+       WHERE id = ?`,
+      [userId]
+    )
+    logger.info('USER_REPO', 'markEmailAsVerified', 'Email verified', { userId })
+  }
+
+  /**
+   * Verificar si un usuario tiene email verificado
+   */
+  static async isEmailVerified(userId: string): Promise<boolean> {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT email_verified FROM users WHERE id = ?`,
+      [userId]
+    )
+    return rows[0]?.email_verified === true || rows[0]?.email_verified === 1
+  }
+
+  /**
+   * Save verification blob for a user (used during crypto setup)
+   */
+  static async saveVerificationBlob(userId: string, verificationBlob: string): Promise<void> {
+    await db.query(`UPDATE users SET verification_blob = ? WHERE id = ?`, [
+      verificationBlob,
+      userId,
+    ])
+    logger.info('USER_REPO', 'saveVerificationBlob', 'Verification blob saved', { userId })
+  }
+
+  /**
+   * Save encrypted account key during initial setup (before email verification)
+   */
+  static async saveAccountKeyForSetup(
+    userId: string,
+    accountId: string,
+    encryptedKey: string
+  ): Promise<void> {
+    // Check if key already exists
+    const [existing] = await db.query<RowDataPacket[]>(
+      `SELECT id FROM account_keys WHERE account_id = ? AND user_id = ?`,
+      [accountId, userId]
+    )
+
+    if (existing.length > 0) {
+      // Update existing key
+      await db.query(
+        `UPDATE account_keys SET encrypted_key = ? WHERE account_id = ? AND user_id = ?`,
+        [encryptedKey, accountId, userId]
+      )
+    } else {
+      // Insert new key
+      const keyId = crypto.randomUUID()
+      await db.query(
+        `INSERT INTO account_keys (id, account_id, user_id, encrypted_key, key_version)
+         VALUES (?, ?, ?, ?, 1)`,
+        [keyId, accountId, userId, encryptedKey]
+      )
+    }
+    logger.info('USER_REPO', 'saveAccountKeyForSetup', 'Account key saved', { userId, accountId })
+  }
+
+  // ============================================
+  // EMAIL CHANGE
+  // ============================================
+
+  /**
+   * Iniciar proceso de cambio de email
+   * Guarda el nuevo email como pendiente hasta que se verifique
+   * @returns true si se inició correctamente, false si el email ya está en uso
+   */
+  static async initiateEmailChange(
+    userId: string,
+    newEmail: string,
+    token: string,
+    expiresAt: Date
+  ): Promise<boolean> {
+    // Check if new email is already in use
+    const [existing] = await db.query<UserRow[]>(
+      `SELECT id FROM users WHERE email = ? AND id != ?`,
+      [newEmail.toLowerCase().trim(), userId]
+    )
+
+    if (existing.length > 0) {
+      return false // Email already in use
+    }
+
+    await db.query(
+      `UPDATE users
+       SET pending_email = ?,
+           email_change_token = ?,
+           email_change_token_expires = ?
+       WHERE id = ?`,
+      [newEmail.toLowerCase().trim(), token, expiresAt, userId]
+    )
+
+    logger.info('USER_REPO', 'initiateEmailChange', 'Email change initiated', {
+      userId,
+      newEmail,
+    })
+    return true
+  }
+
+  /**
+   * Completar cambio de email - verificar token y actualizar
+   * @returns { userId, oldEmail, newEmail } si exitoso, null si token inválido
+   */
+  static async completeEmailChange(
+    token: string
+  ): Promise<{ userId: string; oldEmail: string; newEmail: string } | null> {
+    const [rows] = await db.query<UserRow[]>(
+      `SELECT id, email, pending_email
+       FROM users
+       WHERE email_change_token = ?
+         AND email_change_token_expires > NOW()
+         AND pending_email IS NOT NULL`,
+      [token]
+    )
+
+    if (!rows[0] || !rows[0].pending_email) {
+      return null
+    }
+
+    const { id: userId, email: oldEmail, pending_email: newEmail } = rows[0]
+
+    // Update email and clear change fields
+    // Also reset email_verified so user must verify the new email
+    await db.query(
+      `UPDATE users
+       SET email = ?,
+           email_verified = FALSE,
+           pending_email = NULL,
+           email_change_token = NULL,
+           email_change_token_expires = NULL,
+           verification_token = NULL,
+           verification_token_expires = NULL
+       WHERE id = ?`,
+      [newEmail, userId]
+    )
+
+    logger.info('USER_REPO', 'completeEmailChange', 'Email changed', {
+      userId,
+      oldEmail,
+      newEmail,
+    })
+
+    return { userId, oldEmail, newEmail }
+  }
+
+  /**
+   * Cancelar cambio de email pendiente
+   */
+  static async cancelEmailChange(userId: string): Promise<void> {
+    await db.query(
+      `UPDATE users
+       SET pending_email = NULL,
+           email_change_token = NULL,
+           email_change_token_expires = NULL
+       WHERE id = ?`,
+      [userId]
+    )
+    logger.info('USER_REPO', 'cancelEmailChange', 'Email change cancelled', { userId })
+  }
+
+  /**
+   * Obtener email pendiente de cambio
+   */
+  static async getPendingEmail(userId: string): Promise<string | null> {
+    const [rows] = await db.query<RowDataPacket[]>(`SELECT pending_email FROM users WHERE id = ?`, [
+      userId,
+    ])
+    return rows[0]?.pending_email || null
   }
 }
