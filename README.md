@@ -111,9 +111,9 @@ REFRESH (F5)
   |-> Cookies persist (session valid)
   |-> Crypto store cleared (keys lost)
   |
-  `-> Redirect to /unlock
+  `-> Redirect to /unlock (PIN configured) OR /setup-pin (password = encryption source)
        |
-       |-> Re-enter password
+       |-> Re-enter password or PIN
        |-> GET /auth/keys -> get key_salt, encrypted_keys
        |-> Re-derive UK, decrypt AKs
        `-> Back to dashboard
@@ -316,7 +316,8 @@ Required for full functionality in production:
 - DB: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`
 - JWT: `JWT_SECRET`
 - OAuth: `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET`, `OAUTH_CALLBACK_URL`
-- Email: `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY`
+- Email (password reset): `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY`
+- Email (verification + change): `EMAILJS_SERVICE_ID_V2`, `EMAILJS_TEMPLATE_ID_V2`, `EMAILJS_TEMPLATE_ID_V3`, `EMAILJS_PUBLIC_KEY_V2`, `EMAILJS_PRIVATE_KEY_V2`
 - App: `FRONTEND_URL` (for reset email links)
 
 ## PWA
