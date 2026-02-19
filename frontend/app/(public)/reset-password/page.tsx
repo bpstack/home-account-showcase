@@ -100,8 +100,12 @@ function ResetPasswordForm() {
       if (ci.recovery_blob && ci.recovery_salt && ci.encrypted_keys.length > 0) {
         setPhase('bip39')
       } else {
-        // No recovery phrase — reset password only
-        await doPasswordReset({})
+        // No recovery phrase — generate new verification blob from new password
+        // and clear stale account keys (irrecoverable without BIP39)
+        const newKeySalt = generateSalt()
+        const { key: newUserKey } = await deriveUserKeyExtractable(newPassword, newKeySalt)
+        const newVerificationBlob = await generateVerificationBlob(newUserKey)
+        await doPasswordReset({ newKeySalt, newVerificationBlob, clearAccountKeys: true })
       }
     } catch (err: unknown) {
       setError((err as Error).message || 'Error al conectar con el servidor')
@@ -167,11 +171,14 @@ function ResetPasswordForm() {
     }
   }
 
-  // Phase 2b: skip BIP39 — reset password only (encrypted data stays with old key)
+  // Phase 2b: skip BIP39 — generate new verification blob, clear stale account keys
   const handleSkip = async () => {
     setSkipping(true)
     try {
-      await doPasswordReset({})
+      const newKeySalt = generateSalt()
+      const { key: newUserKey } = await deriveUserKeyExtractable(newPassword, newKeySalt)
+      const newVerificationBlob = await generateVerificationBlob(newUserKey)
+      await doPasswordReset({ newKeySalt, newVerificationBlob, clearAccountKeys: true })
     } finally {
       setSkipping(false)
     }
@@ -182,6 +189,7 @@ function ResetPasswordForm() {
     newVerificationBlob?: string
     reEncryptedKeys?: Array<{ accountId: string; encryptedKey: string }>
     newRecoveryBlob?: string
+    clearAccountKeys?: boolean
   }) => {
     const res = await fetch('/api/proxy/auth/reset-password', {
       method: 'POST',

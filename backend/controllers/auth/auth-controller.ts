@@ -495,7 +495,7 @@ export const getResetInfo = asyncHandler(async (req: Request, res: Response) => 
 })
 
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
-  const { email, token, newPassword, newKeySalt, newVerificationBlob, reEncryptedKeys, newRecoveryBlob } = req.body
+  const { email, token, newPassword, newKeySalt, newVerificationBlob, reEncryptedKeys, newRecoveryBlob, clearAccountKeys } = req.body
 
   if (!email || !token || !newPassword) {
     throw new AppError('Email, token, and new password are required', 400)
@@ -576,6 +576,14 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
           [key.encryptedKey, key.accountId, user.id]
         )
       }
+    }
+
+    // When no BIP39 re-encryption, account keys encrypted with old UserKey are
+    // irrecoverable — delete them so login can create fresh ones via the
+    // complete-crypto-setup fallback path. Also null out recovery_blob.
+    if (clearAccountKeys) {
+      await connection.query(`DELETE FROM account_keys WHERE user_id = ?`, [user.id])
+      await connection.query(`UPDATE users SET recovery_blob = NULL WHERE id = ?`, [user.id])
     }
 
     await connection.commit()
