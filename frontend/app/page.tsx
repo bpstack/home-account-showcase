@@ -84,11 +84,17 @@ export default function HomePage() {
           {/* Main Content */}
           <div className="flex-1 flex flex-col justify-center py-12 lg:py-0">
             <div className="space-y-8 flex flex-col items-center text-center">
-              {/* Tagline with color accent */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full border border-emerald-500/20 overflow-hidden">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400 tracking-wide uppercase">
-                  Finanzas del hogar
+              {/* Tagline — corner-bracket marker */}
+              <div className="relative inline-flex items-center px-5 py-2 group cursor-default select-none">
+                {/* TL corner */}
+                <span className="absolute top-0 left-0 block w-3 h-3 border-t-[1.5px] border-l-[1.5px] border-emerald-500/70 transition-all duration-500 group-hover:w-4 group-hover:h-4" />
+                {/* BR corner */}
+                <span className="absolute bottom-0 right-0 block w-3 h-3 border-b-[1.5px] border-r-[1.5px] border-emerald-500/70 transition-all duration-500 group-hover:w-4 group-hover:h-4" />
+                <span className="text-[11px] tracking-[0.4em] uppercase font-semibold text-foreground/50 group-hover:text-foreground/80 transition-colors duration-500">
+                  Finanzas&nbsp;
+                </span>
+                <span className="text-[11px] tracking-[0.4em] uppercase font-semibold text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-500 transition-colors duration-500">
+                  del hogar
                 </span>
               </div>
 

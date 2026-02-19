@@ -3,7 +3,36 @@
 import { useState, Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react'
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertCircle,
+  ArrowLeft,
+  KeyRound,
+  ShieldAlert,
+} from 'lucide-react'
+import {
+  deriveRecoveryKey,
+  decryptRecoveryBlob,
+  deriveUserKeyExtractable,
+  encryptAccountKey,
+  decryptAccountKey,
+  generateVerificationBlob,
+  generateRecoveryBlob,
+  generateSalt,
+  validateBIP39Mnemonic,
+} from '@/lib/crypto'
+
+type Phase = 'password' | 'bip39' | 'success'
+
+interface CryptoInfo {
+  key_salt: string
+  recovery_blob: string | null
+  recovery_salt: string | null
+  encrypted_keys: Array<{ account_id: string; encrypted_key: string; key_version: number }>
+}
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -11,13 +40,20 @@ function ResetPasswordForm() {
   const token = searchParams.get('token')
   const emailParam = searchParams.get('email')
 
-  const [password, setPassword] = useState('')
+  const [phase, setPhase] = useState<Phase>('password')
+  const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [focusedField, setFocusedField] = useState<string | null>(null)
+
+  // BIP39 phase state
+  const [cryptoInfo, setCryptoInfo] = useState<CryptoInfo | null>(null)
+  const [mnemonic, setMnemonic] = useState('')
+  const [bip39Error, setBip39Error] = useState('')
+  const [bip39Loading, setBip39Loading] = useState(false)
+  const [skipping, setSkipping] = useState(false)
 
   useEffect(() => {
     if (!token || !emailParam) {
@@ -25,47 +61,142 @@ function ResetPasswordForm() {
     }
   }, [token, emailParam])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Phase 1: validate password, fetch crypto info, decide next phase
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (password.length < 6) {
+    if (newPassword.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres')
       return
     }
-
-    if (password !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       setError('Las contraseñas no coinciden')
       return
     }
 
     setLoading(true)
-
     try {
-      const res = await fetch('/api/proxy/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: emailParam,
-          token: token,
-          newPassword: password,
-        }),
-      })
+      // Fetch crypto recovery info (does NOT consume the token)
+      const infoRes = await fetch(
+        `/api/proxy/auth/reset-info?email=${encodeURIComponent(emailParam!)}&token=${encodeURIComponent(token!)}`,
+        { credentials: 'include' }
+      )
+      const infoData = await infoRes.json()
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Error al restablecer la contraseña')
+      if (!infoRes.ok) {
+        throw new Error(infoData.error || 'Token inválido o expirado')
       }
 
-      setSuccess(true)
-      setTimeout(() => router.push('/login'), 2000)
+      const ci: CryptoInfo = {
+        key_salt: infoData.key_salt,
+        recovery_blob: infoData.recovery_blob,
+        recovery_salt: infoData.recovery_salt,
+        encrypted_keys: infoData.encrypted_keys || [],
+      }
+      setCryptoInfo(ci)
+
+      // If user has recovery phrase set up, ask them to use it
+      if (ci.recovery_blob && ci.recovery_salt && ci.encrypted_keys.length > 0) {
+        setPhase('bip39')
+      } else {
+        // No recovery phrase — reset password only
+        await doPasswordReset({})
+      }
     } catch (err: unknown) {
-      const error = err as Error
-      setError(error.message || 'Error al conectar con el servidor')
+      setError((err as Error).message || 'Error al conectar con el servidor')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Phase 2a: re-encrypt with BIP39 recovery
+  const handleBip39Submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cryptoInfo) return
+    setBip39Error('')
+    setBip39Loading(true)
+
+    try {
+      const words = mnemonic.trim().toLowerCase()
+      if (!validateBIP39Mnemonic(words)) {
+        setBip39Error(
+          'Frase de recuperación inválida. Verifica que las 24 palabras sean correctas.'
+        )
+        return
+      }
+
+      // 1. Derive recovery key from mnemonic + stored salt
+      const recoveryKey = await deriveRecoveryKey(words, cryptoInfo.recovery_salt!)
+
+      // 2. Decrypt old user key from recovery blob
+      const oldUserKey = await decryptRecoveryBlob(cryptoInfo.recovery_blob!, recoveryKey)
+
+      // 3. Generate new salt + derive new user key from new password
+      const newKeySalt = generateSalt()
+      const { key: newUserKey, raw: newUserKeyRaw } = await deriveUserKeyExtractable(
+        newPassword,
+        newKeySalt
+      )
+
+      // 4. Re-encrypt all account keys with new user key
+      const reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }> = []
+      for (const ek of cryptoInfo.encrypted_keys) {
+        const accountKey = await decryptAccountKey(ek.encrypted_key, oldUserKey)
+        const newEncryptedKey = await encryptAccountKey(accountKey, newUserKey)
+        reEncryptedKeys.push({ accountId: ek.account_id, encryptedKey: newEncryptedKey })
+      }
+
+      // 5. Generate new verification blob and new recovery blob
+      const newVerificationBlob = await generateVerificationBlob(newUserKey)
+      const newRecoveryBlob = await generateRecoveryBlob(newUserKeyRaw, recoveryKey)
+
+      // 6. Atomically reset password + crypto
+      await doPasswordReset({ newKeySalt, newVerificationBlob, reEncryptedKeys, newRecoveryBlob })
+    } catch (err: unknown) {
+      const msg = (err as Error).message || ''
+      if (msg.toLowerCase().includes('decrypt') || msg.toLowerCase().includes('operation')) {
+        setBip39Error(
+          'Frase de recuperación incorrecta. Verifica las palabras e inténtalo de nuevo.'
+        )
+      } else {
+        setBip39Error(msg || 'Error al procesar la frase de recuperación.')
+      }
+    } finally {
+      setBip39Loading(false)
+    }
+  }
+
+  // Phase 2b: skip BIP39 — reset password only (encrypted data stays with old key)
+  const handleSkip = async () => {
+    setSkipping(true)
+    try {
+      await doPasswordReset({})
+    } finally {
+      setSkipping(false)
+    }
+  }
+
+  const doPasswordReset = async (extra: {
+    newKeySalt?: string
+    newVerificationBlob?: string
+    reEncryptedKeys?: Array<{ accountId: string; encryptedKey: string }>
+    newRecoveryBlob?: string
+  }) => {
+    const res = await fetch('/api/proxy/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: emailParam,
+        token,
+        newPassword,
+        ...extra,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Error al restablecer la contraseña')
+    setPhase('success')
+    setTimeout(() => router.push('/login'), 2500)
   }
 
   return (
@@ -109,7 +240,8 @@ function ResetPasswordForm() {
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-blue-500/10 rounded-3xl blur-xl scale-105" />
             <div className="relative bg-card/80 backdrop-blur-xl border border-border rounded-3xl p-8 shadow-2xl">
-              {success ? (
+              {/* ── SUCCESS ── */}
+              {phase === 'success' && (
                 <div className="text-center">
                   <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 className="w-8 h-8 text-emerald-500" />
@@ -119,7 +251,10 @@ function ResetPasswordForm() {
                     Ya puedes iniciar sesión con tu nueva contraseña. Redirigiendo...
                   </p>
                 </div>
-              ) : (
+              )}
+
+              {/* ── PHASE 1: New password ── */}
+              {phase === 'password' && (
                 <>
                   <div className="text-center mb-8">
                     <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -131,7 +266,7 @@ function ResetPasswordForm() {
                     <p className="text-muted-foreground">Ingresa tu nueva contraseña.</p>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form onSubmit={handlePasswordSubmit} className="space-y-5">
                     {error && (
                       <div className="p-4 text-sm bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 flex items-start gap-3 animate-in slide-in-from-top-2 duration-300">
                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -139,7 +274,6 @@ function ResetPasswordForm() {
                       </div>
                     )}
 
-                    {/* Password field */}
                     <div className="space-y-2">
                       <label htmlFor="password" className="text-sm font-medium">
                         Nueva contraseña
@@ -155,8 +289,8 @@ function ResetPasswordForm() {
                         <input
                           id="password"
                           type={showPassword ? 'text' : 'password'}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
                           onFocus={() => setFocusedField('password')}
                           onBlur={() => setFocusedField(null)}
                           placeholder="••••••••"
@@ -183,7 +317,6 @@ function ResetPasswordForm() {
                       </div>
                     </div>
 
-                    {/* Confirm password field */}
                     <div className="space-y-2">
                       <label htmlFor="confirmPassword" className="text-sm font-medium">
                         Confirmar contraseña
@@ -217,13 +350,13 @@ function ResetPasswordForm() {
 
                     <button
                       type="submit"
-                      disabled={loading || !token || !password || !confirmPassword}
+                      disabled={loading || !token || !newPassword || !confirmPassword}
                       className="group relative w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 sm:h-10"
                     >
                       <span
                         className={`flex items-center justify-center gap-2 transition-all duration-300 ${loading ? 'opacity-0' : ''}`}
                       >
-                        Guardar contraseña
+                        Continuar
                       </span>
                       {loading && (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -242,6 +375,84 @@ function ResetPasswordForm() {
                       Volver al login
                     </Link>
                   </p>
+                </>
+              )}
+
+              {/* ── PHASE 2: BIP39 re-encryption ── */}
+              {phase === 'bip39' && (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="w-14 h-14 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <KeyRound className="w-7 h-7 text-emerald-500" />
+                    </div>
+                    <h1 className="text-xl font-bold tracking-tight mb-2">Frase de recuperación</h1>
+                    <p className="text-sm text-muted-foreground">
+                      Tus datos están cifrados con tu contraseña anterior. Introduce tus{' '}
+                      <strong>24 palabras de recuperación</strong> para migrar el cifrado a tu nueva
+                      contraseña.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleBip39Submit} className="space-y-4">
+                    {bip39Error && (
+                      <div className="p-4 text-sm bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 flex items-start gap-3 animate-in slide-in-from-top-2 duration-300">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        {bip39Error}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Frase de recuperación (24 palabras)
+                      </label>
+                      <textarea
+                        value={mnemonic}
+                        onChange={(e) => setMnemonic(e.target.value)}
+                        placeholder="palabra1 palabra2 palabra3 ..."
+                        rows={4}
+                        autoFocus
+                        className="w-full px-4 py-3 bg-muted/50 border-2 border-transparent hover:border-border focus:border-emerald-500 focus:bg-background rounded-xl outline-none transition-all duration-300 text-sm font-mono resize-none shadow-sm focus:shadow-lg focus:shadow-emerald-500/10"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Escribe las palabras separadas por espacios, en minúsculas.
+                      </p>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={bip39Loading || mnemonic.trim().split(/\s+/).length < 24}
+                      className="group relative w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/30 hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    >
+                      <span
+                        className={`flex items-center justify-center gap-2 transition-all duration-300 ${bip39Loading ? 'opacity-0' : ''}`}
+                      >
+                        Restaurar acceso
+                      </span>
+                      {bip39Loading && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </button>
+                  </form>
+
+                  {/* Skip option */}
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="flex items-start gap-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl mb-3">
+                      <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-xs text-muted-foreground">
+                        Si omites este paso, tus datos financieros cifrados quedarán inaccesibles
+                        hasta que uses tu frase de recuperación.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleSkip}
+                      disabled={skipping}
+                      className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2 disabled:opacity-50"
+                    >
+                      {skipping ? 'Procesando...' : 'Omitir y solo cambiar contraseña →'}
+                    </button>
+                  </div>
                 </>
               )}
             </div>

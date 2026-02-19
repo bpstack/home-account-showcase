@@ -456,8 +456,46 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
   })
 })
 
+export const getResetInfo = asyncHandler(async (req: Request, res: Response) => {
+  const { email, token } = req.query
+  if (!email || !token || typeof email !== 'string' || typeof token !== 'string') {
+    throw new AppError('Email and token are required', 400)
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+
+  const [rows] = await db.query<UserRow[]>(
+    `SELECT id, reset_token_hash, reset_token_expires, key_salt, recovery_blob, recovery_salt
+     FROM users
+     WHERE email = ? AND reset_token_hash IS NOT NULL`,
+    [email.trim().toLowerCase()]
+  )
+
+  const user = rows[0]
+  if (!user) throw new AppError('Token inválido o expirado', 400)
+
+  const hashMatch = crypto.timingSafeEqual(
+    Buffer.from(tokenHash, 'hex'),
+    Buffer.from(user.reset_token_hash!, 'hex')
+  )
+  if (!hashMatch) throw new AppError('Token inválido o expirado', 400)
+  if (!user.reset_token_expires || new Date(user.reset_token_expires) < new Date()) {
+    throw new AppError('Token expirado. Solicita un nuevo enlace.', 400)
+  }
+
+  const encryptedKeys = await AccountKeyRepository.getByUserId(user.id)
+
+  res.status(200).json({
+    success: true,
+    key_salt: user.key_salt,
+    recovery_blob: user.recovery_blob || null,
+    recovery_salt: user.recovery_salt || null,
+    encrypted_keys: encryptedKeys,
+  })
+})
+
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
-  const { email, token, newPassword } = req.body
+  const { email, token, newPassword, newKeySalt, newVerificationBlob, reEncryptedKeys, newRecoveryBlob } = req.body
 
   if (!email || !token || !newPassword) {
     throw new AppError('Email, token, and new password are required', 400)
@@ -495,7 +533,6 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 
   // Check expiry
   if (!user.reset_token_expires || new Date(user.reset_token_expires) < new Date()) {
-    // Clear expired token
     await db.query(
       `UPDATE users SET reset_token_hash = NULL, reset_token_expires = NULL WHERE id = ?`,
       [user.id]
@@ -503,18 +540,51 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError('Token expirado. Solicita un nuevo enlace.', 400)
   }
 
-  // Hash new password and update
   const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
 
-  await db.query(
-    `UPDATE users
-     SET password_hash = ?,
-         reset_token_hash = NULL,
-         reset_token_expires = NULL,
-         updated_at = NOW()
-     WHERE id = ?`,
-    [hashedPassword, user.id]
-  )
+  const connection = await db.getConnection()
+  try {
+    await connection.beginTransaction()
+
+    // COALESCE: only overwrite crypto fields if new values are provided
+    await connection.query(
+      `UPDATE users
+       SET password_hash = ?,
+           key_salt = COALESCE(?, key_salt),
+           verification_blob = COALESCE(?, verification_blob),
+           recovery_blob = COALESCE(?, recovery_blob),
+           reset_token_hash = NULL,
+           reset_token_expires = NULL,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [
+        hashedPassword,
+        newKeySalt || null,
+        newVerificationBlob || null,
+        newRecoveryBlob || null,
+        user.id,
+      ]
+    )
+
+    // Re-encrypt account keys if provided (atomic with password update)
+    if (Array.isArray(reEncryptedKeys) && reEncryptedKeys.length > 0) {
+      for (const key of reEncryptedKeys) {
+        await connection.query(
+          `UPDATE account_keys
+           SET encrypted_key = ?, key_version = key_version + 1
+           WHERE account_id = ? AND user_id = ?`,
+          [key.encryptedKey, key.accountId, user.id]
+        )
+      }
+    }
+
+    await connection.commit()
+  } catch (err) {
+    await connection.rollback()
+    throw err
+  } finally {
+    connection.release()
+  }
 
   res.status(200).json({
     success: true,

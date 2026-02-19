@@ -19,6 +19,7 @@ import {
   resetPinAttempts,
   forgotPassword,
   resetPassword,
+  getResetInfo,
 } from '../../controllers/auth/auth-controller.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
@@ -48,6 +49,7 @@ router.post('/refresh', refresh)
 
 // Password reset routes (public)
 router.post('/forgot-password', passwordResetRateLimiter, emailRateLimiter, forgotPassword)
+router.get('/reset-info', passwordResetRateLimiter, getResetInfo)
 router.post('/reset-password', passwordResetRateLimiter, emailRateLimiter, resetPassword)
 
 // Email verification routes (public)
