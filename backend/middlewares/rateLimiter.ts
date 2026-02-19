@@ -26,7 +26,7 @@ export const loginRateLimiter = rateLimit({
  */
 export const registerRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 5, // Máximo 5 registros por IP por hora
+  max: 3, // Máximo 3 registros por IP por hora
   message: {
     success: false,
     error: 'Demasiados registros desde esta dirección IP. Intenta de nuevo en 1 hora.',
@@ -87,14 +87,14 @@ export const cryptoKeyRateLimiter = rateLimit({
 /**
  * Rate limiter para envío de invitaciones
  * Previene spam de invitaciones
- * Ventana: 1 hora, máximo 20 invitaciones por usuario
+ * Ventana: 24 horas, máximo 3 invitaciones por usuario
  */
 export const invitationRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: 20, // Máximo 20 invitaciones por hora
+  windowMs: 24 * 60 * 60 * 1000, // 24 horas
+  max: 3, // Máximo 3 invitaciones por 24 horas
   message: {
     success: false,
-    error: 'Demasiadas invitaciones enviadas. Intenta de nuevo en 1 hora.',
+    error: 'Demasiadas invitaciones enviadas. Intenta de nuevo en 24 horas.',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -111,6 +111,56 @@ export const passwordResetRateLimiter = rateLimit({
   message: {
     success: false,
     error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+/**
+ * Rate limiter para reenvío de verificación de email
+ * Previene spam de emails de verificación
+ * Ventana: 24 horas, máximo 3 solicitudes por IP
+ */
+export const verificationRateLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 horas
+  max: 3, // Máximo 3 solicitudes por IP
+  message: {
+    success: false,
+    error:
+      'Se han realizado demasiados intentos. Consulta con un administrador para más información.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+/**
+ * Rate limiter para cambio de email
+ * Más restrictivo porque permite cambiar el email
+ * Ventana: 48 horas, máximo 3 solicitudes por IP
+ */
+export const changeEmailRateLimiter = rateLimit({
+  windowMs: 48 * 60 * 60 * 1000, // 48 horas
+  max: 3, // Máximo 3 cambios por IP
+  message: {
+    success: false,
+    error:
+      'Se han realizado demasiados intentos. Consulta con un administrador para más información.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+/**
+ * Rate limiter global para emails
+ * Protege la cuota de EmailJS (200 emails/mes)
+ * Ventana: 24 horas, máximo 10 emails por IP
+ */
+export const emailRateLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 horas
+  max: 8, // Máximo 8 emails por IP
+  message: {
+    success: false,
+    error: 'Límite de solicitudes de email alcanzado. Intenta mañana.',
   },
   standardHeaders: true,
   legacyHeaders: false,
