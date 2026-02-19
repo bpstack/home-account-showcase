@@ -1,0 +1,130 @@
+<div
+  style="
+    font-family:
+      system-ui,
+      -apple-system,
+      sans-serif;
+    font-size: 16px;
+    color: #1f2937;
+    background-color: #f3f4f6;
+    padding: 20px;
+  "
+>
+  <div
+    style="
+      max-width: 480px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    "
+  >
+    <!-- Header with logo -->
+    <div
+      style="
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        padding: 24px;
+        text-align: center;
+      "
+    >
+      <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700">🏠 Home Account</h1>
+    </div>
+
+    <!-- Content -->
+    <div style="padding: 32px 24px">
+      <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #111827">
+        Confirma tu nuevo email
+      </h2>
+
+      <p style="margin: 0 0 16px; color: #4b5563; line-height: 1.6">
+        Hola <strong>{{name}}</strong>,
+      </p>
+
+      <p style="margin: 0 0 24px; color: #4b5563; line-height: 1.6">
+        Has solicitado cambiar tu email de Home Account de <strong>{{old_email}}</strong> a
+        <strong>{{to_email}}</strong>. Para confirmar este cambio, haz clic en el siguiente botón:
+      </p>
+
+      <!-- CTA Button -->
+      <div style="text-align: center; margin: 24px 0">
+        <a
+          href="{{link}}"
+          style="
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+          "
+        >
+          Confirmar mi nuevo email
+        </a>
+      </div>
+
+      <p style="margin: 0 0 16px; color: #6b7280; font-size: 14px; text-align: center">
+        O copia y pega este enlace en tu navegador:
+      </p>
+
+      <p style="margin: 0 0 24px; color: #3b82f6; font-size: 13px; word-break: break-all">
+        {{link}}
+      </p>
+
+      <div
+        style="
+          background: #fef3c7;
+          border-left: 4px solid #f59e0b;
+          padding: 12px 16px;
+          margin: 24px 0;
+          border-radius: 0 8px 8px 0;
+        "
+      >
+        <p style="margin: 0; color: #92400e; font-size: 14px">
+          ⚠️ Este enlace caduca en <strong>1 hora</strong>.
+        </p>
+      </div>
+
+      <p style="margin: 0; color: #4b5563; line-height: 1.6">
+        Si no solicitaste este cambio, puedes ignorar este correo. Tu cuenta permanece segura.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0" />
+
+      <p style="margin: 0; color: #9ca3af; font-size: 13px; text-align: center">
+        © 2026 Home Account — Tus finanzas bajo control
+      </p>
+    </div>
+  </div>
+</div>
+
+<!--
+VARIABLES DEL TEMPLATE:
+- {{name}} - Nombre del usuario
+- {{to_email}} - Nuevo email
+- {{old_email}} - Email anterior
+- {{link}} - Enlace de confirmación
+
+PARA USAR EN EMAILJS:
+1. Crea un nuevo template en EmailJS
+2. Copia este HTML
+3. Las variables se sustituyen automáticamente
+
+PARA USAR EL LOGO:
+
+Opción 1 - Logo online (recomendado para producción):
+  Cambia el header por:
+  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 24px; text-align: center;">
+    <img src="https://tu-dominio.com/logo.png" alt="Home Account" style="height: 40px;" />
+  </div>
+
+Opción 2 - Logo embebido con CID (para EmailJS):
+  1. Sube el logo a EmailJS → Email → Resources
+  2. Referencia así en el HTML:
+     <img src="cid:logo_home_account" alt="Home Account" style="height: 40px;" />
+
+Opción 3 - Usar emoji (sin imagen):
+  Ya incluido en el template como "🏠 Home Account"
+-->
