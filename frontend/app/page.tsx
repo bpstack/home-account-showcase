@@ -156,7 +156,7 @@ export default function HomePage() {
             <div className="flex items-center gap-6 sm:gap-10">
               {[
                 { value: '100%', label: 'Gratuito', color: 'text-emerald-500' },
-                { value: 'Local', label: 'Privado', color: 'text-blue-500' },
+                { value: 'E2E', label: 'Cifrado', color: 'text-blue-500' },
                 { value: 'PWA', label: 'Multiplataforma', color: 'text-violet-500' },
               ].map((stat, index) => (
                 <div key={index} className="flex items-center gap-6 sm:gap-10">
