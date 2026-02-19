@@ -635,20 +635,58 @@ function TransactionsContent({
             setEditingId(null)
             setForm(emptyForm)
           }}
-          title={editingId ? 'Editar Transacción' : 'Nueva Transacción'}
+          title={editingId ? 'Editar transacción' : 'Nueva transacción'}
         >
-          <form onSubmit={editingId ? handleUpdate : handleCreate} className="space-y-4">
+          <form onSubmit={editingId ? handleUpdate : handleCreate} className="space-y-5">
+            {/* Tipo — toggle buttons */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tipo</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, type: 'expense' })}
+                  className={`h-10 rounded-xl text-sm font-medium transition-all duration-200 border-2 flex items-center justify-center gap-2 ${
+                    form.type === 'expense'
+                      ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400'
+                      : 'bg-muted/50 border-transparent text-muted-foreground hover:border-border'
+                  }`}
+                >
+                  <TrendingDown className="w-4 h-4" />
+                  Gasto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, type: 'income' })}
+                  className={`h-10 rounded-xl text-sm font-medium transition-all duration-200 border-2 flex items-center justify-center gap-2 ${
+                    form.type === 'income'
+                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-muted/50 border-transparent text-muted-foreground hover:border-border'
+                  }`}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  Ingreso
+                </button>
+              </div>
+            </div>
+
+            {/* Importe + Fecha */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tipo</label>
-                <Select
-                  options={[
-                    { value: 'expense', label: 'Gasto' },
-                    { value: 'income', label: 'Ingreso' },
-                  ]}
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                />
+                <label className="text-sm font-medium">Importe</label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                    className="pr-8"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    €
+                  </span>
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Fecha</label>
@@ -659,24 +697,18 @@ function TransactionsContent({
               </div>
             </div>
 
+            {/* Descripción */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Importe</label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  className="pr-8"
-                  required
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  €
-                </span>
-              </div>
+              <label className="text-sm font-medium">Descripción</label>
+              <Input
+                placeholder="Ej: Alquiler enero"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                required
+              />
             </div>
 
+            {/* Categoría + Subcategoría */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Categoría</label>
@@ -706,16 +738,6 @@ function TransactionsContent({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Descripción</label>
-              <Input
-                placeholder="Ej: Alquiler enero"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                required
-              />
-            </div>
-
             <ModalFooter>
               <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)}>
                 Cancelar
@@ -724,7 +746,7 @@ function TransactionsContent({
                 type="submit"
                 isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {editingId ? 'Guardar Cambios' : 'Crear Transacción'}
+                {editingId ? 'Guardar cambios' : 'Crear transacción'}
               </Button>
             </ModalFooter>
           </form>

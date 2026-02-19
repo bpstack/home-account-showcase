@@ -69,8 +69,8 @@ const emptySubcategoryForm: SubcategoryForm = { name: '' }
 function CategoriesPageFallback() {
   return (
     <div className="flex items-center justify-center py-12">
-      <Loader2 className="h-5 w-5 animate-spin text-text-secondary" />
-      <span className="ml-2 text-text-secondary">Cargando...</span>
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-muted-foreground">Cargando...</span>
     </div>
   )
 }
@@ -281,9 +281,9 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
     <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
       <div className="px-4 md:px-6 py-6">
         {error && (
-          <div className="mb-4 p-4 bg-danger/10 border border-danger/30 rounded-lg flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-danger" />
-            <span className="text-sm text-danger">{error}</span>
+          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <span className="text-sm text-destructive">{error}</span>
             <Button
               variant="ghost"
               size="sm"
@@ -301,9 +301,9 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         )}
 
         {!isLoadingCategories && !hasCategories && (
-          <div className="mb-6 p-6 bg-layer-2 border border-layer-3 rounded-lg text-center">
-            <h3 className="text-lg font-medium text-text-primary mb-2">Sin categorías definidas</h3>
-            <p className="text-sm text-text-secondary mb-4">
+          <div className="mb-6 p-6 bg-muted/50 border border-border rounded-xl text-center">
+            <h3 className="text-lg font-medium text-foreground mb-2">Sin categorías definidas</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               Agrega las categorías por defecto basadas en tu control de gastos 2025
             </p>
             <Button onClick={handleAddDefaultCategories} isLoading={addDefaultsMutation.isPending}>
@@ -313,26 +313,26 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
           </div>
         )}
 
-        <div className="flex justify-center gap-4 mb-6">
+        <div className="flex justify-center gap-3 mb-6">
           <button
             onClick={handleAddDefaultCategories}
             disabled={addDefaultsMutation.isPending}
-            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
-            <RefreshCw className="h-4 w-4 text-accent stroke-[2.5]" />
+            <RefreshCw className="h-4 w-4 text-primary stroke-[2.5]" />
             Restablecer categorías
           </button>
           <button
             onClick={openCreateCategoryModal}
-            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Plus className="h-4 w-4 text-accent stroke-[2.5]" />
+            <Plus className="h-4 w-4 text-primary stroke-[2.5]" />
             Nueva categoría
           </button>
         </div>
 
         {isLoadingCategories ? (
-          <div className="text-center py-12 text-text-secondary">Cargando categorías...</div>
+          <div className="text-center py-12 text-muted-foreground">Cargando categorías...</div>
         ) : hasCategories ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {categoryList.map((category) => {
@@ -353,9 +353,9 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
                         />
                         <CardTitle className="text-base">{category.name}</CardTitle>
                         {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-text-secondary" />
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         ) : (
-                          <ChevronRight className="h-4 w-4 text-text-secondary" />
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         )}
                       </button>
                       <div className="flex gap-1">
@@ -370,7 +370,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-danger hover:text-danger"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => handleDeleteClick(category)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -385,9 +385,9 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
                         {subcategories.map((sub) => (
                           <div
                             key={sub.id}
-                            className="flex items-center justify-between py-2 px-3 bg-layer-2 rounded-md"
+                            className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg"
                           >
-                            <span className="text-sm text-text-primary">{sub.name}</span>
+                            <span className="text-sm text-foreground">{sub.name}</span>
                             <div className="flex gap-1">
                               <Button
                                 variant="ghost"
@@ -400,7 +400,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-danger hover:text-danger"
+                                className="h-6 w-6 text-destructive hover:text-destructive"
                                 onClick={() => handleDeleteSubcategory(sub)}
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -411,7 +411,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-full justify-start text-text-secondary"
+                          className="w-full justify-start text-muted-foreground"
                           onClick={() => openCreateSubcategoryModal(category.id)}
                         >
                           <Plus className="h-4 w-4 mr-2" />
@@ -423,7 +423,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
 
                   {!isExpanded && (
                     <CardContent className="pt-0">
-                      <p className="text-sm text-text-secondary">
+                      <p className="text-sm text-muted-foreground">
                         {subcategories.length} subcategorías
                       </p>
                     </CardContent>
@@ -437,14 +437,14 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         {hasCategories && (
           <Link
             href="/profile?panel=settings&tab=budget"
-            className="mt-8 flex items-center justify-center gap-3 p-6 bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/30 rounded-xl hover:from-accent/20 hover:to-primary/20 transition-all group"
+            className="mt-8 flex items-center justify-center gap-3 p-6 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl hover:from-primary/20 hover:to-primary/10 transition-all group"
           >
-            <div className="p-3 bg-accent/20 rounded-full group-hover:scale-110 transition-transform">
-              <Wallet className="h-6 w-6 text-accent" />
+            <div className="p-3 bg-primary/10 rounded-full group-hover:scale-110 transition-transform">
+              <Wallet className="h-6 w-6 text-primary" />
             </div>
             <div className="text-center">
-              <p className="font-medium text-text-primary">¿Necesitas un presupuesto?</p>
-              <p className="text-sm text-text-secondary">
+              <p className="font-medium text-foreground">¿Necesitas un presupuesto?</p>
+              <p className="text-sm text-muted-foreground">
                 Crea tu propio presupuesto según las categorías y controla tus gastos
               </p>
             </div>
@@ -468,16 +468,16 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
           />
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-1">Color</label>
+            <label className="block text-sm font-medium text-foreground mb-2">Color</label>
             <div className="flex gap-2">
               {COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"
-                  className={`w-8 h-8 rounded-full border-2 transition-colors ${
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${
                     categoryForm.color === color
-                      ? 'border-white ring-2 ring-accent'
-                      : 'border-transparent hover:border-text-secondary'
+                      ? 'border-white ring-2 ring-primary scale-110'
+                      : 'border-transparent hover:border-muted-foreground hover:scale-105'
                   }`}
                   style={{ backgroundColor: color }}
                   onClick={() => setCategoryForm({ ...categoryForm, color })}
@@ -553,14 +553,14 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         {categoryToDelete && (
           <div className="space-y-4">
             {orphanedCount > 0 && (
-              <div className="p-4 bg-warning/10 border border-warning/30 rounded-lg">
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-warning">
+                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                       Esta categoría tiene {orphanedCount} transacción(es) asociada(s)
                     </p>
-                    <p className="text-sm text-text-secondary mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       Las transacciones perderán su categoría.
                     </p>
                   </div>
@@ -568,13 +568,13 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
               </div>
             )}
 
-            <p className="text-sm text-text-primary">
+            <p className="text-sm text-foreground">
               ¿Estás seguro de que quieres eliminar <strong>{categoryToDelete.name}</strong>?
             </p>
 
             {orphanedCount > 0 && (
-              <div className="pt-4 border-t border-layer-3">
-                <label className="block text-sm font-medium text-text-primary mb-2">
+              <div className="pt-4 border-t border-border">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   ¿Reasignar transacciones a otra categoría?
                 </label>
                 <Select

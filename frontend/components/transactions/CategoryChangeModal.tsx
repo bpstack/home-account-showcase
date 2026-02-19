@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Modal, ModalFooter, Button } from '@/components/ui'
+import { Modal, ModalFooter, Button, Select } from '@/components/ui'
 import { useCategories } from '@/lib/queries/categories'
 import { useBulkUpdateByIds } from '@/lib/queries/transactions'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { AlertTriangle, Loader2, Tag } from 'lucide-react'
 import type { CategoryChangeModalProps } from './types'
 
 export function CategoryChangeModal({
@@ -67,7 +67,6 @@ export function CategoryChangeModal({
     if (!transaction || !accountId) return
 
     try {
-      // Use IDs-based update (works with encrypted data)
       const idsToUpdate =
         applyToAll && matchingTransactionIds.length > 0 ? matchingTransactionIds : [transaction.id]
 
@@ -77,7 +76,6 @@ export function CategoryChangeModal({
         subcategory_id: selectedSubcategoryId,
       })
 
-      // Invalidar queries para refrescar datos
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
 
       onSuccess()
@@ -88,82 +86,76 @@ export function CategoryChangeModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Cambiar categoria" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Cambiar categoría" size="lg">
       {transaction && (
-        <div className="space-y-6">
-          {/* Descripcion de la transaccion */}
-          <div className="p-3 bg-layer-2 rounded-lg">
-            <p className="text-xs text-text-secondary mb-1">Transaccion seleccionada</p>
-            <p className="text-sm text-text-primary font-medium">{transaction.description}</p>
+        <div className="space-y-5">
+          {/* Transacción seleccionada */}
+          <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl border border-border">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Tag className="w-4 h-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground mb-0.5">Transacción seleccionada</p>
+              <p className="text-sm font-medium text-foreground truncate">
+                {transaction.description}
+              </p>
+            </div>
           </div>
 
-          {/* Selector de categoria */}
+          {/* Selectores de categoría */}
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">Categoria</label>
-              <select
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Categoría</label>
+              <Select
+                options={[
+                  { value: '', label: 'Sin categoría' },
+                  ...categories.map((c) => ({ value: c.id, label: c.name })),
+                ]}
                 value={selectedCategoryId}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full h-11 px-4 py-2 text-sm rounded-md border bg-layer-1 text-text-primary border-layer-3 focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                <option value="">Sin categoria</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
-            {/* Selector de subcategoria */}
             {selectedCategoryId && subcategories.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-                  Subcategoria
-                </label>
-                <select
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Subcategoría</label>
+                <Select
+                  options={[
+                    { value: '', label: 'Seleccionar subcategoría...' },
+                    ...subcategories.map((s) => ({ value: s.id, label: s.name })),
+                  ]}
                   value={selectedSubcategoryId || ''}
                   onChange={(e) => setSelectedSubcategoryId(e.target.value || null)}
-                  className="w-full h-11 px-4 py-2 text-sm rounded-md border bg-layer-1 text-text-primary border-layer-3 focus:outline-none focus:ring-2 focus:ring-accent"
-                >
-                  <option value="">Selecciona subcategoria</option>
-                  {subcategories.map((sub) => (
-                    <option key={sub.id} value={sub.id}>
-                      {sub.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             )}
           </div>
 
           {/* Opciones de bulk update */}
-          <div className="space-y-3 border-t border-layer-3 pt-4">
+          <div className="space-y-3 border-t border-border pt-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={applyToAll}
                 onChange={(e) => setApplyToAll(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-layer-3 text-accent focus:ring-accent"
+                className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
               />
               <div>
-                <p className="text-sm text-text-primary">
+                <p className="text-sm font-medium text-foreground">
                   Aplicar a todas las transacciones similares
                 </p>
-                <p className="text-xs text-text-secondary">
-                  Cambiara la categoria de todas las transacciones con descripcion similar
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Cambiará la categoría de todas las transacciones con descripción similar
                 </p>
               </div>
             </label>
 
             {applyToAll && (
-              <div className="ml-7 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
-                  <span className="text-sm text-warning">
-                    Se actualizaran <strong>{affectedCount}</strong> transacciones
-                  </span>
-                </div>
+              <div className="ml-7 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                <span className="text-sm text-amber-600 dark:text-amber-400">
+                  Se actualizarán <strong>{affectedCount}</strong> transacciones
+                </span>
               </div>
             )}
 
@@ -172,12 +164,14 @@ export function CategoryChangeModal({
                 type="checkbox"
                 checked={saveMapping}
                 onChange={(e) => setSaveMapping(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-layer-3 text-accent focus:ring-accent"
+                className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
               />
               <div>
-                <p className="text-sm text-text-primary">Recordar para futuras importaciones</p>
-                <p className="text-xs text-text-secondary">
-                  Las proximas transacciones con esta descripcion se categorizaran automaticamente
+                <p className="text-sm font-medium text-foreground">
+                  Recordar para futuras importaciones
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Las próximas transacciones con esta descripción se categorizarán automáticamente
                 </p>
               </div>
             </label>

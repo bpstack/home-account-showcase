@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import { accounts, auth } from '@/lib/apiClient'
+import { accounts, auth, users } from '@/lib/apiClient'
 import { useBudgets, useCreateBudget, useUpdateBudget, useDeleteBudget } from '@/lib/queries/budget'
 import { useCategories } from '@/lib/queries/categories'
 import { useTransactions } from '@/lib/queries/transactions'
@@ -41,9 +41,10 @@ interface Invitation {
   created_at: string
 }
 
-type SettingsTab = 'account' | 'budget' | 'security' | 'ia'
+type SettingsTab = 'account' | 'budget' | 'security' | 'ia' | 'user'
 
 const tabs: { id: SettingsTab; label: string; description: string }[] = [
+  { id: 'user', label: 'Usuario', description: 'Gestiona tu email y preferencias' },
   { id: 'account', label: 'Cuenta', description: 'Gestiona tu cuenta y miembros' },
   { id: 'ia', label: 'IA', description: 'Configura los proveedores de IA para el parsing' },
   {
@@ -60,7 +61,7 @@ export function SettingsPanel() {
   const router = useRouter()
 
   const activePanel = searchParams.get('panel')
-  const activeTab = (searchParams.get('tab') as SettingsTab) || 'account'
+  const activeTab = (searchParams.get('tab') as SettingsTab) || 'user'
 
   const handleTabChange = (tab: SettingsTab) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -94,6 +95,7 @@ export function SettingsPanel() {
       </div>
 
       <div>
+        {activeTab === 'user' && <UserSettings />}
         {activeTab === 'account' && <AccountSettings />}
         {activeTab === 'ia' && <AISettings />}
         {activeTab === 'budget' && <BudgetSettings />}
@@ -104,6 +106,215 @@ export function SettingsPanel() {
             )}
             <ChangePinSection />
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── User Settings ─────────────────────────────────────────────────
+
+function UserSettings() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  // Name state
+  const [newName, setNewName] = useState(user?.name || '')
+  const [isSavingName, setIsSavingName] = useState(false)
+
+  // Email state
+  const [newEmail, setNewEmail] = useState('')
+  const [isChangingEmail, setIsChangingEmail] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [emailChangeMessage, setEmailChangeMessage] = useState('')
+  const [emailChangeError, setEmailChangeError] = useState('')
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !newName.trim() || newName.trim() === user.name) return
+
+    setIsSavingName(true)
+    try {
+      await users.update(user.id, { name: newName.trim() })
+      toast.success('Nombre actualizado correctamente')
+      queryClient.invalidateQueries({ queryKey: ['auth', 'user'] })
+    } catch (error) {
+      toast.error('Error al actualizar el nombre', { description: (error as Error).message })
+    } finally {
+      setIsSavingName(false)
+    }
+  }
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newEmail.trim()) return
+
+    setIsChangingEmail(true)
+    setEmailChangeMessage('')
+    setEmailChangeError('')
+
+    try {
+      await auth.changeEmail(newEmail.trim().toLowerCase())
+      setEmailChangeMessage('Se ha enviado un email de verificación a tu nuevo correo.')
+      setNewEmail('')
+      // Refrescar datos del usuario para que pending_email aparezca
+      queryClient.invalidateQueries({ queryKey: ['auth', 'user'] })
+    } catch (error) {
+      setEmailChangeError((error as Error).message)
+    } finally {
+      setIsChangingEmail(false)
+    }
+  }
+
+  const handleCancelEmailChange = async () => {
+    setIsCancelling(true)
+    setEmailChangeError('')
+    try {
+      await auth.cancelEmailChange()
+      setEmailChangeMessage('')
+      toast.success('Cambio de email cancelado.')
+      queryClient.invalidateQueries({ queryKey: ['auth', 'user'] })
+    } catch (error) {
+      setEmailChangeError((error as Error).message)
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
+  const isLocalUser = user?.oauth_provider === 'local' || !user?.oauth_provider
+
+  return (
+    <div className="space-y-6">
+      {/* Name Section */}
+      <div className="bg-card rounded-lg border border-border">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Nombre</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Cambia tu nombre visible</p>
+        </div>
+        <div className="p-4">
+          <form onSubmit={handleSaveName} className="space-y-4 max-w-lg">
+            <Input
+              id="userName"
+              type="text"
+              label="Nombre"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              required
+            />
+            <Button
+              type="submit"
+              disabled={isSavingName || !newName.trim() || newName.trim() === user?.name}
+              isLoading={isSavingName}
+            >
+              Guardar nombre
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      {/* Email Section */}
+      <div className="bg-card dark:bg-card-dark rounded-xl border border-border p-6">
+        <h3 className="text-lg font-semibold mb-4">Correo electrónico</h3>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+            <svg
+              className="w-6 h-6 text-primary"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <div>
+            <p className="font-medium">{user?.email}</p>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              {isLocalUser ? 'Cuenta local' : `Vinculado con ${user?.oauth_provider}`}
+              {user?.email_verified && (
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  ✓ Verificado
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Cambio de email pendiente */}
+        {isLocalUser && user?.pending_email && (
+          <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+              Cambio de email pendiente
+            </p>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+              Confirmación enviada a <span className="font-semibold">{user.pending_email}</span>.
+              Revisa tu bandeja de entrada y haz clic en el enlace para confirmar el cambio.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelEmailChange}
+              isLoading={isCancelling}
+              disabled={isCancelling}
+            >
+              Cancelar cambio
+            </Button>
+          </div>
+        )}
+
+        {isLocalUser && (
+          <form onSubmit={handleChangeEmail} className="space-y-4">
+            <div>
+              <label htmlFor="newEmail" className="text-sm font-medium mb-2 block">
+                {user?.pending_email
+                  ? 'Solicitar nuevo cambio de correo'
+                  : 'Cambiar correo electrónico'}
+              </label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="nuevo@email.com"
+                disabled={isChangingEmail}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Te enviaremos un enlace de verificación a tu nuevo correo.
+              </p>
+            </div>
+
+            {emailChangeMessage && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-600 dark:text-emerald-400">
+                {emailChangeMessage}
+              </div>
+            )}
+
+            {emailChangeError && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+                {emailChangeError}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={!newEmail.trim() || isChangingEmail}
+              isLoading={isChangingEmail}
+            >
+              Cambiar correo electrónico
+            </Button>
+          </form>
+        )}
+
+        {user?.oauth_provider !== 'local' && user?.oauth_provider && (
+          <p className="text-sm text-muted-foreground">
+            El correo electrónico está vinculado a tu cuenta de {user?.oauth_provider}. Para
+            cambiarlo, debes hacerlo desde tu cuenta de {user?.oauth_provider}.
+          </p>
         )}
       </div>
     </div>
@@ -671,7 +882,7 @@ function BudgetSettings() {
   // Get budget config (limits per category)
   const { data: budgets, isLoading: budgetsLoading, refetch } = useBudgets(accountId)
   const { data: categoriesData } = useCategories(accountId || '')
-  const categories = categoriesData?.categories || []
+  const categories = useMemo(() => categoriesData?.categories || [], [categoriesData])
 
   // Get decrypted transactions for the selected month to calculate spending
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`

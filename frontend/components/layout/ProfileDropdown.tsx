@@ -17,7 +17,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
 import { toast } from 'sonner'
-import { Modal, ModalFooter, Button } from '@/components/ui'
+import { Modal, ModalFooter, Button, Input } from '@/components/ui'
 import { useCryptoStore } from '@/stores/cryptoStore'
 
 const MAX_OWNED_ACCOUNTS = 3
@@ -324,28 +324,45 @@ export function ProfileDropdown() {
       >
         <form onSubmit={handleCreateAccount}>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Nombre de la cuenta
-              </label>
-              <input
-                type="text"
-                value={newAccountName}
-                onChange={(e) => setNewAccountName(e.target.value)}
-                placeholder={`Cuenta de ${user?.name || 'Usuario'}`}
-                className="w-full h-11 px-4 py-2 text-sm rounded-md border bg-layer-1 text-text-primary border-layer-3 focus:outline-none focus:ring-2 focus:ring-accent"
-                autoFocus
-              />
-              <p className="text-xs text-text-secondary mt-1">
-                Ej: Personal, Familia, Amigos, Proyecto...
-              </p>
+            {/* Icon + description */}
+            <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl border border-border">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center shrink-0 shadow-sm">
+                <Building2 className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Nueva cuenta independiente</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Cada cuenta tiene sus propias transacciones, categorías y miembros.
+                </p>
+              </div>
             </div>
 
+            <Input
+              id="newAccountName"
+              type="text"
+              label="Nombre de la cuenta"
+              value={newAccountName}
+              onChange={(e) => setNewAccountName(e.target.value)}
+              placeholder={`Cuenta de ${user?.name || 'Usuario'}`}
+              required
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground -mt-2">
+              Ej: Personal, Familia, Amigos, Proyecto...
+            </p>
+
             {createError && (
-              <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-                <p className="text-sm text-destructive">{createError}</p>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-sm text-destructive">
+                {createError}
               </div>
             )}
+
+            <p className="text-xs text-muted-foreground">
+              Puedes crear hasta{' '}
+              <span className="font-medium text-foreground">{MAX_OWNED_ACCOUNTS}</span> cuentas
+              propias. Actualmente tienes{' '}
+              <span className="font-medium text-foreground">{ownedAccountsCount}</span>.
+            </p>
           </div>
 
           <ModalFooter>

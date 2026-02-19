@@ -6,10 +6,12 @@ import Link from 'next/link'
 import { Menu, X, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCryptoStore } from '@/stores/cryptoStore'
+import { useAuthStore } from '@/stores/authStore'
 import { Sidebar, ProfileDropdown } from '@/components/layout'
 import { ThemeToggle } from '@/components/ui'
 
 const UNLOCK_PATH = '/unlock'
+const SETUP_PIN_PATH = '/setup-pin'
 
 export default function PrivateLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth()
@@ -20,14 +22,14 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
 
   // Subscribe to crypto store to react to unlock changes
   const isUnlocked = useCryptoStore((s) => s.isUnlocked)
+  const hasSeparatePin = useAuthStore((s) => s.hasSeparatePin)
 
   const shouldRedirectToLogin = useCallback(() => {
-    // Don't redirect if on unlock page or if crypto is locked
     const cryptoStore = useCryptoStore.getState()
     const isCryptoReady = cryptoStore.isUnlocked
-    if (pathname === UNLOCK_PATH) return false
+    if (pathname === UNLOCK_PATH || pathname === SETUP_PIN_PATH) return false
     if (!isCryptoReady && pathname !== '/login') return false
-    return !isLoading && !isAuthenticated && pathname !== UNLOCK_PATH && !redirected
+    return !isLoading && !isAuthenticated && !redirected
   }, [isLoading, isAuthenticated, pathname, redirected])
 
   useEffect(() => {
@@ -36,9 +38,10 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
     // would have 0 keys even after unlock — so we only require isUnlocked
     const isCryptoReady = isUnlocked
 
-    // Redirect to unlock if crypto is locked
+    // Redirect to unlock (or setup-pin) if crypto is locked
     if (user && !isCryptoReady && pathname !== UNLOCK_PATH) {
-      router.replace(`${UNLOCK_PATH}?from=${encodeURIComponent(pathname)}`)
+      const dest = hasSeparatePin ? UNLOCK_PATH : SETUP_PIN_PATH
+      router.replace(`${dest}?from=${encodeURIComponent(pathname)}`)
       return
     }
 
@@ -55,7 +58,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
       setRedirected(true)
       router.push('/login')
     }
-  }, [user, router, pathname, shouldRedirectToLogin, isUnlocked])
+  }, [user, router, pathname, shouldRedirectToLogin, isUnlocked, hasSeparatePin])
 
   const generateBreadcrumbs = () => {
     const paths = pathname.split('/').filter(Boolean)
