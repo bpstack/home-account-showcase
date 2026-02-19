@@ -91,8 +91,19 @@ async function validateCSV(buffer: Buffer): Promise<void> {
  * Validate Excel file content
  */
 async function validateExcel(buffer: Buffer): Promise<void> {
+  // Magic bytes: XLSX/XLS are ZIP archives (PK\x03\x04)
+  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    throw new AppError('Invalid Excel file: file signature does not match', 400)
+  }
+
   try {
-    const workbook = xlsx.read(buffer, { type: 'buffer' })
+    const workbook = xlsx.read(buffer, {
+      type: 'buffer',
+      cellFormula: false,
+      cellHTML: false,
+      sheetStubs: false,
+      sheetRows: 10001,
+    })
 
     if (workbook.SheetNames.length > 10) {
       throw new AppError('Too many sheets in Excel file', 400)
@@ -102,8 +113,17 @@ async function validateExcel(buffer: Buffer): Promise<void> {
       const worksheet = workbook.Sheets[sheetName]
       const range = xlsx.utils.decode_range(worksheet['!ref'] || 'A1:A1')
 
-      if (range.e.r - range.s.r + 1 > 10000) {
+      const rows = range.e.r - range.s.r + 1
+      const cols = range.e.c - range.s.c + 1
+
+      if (rows > 10000) {
         throw new AppError('Too many rows in Excel sheet', 400)
+      }
+      if (cols > 100) {
+        throw new AppError('Too many columns in Excel sheet', 400)
+      }
+      if (rows * cols > 500000) {
+        throw new AppError('Excel sheet too complex (too many cells)', 400)
       }
 
       for (const cellAddress in worksheet) {

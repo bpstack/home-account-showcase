@@ -695,7 +695,13 @@ export function parseFile(buffer: Buffer, filename: string, sheetName?: string):
 
   // Excel files (.xls, .xlsx)
   try {
-    const workbook = XLSX.read(buffer, { type: 'buffer' })
+    const workbook = XLSX.read(buffer, {
+      type: 'buffer',
+      cellFormula: false,
+      cellHTML: false,
+      sheetStubs: false,
+      sheetRows: 10001,
+    })
     const fileType = detectFileType(workbook)
 
     switch (fileType) {
@@ -732,7 +738,13 @@ export function parseExcelFile(buffer: Buffer, sheetName?: string): ParseResult 
 
 export function getAvailableSheets(buffer: Buffer): string[] {
   try {
-    const workbook = XLSX.read(buffer, { type: 'buffer' })
+    const workbook = XLSX.read(buffer, {
+      type: 'buffer',
+      cellFormula: false,
+      cellHTML: false,
+      sheetStubs: false,
+      sheetRows: 1,
+    })
     return workbook.SheetNames
   } catch {
     return []

@@ -49,6 +49,7 @@ import { validateFileContent } from '../../services/import/file-validation.js'
 router.post(
   '/parse',
   authenticateToken,
+  checkCSRF,
   importFileRateLimiter,
   upload.single('file'),
   validateFileContent,
