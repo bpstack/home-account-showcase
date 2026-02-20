@@ -171,30 +171,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Mobile Video Demo */}
-          {showDemo && (
-            <div className="lg:hidden relative w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-black">
-              <video
-                src="/promo.webm"
-                autoPlay
-                controls
-                playsInline
-                preload="metadata"
-                poster="/promo-poster.png"
-                className="w-full aspect-video"
-                onEnded={() => setShowDemo(false)}
-                onError={() => setShowDemo(false)}
-              />
-              <button
-                onClick={() => setShowDemo(false)}
-                aria-label="Cerrar demo"
-                className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-all"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
           {/* Footer Stats + Múltiples cuentas */}
           <div className="flex items-center justify-between pt-5 border-t border-border">
             {/* Stats */}
@@ -238,29 +214,6 @@ export default function HomePage() {
 
         {/* RIGHT PANEL - Visual */}
         <div className="relative bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 p-6 sm:p-8 lg:p-0 flex items-center justify-center overflow-hidden">
-          {/* FULLSCREEN VIDEO DEMO (desktop) */}
-          {showDemo && (
-            <div className="hidden lg:flex absolute inset-0 z-50 bg-black items-center justify-center">
-              <video
-                src="/promo.webm"
-                autoPlay
-                controls
-                playsInline
-                preload="metadata"
-                poster="/promo-poster.png"
-                className="w-full h-full object-contain"
-                onEnded={() => setShowDemo(false)}
-                onError={() => setShowDemo(false)}
-              />
-              <button
-                onClick={() => setShowDemo(false)}
-                aria-label="Cerrar demo"
-                className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          )}
           {/* Animated gradient orbs */}
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
           <div
@@ -478,6 +431,30 @@ export default function HomePage() {
           </button>
         </div>
       </div>
+
+      {/* VIDEO DEMO OVERLAY — global, above everything */}
+      {showDemo && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center">
+          <video
+            src="/promo.webm"
+            autoPlay
+            controls
+            playsInline
+            preload="metadata"
+            poster="/promo-poster.png"
+            className="w-full h-full lg:w-auto lg:h-full max-w-full object-contain"
+            onEnded={() => setShowDemo(false)}
+            onError={() => setShowDemo(false)}
+          />
+          <button
+            onClick={() => setShowDemo(false)}
+            aria-label="Cerrar demo"
+            className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/25 transition-all duration-200"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
