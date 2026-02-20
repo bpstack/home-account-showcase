@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ThemeToggle } from '@/components/ui'
 import {
   User,
@@ -12,12 +12,23 @@ import {
   Monitor,
   ArrowRight,
   CheckCircle2,
+  Play,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function HomePage() {
   const [showMobile, setShowMobile] = useState(false)
   const [showAccounts, setShowAccounts] = useState(false)
+  const [showDemo, setShowDemo] = useState(false)
+
+  // Close demo with Escape key
+  useEffect(() => {
+    if (!showDemo) return
+    const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && setShowDemo(false)
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [showDemo])
 
   const accountTypes = [
     {
@@ -62,7 +73,12 @@ export default function HomePage() {
       </div>
 
       {/* Main Grid */}
-      <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr,1.2fr] gap-0">
+      <div
+        className={cn(
+          'h-full grid grid-cols-1 gap-0 transition-all duration-700 ease-in-out',
+          showDemo ? 'lg:grid-cols-[0.7fr,2fr]' : 'lg:grid-cols-[1fr,1.2fr]'
+        )}
+      >
         {/* LEFT PANEL - Content */}
         <div className="relative flex flex-col justify-between p-6 sm:p-8 lg:p-12 min-h-[100dvh] lg:min-h-0">
           {/* Header */}
@@ -138,17 +154,46 @@ export default function HomePage() {
                     </svg>
                   </span>
                 </Link>
-                <Link
-                  href="/dashboard"
+                <button
+                  onClick={() => {
+                    setShowDemo(true)
+                    setShowAccounts(false)
+                    setShowMobile(false)
+                  }}
                   className="group inline-flex items-center justify-center h-12 px-6 border-2 border-border font-semibold rounded-lg transition-all duration-300 hover:border-emerald-500 hover:text-emerald-500"
                 >
+                  <Play className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:scale-110" />
                   <span className="transition-transform duration-300 group-hover:scale-105">
                     Ver demo
                   </span>
-                </Link>
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Mobile Video Demo */}
+          {showDemo && (
+            <div className="lg:hidden relative w-full rounded-2xl overflow-hidden border border-border shadow-2xl bg-black">
+              <video
+                src="/promo.webm"
+                autoPlay
+                controls
+                playsInline
+                preload="metadata"
+                poster="/promo-poster.png"
+                className="w-full aspect-video"
+                onEnded={() => setShowDemo(false)}
+                onError={() => setShowDemo(false)}
+              />
+              <button
+                onClick={() => setShowDemo(false)}
+                aria-label="Cerrar demo"
+                className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           {/* Footer Stats + Múltiples cuentas */}
           <div className="flex items-center justify-between pt-5 border-t border-border">
@@ -193,6 +238,29 @@ export default function HomePage() {
 
         {/* RIGHT PANEL - Visual */}
         <div className="relative bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 p-6 sm:p-8 lg:p-0 flex items-center justify-center overflow-hidden">
+          {/* FULLSCREEN VIDEO DEMO (desktop) */}
+          {showDemo && (
+            <div className="hidden lg:flex absolute inset-0 z-50 bg-black items-center justify-center">
+              <video
+                src="/promo.webm"
+                autoPlay
+                controls
+                playsInline
+                preload="metadata"
+                poster="/promo-poster.png"
+                className="w-full h-full object-contain"
+                onEnded={() => setShowDemo(false)}
+                onError={() => setShowDemo(false)}
+              />
+              <button
+                onClick={() => setShowDemo(false)}
+                aria-label="Cerrar demo"
+                className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
           {/* Animated gradient orbs */}
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
           <div
@@ -371,6 +439,7 @@ export default function HomePage() {
             onMouseLeave={() => setShowMobile(false)}
             className={cn(
               'hidden lg:flex items-center gap-2 absolute top-8 right-8 rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border',
+              showDemo && 'lg:hidden',
               showMobile
                 ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white border-transparent'
                 : 'bg-card border-border hover:border-emerald-500'
@@ -393,6 +462,7 @@ export default function HomePage() {
             onMouseLeave={() => setShowAccounts(false)}
             className={cn(
               'hidden lg:flex items-center gap-2 absolute top-8 left-8 border rounded-full px-4 py-2.5 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer group',
+              showDemo && 'lg:hidden',
               showAccounts
                 ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white border-transparent'
                 : 'bg-card border-border hover:border-blue-500'
