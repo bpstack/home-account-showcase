@@ -21,6 +21,15 @@ export default function HomePage() {
   const [showMobile, setShowMobile] = useState(false)
   const [showAccounts, setShowAccounts] = useState(false)
   const [showDemo, setShowDemo] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    setIsDesktop(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   // Close demo with Escape key
   useEffect(() => {
@@ -220,6 +229,30 @@ export default function HomePage() {
             className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/20 dark:bg-blue-500/10 rounded-full blur-3xl animate-pulse"
             style={{ animationDelay: '1s' }}
           />
+
+          {/* DESKTOP VIDEO DEMO — inside right panel */}
+          {showDemo && isDesktop && (
+            <div className="absolute inset-0 z-50 bg-black flex items-center justify-center">
+              <video
+                src="/promo.webm"
+                autoPlay
+                controls
+                playsInline
+                preload="metadata"
+                poster="/promo-poster.png"
+                className="w-full h-full object-contain"
+                onEnded={() => setShowDemo(false)}
+                onError={() => setShowDemo(false)}
+              />
+              <button
+                onClick={() => setShowDemo(false)}
+                aria-label="Cerrar demo"
+                className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/25 transition-all duration-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
 
           {/* Grid pattern */}
           <div
@@ -432,9 +465,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* VIDEO DEMO OVERLAY — global, above everything */}
-      {showDemo && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center">
+      {/* MOBILE VIDEO DEMO — fullscreen overlay */}
+      {showDemo && !isDesktop && (
+        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
           <video
             src="/promo.webm"
             autoPlay
@@ -442,7 +475,7 @@ export default function HomePage() {
             playsInline
             preload="metadata"
             poster="/promo-poster.png"
-            className="w-full h-full lg:w-auto lg:h-full max-w-full object-contain"
+            className="w-full h-full object-contain"
             onEnded={() => setShowDemo(false)}
             onError={() => setShowDemo(false)}
           />
