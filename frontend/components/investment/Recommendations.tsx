@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/Button'
 import { useRecommendations, useInvestmentOverview } from '@/lib/queries/investment'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { DisclaimerAlert } from './DisclaimerAlert'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { TrendingUp, PiggyBank, Wallet, Coins, Info } from 'lucide-react'
-import { formatCurrency, cn } from '@/lib/utils'
-import { InfoTooltip } from '@/components/ui/Tooltip'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts'
+import { TrendingUp, PiggyBank, Wallet, Coins, Info, AlertCircle } from 'lucide-react'
+import { cn, formatCurrency } from '@/lib/utils'
+import { Tooltip as CustomTooltip, InfoTooltip } from '@/components/ui/Tooltip'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+
+const RECOMMENDATION_TOOLTIP =
+  'Las recomendaciones se actualizan según las condiciones actuales del mercado (S&P 500, MSCI World, bonos, crypto). Ejemplos: si el mercado está en tendencia alcista, puede sugerir más acciones; si hay volatilidad alta o corrección, puede aumentar bonos o efectivo para proteger tu capital. El Plan de Inversión adapta la distribución de activos (acciones, bonos, efectivo) según tu perfil de riesgo y la tendencia de los mercados. Estos valores cambian diariamente basándose en indicadores como momento, volatilidad, yields de bonos y precio de Bitcoin.'
 
 interface RecommendationsProps {
   accountId: string
@@ -204,7 +207,7 @@ export function Recommendations({
                     />
                   ))}
                 </Pie>
-                <Tooltip
+                <RechartsTooltip
                   formatter={(value: number | undefined) => `${value ?? 0}%`}
                   contentStyle={{
                     backgroundColor: 'var(--background)',
@@ -249,7 +252,10 @@ export function Recommendations({
           <div className="p-3 bg-muted rounded-lg text-sm">
             <div className="flex items-start gap-2">
               <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
-              <span className="text-muted-foreground">{data.marketContext}</span>
+              <span className="text-muted-foreground flex-1">{data.marketContext}</span>
+              <CustomTooltip content={RECOMMENDATION_TOOLTIP}>
+                <AlertCircle className="h-4 w-4 text-amber-500 cursor-help hover:text-amber-600 transition-colors" />
+              </CustomTooltip>
             </div>
           </div>
         )}
@@ -261,6 +267,78 @@ export function Recommendations({
 // ========================
 // Subcomponents
 // ========================
+
+const ASSET_INFO: Record<
+  string,
+  {
+    description: string
+    rentType: 'variable' | 'fija'
+    riskDescription: Record<string, string>
+    tips: string
+  }
+> = {
+  ETF: {
+    description:
+      'Fondo cotizado que replica un índice bursátil. Diversificación automática en múltiples empresas con un solo producto.',
+    rentType: 'variable',
+    riskDescription: {
+      low: 'ETFs de bonos o índices amplios con baja volatilidad.',
+      medium: 'ETFs de índices globales con volatilidad moderada.',
+      high: 'ETFs sectoriales o apalancados con alta volatilidad.',
+    },
+    tips: 'Ideal para inversión a largo plazo. Reinvierte dividendos automáticamente.',
+  },
+  BOND_FUND: {
+    description:
+      'Fondo de inversión en deuda pública o corporativa. Genera intereses regulares con menor volatilidad que las acciones.',
+    rentType: 'fija',
+    riskDescription: {
+      low: 'Bonos de países desarrollados con alta calificación crediticia.',
+      medium: 'Bonos corporativos o de duración media.',
+      high: 'Bonos de alto rendimiento (high yield) o mercados emergentes.',
+    },
+    tips: 'Actúa como estabilizador en la cartera. Menor rentabilidad esperada pero más predecible.',
+  },
+  CRYPTO: {
+    description:
+      'Activos digitales descentralizados. Alta volatilidad con potencial de grandes ganancias o pérdidas.',
+    rentType: 'variable',
+    riskDescription: {
+      low: 'Stablecoins respaldadas por monedas fiduciarias.',
+      medium: 'Criptomonedas establecidas como Bitcoin o Ethereum.',
+      high: 'Altcoins con alta especulación y liquidez limitada.',
+    },
+    tips: 'Nunca inviertas más de lo que puedas permitirte perder. Considera DCA (compra periódica).',
+  },
+  STOCK: {
+    description:
+      'Acciones individuales de empresas. Propiedad directa en compañías específicas con mayor riesgo concentrado.',
+    rentType: 'variable',
+    riskDescription: {
+      low: 'Empresas consolidadas con dividendos estables (blue chips).',
+      medium: 'Empresas de gran capitalización con crecimiento moderado.',
+      high: 'Empresas pequeñas, startups o sectores muy cíclicos.',
+    },
+    tips: 'Requiere más seguimiento que los ETFs. Diversifica entre varios sectores.',
+  },
+  SAVINGS: {
+    description:
+      'Cuentas de ahorro o fondos monetarios. Máxima liquidez y seguridad con rentabilidad muy baja.',
+    rentType: 'fija',
+    riskDescription: {
+      low: 'Depósitos garantizados hasta 100.000€ por el FGD.',
+      medium: 'Fondos monetarios de bajo riesgo.',
+      high: 'No aplica - productos de ahorro son de bajo riesgo.',
+    },
+    tips: 'Perfecto para fondo de emergencia o objetivos a muy corto plazo.',
+  },
+}
+
+const RISK_LABELS: Record<string, string> = {
+  low: 'Bajo',
+  medium: 'Medio',
+  high: 'Alto',
+}
 
 function RecommendationCard({ recommendation, amount }: { recommendation: any; amount: number }) {
   const typeIcons = {
@@ -286,20 +364,28 @@ function RecommendationCard({ recommendation, amount }: { recommendation: any; a
   }
 
   const recommendationAmount = (amount * recommendation.percentage) / 100
+  const assetInfo = ASSET_INFO[recommendation.type as keyof typeof ASSET_INFO]
+  const rentLabel = assetInfo?.rentType === 'variable' ? 'Renta Variable' : 'Renta Fija'
+
+  const tooltipContent = assetInfo
+    ? `${recommendation.name} — ${rentLabel}. ${assetInfo.description} Riesgo ${RISK_LABELS[recommendation.risk]}: ${assetInfo.riskDescription[recommendation.risk]} ${assetInfo.tips}`
+    : recommendation.reason
 
   return (
     <div className="p-2 sm:p-3 rounded-lg border border-border/40 dark:bg-zinc-900 dark:border-white/5 hover:bg-muted/10 transition-colors group">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-          <div
-            className={cn(
-              'p-1.5 sm:p-2 rounded-lg shrink-0',
-              typeColors[recommendation.type as keyof typeof typeColors] ||
-                'bg-muted text-muted-foreground'
-            )}
-          >
-            {typeIcons[recommendation.type as keyof typeof typeIcons]}
-          </div>
+          <CustomTooltip content={tooltipContent} side="right" className="max-w-[280px]">
+            <div
+              className={cn(
+                'p-1.5 sm:p-2 rounded-lg shrink-0 cursor-help',
+                typeColors[recommendation.type as keyof typeof typeColors] ||
+                  'bg-muted text-muted-foreground'
+              )}
+            >
+              {typeIcons[recommendation.type as keyof typeof typeIcons]}
+            </div>
+          </CustomTooltip>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
               <h4 className="font-semibold text-foreground text-xs sm:text-sm truncate">

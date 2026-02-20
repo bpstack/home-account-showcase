@@ -82,16 +82,16 @@ export function CategoryPieChart({ data, showLegend = true }: Props) {
                     <Cell
                       key={index}
                       fill={entry.color}
-                      opacity={isActive ? 1 : 0.5}
+                      opacity={isActive ? 0.5 : 1}
                       stroke={isActive ? entry.color : 'transparent'}
                       strokeWidth={isActive ? 2 : 0}
                       style={{
                         transition: 'opacity 0.2s ease',
                         cursor: 'pointer',
                         filter: isSelected
-                          ? 'brightness(1.15)'
+                          ? 'brightness(0.85)'
                           : isHovered
-                            ? 'brightness(1.1)'
+                            ? 'brightness(0.9)'
                             : 'none',
                       }}
                       onClick={() => {

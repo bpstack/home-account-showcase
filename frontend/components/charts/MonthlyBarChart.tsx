@@ -1,4 +1,16 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+'use client'
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts'
+import { useState } from 'react'
 
 interface MonthlyData {
   month: string
@@ -12,6 +24,8 @@ interface Props {
 }
 
 export function MonthlyBarChart({ data }: Props) {
+  const [hoveredBar, setHoveredBar] = useState<{ dataKey: string; index: number } | null>(null)
+
   const formatCurrency = (value: number | undefined) => {
     if (value === undefined) return '-'
     return new Intl.NumberFormat('es-ES', {
@@ -50,8 +64,36 @@ export function MonthlyBarChart({ data }: Props) {
               }}
               labelStyle={{ color: '#F9FAFB' }}
             />
-            <Bar dataKey="income" name="Ingresos" fill="#22C55E" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="expenses" name="Gastos" fill="#EF4444" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="income" name="Ingresos" radius={[4, 4, 0, 0]}>
+              {data.map((_, index) => {
+                const isHovered = hoveredBar?.dataKey === 'income' && hoveredBar?.index === index
+                return (
+                  <Cell
+                    key={`income-${index}`}
+                    fill="#22C55E"
+                    opacity={isHovered ? 0.5 : 1}
+                    style={{ transition: 'opacity 0.2s ease', cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredBar({ dataKey: 'income', index })}
+                    onMouseLeave={() => setHoveredBar(null)}
+                  />
+                )
+              })}
+            </Bar>
+            <Bar dataKey="expenses" name="Gastos" radius={[4, 4, 0, 0]}>
+              {data.map((_, index) => {
+                const isHovered = hoveredBar?.dataKey === 'expenses' && hoveredBar?.index === index
+                return (
+                  <Cell
+                    key={`expenses-${index}`}
+                    fill="#EF4444"
+                    opacity={isHovered ? 0.5 : 1}
+                    style={{ transition: 'opacity 0.2s ease', cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredBar({ dataKey: 'expenses', index })}
+                    onMouseLeave={() => setHoveredBar(null)}
+                  />
+                )
+              })}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
