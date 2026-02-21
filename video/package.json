@@ -3,8 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "remotion studio src/index.ts",
-    "build": "remotion render src/index.ts HomeAccountPromo out/promo.webm --codec=vp9 --quality=100",
-    "build:mobile": "remotion render src/index.ts HomeAccountPromoMobile out/promo-mobile.webm --codec=vp9 --quality=100",
+    "build": "remotion render src/index.ts HomeAccountPromo out/promo.webm --codec=vp8 --video-bitrate=1M",
+    "build:mobile": "remotion render src/index.ts HomeAccountPromoMobile out/promo-mobile.webm --codec=vp8 --video-bitrate=1M",
     "build:all": "pnpm build && pnpm build:mobile",
     "build:still": "remotion still src/index.ts HomeAccountPromo out/thumbnail.png --frame=210",
     "build:still:mobile": "remotion still src/index.ts HomeAccountPromoMobile out/promo-mobile-poster.png --frame=100"
