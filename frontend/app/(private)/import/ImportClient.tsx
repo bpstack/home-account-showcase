@@ -48,6 +48,31 @@ import { toast } from 'sonner'
 
 import { getTodayLocal } from '@/lib/date-utils'
 
+function getFriendlyErrorMessage(error: string): string {
+  const errorMap: Record<string, string> = {
+    'Solo se permiten archivos Excel (.xls, .xlsx) o CSV (.csv)':
+      'El formato del archivo no es soportado. Usa archivos Excel (.xls, .xlsx) o CSV (.csv)',
+    'El archivo supera el tamaño máximo permitido (5MB)':
+      'El archivo es demasiado grande. El tamaño máximo es 5MB',
+    'Error al procesar el archivo': 'No se pudo leer el archivo. Asegúrate de que no está dañado',
+    'Error al procesar la respuesta del servidor': 'Error de conexión. Intenta de nuevo',
+    NetworkError: 'Error de conexión. Verifica tu conexión a internet',
+    'Failed to fetch': 'Error de conexión. Verifica tu conexión a internet',
+  }
+
+  for (const [key, value] of Object.entries(errorMap)) {
+    if (error.includes(key)) {
+      return value
+    }
+  }
+
+  if (error.includes('is not valid JSON') || error.includes('Unexpected token')) {
+    return 'Error al procesar la respuesta del servidor. Intenta de nuevo'
+  }
+
+  return error || 'Ha ocurrido un error inesperado'
+}
+
 const importTabs = [
   { id: 'individual', label: 'Individual', icon: <User className="h-4 w-4" /> },
   { id: 'mass', label: 'Masivo', icon: <Database className="h-4 w-4" /> },
@@ -562,7 +587,8 @@ export default function ImportClient() {
         setError('No se encontraron transacciones')
       }
     } catch (err: any) {
-      setError(err.message)
+      const errorMessage = getFriendlyErrorMessage(err.message)
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -594,9 +620,10 @@ export default function ImportClient() {
           setIsLoading(false)
         },
         onError: (err: any) => {
-          setError(err.message)
+          const errorMessage = getFriendlyErrorMessage(err.message)
+          setError(errorMessage)
           toast.error('Error al importar', {
-            description: err.message,
+            description: errorMessage,
           })
           setIsLoading(false)
         },

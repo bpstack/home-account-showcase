@@ -112,6 +112,31 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
     })
   }
 
+  // Multer errors (file upload)
+  if (err.name === 'MulterError') {
+    const multerMessages: Record<string, string> = {
+      LIMIT_FILE_SIZE: 'El archivo supera el tamaño máximo permitido (5MB)',
+      LIMIT_FILE_COUNT: 'Demasiados archivos',
+      LIMIT_UNEXPECTED_FILE: 'Campo de archivo inesperado',
+      LIMIT_FIELD_KEY: 'Nombre de campo demasiado largo',
+      LIMIT_FIELD_VALUE: 'Valor de campo demasiado largo',
+      LIMIT_FIELD_COUNT: 'Demasiados campos',
+      LIMIT_PART_COUNT: 'Demasiadas partes en la petición',
+    }
+    return res.status(400).json({
+      success: false,
+      error: multerMessages[err.message] || 'Error al procesar el archivo',
+    })
+  }
+
+  // Custom file type error from multer fileFilter
+  if (err.message && err.message.includes('Solo se permiten archivos')) {
+    return res.status(400).json({
+      success: false,
+      error: err.message,
+    })
+  }
+
   return res.status(500).json({
     success: false,
     error: 'Internal server error',

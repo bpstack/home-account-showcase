@@ -120,7 +120,20 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     },
   })
 
-  const data = await response.json()
+  // Try to parse JSON, handle non-JSON responses gracefully
+  let data: any
+  const contentType = response.headers.get('content-type')
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json()
+    } catch {
+      throw new ApiError(response.status, 'Error al procesar la respuesta del servidor')
+    }
+  } else {
+    // Non-JSON response (likely an error page or raw text)
+    const text = await response.text()
+    throw new ApiError(response.status, text || 'Error desconocido')
+  }
 
   // Si recibimos 401, intentar refresh (excepto en el endpoint de refresh)
   if (response.status === 401 && endpoint !== '/auth/refresh') {
