@@ -4,7 +4,6 @@ import { COLORS, FONTS } from '../design/theme'
 const DashboardMockup: React.FC = () => (
   <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
     <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.textPrimary }}>Dashboard</div>
-    {/* Mini metric cards */}
     {[
       { label: 'Ingresos', value: '3.200 €', color: COLORS.green },
       { label: 'Gastos', value: '1.850 €', color: COLORS.red },
@@ -15,7 +14,6 @@ const DashboardMockup: React.FC = () => (
         <div style={{ fontSize: 18, fontWeight: 700, color: c.color, marginTop: 2 }}>{c.value}</div>
       </div>
     ))}
-    {/* Mini bar chart placeholder */}
     <div style={{ padding: 12, backgroundColor: COLORS.bg, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
       <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 8 }}>Últimos 6 meses</div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 60 }}>
@@ -33,7 +31,6 @@ const DashboardMockup: React.FC = () => (
 const InvestmentMockup: React.FC = () => (
   <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
     <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.textPrimary }}>Inversión</div>
-    {/* Mini donut */}
     <div style={{ display: 'flex', justifyContent: 'center', padding: 8 }}>
       <svg width={100} height={100} viewBox="0 0 100 100">
         {[
@@ -52,7 +49,6 @@ const InvestmentMockup: React.FC = () => (
         })}
       </svg>
     </div>
-    {/* Recommendations */}
     {[
       { name: 'MSCI World', change: '+12.4%', color: '#22c55e' },
       { name: 'Bonos EU', change: '+3.2%', color: '#3b82f6' },
@@ -70,14 +66,13 @@ export const S08_MobileShowcase: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  const sceneOpacity = interpolate(frame, [0, 25, 360, 390], [0, 1, 1, 0], {
+  const sceneOpacity = interpolate(frame, [0, 12, 150, 165], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
-  // Phones slide in from sides
-  const leftPhone = spring({ frame: frame - 20, fps, config: { damping: 16, stiffness: 60, mass: 1 } })
-  const rightPhone = spring({ frame: frame - 40, fps, config: { damping: 16, stiffness: 60, mass: 1 } })
+  const leftPhone = spring({ frame: frame - 10, fps, config: { damping: 16, stiffness: 60, mass: 1 } })
+  const rightPhone = spring({ frame: frame - 20, fps, config: { damping: 16, stiffness: 60, mass: 1 } })
 
   const phoneWidth = 320
   const phoneHeight = 640
@@ -96,11 +91,9 @@ export const S08_MobileShowcase: React.FC = () => {
         transform: `translateX(${(1 - slideProgress) * (fromLeft ? -80 : 80)}px)`,
       }}
     >
-      {/* Notch */}
       <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 0' }}>
         <div style={{ width: 120, height: 28, backgroundColor: '#000', borderRadius: 14 }} />
       </div>
-      {/* Status bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 24px 8px', fontSize: 11, color: COLORS.textMuted }}>
         <span>9:41</span>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -109,7 +102,6 @@ export const S08_MobileShowcase: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* Content */}
       <div style={{ height: phoneHeight - 60, overflow: 'hidden' }}>
         {children}
       </div>
@@ -118,7 +110,6 @@ export const S08_MobileShowcase: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity, backgroundColor: COLORS.bg, fontFamily: FONTS.body }}>
-      {/* Title */}
       <div style={{ position: 'absolute', top: 50, left: 0, right: 0, textAlign: 'center' }}>
         <span style={{ fontSize: 18, color: COLORS.accent, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
           Diseño responsive
@@ -128,7 +119,6 @@ export const S08_MobileShowcase: React.FC = () => {
         </h2>
       </div>
 
-      {/* Two phones */}
       <div style={{ position: 'absolute', top: 200, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 60, alignItems: 'flex-start' }}>
         <PhoneFrame slideProgress={leftPhone} fromLeft>
           <DashboardMockup />
@@ -138,10 +128,9 @@ export const S08_MobileShowcase: React.FC = () => {
         </PhoneFrame>
       </div>
 
-      {/* PWA badge */}
       <div style={{ position: 'absolute', bottom: 60, left: 0, right: 0, textAlign: 'center' }}>
         {(() => {
-          const badgeSpring = spring({ frame: frame - 120, fps, config: { damping: 12, stiffness: 100, mass: 0.5 } })
+          const badgeSpring = spring({ frame: frame - 60, fps, config: { damping: 12, stiffness: 100, mass: 0.5 } })
           return (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 28px', borderRadius: 50, backgroundColor: `${COLORS.accent}15`, border: `1px solid ${COLORS.accent}30`, opacity: badgeSpring, transform: `scale(${badgeSpring})` }}>
               <span style={{ fontSize: 20 }}>📱</span>

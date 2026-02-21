@@ -14,19 +14,16 @@ export const S10_Closing: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  const sceneOpacity = interpolate(frame, [0, 20, 210, 240], [0, 1, 1, 0], {
+  const sceneOpacity = interpolate(frame, [0, 10, 75, 90], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
-  // Logo entrance
-  const logoScale = spring({ frame: frame - 10, fps, config: { damping: 12, stiffness: 80, mass: 0.8 } })
+  const logoScale = spring({ frame: frame - 5, fps, config: { damping: 12, stiffness: 80, mass: 0.8 } })
 
-  // Features grid
-  const featStart = 40
+  const featStart = 20
 
-  // CTA button
-  const ctaSpring = spring({ frame: frame - 140, fps, config: { damping: 14, stiffness: 80, mass: 0.7 } })
+  const ctaSpring = spring({ frame: frame - 70, fps, config: { damping: 14, stiffness: 80, mass: 0.7 } })
 
   return (
     <AbsoluteFill
@@ -40,7 +37,6 @@ export const S10_Closing: React.FC = () => {
         justifyContent: 'center',
       }}
     >
-      {/* Logo */}
       <div style={{ transform: `scale(${logoScale})`, marginBottom: 24 }}>
         <div
           style={{
@@ -58,7 +54,6 @@ export const S10_Closing: React.FC = () => {
         </div>
       </div>
 
-      {/* Title */}
       <h1 style={{ fontSize: 52, fontWeight: 800, color: COLORS.textPrimary, marginBottom: 8, letterSpacing: '-0.02em' }}>
         Home Account
       </h1>
@@ -66,10 +61,9 @@ export const S10_Closing: React.FC = () => {
         Control total de tu economía
       </p>
 
-      {/* Features grid 3x2 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 48 }}>
         {FEATURES.map((feat, i) => {
-          const fScale = spring({ frame: frame - featStart - i * 8, fps, config: { damping: 12, stiffness: 100, mass: 0.5 } })
+          const fScale = spring({ frame: frame - featStart - i * 4, fps, config: { damping: 12, stiffness: 100, mass: 0.5 } })
           return (
             <div
               key={feat.label}
@@ -92,7 +86,6 @@ export const S10_Closing: React.FC = () => {
         })}
       </div>
 
-      {/* CTA */}
       <div
         style={{
           transform: `scale(${ctaSpring})`,
@@ -110,11 +103,10 @@ export const S10_Closing: React.FC = () => {
         Comienza gratis →
       </div>
 
-      {/* Open source note */}
       <div
         style={{
           marginTop: 24,
-          opacity: interpolate(frame, [160, 180], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
+          opacity: interpolate(frame, [80, 90], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
           fontSize: 14,
           color: COLORS.textMuted,
         }}

@@ -21,7 +21,7 @@ export default function HomePage() {
   const [showMobile, setShowMobile] = useState(false)
   const [showAccounts, setShowAccounts] = useState(false)
   const [showDemo, setShowDemo] = useState(false)
-  const [isDesktop, setIsDesktop] = useState(false)
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -231,14 +231,18 @@ export default function HomePage() {
           />
 
           {/* DESKTOP VIDEO DEMO — inside right panel */}
-          {showDemo && isDesktop && (
-            <div className="absolute inset-0 z-50 bg-black flex items-center justify-center">
+          {showDemo && isDesktop === true && (
+            <div
+              key="desktop-video"
+              className="absolute inset-0 z-50 bg-black flex items-center justify-center"
+            >
               <video
+                key="promo-desktop"
                 src="/promo.webm"
                 autoPlay
                 controls
                 playsInline
-                preload="metadata"
+                preload="auto"
                 poster="/promo-poster.png"
                 className="w-full h-full object-contain"
                 onEnded={() => setShowDemo(false)}
@@ -466,15 +470,19 @@ export default function HomePage() {
       </div>
 
       {/* MOBILE VIDEO DEMO — fullscreen overlay */}
-      {showDemo && !isDesktop && (
-        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+      {showDemo && isDesktop === false && (
+        <div
+          key="mobile-video"
+          className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+        >
           <video
-            src="/promo.webm"
+            key="promo-mobile"
+            src="/promo-mobile.webm"
             autoPlay
             controls
             playsInline
-            preload="metadata"
-            poster="/promo-poster.png"
+            preload="auto"
+            poster="/promo-mobile-poster.png"
             className="w-full h-full object-contain"
             onEnded={() => setShowDemo(false)}
             onError={() => setShowDemo(false)}

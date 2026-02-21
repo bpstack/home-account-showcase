@@ -1,9 +1,9 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion'
-import { COLORS, FONTS } from '../design/theme'
+import { COLORS, FONTS } from '../../design/theme'
 
 const BIP39_WORDS = ['ocean', 'brave', 'sunset', 'crystal', 'tiger', 'dawn']
 
-export const S09_Encryption: React.FC = () => {
+export const S09_EncryptionMobile: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
@@ -28,21 +28,33 @@ export const S09_Encryption: React.FC = () => {
     { text: 'End-to-End', color: COLORS.purple },
   ]
   const badgeStart = 60
-
   const bip39Start = 100
 
   return (
-    <AbsoluteFill style={{ opacity: sceneOpacity, backgroundColor: COLORS.bg, fontFamily: FONTS.body }}>
-      <div style={{ position: 'absolute', top: 50, left: 0, right: 0, textAlign: 'center' }}>
-        <span style={{ fontSize: 18, color: COLORS.emerald, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+    <AbsoluteFill
+      style={{
+        opacity: sceneOpacity,
+        backgroundColor: COLORS.bg,
+        fontFamily: FONTS.body,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: 60,
+        paddingTop: 100,
+      }}
+    >
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: 56 }}>
+        <span style={{ fontSize: 44, color: COLORS.emerald, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' as const }}>
           Seguridad
         </span>
-        <h2 style={{ fontSize: 44, fontWeight: 800, color: COLORS.textPrimary, marginTop: 10 }}>
-          Cifrado de extremo a extremo
+        <h2 style={{ fontSize: 72, fontWeight: 800, color: COLORS.textPrimary, marginTop: 16, lineHeight: 1.05 }}>
+          Cifrado de extremo<br />a extremo
         </h2>
       </div>
 
-      <div style={{ position: 'absolute', top: 180, left: '50%', transform: 'translateX(-50%)' }}>
+      {/* Lock + waves */}
+      <div style={{ position: 'relative', width: 200, height: 200, marginBottom: 56, flexShrink: 0 }}>
         {waves.map((w, i) => (
           <div
             key={i}
@@ -50,20 +62,19 @@ export const S09_Encryption: React.FC = () => {
               position: 'absolute',
               top: '50%',
               left: '50%',
-              width: 120,
-              height: 120,
-              marginTop: -60,
-              marginLeft: -60,
+              width: 160,
+              height: 160,
+              marginTop: -80,
+              marginLeft: -80,
               borderRadius: '50%',
-              border: `2px solid ${COLORS.emerald}`,
+              border: `3px solid ${COLORS.emerald}`,
               transform: `scale(${w.scale})`,
               opacity: w.opacity,
             }}
           />
         ))}
-
-        <div style={{ position: 'relative', transform: `scale(${lockScale})`, width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width={80} height={100} viewBox="0 0 80 100">
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: `translate(-50%, -50%) scale(${lockScale})` }}>
+          <svg width={100} height={130} viewBox="0 0 80 100">
             <path
               d={`M 20 45 L 20 ${35 - lockClose * 10} A 20 20 0 0 1 60 ${35 - lockClose * 10} L 60 45`}
               fill="none"
@@ -78,7 +89,8 @@ export const S09_Encryption: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ position: 'absolute', top: 420, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 20 }}>
+      {/* Security badges */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 56, flexWrap: 'wrap' }}>
         {badges.map((badge, i) => {
           const bScale = spring({ frame: frame - badgeStart - i * 6, fps, config: { damping: 12, stiffness: 120, mass: 0.5 } })
           return (
@@ -86,15 +98,14 @@ export const S09_Encryption: React.FC = () => {
               key={badge.text}
               style={{
                 transform: `scale(${bScale})`,
-                padding: '12px 28px',
-                borderRadius: 50,
+                padding: '16px 32px',
+                borderRadius: 60,
                 backgroundColor: `${badge.color}15`,
-                border: `1px solid ${badge.color}40`,
+                border: `2px solid ${badge.color}40`,
                 color: badge.color,
-                fontSize: 18,
+                fontSize: 30,
                 fontWeight: 700,
                 fontFamily: FONTS.mono,
-                letterSpacing: '0.03em',
               }}
             >
               {badge.text}
@@ -103,11 +114,12 @@ export const S09_Encryption: React.FC = () => {
         })}
       </div>
 
-      <div style={{ position: 'absolute', top: 520, left: '50%', transform: 'translateX(-50%)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <span style={{ fontSize: 14, color: COLORS.textMuted }}>Frase de recuperación de 24 palabras</span>
+      {/* BIP39 words */}
+      <div style={{ width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <span style={{ fontSize: 26, color: COLORS.textMuted }}>Frase de recuperación de 24 palabras</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
           {BIP39_WORDS.map((word, i) => {
             const wordScale = spring({ frame: frame - bip39Start - i * 4, fps, config: { damping: 12, stiffness: 100, mass: 0.5 } })
             return (
@@ -115,23 +127,23 @@ export const S09_Encryption: React.FC = () => {
                 key={word}
                 style={{
                   transform: `scale(${wordScale})`,
-                  padding: '10px 24px',
-                  borderRadius: 10,
+                  padding: '18px 28px',
+                  borderRadius: 14,
                   backgroundColor: COLORS.bgCard,
                   border: `1px solid ${COLORS.border}`,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
+                  gap: 16,
                 }}
               >
-                <span style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: FONTS.mono, minWidth: 20 }}>{i + 1}.</span>
-                <span style={{ fontSize: 16, color: COLORS.textPrimary, fontWeight: 600, fontFamily: FONTS.mono }}>{word}</span>
+                <span style={{ fontSize: 24, color: COLORS.textMuted, fontFamily: FONTS.mono, minWidth: 28 }}>{i + 1}.</span>
+                <span style={{ fontSize: 32, color: COLORS.textPrimary, fontWeight: 700, fontFamily: FONTS.mono }}>{word}</span>
               </div>
             )
           })}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-          <span style={{ fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' }}>+ 18 palabras más...</span>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
+          <span style={{ fontSize: 24, color: COLORS.textMuted, fontStyle: 'italic' }}>+ 18 palabras más...</span>
         </div>
       </div>
     </AbsoluteFill>

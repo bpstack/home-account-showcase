@@ -41,30 +41,26 @@ export const S02_Dashboard: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  const sceneOpacity = interpolate(frame, [0, 25, 420, 450], [0, 1, 1, 0], {
+  const sceneOpacity = interpolate(frame, [0, 12, 180, 195], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
-  // Browser frame slide in
   const browserSlide = spring({ frame, fps, config: { damping: 20, stiffness: 60, mass: 1 } })
 
-  // Cards appear staggered
   const cards = [
     { title: 'Ingresos', value: 3200, color: COLORS.green, suffix: ' €' },
     { title: 'Gastos', value: 1850, color: COLORS.red, suffix: ' €' },
     { title: 'Ahorro', value: 1350, color: COLORS.emerald, suffix: ' €' },
   ]
 
-  // Bar chart animation
   const maxVal = 3600
-  const barChartProgress = interpolate(frame, [120, 200], [0, 1], {
+  const barChartProgress = interpolate(frame, [60, 100], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
-  // Pie chart animation
-  const pieProgress = interpolate(frame, [200, 300], [0, 1], {
+  const pieProgress = interpolate(frame, [100, 150], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
@@ -72,7 +68,6 @@ export const S02_Dashboard: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity, backgroundColor: COLORS.bg, fontFamily: FONTS.body }}>
-      {/* Scene title */}
       <div
         style={{
           position: 'absolute',
@@ -80,7 +75,7 @@ export const S02_Dashboard: React.FC = () => {
           left: 0,
           right: 0,
           textAlign: 'center',
-          opacity: interpolate(frame, [0, 30, 60, 90], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
+          opacity: interpolate(frame, [0, 15, 30, 45], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
         }}
       >
         <span style={{ fontSize: 20, color: COLORS.accent, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
@@ -88,7 +83,6 @@ export const S02_Dashboard: React.FC = () => {
         </span>
       </div>
 
-      {/* Browser frame */}
       <div
         style={{
           position: 'absolute',
@@ -105,7 +99,6 @@ export const S02_Dashboard: React.FC = () => {
           boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
         }}
       >
-        {/* Chrome bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${COLORS.border}`, backgroundColor: COLORS.bgMuted }}>
           <div style={{ display: 'flex', gap: 6 }}>
             <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ef4444' }} />
@@ -117,9 +110,7 @@ export const S02_Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Content area with sidebar */}
         <div style={{ display: 'flex', height: 'calc(100% - 52px)' }}>
-          {/* Sidebar */}
           <div style={{ width: 200, borderRight: `1px solid ${COLORS.border}`, backgroundColor: COLORS.bgCard, paddingTop: 16 }}>
             <div style={{ padding: '8px 20px 20px', fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>
               <span style={{ color: COLORS.green }}>€</span> Home Account
@@ -129,13 +120,11 @@ export const S02_Dashboard: React.FC = () => {
             ))}
           </div>
 
-          {/* Main content */}
           <div style={{ flex: 1, padding: 32, overflow: 'hidden' }}>
-            {/* Metric cards */}
             <div style={{ display: 'flex', gap: 20, marginBottom: 32 }}>
               {cards.map((card, i) => {
-                const cardScale = spring({ frame: frame - 40 - i * 15, fps, config: { damping: 14, stiffness: 100, mass: 0.6 } })
-                const countProgress = interpolate(frame, [60 + i * 15, 110 + i * 15], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+                const cardScale = spring({ frame: frame - 20 - i * 8, fps, config: { damping: 14, stiffness: 100, mass: 0.6 } })
+                const countProgress = interpolate(frame, [30 + i * 8, 55 + i * 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
                 const displayVal = Math.round(card.value * countProgress)
                 return (
                   <div
@@ -158,9 +147,7 @@ export const S02_Dashboard: React.FC = () => {
               })}
             </div>
 
-            {/* Charts row */}
             <div style={{ display: 'flex', gap: 24 }}>
-              {/* Bar chart */}
               <div style={{ flex: 1.5, backgroundColor: COLORS.bg, borderRadius: 12, padding: 24, border: `1px solid ${COLORS.border}` }}>
                 <div style={{ fontSize: 14, color: COLORS.textSecondary, marginBottom: 20, fontWeight: 600 }}>Ingresos vs Gastos</div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 180 }}>
@@ -180,7 +167,6 @@ export const S02_Dashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Pie chart */}
               <div style={{ flex: 1, backgroundColor: COLORS.bg, borderRadius: 12, padding: 24, border: `1px solid ${COLORS.border}` }}>
                 <div style={{ fontSize: 14, color: COLORS.textSecondary, marginBottom: 20, fontWeight: 600 }}>Categorías</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -214,7 +200,6 @@ export const S02_Dashboard: React.FC = () => {
                     <circle cx={80} cy={80} r={35} fill={COLORS.bg} />
                   </svg>
                 </div>
-                {/* Legend */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16, justifyContent: 'center' }}>
                   {CATEGORIES.map((cat) => (
                     <div key={cat.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

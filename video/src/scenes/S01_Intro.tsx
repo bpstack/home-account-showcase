@@ -5,43 +5,37 @@ export const S01_Intro: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  // Fade in/out for the whole scene (210 frames total)
-  const sceneOpacity = interpolate(frame, [0, 20, 185, 210], [0, 1, 1, 0], {
+  const sceneOpacity = interpolate(frame, [0, 10, 75, 90], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
-  // Radial gradient background pulse
-  const gradientSize = interpolate(frame, [0, 120], [40, 60], {
+  const gradientSize = interpolate(frame, [0, 60], [40, 60], {
     extrapolateRight: 'clamp',
   })
 
-  // Logo spring animation
-  const logoScale = spring({ frame: frame - 15, fps, config: { damping: 12, stiffness: 80, mass: 0.8 } })
-  const logoRotate = spring({ frame: frame - 15, fps, config: { damping: 15, stiffness: 60, mass: 1 } })
+  const logoScale = spring({ frame: frame - 8, fps, config: { damping: 12, stiffness: 80, mass: 0.8 } })
+  const logoRotate = spring({ frame: frame - 8, fps, config: { damping: 15, stiffness: 60, mass: 1 } })
 
-  // Title "Home Account" - appears letter by letter
   const title = 'Home Account'
-  const titleStart = 45
-  const charsVisible = Math.floor(interpolate(frame - titleStart, [0, 40], [0, title.length], {
+  const titleStart = 22
+  const charsVisible = Math.floor(interpolate(frame - titleStart, [0, 20], [0, title.length], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   }))
   const titleText = title.slice(0, charsVisible)
   const showCursor = frame > titleStart && frame % 30 < 20
 
-  // Subtitle typewriter
   const subtitle = 'Control total de tu economía'
-  const subStart = 95
-  const subChars = Math.floor(interpolate(frame - subStart, [0, 50], [0, subtitle.length], {
+  const subStart = 48
+  const subChars = Math.floor(interpolate(frame - subStart, [0, 25], [0, subtitle.length], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   }))
   const subText = subtitle.slice(0, subChars)
 
-  // Badges stagger
   const badges = ['E2E Encrypted', 'PWA', 'Open Source']
-  const badgeStart = 155
+  const badgeStart = 78
 
   return (
     <AbsoluteFill
@@ -55,7 +49,6 @@ export const S01_Intro: React.FC = () => {
         fontFamily: FONTS.heading,
       }}
     >
-      {/* Logo */}
       <div
         style={{
           transform: `scale(${logoScale}) rotate(${(1 - logoRotate) * -10}deg)`,
@@ -89,7 +82,6 @@ export const S01_Intro: React.FC = () => {
         </div>
       </div>
 
-      {/* Title */}
       <div style={{ height: 70, display: 'flex', alignItems: 'center' }}>
         <h1
           style={{
@@ -107,7 +99,6 @@ export const S01_Intro: React.FC = () => {
         </h1>
       </div>
 
-      {/* Subtitle */}
       <div style={{ height: 40, marginTop: 16, display: 'flex', alignItems: 'center' }}>
         <p
           style={{
@@ -124,16 +115,15 @@ export const S01_Intro: React.FC = () => {
         </p>
       </div>
 
-      {/* Badges */}
       <div style={{ display: 'flex', gap: 16, marginTop: 48 }}>
         {badges.map((badge, i) => {
-          const badgeDelay = badgeStart + i * 12
+          const badgeDelay = badgeStart + i * 6
           const badgeScale = spring({
             frame: frame - badgeDelay,
             fps,
             config: { damping: 12, stiffness: 100, mass: 0.6 },
           })
-          const badgeOpacity = interpolate(frame - badgeDelay, [0, 10], [0, 1], {
+          const badgeOpacity = interpolate(frame - badgeDelay, [0, 5], [0, 1], {
             extrapolateLeft: 'clamp',
             extrapolateRight: 'clamp',
           })

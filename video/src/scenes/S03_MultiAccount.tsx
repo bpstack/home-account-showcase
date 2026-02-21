@@ -2,26 +2,24 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } fr
 import { COLORS, FONTS } from '../design/theme'
 
 const ACCOUNTS = [
-  { name: 'Cuenta Individual', icon: '👤', balance: '3.450,00 €', color: '#3b82f6', activeAt: 30 },
-  { name: 'Cuenta Familiar', icon: '👨‍👩‍👧', balance: '8.230,50 €', color: '#10b981', activeAt: 110 },
-  { name: 'Cuenta Inversión', icon: '📈', balance: '15.780,00 €', color: '#a855f7', activeAt: 190 },
+  { name: 'Cuenta Individual', icon: '👤', balance: '3.450,00 €', color: '#3b82f6', activeAt: 15 },
+  { name: 'Cuenta Familiar', icon: '👨‍👩‍👧', balance: '8.230,50 €', color: '#10b981', activeAt: 55 },
+  { name: 'Cuenta Inversión', icon: '📈', balance: '15.780,00 €', color: '#a855f7', activeAt: 95 },
 ]
 
 export const S03_MultiAccount: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  const sceneOpacity = interpolate(frame, [0, 25, 270, 300], [0, 1, 1, 0], {
+  const sceneOpacity = interpolate(frame, [0, 12, 105, 120], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
-  // Determine active account based on frame
-  const activeIndex = frame < 110 ? 0 : frame < 190 ? 1 : 2
+  const activeIndex = frame < 55 ? 0 : frame < 95 ? 1 : 2
 
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity, backgroundColor: COLORS.bg, fontFamily: FONTS.body }}>
-      {/* Title */}
       <div
         style={{
           position: 'absolute',
@@ -42,11 +40,10 @@ export const S03_MultiAccount: React.FC = () => {
         </p>
       </div>
 
-      {/* Account cards */}
       <div style={{ position: 'absolute', top: 280, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 32 }}>
         {ACCOUNTS.map((acc, i) => {
           const isActive = i === activeIndex
-          const cardSpring = spring({ frame: frame - 40 - i * 15, fps, config: { damping: 14, stiffness: 80, mass: 0.7 } })
+          const cardSpring = spring({ frame: frame - 20 - i * 8, fps, config: { damping: 14, stiffness: 80, mass: 0.7 } })
           const activeScale = isActive ? 1.05 : 1
           const activeBorder = isActive ? acc.color : COLORS.border
 
@@ -81,7 +78,6 @@ export const S03_MultiAccount: React.FC = () => {
         })}
       </div>
 
-      {/* Selector indicator */}
       <div style={{ position: 'absolute', bottom: 120, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 12 }}>
         {ACCOUNTS.map((acc, i) => (
           <div

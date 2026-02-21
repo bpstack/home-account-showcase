@@ -20,7 +20,6 @@ const MARKET = [
   { name: 'MSCI World', value: '3.456,78', change: '+0.7%' },
 ]
 
-// Simulator line points
 const SIM = {
   conservative: [100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 122],
   balanced: [100, 104, 107, 111, 115, 118, 122, 126, 130, 134, 138, 142],
@@ -31,20 +30,17 @@ export const S06_Investment: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  const sceneOpacity = interpolate(frame, [0, 25, 420, 450], [0, 1, 1, 0], {
+  const sceneOpacity = interpolate(frame, [0, 12, 180, 195], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
   const containerSlide = spring({ frame, fps, config: { damping: 18, stiffness: 60, mass: 1 } })
 
-  // Donut chart progress
-  const donutProgress = interpolate(frame, [40, 120], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const donutProgress = interpolate(frame, [20, 60], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
 
-  // Simulator line draw
-  const lineProgress = interpolate(frame, [250, 380], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const lineProgress = interpolate(frame, [125, 190], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
 
-  // Draw donut segments
   const donutR = 80, donutStroke = 24, cx = 100, cy = 100
 
   return (
@@ -64,7 +60,6 @@ export const S06_Investment: React.FC = () => {
           gap: 20,
         }}
       >
-        {/* Top-left: Donut chart allocation */}
         <div style={{ backgroundColor: COLORS.bgCard, borderRadius: 16, border: `1px solid ${COLORS.border}`, padding: 28, display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 16, color: COLORS.textSecondary, fontWeight: 600, marginBottom: 20 }}>Distribución de cartera</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 32, flex: 1 }}>
@@ -113,12 +108,11 @@ export const S06_Investment: React.FC = () => {
           </div>
         </div>
 
-        {/* Top-right: Recommendations */}
         <div style={{ backgroundColor: COLORS.bgCard, borderRadius: 16, border: `1px solid ${COLORS.border}`, padding: 28 }}>
           <div style={{ fontSize: 16, color: COLORS.textSecondary, fontWeight: 600, marginBottom: 20 }}>Recomendaciones IA</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {RECOMMENDATIONS.map((rec, i) => {
-              const recSpring = spring({ frame: frame - 80 - i * 20, fps, config: { damping: 14, stiffness: 100, mass: 0.6 } })
+              const recSpring = spring({ frame: frame - 40 - i * 10, fps, config: { damping: 14, stiffness: 100, mass: 0.6 } })
               return (
                 <div
                   key={rec.name}
@@ -147,12 +141,11 @@ export const S06_Investment: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom-left: Market data */}
         <div style={{ backgroundColor: COLORS.bgCard, borderRadius: 16, border: `1px solid ${COLORS.border}`, padding: 28 }}>
           <div style={{ fontSize: 16, color: COLORS.textSecondary, fontWeight: 600, marginBottom: 20 }}>Datos de mercado</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {MARKET.map((m, i) => {
-              const mOpacity = interpolate(frame - 150 - i * 15, [0, 20], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+              const mOpacity = interpolate(frame - 75 - i * 8, [0, 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
               return (
                 <div key={m.name} style={{ opacity: mOpacity, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: i < MARKET.length - 1 ? `1px solid ${COLORS.border}` : 'none' }}>
                   <span style={{ fontSize: 15, color: COLORS.textPrimary, fontWeight: 500 }}>{m.name}</span>
@@ -166,7 +159,6 @@ export const S06_Investment: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom-right: Simulator chart */}
         <div style={{ backgroundColor: COLORS.bgCard, borderRadius: 16, border: `1px solid ${COLORS.border}`, padding: 28 }}>
           <div style={{ fontSize: 16, color: COLORS.textSecondary, fontWeight: 600, marginBottom: 20 }}>Simulador a 12 meses</div>
           <svg width="100%" height={200} viewBox="0 0 440 200" preserveAspectRatio="none">

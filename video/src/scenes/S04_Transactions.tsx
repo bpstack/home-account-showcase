@@ -8,8 +8,6 @@ const TRANSACTIONS = [
   { date: '12 Dic', description: 'Netflix', category: 'Ocio', amount: -15.49, catColor: '#a855f7' },
   { date: '11 Dic', description: 'Alquiler Diciembre', category: 'Vivienda', amount: -650.00, catColor: '#f59e0b' },
   { date: '10 Dic', description: 'Farmacia', category: 'Salud', amount: -23.80, catColor: '#06b6d4' },
-  { date: '09 Dic', description: 'Restaurante La Plaza', category: 'Ocio', amount: -42.50, catColor: '#a855f7' },
-  { date: '08 Dic', description: 'Amazon', category: 'Compras', amount: -89.99, catColor: '#ef4444' },
 ]
 
 const fmtAmount = (n: number) => {
@@ -23,19 +21,17 @@ export const S04_Transactions: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  const sceneOpacity = interpolate(frame, [0, 25, 360, 390], [0, 1, 1, 0], {
+  const sceneOpacity = interpolate(frame, [0, 12, 150, 165], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 
   const browserSlide = spring({ frame, fps, config: { damping: 18, stiffness: 60, mass: 1 } })
 
-  // Active filter changes over time
-  const activeFilter = frame < 200 ? 0 : frame < 260 ? 1 : frame < 320 ? 2 : 0
+  const activeFilter = frame < 100 ? 0 : frame < 130 ? 1 : frame < 160 ? 2 : 0
 
   return (
     <AbsoluteFill style={{ opacity: sceneOpacity, backgroundColor: COLORS.bg, fontFamily: FONTS.body }}>
-      {/* Browser frame */}
       <div
         style={{
           position: 'absolute',
@@ -52,7 +48,6 @@ export const S04_Transactions: React.FC = () => {
           boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
         }}
       >
-        {/* Chrome bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`, backgroundColor: COLORS.bgMuted }}>
           <div style={{ display: 'flex', gap: 6 }}>
             <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ef4444' }} />
@@ -64,9 +59,7 @@ export const S04_Transactions: React.FC = () => {
           </div>
         </div>
 
-        {/* Content with sidebar */}
         <div style={{ display: 'flex', height: 'calc(100% - 46px)' }}>
-          {/* Sidebar */}
           <div style={{ width: 190, borderRight: `1px solid ${COLORS.border}`, backgroundColor: COLORS.bgCard, paddingTop: 16 }}>
             <div style={{ padding: '8px 20px 20px', fontSize: 14, fontWeight: 700, color: COLORS.textPrimary }}>
               <span style={{ color: COLORS.green }}>€</span> Home Account
@@ -88,14 +81,12 @@ export const S04_Transactions: React.FC = () => {
             ))}
           </div>
 
-          {/* Main content */}
           <div style={{ flex: 1, padding: 28, overflow: 'hidden' }}>
             <h3 style={{ fontSize: 22, fontWeight: 700, color: COLORS.textPrimary, marginBottom: 20 }}>Transacciones</h3>
 
-            {/* Filters */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
               {FILTERS.map((f, i) => {
-                const filterOpacity = interpolate(frame - 40 - i * 8, [0, 15], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+                const filterOpacity = interpolate(frame - 20 - i * 4, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
                 return (
                   <div
                     key={f}
@@ -115,7 +106,6 @@ export const S04_Transactions: React.FC = () => {
               })}
             </div>
 
-            {/* Table header */}
             <div style={{ display: 'flex', padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`, marginBottom: 4 }}>
               <span style={{ width: 80, fontSize: 11, color: COLORS.textMuted, fontWeight: 600 }}>Fecha</span>
               <span style={{ flex: 1, fontSize: 11, color: COLORS.textMuted, fontWeight: 600 }}>Descripción</span>
@@ -123,13 +113,12 @@ export const S04_Transactions: React.FC = () => {
               <span style={{ width: 120, fontSize: 11, color: COLORS.textMuted, fontWeight: 600, textAlign: 'right' }}>Importe</span>
             </div>
 
-            {/* Table rows */}
             {TRANSACTIONS.map((tx, i) => {
-              const rowOpacity = interpolate(frame - 70 - i * 10, [0, 15], [0, 1], {
+              const rowOpacity = interpolate(frame - 35 - i * 5, [0, 8], [0, 1], {
                 extrapolateLeft: 'clamp',
                 extrapolateRight: 'clamp',
               })
-              const rowSlide = interpolate(frame - 70 - i * 10, [0, 15], [12, 0], {
+              const rowSlide = interpolate(frame - 35 - i * 5, [0, 8], [12, 0], {
                 extrapolateLeft: 'clamp',
                 extrapolateRight: 'clamp',
               })
