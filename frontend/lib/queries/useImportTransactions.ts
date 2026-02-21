@@ -5,6 +5,8 @@ import { importApi, ParsedTransaction, CategoryMapping } from '../apiClient'
 import { transactionKeys } from './transactions'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { encrypt, getAmountSign } from '../crypto'
+import { sha256 } from '@noble/hashes/sha2.js'
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js'
 
 export interface OptimisticTransaction {
   id: string
@@ -44,6 +46,15 @@ interface TransactionsCache {
   offset: number
 }
 
+function generateImportHash(tx: ParsedTransaction): string {
+  const normalized = [
+    (tx.date || '').split('T')[0],
+    (tx.description || '').toLowerCase().trim().replace(/\s+/g, ' '),
+    (Math.round(tx.amount * 100) / 100).toFixed(2),
+  ].join('|')
+  return bytesToHex(sha256(utf8ToBytes(normalized)))
+}
+
 export function useImportTransactions() {
   const queryClient = useQueryClient()
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
@@ -52,10 +63,16 @@ export function useImportTransactions() {
     mutationFn: async (data: ImportConfirmData) => {
       const accountKey = getAccountKey(data.account_id)
 
+      // Generate dedup hashes from plaintext before encryption
+      const txsWithHash = data.transactions.map((tx) => ({
+        ...tx,
+        import_hash: generateImportHash(tx),
+      }))
+
       // If account is unlocked, encrypt all transactions before sending
       if (accountKey) {
         const encryptedTransactions = await Promise.all(
-          data.transactions.map(async (tx) => ({
+          txsWithHash.map(async (tx) => ({
             ...tx,
             description_encrypted: await encrypt(tx.description, accountKey),
             amount_encrypted: await encrypt(tx.amount.toString(), accountKey),
@@ -75,7 +92,10 @@ export function useImportTransactions() {
       }
 
       // Fallback: send unencrypted (legacy mode)
-      return importApi.confirm(data)
+      return importApi.confirm({
+        ...data,
+        transactions: txsWithHash as any,
+      })
     },
 
     // Optimistic update: mostrar transacciones inmediatamente

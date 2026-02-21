@@ -132,15 +132,17 @@ export function AISettings() {
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                status?.enabled ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
+                isActive && isConfigured
+                  ? 'bg-success/10 text-success'
+                  : 'bg-layer-2 text-text-secondary'
               }`}
             >
               <span
                 className={`w-2 h-2 rounded-full ${
-                  status?.enabled ? 'bg-success animate-pulse' : 'bg-danger'
+                  isActive && isConfigured ? 'bg-success animate-pulse' : 'bg-text-secondary'
                 }`}
               />
-              {status?.enabled ? 'Habilitada' : 'Deshabilitada'}
+              {isActive && isConfigured ? 'Activa' : 'Inactiva'}
             </span>
           </div>
         </CardHeader>

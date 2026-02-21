@@ -366,8 +366,18 @@ export default function ImportClient() {
     skipped: number
     errors: string[]
   } | null>(null)
-  const [aiAssistantEnabled] = useState(true)
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null)
   const savedMappingsLoaded = useRef(false)
+
+  // Check if AI provider is available
+  useEffect(() => {
+    ai.getStatus()
+      .then((res) => {
+        const provider = res.activeProvider?.toLowerCase()
+        setAiAvailable(res.enabled && !!provider && provider !== 'none')
+      })
+      .catch(() => setAiAvailable(false))
+  }, [])
 
   const { data: catData } = useCategories(account?.id || '', {
     enabled: !!account?.id,
@@ -562,7 +572,7 @@ export default function ImportClient() {
       const result = await importApi.parse(selectedFile)
 
       if (!result.success || !result.data.success) {
-        if (aiAssistantEnabled) {
+        if (aiAvailable) {
           console.log('Parser normal falló, intentando con AI...')
           const aiResult = await parseWithAI(selectedFile)
           if (aiResult && aiResult.transactions.length > 0) {
@@ -855,7 +865,9 @@ export default function ImportClient() {
                                 Importación Masiva
                               </CardTitle>
                               <p className="text-xs sm:text-sm text-slate-600 dark:text-text-secondary mt-0.5 hidden sm:block">
-                                Sube tus extractos bancarios y deja que nuestra IA haga el trabajo.
+                                {aiAvailable
+                                  ? 'Sube tus extractos bancarios y deja que nuestra IA haga el trabajo.'
+                                  : 'Sube tus extractos bancarios para importar transacciones.'}
                               </p>
                             </div>
                           </div>
@@ -933,9 +945,15 @@ export default function ImportClient() {
                             <div className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-layer-2 border border-slate-200 dark:border-layer-3 text-xs font-medium text-slate-600 dark:text-text-secondary">
                               Máx 5MB
                             </div>
-                            <div className="px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-500">
-                              IA categorización activa
-                            </div>
+                            {aiAvailable ? (
+                              <div className="px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-500">
+                                IA categorización activa
+                              </div>
+                            ) : aiAvailable === false ? (
+                              <div className="px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-xs font-bold text-amber-700 dark:text-amber-500">
+                                IA no disponible — categorización manual
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </label>
