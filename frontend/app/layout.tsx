@@ -78,6 +78,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-1FNTJHJHJF"
+          strategy="afterInteractive"
+        />
+        <Script
+          id="google-analytics"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-1FNTJHJHJF');
+            `,
+          }}
+        />
       </head>
       <body suppressHydrationWarning className="antialiased font-sans bg-white dark:bg-[#010409]">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
