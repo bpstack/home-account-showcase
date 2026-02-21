@@ -14,6 +14,7 @@ export type FileType =
   | 'movimientos_cc'
   | 'csv_revolut'
   | 'csv_generic'
+  | 'generic_excel'
   | 'unknown'
 
 export interface ParseResult {
@@ -635,7 +636,9 @@ function parseCSVFile(content: string): ParseResult {
 
 // ============ EXCEL PARSING ============
 
-function detectFileType(workbook: XLSX.WorkBook): 'control_gastos' | 'movimientos_cc' | 'unknown' {
+function detectFileType(
+  workbook: XLSX.WorkBook
+): 'control_gastos' | 'movimientos_cc' | 'generic_excel' | 'unknown' {
   // Check for Control de Gastos (has month sheets)
   const monthSheets = [
     'Enero',
@@ -656,10 +659,10 @@ function detectFileType(workbook: XLSX.WorkBook): 'control_gastos' | 'movimiento
     return 'control_gastos'
   }
 
-  // Check for Movimientos CC (has F. VALOR column)
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
   const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][]
 
+  // Check for Movimientos CC (has F. VALOR column)
   for (let i = 0; i < Math.min(10, data.length); i++) {
     const row = data[i]
     if (
@@ -671,7 +674,116 @@ function detectFileType(workbook: XLSX.WorkBook): 'control_gastos' | 'movimiento
     }
   }
 
+  // Check for generic Excel with recognisable date + amount columns
+  const dateKeywords = ['fecha', 'date', 'valor fecha', 'f.valor']
+  const amountKeywords = ['importe', 'amount', 'cantidad', 'monto']
+
+  for (let i = 0; i < Math.min(5, data.length); i++) {
+    const row = data[i]
+    if (!row || !Array.isArray(row)) continue
+    const cells = row.map((c) => (typeof c === 'string' ? c.toLowerCase().trim() : ''))
+    const hasDate = cells.some((c) => dateKeywords.some((k) => c.includes(k)))
+    const hasAmount = cells.some((c) => amountKeywords.some((k) => c.includes(k)))
+    if (hasDate && hasAmount) return 'generic_excel'
+  }
+
   return 'unknown'
+}
+
+function parseGenericExcel(workbook: XLSX.WorkBook): ParseResult {
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+  const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][]
+
+  const dateKeywords = ['fecha', 'date', 'valor fecha', 'f.valor']
+  const amountKeywords = ['importe', 'amount', 'cantidad', 'monto']
+  const descKeywords = ['descripción', 'descripcion', 'description', 'detalle', 'concepto', 'movimiento']
+  const catKeywords = ['categoría', 'categoria', 'category']
+  const subCatKeywords = ['subcategoría', 'subcategoria', 'subcategory']
+
+  let headerRow = -1
+  let dateCol = -1, amountCol = -1, descCol = -1, catCol = -1, subCatCol = -1
+
+  for (let i = 0; i < Math.min(10, data.length); i++) {
+    const row = data[i]
+    if (!row || !Array.isArray(row)) continue
+    const cells = row.map((c) => (typeof c === 'string' ? c.toLowerCase().trim() : ''))
+    const dIdx = cells.findIndex((c) => dateKeywords.some((k) => c.includes(k)))
+    const aIdx = cells.findIndex((c) => amountKeywords.some((k) => c.includes(k)))
+    if (dIdx >= 0 && aIdx >= 0) {
+      headerRow = i
+      dateCol = dIdx
+      amountCol = aIdx
+      descCol = cells.findIndex((c) => descKeywords.some((k) => c.includes(k)))
+      catCol = cells.findIndex((c) => catKeywords.some((k) => c.includes(k)))
+      subCatCol = cells.findIndex((c) => subCatKeywords.some((k) => c.includes(k)))
+      break
+    }
+  }
+
+  if (headerRow < 0) {
+    return {
+      success: false,
+      file_type: 'unknown',
+      transactions: [],
+      categories: [],
+      errors: ['No se encontró la fila de encabezados con columnas de fecha e importe'],
+    }
+  }
+
+  const transactions: ParsedTransaction[] = []
+  const categoriesSet = new Set<string>()
+  const errors: string[] = []
+
+  for (let i = headerRow + 1; i < data.length; i++) {
+    const row = data[i]
+    if (!row || !Array.isArray(row)) continue
+    if (row.every((c) => c === null || c === undefined || c === '')) continue
+
+    const rawDate = row[dateCol]
+    const rawAmount = row[amountCol]
+
+    // Parse date
+    let date: string
+    if (typeof rawDate === 'number') {
+      date = excelDateToISO(rawDate)
+    } else if (typeof rawDate === 'string' && rawDate.trim()) {
+      const parsed = new Date(rawDate.trim())
+      date = !isNaN(parsed.getTime()) ? parsed.toISOString().split('T')[0] : rawDate.trim()
+    } else {
+      continue
+    }
+
+    // Parse amount
+    const amount =
+      typeof rawAmount === 'number'
+        ? rawAmount
+        : parseFloat(String(rawAmount).replace(/\s/g, '').replace(',', '.').replace(/[^0-9.-]/g, ''))
+    if (isNaN(amount)) continue
+
+    const description =
+      descCol >= 0 && row[descCol] ? sanitizeCSVValue(String(row[descCol]).trim()) : 'Sin descripción'
+    const bank_category =
+      catCol >= 0 && row[catCol] ? sanitizeCSVValue(String(row[catCol]).trim()) : null
+    const bank_subcategory =
+      subCatCol >= 0 && row[subCatCol] ? sanitizeCSVValue(String(row[subCatCol]).trim()) : null
+
+    if (bank_category) {
+      categoriesSet.add(`${bank_category}|${bank_subcategory ?? ''}`)
+    }
+
+    transactions.push({ date, description, amount, bank_category, bank_subcategory })
+  }
+
+  if (transactions.length === 0) {
+    errors.push('No se encontraron transacciones válidas en el archivo')
+  }
+
+  const categories = Array.from(categoriesSet).map((c) => {
+    const [category, subcategory] = c.split('|')
+    return { category, subcategory: subcategory ?? '' }
+  })
+
+  return { success: transactions.length > 0, file_type: 'generic_excel', transactions, categories, errors }
 }
 
 export function parseFile(buffer: Buffer, filename: string, sheetName?: string): ParseResult {
@@ -709,6 +821,8 @@ export function parseFile(buffer: Buffer, filename: string, sheetName?: string):
         return parseControlGastos(workbook, sheetName)
       case 'movimientos_cc':
         return parseMovimientosCC(workbook)
+      case 'generic_excel':
+        return parseGenericExcel(workbook)
       default:
         return {
           success: false,
