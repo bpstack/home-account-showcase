@@ -40,7 +40,14 @@ export const setProvider = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('provider es requerido', 400)
   }
 
-  const validProviders: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'none']
+  const validProviders: AIProviderType[] = [
+    'claude',
+    'gemini',
+    'groq',
+    'ollama',
+    'huggingface',
+    'none',
+  ]
   if (!validProviders.includes(provider)) {
     throw new AppError(`Provider inválido. Válidos: ${validProviders.join(', ')}`, 400)
   }
@@ -60,7 +67,7 @@ export const testConnection = asyncHandler(async (req: Request, res: Response) =
     throw new AppError('provider es requerido', 400)
   }
 
-  const validProviders: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama']
+  const validProviders: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'huggingface']
   if (!validProviders.includes(provider)) {
     throw new AppError(`Provider inválido. Válidos: ${validProviders.join(', ')}`, 400)
   }

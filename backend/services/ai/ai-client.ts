@@ -54,6 +54,7 @@ export function isProviderEnabled(provider: AIProviderType): boolean {
     gemini: 'GEMINI_ENABLED',
     groq: 'GROQ_ENABLED',
     ollama: 'OLLAMA_ENABLED',
+    huggingface: 'HUGGINGFACE_ENABLED',
     none: '',
   }
 
@@ -77,7 +78,10 @@ export function getConfiguredProvider(): AIProviderType {
 
   // Otherwise use environment variable as default
   const envProvider = process.env.AI_PROVIDER as AIProviderType
-  if (envProvider && ['claude', 'gemini', 'groq', 'ollama', 'none'].includes(envProvider)) {
+  if (
+    envProvider &&
+    ['claude', 'gemini', 'groq', 'ollama', 'huggingface', 'none'].includes(envProvider)
+  ) {
     return envProvider
   }
 
@@ -269,7 +273,7 @@ export class AIClient {
 export function getAIStatus(): AIStatus {
   const providers: AIStatus['providers'] = {}
 
-  const providerTypes: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama']
+  const providerTypes: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'huggingface']
 
   for (const type of providerTypes) {
     const config = getProviderConfigFromEnv(type)
@@ -376,7 +380,7 @@ export function logAIStatus(): void {
   if (enabled) {
     logger.info('AI_CLIENT', 'logAIStatus', `Active: ${status.activeProvider}`)
 
-    const providerTypes: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama']
+    const providerTypes: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'huggingface']
     for (const type of providerTypes) {
       const config = getProviderConfigFromEnv(type)
       const providerEnabled = isProviderEnabled(type)

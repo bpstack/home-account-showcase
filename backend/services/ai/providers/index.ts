@@ -5,11 +5,13 @@ import { ClaudeProvider } from './claude-provider.js'
 import { GeminiProvider } from './gemini-provider.js'
 import { GroqProvider } from './groq-provider.js'
 import { OllamaProvider } from './ollama-provider.js'
+import { HuggingFaceProvider } from './huggingface-provider.js'
 
 export { ClaudeProvider } from './claude-provider.js'
 export { GeminiProvider } from './gemini-provider.js'
 export { GroqProvider } from './groq-provider.js'
 export { OllamaProvider } from './ollama-provider.js'
+export { HuggingFaceProvider } from './huggingface-provider.js'
 
 export function createProvider(config: AIProviderConfig): IAIProvider | null {
   switch (config.provider) {
@@ -21,6 +23,8 @@ export function createProvider(config: AIProviderConfig): IAIProvider | null {
       return new GroqProvider(config)
     case 'ollama':
       return new OllamaProvider(config)
+    case 'huggingface':
+      return new HuggingFaceProvider(config)
     case 'none':
     default:
       return null
@@ -62,6 +66,15 @@ export function getProviderConfigFromEnv(provider: AIProviderType): AIProviderCo
         provider: 'ollama',
         baseUrl: process.env.OLLAMA_BASE_URL || defaults.baseUrl,
         model: process.env.OLLAMA_MODEL || defaults.model,
+      } as AIProviderConfig
+
+    case 'huggingface':
+      return {
+        ...defaults,
+        provider: 'huggingface',
+        apiKey: process.env.HUGGINGFACE_API_KEY,
+        model: process.env.HUGGINGFACE_MODEL || defaults.model,
+        baseUrl: process.env.HUGGINGFACE_BASE_URL || defaults.baseUrl,
       } as AIProviderConfig
 
     default:

@@ -1,7 +1,7 @@
 // services/ai/types.ts
 // Types for AI integration
 
-export type AIProviderType = 'none' | 'claude' | 'gemini' | 'groq' | 'ollama'
+export type AIProviderType = 'none' | 'claude' | 'gemini' | 'groq' | 'ollama' | 'huggingface'
 
 export interface AIProviderConfig {
   provider: AIProviderType
@@ -92,5 +92,14 @@ export const PROVIDER_DEFAULTS: Record<AIProviderType, Partial<AIProviderConfig>
     timeout: 180000,
     maxRetries: 1,
     baseUrl: 'http://localhost:11434',
+  },
+  huggingface: {
+    provider: 'huggingface',
+    model: 'Qwen/Qwen2.5-72B-Instruct',
+    temperature: 0.1,
+    maxTokens: 4000,
+    timeout: 120000,
+    maxRetries: 2,
+    baseUrl: 'https://router.huggingface.co/v1',
   },
 }

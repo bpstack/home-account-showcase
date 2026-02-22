@@ -26,6 +26,7 @@ const PROVIDER_LIMITS: Record<AIProviderType, number> = {
   groq: 15,
   claude: 5,
   gemini: 5,
+  huggingface: 10,
   none: 0,
 }
 
@@ -241,6 +242,7 @@ export function getProviderLimits(): Record<AIProviderType, number | 'unlimited'
     groq: PROVIDER_LIMITS.groq,
     claude: PROVIDER_LIMITS.claude,
     gemini: PROVIDER_LIMITS.gemini,
+    huggingface: PROVIDER_LIMITS.huggingface,
     none: 0,
   }
 }

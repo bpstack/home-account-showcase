@@ -10,6 +10,7 @@ const PROVIDER_OPTIONS = [
   { value: 'claude', label: 'Claude (Anthropic)' },
   { value: 'gemini', label: 'Gemini (Google)' },
   { value: 'groq', label: 'Groq' },
+  { value: 'huggingface', label: 'HuggingFace' },
   { value: 'ollama', label: 'Ollama (Local)' },
 ]
 
