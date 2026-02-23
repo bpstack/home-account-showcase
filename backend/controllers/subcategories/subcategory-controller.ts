@@ -3,6 +3,7 @@ import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { SubcategoryRepository } from '../../repositories/subcategories/subcategory-repository.js'
 import { sanitizeForStorage } from '../../utils/sanitize.js'
+import { createSubcategorySchema, updateSubcategorySchema } from '../../validators/category-validators.js'
 
 export const getSubcategories = asyncHandler(async (req: Request, res: Response) => {
   const { category_id } = req.query
@@ -34,11 +35,14 @@ export const getSubcategoryById = asyncHandler(async (req: Request, res: Respons
 })
 
 export const createSubcategory = asyncHandler(async (req: Request, res: Response) => {
-  const { category_id, name, name_encrypted } = req.body
-
-  if (!category_id || !name) {
-    throw new AppError('category_id y name son requeridos', 400)
+  const result = createSubcategorySchema.safeParse(req.body)
+  
+  if (!result.success) {
+    const messages = result.error.issues.map(i => i.message).join(', ')
+    throw new AppError(messages, 400)
   }
+
+  const { category_id, name, name_encrypted } = result.data
 
   const safeName = sanitizeForStorage(name)
 
@@ -56,7 +60,15 @@ export const createSubcategory = asyncHandler(async (req: Request, res: Response
 
 export const updateSubcategory = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params
-  const { name, name_encrypted } = req.body
+
+  const result = updateSubcategorySchema.safeParse(req.body)
+  
+  if (!result.success) {
+    const messages = result.error.issues.map(i => i.message).join(', ')
+    throw new AppError(messages, 400)
+  }
+
+  const { name, name_encrypted } = result.data
 
   const safeName = name ? sanitizeForStorage(name) : undefined
 

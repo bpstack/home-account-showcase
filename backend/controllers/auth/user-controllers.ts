@@ -3,6 +3,7 @@ import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import type { UpdateUserDTO } from '../../models/auth/index.js'
+import { updateUserNameSchema, updateUserEmailSchema } from '../../validators/settings-validators.js'
 
 export const getAllUsers = asyncHandler(async (_req: Request, res: Response) => {
   const users = await UserRepository.getAll()
@@ -21,6 +22,22 @@ export const getUserById = asyncHandler(async (req: Request, res: Response) => {
 
 export const updateUser = asyncHandler(async (req: Request, res: Response) => {
   const { name, email } = req.body as UpdateUserDTO
+
+  if (name) {
+    const nameResult = updateUserNameSchema.safeParse({ name })
+    if (!nameResult.success) {
+      const messages = nameResult.error.issues.map(i => i.message).join(', ')
+      throw new AppError(messages, 400)
+    }
+  }
+
+  if (email) {
+    const emailResult = updateUserEmailSchema.safeParse({ email })
+    if (!emailResult.success) {
+      const messages = emailResult.error.issues.map(i => i.message).join(', ')
+      throw new AppError(messages, 400)
+    }
+  }
 
   const updatedUser = await UserRepository.update(req.params.id, { name, email })
 

@@ -3,6 +3,7 @@ import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { CategoryRepository } from '../../repositories/categories/category-repository.js'
 import { sanitizeForStorage } from '../../utils/sanitize.js'
+import { createCategorySchema, updateCategorySchema } from '../../validators/category-validators.js'
 
 export const getCategories = asyncHandler(async (req: Request, res: Response) => {
   const { account_id } = req.query
@@ -34,11 +35,14 @@ export const getCategoryById = asyncHandler(async (req: Request, res: Response) 
 })
 
 export const createCategory = asyncHandler(async (req: Request, res: Response) => {
-  const { account_id, name, name_encrypted, color, icon } = req.body
-
-  if (!account_id || !name) {
-    throw new AppError('account_id y name son requeridos', 400)
+  const result = createCategorySchema.safeParse(req.body)
+  
+  if (!result.success) {
+    const messages = result.error.issues.map(i => i.message).join(', ')
+    throw new AppError(messages, 400)
   }
+
+  const { account_id, name, name_encrypted, color, icon } = result.data
 
   const safeName = sanitizeForStorage(name)
 
@@ -58,7 +62,15 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
 
 export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params
-  const { name, name_encrypted, color, icon } = req.body
+
+  const result = updateCategorySchema.safeParse(req.body)
+  
+  if (!result.success) {
+    const messages = result.error.issues.map(i => i.message).join(', ')
+    throw new AppError(messages, 400)
+  }
+
+  const { name, name_encrypted, color, icon } = result.data
 
   const safeName = name ? sanitizeForStorage(name) : undefined
 

@@ -4,6 +4,7 @@ import { Request, Response } from 'express'
 import { BudgetRepository } from '../../repositories/budget/budget-repository.js'
 import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
+import { createBudgetSchema, updateBudgetSchema } from '../../validators/budget-validators.js'
 
 export const getBudgets = asyncHandler(async (req: Request, res: Response) => {
   const { account_id } = req.query
@@ -41,15 +42,14 @@ export const getBudget = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const createBudget = asyncHandler(async (req: Request, res: Response) => {
-  const { account_id, category_id, amount, period, alert_threshold } = req.body
-
-  if (!account_id) {
-    throw new AppError('account_id es requerido', 400)
+  const result = createBudgetSchema.safeParse(req.body)
+  
+  if (!result.success) {
+    const messages = result.error.issues.map(i => i.message).join(', ')
+    throw new AppError(messages, 400)
   }
 
-  if (!category_id || !amount) {
-    throw new AppError('category_id y amount son requeridos', 400)
-  }
+  const { account_id, category_id, amount, period, alert_threshold } = result.data
 
   const budget = await BudgetRepository.create({
     account_id,
@@ -67,11 +67,15 @@ export const createBudget = asyncHandler(async (req: Request, res: Response) => 
 
 export const updateBudget = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params
-  const { account_id, amount, period, alert_threshold } = req.body
 
-  if (!account_id) {
-    throw new AppError('account_id es requerido', 400)
+  const result = updateBudgetSchema.safeParse(req.body)
+  
+  if (!result.success) {
+    const messages = result.error.issues.map(i => i.message).join(', ')
+    throw new AppError(messages, 400)
   }
+
+  const { account_id, amount, period, alert_threshold } = result.data
 
   const existing = await BudgetRepository.getById(id)
   if (!existing || existing.account_id !== account_id) {

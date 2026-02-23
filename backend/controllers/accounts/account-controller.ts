@@ -2,6 +2,7 @@ import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
+import { updateAccountNameSchema } from '../../validators/settings-validators.js'
 
 export const getAccounts = asyncHandler(async (req: Request, res: Response) => {
   const accounts = await AccountRepository.getByUserId(req.user!.id)
@@ -72,7 +73,13 @@ export const updateAccount = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError('El nombre es requerido', 400)
   }
 
-  const account = await AccountRepository.update(id, req.user!.id, { name })
+  const nameResult = updateAccountNameSchema.safeParse({ name })
+  if (!nameResult.success) {
+    const messages = nameResult.error.issues.map(i => i.message).join(', ')
+    throw new AppError(messages, 400)
+  }
+
+  const account = await AccountRepository.update(id, req.user!.id, { name: nameResult.data.name })
 
   if (!account) {
     throw new AppError('Cuenta no encontrada', 404)
