@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
+import { validateRegister } from '@/validators/auth-validators'
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Wallet, Check } from 'lucide-react'
 
 function RegisterForm() {
@@ -22,6 +23,7 @@ function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [accountName, setAccountName] = useState('')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [focusedField, setFocusedField] = useState<string | null>(null)
@@ -29,14 +31,18 @@ function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setFieldErrors({})
 
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden')
-      return
-    }
+    const validation = validateRegister({
+      name,
+      email,
+      password,
+      confirmPassword,
+      accountName: accountName || undefined,
+    })
 
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres')
+    if (!validation.success) {
+      setFieldErrors(validation.errors)
       return
     }
 
@@ -159,17 +165,27 @@ function RegisterForm() {
                       type="text"
                       placeholder="Juan Pérez"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        setName(e.target.value)
+                        if (fieldErrors.name) {
+                          setFieldErrors((prev) => ({ ...prev, name: '' }))
+                        }
+                      }}
                       onFocus={() => setFocusedField('name')}
                       onBlur={() => setFocusedField(null)}
                       required
                       className={`w-full h-11 pl-11 pr-4 bg-muted/50 border-2 rounded-xl outline-none transition-all duration-300 ${
-                        focusedField === 'name'
-                          ? 'border-emerald-500 bg-background shadow-lg shadow-emerald-500/10'
-                          : 'border-transparent hover:border-border'
+                        fieldErrors.name
+                          ? 'border-red-500 bg-red-500/5'
+                          : focusedField === 'name'
+                            ? 'border-emerald-500 bg-background shadow-lg shadow-emerald-500/10'
+                            : 'border-transparent hover:border-border'
                       }`}
                     />
                   </div>
+                  {fieldErrors.name && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.name}</p>
+                  )}
                 </div>
 
                 {/* Account name field */}
@@ -195,12 +211,17 @@ function RegisterForm() {
                       onFocus={() => setFocusedField('accountName')}
                       onBlur={() => setFocusedField(null)}
                       className={`w-full h-11 pl-11 pr-4 bg-muted/50 border-2 rounded-xl outline-none transition-all duration-300 ${
-                        focusedField === 'accountName'
-                          ? 'border-violet-500 bg-background shadow-lg shadow-violet-500/10'
-                          : 'border-transparent hover:border-border'
+                        fieldErrors.accountName
+                          ? 'border-red-500 bg-red-500/5'
+                          : focusedField === 'accountName'
+                            ? 'border-violet-500 bg-background shadow-lg shadow-violet-500/10'
+                            : 'border-transparent hover:border-border'
                       }`}
                     />
                   </div>
+                  {fieldErrors.accountName && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.accountName}</p>
+                  )}
                 </div>
 
                 {/* Email field */}
@@ -221,17 +242,27 @@ function RegisterForm() {
                       type="email"
                       placeholder="tu@email.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value)
+                        if (fieldErrors.email) {
+                          setFieldErrors((prev) => ({ ...prev, email: '' }))
+                        }
+                      }}
                       onFocus={() => setFocusedField('email')}
                       onBlur={() => setFocusedField(null)}
                       required
                       className={`w-full h-11 pl-11 pr-4 bg-muted/50 border-2 rounded-xl outline-none transition-all duration-300 ${
-                        focusedField === 'email'
-                          ? 'border-blue-500 bg-background shadow-lg shadow-blue-500/10'
-                          : 'border-transparent hover:border-border'
+                        fieldErrors.email
+                          ? 'border-red-500 bg-red-500/5'
+                          : focusedField === 'email'
+                            ? 'border-blue-500 bg-background shadow-lg shadow-blue-500/10'
+                            : 'border-transparent hover:border-border'
                       }`}
                     />
                   </div>
+                  {fieldErrors.email && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>
+                  )}
                 </div>
 
                 {/* Password field */}
@@ -252,14 +283,21 @@ function RegisterForm() {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value)
+                        if (fieldErrors.password) {
+                          setFieldErrors((prev) => ({ ...prev, password: '' }))
+                        }
+                      }}
                       onFocus={() => setFocusedField('password')}
                       onBlur={() => setFocusedField(null)}
                       required
                       className={`w-full h-11 pl-11 pr-12 bg-muted/50 border-2 rounded-xl outline-none transition-all duration-300 ${
-                        focusedField === 'password'
-                          ? 'border-emerald-500 bg-background shadow-lg shadow-emerald-500/10'
-                          : 'border-transparent hover:border-border'
+                        fieldErrors.password
+                          ? 'border-red-500 bg-red-500/5'
+                          : focusedField === 'password'
+                            ? 'border-emerald-500 bg-background shadow-lg shadow-emerald-500/10'
+                            : 'border-transparent hover:border-border'
                       }`}
                     />
                     <button
@@ -270,8 +308,11 @@ function RegisterForm() {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {fieldErrors.password && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>
+                  )}
                   {/* Password strength */}
-                  {password && (
+                  {password && !fieldErrors.password && (
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden flex gap-0.5">
                         {[1, 2, 3, 4].map((level) => (
@@ -318,16 +359,23 @@ function RegisterForm() {
                       type={showConfirmPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value)
+                        if (fieldErrors.confirmPassword) {
+                          setFieldErrors((prev) => ({ ...prev, confirmPassword: '' }))
+                        }
+                      }}
                       onFocus={() => setFocusedField('confirmPassword')}
                       onBlur={() => setFocusedField(null)}
                       required
                       className={`w-full h-11 pl-11 pr-12 bg-muted/50 border-2 rounded-xl outline-none transition-all duration-300 ${
-                        focusedField === 'confirmPassword'
-                          ? 'border-blue-500 bg-background shadow-lg shadow-blue-500/10'
-                          : passwordsMatch
-                            ? 'border-emerald-500/50'
-                            : 'border-transparent hover:border-border'
+                        fieldErrors.confirmPassword
+                          ? 'border-red-500 bg-red-500/5'
+                          : focusedField === 'confirmPassword'
+                            ? 'border-blue-500 bg-background shadow-lg shadow-blue-500/10'
+                            : passwordsMatch
+                              ? 'border-emerald-500/50'
+                              : 'border-transparent hover:border-border'
                       }`}
                     />
                     <button
@@ -335,7 +383,9 @@ function RegisterForm() {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {passwordsMatch ? (
+                      {fieldErrors.confirmPassword ? (
+                        <EyeOff className="w-4 h-4 text-red-500" />
+                      ) : passwordsMatch ? (
                         <Check className="w-4 h-4 text-emerald-500" />
                       ) : showConfirmPassword ? (
                         <EyeOff className="w-4 h-4" />
@@ -344,6 +394,9 @@ function RegisterForm() {
                       )}
                     </button>
                   </div>
+                  {fieldErrors.confirmPassword && (
+                    <p className="text-xs text-red-500 mt-1">{fieldErrors.confirmPassword}</p>
+                  )}
                 </div>
 
                 {/* Submit button */}
