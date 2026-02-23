@@ -39,12 +39,21 @@ export const getTransactionsSchema = z.object({
  */
 export const createTransactionSchema = z.object({
   account_id: z.string().uuid('account_id debe ser un UUID válido'),
-  date: z.string().date('date debe ser fecha válida (YYYY-MM-DD)'),
+  date: z
+    .string()
+    .min(1, 'La fecha es obligatoria')
+    .date('La fecha debe ser válida (YYYY-MM-DD)')
+    .refine((date) => date <= new Date().toISOString().split('T')[0], {
+      message: 'La fecha no puede ser futura',
+    }),
   description: z
     .string()
-    .min(1, 'description es requerida')
-    .max(255, 'description no puede exceder 255 caracteres'),
-  amount: z.number().finite('amount debe ser un número válido'),
+    .min(3, 'La descripción debe tener al menos 3 caracteres')
+    .max(60, 'La descripción no puede exceder 60 caracteres'),
+  amount: z
+    .number()
+    .positive('El importe debe ser mayor a 0')
+    .finite('El importe debe ser un número válido'),
   subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
   bank_category: z.string().max(100).optional().nullable(),
   bank_subcategory: z.string().max(100).optional().nullable(),
@@ -55,12 +64,19 @@ export const createTransactionSchema = z.object({
  */
 export const createEncryptedTransactionSchema = z.object({
   account_id: z.string().uuid('account_id debe ser un UUID válido'),
-  date: z.string().date('date debe ser fecha válida (YYYY-MM-DD)'),
+  date: z
+    .string()
+    .min(1, 'La fecha es obligatoria')
+    .date('La fecha debe ser válida (YYYY-MM-DD)')
+    .refine((date) => date <= new Date().toISOString().split('T')[0], {
+      message: 'La fecha no puede ser futura',
+    }),
   subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
-  // Encrypted fields (base64 encoded)
-  description_encrypted: z.string().min(1, 'description_encrypted es requerida'),
-  amount_encrypted: z.string().min(1, 'amount_encrypted es requerido'),
-  amount_sign: z.enum(['positive', 'negative', 'zero']),
+  description_encrypted: z.string().min(1, 'La descripción encriptada es obligatoria'),
+  amount_encrypted: z.string().min(1, 'El importe encriptado es obligatorio'),
+  amount_sign: z.enum(['positive', 'negative'], {
+    message: 'El tipo de importe debe ser positivo o negativo',
+  }),
   bank_category_encrypted: z.string().optional().nullable(),
   bank_subcategory_encrypted: z.string().optional().nullable(),
 })
@@ -70,17 +86,24 @@ export const createEncryptedTransactionSchema = z.object({
  */
 export const updateTransactionSchema = z
   .object({
-    date: z.string().date('date debe ser fecha válida (YYYY-MM-DD)').optional(),
+    date: z
+      .string()
+      .min(1, 'La fecha es obligatoria')
+      .date('La fecha debe ser válida (YYYY-MM-DD)')
+      .refine((date) => date <= new Date().toISOString().split('T')[0], {
+        message: 'La fecha no puede ser futura',
+      })
+      .optional(),
     description: z
       .string()
-      .min(1, 'description no puede estar vacía')
-      .max(255, 'description no puede exceder 255 caracteres')
+      .min(3, 'La descripción debe tener al menos 3 caracteres')
+      .max(60, 'La descripción no puede exceder 60 caracteres')
       .optional(),
-    amount: z.number().finite('amount debe ser un número válido').optional(),
+    amount: z.number().positive('El importe debe ser mayor a 0').finite('El importe debe ser un número válido').optional(),
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Debe proporcionar al menos un campo para actualizar',
+    message: 'Debes proporcionar al menos un campo para actualizar',
   })
 
 /**
@@ -88,17 +111,18 @@ export const updateTransactionSchema = z
  */
 export const updateEncryptedTransactionSchema = z
   .object({
-    date: z.string().date('date debe ser fecha válida (YYYY-MM-DD)').optional(),
+    date: z.string().date('La fecha debe ser válida (YYYY-MM-DD)').optional(),
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
-    // Encrypted fields
     description_encrypted: z.string().optional(),
     amount_encrypted: z.string().optional(),
-    amount_sign: z.enum(['positive', 'negative', 'zero']).optional(),
+    amount_sign: z.enum(['positive', 'negative'], {
+      message: 'El tipo de importe debe ser positivo o negativo',
+    }).optional(),
     bank_category_encrypted: z.string().optional().nullable(),
     bank_subcategory_encrypted: z.string().optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Debe proporcionar al menos un campo para actualizar',
+    message: 'Debes proporcionar al menos un campo para actualizar',
   })
 
 /**

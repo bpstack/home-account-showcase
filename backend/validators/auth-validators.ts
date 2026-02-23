@@ -6,13 +6,24 @@ import { z } from 'zod'
  * Schema de validación para registro
  */
 export const registerSchema = z.object({
-  email: z.string().email('Email inválido').min(1, 'Email es requerido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-  name: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es muy largo'),
+  email: z
+    .string()
+    .min(1, 'El email es requerido')
+    .email('Por favor ingresa un email válido'),
+  password: z
+    .string()
+    .min(6, 'La contraseña debe tener al menos 6 caracteres')
+    .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
+    .regex(/[^A-Za-z0-9]/, 'La contraseña debe contener al menos un carácter especial'),
+  name: z
+    .string()
+    .min(1, 'El nombre es requerido')
+    .max(100, 'El nombre no puede tener más de 100 caracteres')
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'El nombre solo puede contener letras y espacios'),
   accountName: z.string().max(100, 'El nombre de la cuenta es muy largo').optional(),
-  skipDefaultAccount: z.boolean().optional(), // Para usuarios que vienen de invitación
-  encryptedAccountKey: z.string().optional(), // Encrypted AK for envelope encryption
-  verificationBlob: z.string().optional(), // Verification blob for PIN validation
+  skipDefaultAccount: z.boolean().optional(),
+  encryptedAccountKey: z.string().optional(),
+  verificationBlob: z.string().optional(),
 })
 
 /**
