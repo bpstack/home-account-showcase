@@ -185,12 +185,28 @@ export class AccountRepository {
       throw new AppError('The owner cannot remove themselves', 400)
     }
 
-    const [result] = await db.query<any>(
-      `DELETE FROM account_users WHERE account_id = ? AND user_id = ?`,
-      [accountId, memberId]
-    )
+    const connection = await db.getConnection()
+    try {
+      await connection.beginTransaction()
 
-    return result.affectedRows > 0
+      await connection.query(`DELETE FROM account_keys WHERE account_id = ? AND user_id = ?`, [
+        accountId,
+        memberId,
+      ])
+
+      const [result] = await connection.query<any>(
+        `DELETE FROM account_users WHERE account_id = ? AND user_id = ?`,
+        [accountId, memberId]
+      )
+
+      await connection.commit()
+      return result.affectedRows > 0
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
   }
 
   /**
@@ -401,9 +417,26 @@ export class AccountRepository {
       throw new AppError('The owner cannot leave the account. Transfer ownership first.', 400)
     }
 
-    await db.query(`DELETE FROM account_users WHERE account_id = ? AND user_id = ?`, [
-      accountId,
-      userId,
-    ])
+    const connection = await db.getConnection()
+    try {
+      await connection.beginTransaction()
+
+      await connection.query(`DELETE FROM account_keys WHERE account_id = ? AND user_id = ?`, [
+        accountId,
+        userId,
+      ])
+
+      await connection.query(`DELETE FROM account_users WHERE account_id = ? AND user_id = ?`, [
+        accountId,
+        userId,
+      ])
+
+      await connection.commit()
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
   }
 }
