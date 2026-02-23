@@ -11,13 +11,12 @@ import {
   ExternalLink,
   Plus,
   Loader2,
-  Check,
   Wallet,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { accounts } from '@/lib/apiClient'
 import { toast } from 'sonner'
-import { Modal, ModalFooter, Button, Input } from '@/components/ui'
+import { Modal, ModalFooter, Button, Input, AccountSwitcher } from '@/components/ui'
 import { useCryptoStore } from '@/stores/cryptoStore'
 
 const MAX_OWNED_ACCOUNTS = 3
@@ -81,12 +80,6 @@ export function ProfileDropdown() {
   const navigateTo = (path: string) => {
     setIsOpen(false)
     router.push(path)
-  }
-
-  const handleSwitchAccount = async (accountId: string) => {
-    await switchAccount(accountId)
-    setIsAccountMenuOpen(false)
-    setIsOpen(false)
   }
 
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -224,29 +217,13 @@ export function ProfileDropdown() {
 
                 {isAccountMenuOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                    {allAccounts.map((acc) => {
-                      const isActive = acc.id === currentAccount?.id
-                      return (
-                        <button
-                          key={acc.id}
-                          onClick={() => handleSwitchAccount(acc.id)}
-                          disabled={isSwitchingAccount || isActive}
-                          className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
-                            isActive
-                              ? 'bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium cursor-default'
-                              : 'text-foreground hover:bg-muted'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span>{acc.name}</span>
-                            {isActive && <Check className="h-3 w-3" />}
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {acc.role === 'owner' ? 'Propietario' : 'Miembro'}
-                          </span>
-                        </button>
-                      )
-                    })}
+                    <AccountSwitcher
+                      variant="compact"
+                      onSwitch={() => {
+                        setIsAccountMenuOpen(false)
+                        setIsOpen(false)
+                      }}
+                    />
                   </div>
                 )}
               </div>

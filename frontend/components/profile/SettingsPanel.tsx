@@ -8,7 +8,7 @@ import { accounts, auth, users } from '@/lib/apiClient'
 import { useBudgets, useCreateBudget, useUpdateBudget, useDeleteBudget } from '@/lib/queries/budget'
 import { useCategories } from '@/lib/queries/categories'
 import { useTransactions } from '@/lib/queries/transactions'
-import { Button, Input } from '@/components/ui'
+import { Button, Input, AccountSwitcher } from '@/components/ui'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Modal, ModalFooter } from '@/components/ui/Modal'
 import { AISettings } from './AISettings'
@@ -689,21 +689,30 @@ function AccountSettings() {
 
   return (
     <div className="space-y-6">
-      {/* ─── Header: Cuenta activa ─── */}
-      <div className="bg-card rounded-lg border border-border px-4 py-4 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
-          {account?.name?.charAt(0).toUpperCase() || '?'}
+      {/* ─── Header: Cuenta activa + Selector ─── */}
+      <div className="bg-card rounded-lg border border-border">
+        <div className="px-4 py-4 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+            {account?.name?.charAt(0).toUpperCase() || '?'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-semibold text-foreground truncate">
+              {account?.name || 'Sin cuenta'}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {isOwner ? 'Propietario' : 'Miembro'}
+              {members.length > 0 &&
+                ` · ${members.length} ${members.length === 1 ? 'miembro' : 'miembros'}`}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h3 className="text-lg font-semibold text-foreground truncate">
-            {account?.name || 'Sin cuenta'}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {isOwner ? 'Propietario' : 'Miembro'}
-            {members.length > 0 &&
-              ` · ${members.length} ${members.length === 1 ? 'miembro' : 'miembros'}`}
-          </p>
-        </div>
+
+        {allAccounts.length > 1 && (
+          <div className="px-4 pb-4 pt-0">
+            <p className="text-xs text-muted-foreground mb-2">Cambiar cuenta</p>
+            <AccountSwitcher variant="list" />
+          </div>
+        )}
       </div>
 
       {/* ─── Sección 1: Nombre de la cuenta ─── */}

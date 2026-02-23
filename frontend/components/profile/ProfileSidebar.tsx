@@ -1,17 +1,35 @@
 'use client'
 
+import { useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
-import { Settings, ChevronRight } from 'lucide-react'
+import { Settings, ChevronRight, ChevronDown } from 'lucide-react'
+import { AccountSwitcher } from '@/components/ui'
 
 export function ProfileSidebar() {
-  const { user, account } = useAuth()
+  const { user, account, accounts: allAccounts, isSwitchingAccount } = useAuth()
+  const [isAccountOpen, setIsAccountOpen] = useState(false)
+  const accountRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
   const activePanel = searchParams.get('panel')
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
+        setIsAccountOpen(false)
+      }
+    }
+    if (isAccountOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isAccountOpen])
+
   if (!user) return null
+
+  const hasMultipleAccounts = allAccounts.length > 1
 
   const handleNavigate = (panel: string | null) => {
     if (panel) {
@@ -30,9 +48,36 @@ export function ProfileSidebar() {
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-1">{user.name}</h3>
           <p className="text-sm text-muted-foreground mb-4">{user.email}</p>
-          <div className="w-full px-4 py-3 bg-muted/50 rounded-lg">
-            <p className="text-xs text-muted-foreground mb-1">Cuenta</p>
-            <p className="text-sm font-medium text-foreground">{account?.name || 'Sin cuenta'}</p>
+          <div className="w-full relative" ref={accountRef}>
+            <button
+              onClick={() => hasMultipleAccounts && setIsAccountOpen(!isAccountOpen)}
+              disabled={isSwitchingAccount}
+              className={cn(
+                'w-full px-4 py-3 bg-muted/50 rounded-lg text-left transition-colors',
+                hasMultipleAccounts && 'hover:bg-muted cursor-pointer'
+              )}
+            >
+              <p className="text-xs text-muted-foreground mb-1">Cuenta</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">
+                  {account?.name || 'Sin cuenta'}
+                </p>
+                {hasMultipleAccounts && (
+                  <ChevronDown
+                    className={cn(
+                      'w-3.5 h-3.5 text-muted-foreground transition-transform',
+                      isAccountOpen && 'rotate-180'
+                    )}
+                  />
+                )}
+              </div>
+            </button>
+
+            {isAccountOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-10 overflow-hidden">
+                <AccountSwitcher variant="compact" onSwitch={() => setIsAccountOpen(false)} />
+              </div>
+            )}
           </div>
         </div>
       </div>
