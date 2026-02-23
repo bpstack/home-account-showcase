@@ -22,7 +22,9 @@ import {
   encryptAccountKeyForInvitation,
 } from '@/lib/crypto'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Pencil, UserPlus } from 'lucide-react'
+import { validateBudget, validateUpdateBudget } from '@/validators/budget-validators'
+import { validateUserName, validateAccountName } from '@/validators/settings-validators'
 
 interface Member {
   id: string
@@ -121,6 +123,8 @@ function UserSettings() {
   // Name state
   const [newName, setNewName] = useState(user?.name || '')
   const [isSavingName, setIsSavingName] = useState(false)
+  const [nameError, setNameError] = useState('')
+  const [isEditingName, setIsEditingName] = useState(false)
 
   // Email state
   const [newEmail, setNewEmail] = useState('')
@@ -128,16 +132,25 @@ function UserSettings() {
   const [isCancelling, setIsCancelling] = useState(false)
   const [emailChangeMessage, setEmailChangeMessage] = useState('')
   const [emailChangeError, setEmailChangeError] = useState('')
+  const [isEditingEmail, setIsEditingEmail] = useState(false)
 
   const handleSaveName = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !newName.trim() || newName.trim() === user.name) return
+    if (!user || newName.trim() === user.name) return
 
+    const validation = validateUserName({ name: newName.trim() })
+    if (!validation.success) {
+      setNameError(validation.errors.name || 'Error de validación')
+      return
+    }
+
+    setNameError('')
     setIsSavingName(true)
     try {
       await users.update(user.id, { name: newName.trim() })
       toast.success('Nombre actualizado correctamente')
       queryClient.invalidateQueries({ queryKey: ['auth', 'user'] })
+      setIsEditingName(false)
     } catch (error) {
       toast.error('Error al actualizar el nombre', { description: (error as Error).message })
     } finally {
@@ -192,130 +205,204 @@ function UserSettings() {
           <p className="text-xs text-muted-foreground mt-0.5">Cambia tu nombre visible</p>
         </div>
         <div className="p-4">
-          <form onSubmit={handleSaveName} className="space-y-4 max-w-lg">
-            <Input
-              id="userName"
-              type="text"
-              label="Nombre"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-            />
-            <Button
-              type="submit"
-              disabled={isSavingName || !newName.trim() || newName.trim() === user?.name}
-              isLoading={isSavingName}
-            >
-              Guardar nombre
-            </Button>
-          </form>
+          {!isEditingName ? (
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-foreground flex-1">{user?.name}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewName(user?.name || '')
+                  setNameError('')
+                  setIsEditingName(true)
+                }}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                title="Editar nombre"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveName} className="space-y-4 max-w-lg">
+              <Input
+                id="userName"
+                type="text"
+                label="Nombre"
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value)
+                  if (nameError) setNameError('')
+                }}
+                error={nameError}
+                required
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={isSavingName || !newName.trim() || newName.trim() === user?.name}
+                  isLoading={isSavingName}
+                >
+                  Guardar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditingName(false)
+                    setNewName(user?.name || '')
+                    setNameError('')
+                  }}
+                  disabled={isSavingName}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 
       {/* Email Section */}
-      <div className="bg-card dark:bg-card-dark rounded-xl border border-border p-6">
-        <h3 className="text-lg font-semibold mb-4">Correo electrónico</h3>
-
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-            <svg
-              className="w-6 h-6 text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="font-medium">{user?.email}</p>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              {isLocalUser ? 'Cuenta local' : `Vinculado con ${user?.oauth_provider}`}
-              {user?.email_verified && (
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                  ✓ Verificado
-                </span>
-              )}
-            </p>
-          </div>
+      <div className="bg-card rounded-lg border border-border">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Correo electrónico</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Gestiona tu correo electrónico</p>
         </div>
-
-        {/* Cambio de email pendiente */}
-        {isLocalUser && user?.pending_email && (
-          <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-              Cambio de email pendiente
-            </p>
-            <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-              Confirmación enviada a <span className="font-semibold">{user.pending_email}</span>.
-              Revisa tu bandeja de entrada y haz clic en el enlace para confirmar el cambio.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancelEmailChange}
-              isLoading={isCancelling}
-              disabled={isCancelling}
-            >
-              Cancelar cambio
-            </Button>
-          </div>
-        )}
-
-        {isLocalUser && (
-          <form onSubmit={handleChangeEmail} className="space-y-4">
-            <div>
-              <label htmlFor="newEmail" className="text-sm font-medium mb-2 block">
-                {user?.pending_email
-                  ? 'Solicitar nuevo cambio de correo'
-                  : 'Cambiar correo electrónico'}
-              </label>
-              <Input
-                id="newEmail"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="nuevo@email.com"
-                disabled={isChangingEmail}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Te enviaremos un enlace de verificación a tu nuevo correo.
+        <div className="p-4">
+          {/* Current email display */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+              <svg
+                className="w-5 h-5 text-primary"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{user?.email}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                {isLocalUser ? 'Cuenta local' : `Vinculado con ${user?.oauth_provider}`}
+                {user?.email_verified && (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                    ✓ Verificado
+                  </span>
+                )}
               </p>
             </div>
-
-            {emailChangeMessage && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-600 dark:text-emerald-400">
-                {emailChangeMessage}
-              </div>
+            {isLocalUser && !isEditingEmail && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNewEmail('')
+                  setEmailChangeMessage('')
+                  setEmailChangeError('')
+                  setIsEditingEmail(true)
+                }}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                title="Cambiar correo"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
             )}
+          </div>
 
-            {emailChangeError && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
-                {emailChangeError}
+          {/* Cambio de email pendiente */}
+          {isLocalUser && user?.pending_email && (
+            <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                Cambio de email pendiente
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                Confirmación enviada a <span className="font-semibold">{user.pending_email}</span>.
+                Revisa tu bandeja de entrada y haz clic en el enlace para confirmar el cambio.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelEmailChange}
+                isLoading={isCancelling}
+                disabled={isCancelling}
+              >
+                Cancelar cambio
+              </Button>
+            </div>
+          )}
+
+          {/* Email change form - only visible when editing */}
+          {isLocalUser && isEditingEmail && (
+            <form onSubmit={handleChangeEmail} className="space-y-4 max-w-lg">
+              <div>
+                <label htmlFor="newEmail" className="text-sm font-medium mb-2 block">
+                  {user?.pending_email
+                    ? 'Solicitar nuevo cambio de correo'
+                    : 'Nuevo correo electrónico'}
+                </label>
+                <Input
+                  id="newEmail"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="nuevo@email.com"
+                  disabled={isChangingEmail}
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Te enviaremos un enlace de verificación a tu nuevo correo.
+                </p>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              disabled={!newEmail.trim() || isChangingEmail}
-              isLoading={isChangingEmail}
-            >
-              Cambiar correo electrónico
-            </Button>
-          </form>
-        )}
+              {emailChangeMessage && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-600 dark:text-emerald-400">
+                  {emailChangeMessage}
+                </div>
+              )}
 
-        {user?.oauth_provider !== 'local' && user?.oauth_provider && (
-          <p className="text-sm text-muted-foreground">
-            El correo electrónico está vinculado a tu cuenta de {user?.oauth_provider}. Para
-            cambiarlo, debes hacerlo desde tu cuenta de {user?.oauth_provider}.
-          </p>
-        )}
+              {emailChangeError && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+                  {emailChangeError}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={!newEmail.trim() || isChangingEmail}
+                  isLoading={isChangingEmail}
+                >
+                  Cambiar correo
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditingEmail(false)
+                    setNewEmail('')
+                    setEmailChangeMessage('')
+                    setEmailChangeError('')
+                  }}
+                  disabled={isChangingEmail}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {user?.oauth_provider !== 'local' && user?.oauth_provider && (
+            <p className="text-sm text-muted-foreground">
+              El correo electrónico está vinculado a tu cuenta de {user?.oauth_provider}. Para
+              cambiarlo, debes hacerlo desde tu cuenta de {user?.oauth_provider}.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -336,15 +423,23 @@ function AccountSettings() {
   const [_isLoadingInvitations, setIsLoadingInvitations] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [isInviting, setIsInviting] = useState(false)
+  const [isInviteFormOpen, setIsInviteFormOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
 
   // Rename state
   const [isRenaming, setIsRenaming] = useState(false)
+  const [renameError, setRenameError] = useState('')
+  const [isEditingAccountName, setIsEditingAccountName] = useState(false)
+  const [accountNameValue, setAccountNameValue] = useState(account?.name || '')
 
   // Remove member state
   const [_removingMemberId, _setRemovingMemberId] = useState<string | null>(null)
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null)
   const [isRemovingMember, setIsRemovingMember] = useState(false)
+
+  // Leave account state (for members)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [isLeavingAccount, setIsLeavingAccount] = useState(false)
 
   // Delete account state
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -360,6 +455,9 @@ function AccountSettings() {
     if (account?.id) {
       loadMembers()
       loadInvitations()
+      setAccountNameValue(account.name || '')
+      setIsEditingAccountName(false)
+      setRenameError('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.id])
@@ -394,16 +492,22 @@ function AccountSettings() {
 
   // ─── Handlers ──────────────────────────────────
 
-  const handleSaveName = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveAccountName = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const validation = validateAccountName({ name: accountNameValue })
+    if (!validation.success) {
+      setRenameError(validation.errors.name || 'Error de validación')
+      return
+    }
+
+    setRenameError('')
     setIsRenaming(true)
 
-    const formData = new FormData(e.currentTarget)
-    const newName = formData.get('name') as string
-
     try {
-      await accounts.update(account!.id, { name: newName })
+      await accounts.update(account!.id, { name: accountNameValue })
       toast.success('Nombre de cuenta actualizado correctamente')
+      setIsEditingAccountName(false)
       setTimeout(() => window.location.reload(), 1000)
     } catch (error) {
       toast.error('Error al actualizar el nombre', {
@@ -496,6 +600,55 @@ function AccountSettings() {
     }
   }
 
+  const cleanupAfterAccountRemoval = async (accountId: string) => {
+    // 1. Limpiar account key del cryptoStore
+    const cryptoStore = useCryptoStore.getState()
+    const newAccountKeys = new Map(cryptoStore.accountKeys)
+    newAccountKeys.delete(accountId)
+    useCryptoStore.setState({ accountKeys: newAccountKeys })
+
+    // 2. Invalidar todos los caches de React Query vinculados a la cuenta
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['auth', 'accounts'] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['categories'] }),
+      queryClient.invalidateQueries({ queryKey: ['budgets'] }),
+      queryClient.invalidateQueries({ queryKey: ['investment'] }),
+    ])
+    await queryClient.refetchQueries({ queryKey: ['auth', 'accounts'] })
+
+    // 3. Limpiar stores de Zustand con localStorage persistido
+    localStorage.removeItem('balance-storage')
+    localStorage.removeItem('dashboard-storage')
+    localStorage.removeItem('filters-storage')
+    localStorage.removeItem('transactions-storage')
+
+    // 4. Cambiar a otra cuenta
+    const remaining = allAccounts.filter((a) => a.id !== accountId)
+    if (remaining.length > 0) {
+      await switchAccount(remaining[0].id)
+    }
+  }
+
+  const handleLeaveAccount = async () => {
+    if (!account?.id) return
+
+    setIsLeavingAccount(true)
+    try {
+      await accounts.leaveAccount(account.id)
+      await cleanupAfterAccountRemoval(account.id)
+
+      toast.success('Has abandonado la cuenta correctamente')
+      setShowLeaveConfirm(false)
+    } catch (error) {
+      toast.error('Error al abandonar la cuenta', {
+        description: (error as Error).message,
+      })
+    } finally {
+      setIsLeavingAccount(false)
+    }
+  }
+
   const handleDeleteAccount = async () => {
     if (!account?.id || deleteConfirmName !== account.name || !deletePin) return
 
@@ -519,22 +672,7 @@ function AccountSettings() {
       }
 
       await accounts.delete(account.id)
-
-      // Limpiar la account key del cryptoStore
-      const cryptoStore = useCryptoStore.getState()
-      const newAccountKeys = new Map(cryptoStore.accountKeys)
-      newAccountKeys.delete(account.id)
-      useCryptoStore.setState({ accountKeys: newAccountKeys })
-
-      // Invalidar cache de cuentas
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'accounts'] })
-      await queryClient.refetchQueries({ queryKey: ['auth', 'accounts'] })
-
-      // Cambiar a otra cuenta
-      const remaining = allAccounts.filter((a) => a.id !== account.id)
-      if (remaining.length > 0) {
-        await switchAccount(remaining[0].id)
-      }
+      await cleanupAfterAccountRemoval(account.id)
 
       toast.success('Cuenta eliminada correctamente')
       setShowDeleteModal(false)
@@ -575,19 +713,56 @@ function AccountSettings() {
           <p className="text-xs text-muted-foreground mt-0.5">Cambia el nombre de tu cuenta</p>
         </div>
         <div className="p-4">
-          <form onSubmit={handleSaveName} className="space-y-4 max-w-lg">
-            <Input
-              id="accountName"
-              type="text"
-              label="Nombre de la cuenta"
-              name="name"
-              defaultValue={account?.name || ''}
-              required
-            />
-            <Button type="submit" disabled={isRenaming}>
-              {isRenaming ? 'Guardando...' : 'Guardar cambios'}
-            </Button>
-          </form>
+          {!isEditingAccountName ? (
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-foreground flex-1">{account?.name}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountNameValue(account?.name || '')
+                  setRenameError('')
+                  setIsEditingAccountName(true)
+                }}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                title="Editar nombre de cuenta"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveAccountName} className="space-y-4 max-w-lg">
+              <Input
+                id="accountName"
+                type="text"
+                label="Nombre de la cuenta"
+                value={accountNameValue}
+                onChange={(e) => {
+                  setAccountNameValue(e.target.value)
+                  if (renameError) setRenameError('')
+                }}
+                error={renameError}
+                required
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button type="submit" disabled={isRenaming} isLoading={isRenaming}>
+                  Guardar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditingAccountName(false)
+                    setAccountNameValue(account?.name || '')
+                    setRenameError('')
+                  }}
+                  disabled={isRenaming}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 
@@ -665,23 +840,51 @@ function AccountSettings() {
           </div>
 
           <div className="p-4 space-y-4">
-            <form onSubmit={handleInvite} className="space-y-4 max-w-lg">
-              <Input
-                id="inviteEmail"
-                type="email"
-                label="Email del usuario"
-                placeholder="juan@email.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                💡 No enviamos emails automáticamente. Copia el enlace y compártelo manualmente.
-              </p>
-              <Button type="submit" disabled={isInviting}>
-                {isInviting ? 'Creando invitación...' : 'Crear invitación'}
-              </Button>
-            </form>
+            {!isInviteFormOpen ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setInviteEmail('')
+                  setIsInviteFormOpen(true)
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary border border-dashed border-primary/40 rounded-lg hover:bg-primary/5 transition-colors w-full justify-center"
+              >
+                <UserPlus className="w-4 h-4" />
+                Invitar miembro
+              </button>
+            ) : (
+              <form onSubmit={handleInvite} className="space-y-4 max-w-lg">
+                <Input
+                  id="inviteEmail"
+                  type="email"
+                  label="Email del usuario"
+                  placeholder="juan@email.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  required
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  No enviamos emails. Copia el enlace y compártelo manualmente.
+                </p>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={isInviting} isLoading={isInviting}>
+                    Crear invitación
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsInviteFormOpen(false)
+                      setInviteEmail('')
+                    }}
+                    disabled={isInviting}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            )}
 
             {/* Invitaciones pendientes */}
             {invitations.length > 0 && (
@@ -728,41 +931,73 @@ function AccountSettings() {
         </div>
       )}
 
-      {/* ─── Sección 4: Zona de peligro (solo owner) ─── */}
-      {isOwner && (
-        <div className="bg-card rounded-lg border border-destructive/30">
-          <div className="px-4 py-3 border-b border-destructive/30">
-            <h3 className="text-sm font-semibold text-destructive">Zona de peligro</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Acciones irreversibles sobre esta cuenta
-            </p>
-          </div>
-          <div className="p-4">
+      {/* ─── Sección 4: Zona de peligro ─── */}
+      <div className="bg-card rounded-lg border border-destructive/30">
+        <div className="px-4 py-3 border-b border-destructive/30">
+          <h3 className="text-sm font-semibold text-destructive">Zona de peligro</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Acciones irreversibles sobre esta cuenta
+          </p>
+        </div>
+        <div className="p-4 space-y-4">
+          {isOwner ? (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Eliminar cuenta</p>
+                  <p className="text-xs text-muted-foreground">
+                    Se eliminarán todas las transacciones, categorías, miembros e invitaciones.
+                  </p>
+                </div>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={!canDeleteAccount}
+                  onClick={() => setShowDeleteModal(true)}
+                  className="shrink-0"
+                >
+                  Eliminar cuenta
+                </Button>
+              </div>
+              {!canDeleteAccount && allAccounts.length <= 1 && (
+                <p className="text-xs text-muted-foreground">
+                  No puedes eliminar tu única cuenta. Crea otra cuenta antes de eliminar esta.
+                </p>
+              )}
+            </>
+          ) : (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-foreground">Eliminar cuenta</p>
+                <p className="text-sm font-medium text-foreground">Abandonar cuenta</p>
                 <p className="text-xs text-muted-foreground">
-                  Se eliminarán todas las transacciones, categorías, miembros e invitaciones.
+                  Perderás acceso a todas las transacciones y datos de esta cuenta.
                 </p>
               </div>
               <Button
                 variant="danger"
                 size="sm"
-                disabled={!canDeleteAccount}
-                onClick={() => setShowDeleteModal(true)}
+                disabled={allAccounts.length <= 1}
+                onClick={() => setShowLeaveConfirm(true)}
                 className="shrink-0"
               >
-                Eliminar cuenta
+                Abandonar cuenta
               </Button>
             </div>
-            {!canDeleteAccount && allAccounts.length <= 1 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                No puedes eliminar tu única cuenta. Crea otra cuenta antes de eliminar esta.
-              </p>
-            )}
-          </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* ─── Modal: Confirmar abandono de cuenta ─── */}
+      <ConfirmDialog
+        open={showLeaveConfirm}
+        onOpenChange={(open) => !open && setShowLeaveConfirm(false)}
+        title="Abandonar cuenta"
+        description={`¿Abandonar la cuenta "${account?.name}"? Perderás acceso a todas las transacciones y datos. Esta acción no se puede deshacer.`}
+        confirmLabel="Abandonar"
+        onConfirm={handleLeaveAccount}
+        variant="danger"
+        isLoading={isLeavingAccount}
+      />
 
       {/* ─── Modal: Confirmar expulsión de miembro ─── */}
       <ConfirmDialog
@@ -876,6 +1111,7 @@ function BudgetSettings() {
     period: 'monthly' as const,
     alert_threshold: 80,
   })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const accountId = account?.id
 
@@ -976,6 +1212,7 @@ function BudgetSettings() {
       period: 'monthly',
       alert_threshold: 80,
     })
+    setFieldErrors({})
     setShowModal(true)
   }
 
@@ -987,6 +1224,7 @@ function BudgetSettings() {
       period: b.period,
       alert_threshold: Number(b.alert_threshold),
     })
+    setFieldErrors({})
     setShowModal(true)
   }
 
@@ -994,13 +1232,33 @@ function BudgetSettings() {
     e.preventDefault()
     if (!account?.id) return
 
+    const validation = editingId
+      ? validateUpdateBudget({
+          amount: form.amount,
+          period: form.period,
+          alert_threshold: form.alert_threshold,
+        })
+      : validateBudget({
+          category_id: form.category_id,
+          amount: form.amount,
+          period: form.period,
+          alert_threshold: form.alert_threshold,
+        })
+
+    if (!validation.success) {
+      setFieldErrors(validation.errors)
+      return
+    }
+
+    setFieldErrors({})
+
     try {
       if (editingId) {
         await updateBudget.mutateAsync({
           id: editingId,
           payload: {
             account_id: account.id,
-            amount: parseFloat(form.amount),
+            amount: parseInt(form.amount, 10),
             period: form.period,
             alert_threshold: form.alert_threshold,
           },
@@ -1010,7 +1268,7 @@ function BudgetSettings() {
         await createBudget.mutateAsync({
           account_id: account.id,
           category_id: form.category_id,
-          amount: parseFloat(form.amount),
+          amount: parseInt(form.amount, 10),
           period: form.period,
           alert_threshold: form.alert_threshold,
         })
@@ -1245,13 +1503,22 @@ function BudgetSettings() {
             <label className="text-sm font-medium">Cantidad (€)</label>
             <Input
               type="number"
-              step="0.01"
-              min="0"
+              step="1"
+              min="1"
+              max="900000"
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              className="mt-1"
+              onChange={(e) => {
+                setForm({ ...form, amount: e.target.value })
+                if (fieldErrors.amount) {
+                  setFieldErrors((prev) => ({ ...prev, amount: '' }))
+                }
+              }}
+              className={`mt-1 ${fieldErrors.amount ? 'border-red-500 focus:border-red-500' : ''}`}
               required
             />
+            {fieldErrors.amount && (
+              <p className="text-xs text-red-500 mt-1">{fieldErrors.amount}</p>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium">Periodo</label>
@@ -1283,6 +1550,7 @@ function BudgetSettings() {
               onClick={() => {
                 setShowModal(false)
                 setEditingId(null)
+                setFieldErrors({})
               }}
             >
               Cancelar
