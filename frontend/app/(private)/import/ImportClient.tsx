@@ -47,6 +47,7 @@ import {
 import { toast } from 'sonner'
 
 import { getTodayLocal } from '@/lib/date-utils'
+import { validateTransaction } from '@/validators/transaction-validators'
 
 function getFriendlyErrorMessage(error: string): string {
   const errorMap: Record<string, string> = {
@@ -353,6 +354,7 @@ export default function ImportClient() {
   const [success, setSuccess] = useState<string | null>(null)
 
   const [form, setForm] = useState<SingleForm>(emptyForm)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   // Estados para Masivo
   const [step, setStep] = useState<Step>('upload')
@@ -408,6 +410,21 @@ export default function ImportClient() {
     e.preventDefault()
     if (!account) return
 
+    const validation = validateTransaction({
+      type: form.type,
+      date: form.date,
+      description: form.description,
+      amount: form.amount,
+      category_id: form.category_id,
+      subcategory_id: form.subcategory_id,
+    })
+
+    if (!validation.success) {
+      setFieldErrors(validation.errors)
+      return
+    }
+
+    setFieldErrors({})
     setIsLoading(true)
     setError(null)
     setSuccess(null)
@@ -721,7 +738,13 @@ export default function ImportClient() {
                       <Input
                         placeholder="Ej: Compra semanal Mercadona"
                         value={form.description}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        onChange={(e) => {
+                          setForm({ ...form, description: e.target.value })
+                          if (fieldErrors.description) {
+                            setFieldErrors((prev) => ({ ...prev, description: '' }))
+                          }
+                        }}
+                        error={fieldErrors.description}
                         required
                       />
                     </div>
@@ -734,8 +757,14 @@ export default function ImportClient() {
                           step="0.01"
                           placeholder="0.00"
                           value={form.amount}
-                          onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                          className="pr-10"
+                          onChange={(e) => {
+                            setForm({ ...form, amount: e.target.value })
+                            if (fieldErrors.amount) {
+                              setFieldErrors((prev) => ({ ...prev, amount: '' }))
+                            }
+                          }}
+                          error={fieldErrors.amount}
+                          className={`pr-10 ${fieldErrors.amount ? 'border-red-500' : ''}`}
                           required
                         />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">
@@ -752,6 +781,7 @@ export default function ImportClient() {
                         <Select
                           options={categoryOptions}
                           value={form.category_id}
+                          error={fieldErrors.category_id}
                           onChange={(e) =>
                             setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
                           }
