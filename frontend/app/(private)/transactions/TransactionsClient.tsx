@@ -36,6 +36,7 @@ import {
 } from '@/components/transactions'
 import { useTransactionsStore } from '@/stores/transactionsStore'
 import { getTodayLocal } from '@/lib/date-utils'
+import { validateTransaction } from '@/validators/transaction-validators'
 
 interface TransactionForm {
   description: string
@@ -176,6 +177,7 @@ function TransactionsContent({
   const limit = 100
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
 
@@ -438,6 +440,22 @@ function TransactionsContent({
     e.preventDefault()
     if (!account) return
 
+    const validation = validateTransaction({
+      type: form.type,
+      date: form.date,
+      description: form.description,
+      amount: form.amount,
+      category_id: form.category_id,
+      subcategory_id: form.subcategory_id,
+    })
+
+    if (!validation.success) {
+      setFieldErrors(validation.errors)
+      return
+    }
+
+    setFieldErrors({})
+
     toast.promise(
       createMutation.mutateAsync({
         account_id: account.id,
@@ -475,6 +493,22 @@ function TransactionsContent({
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingId) return
+
+    const validation = validateTransaction({
+      type: form.type,
+      date: form.date,
+      description: form.description,
+      amount: form.amount,
+      category_id: form.category_id,
+      subcategory_id: form.subcategory_id,
+    })
+
+    if (!validation.success) {
+      setFieldErrors(validation.errors)
+      return
+    }
+
+    setFieldErrors({})
 
     toast.promise(
       updateMutation.mutateAsync({
@@ -634,6 +668,7 @@ function TransactionsContent({
             setCreateModalOpen(false)
             setEditingId(null)
             setForm(emptyForm)
+            setFieldErrors({})
           }}
           title={editingId ? 'Editar transacción' : 'Nueva transacción'}
         >
@@ -679,14 +714,20 @@ function TransactionsContent({
                     step="0.01"
                     placeholder="0.00"
                     value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    className="pr-8"
+                    onChange={(e) => {
+                      setForm({ ...form, amount: e.target.value })
+                      if (fieldErrors.amount) {
+                        setFieldErrors((prev) => ({ ...prev, amount: '' }))
+                      }
+                    }}
+                    className={`pr-8 ${fieldErrors.amount ? 'border-red-500 focus:border-red-500' : ''}`}
                     required
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                     €
                   </span>
                 </div>
+                {fieldErrors.amount && <p className="text-xs text-red-500">{fieldErrors.amount}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Fecha</label>
@@ -703,9 +744,18 @@ function TransactionsContent({
               <Input
                 placeholder="Ej: Alquiler enero"
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, description: e.target.value })
+                  if (fieldErrors.description) {
+                    setFieldErrors((prev) => ({ ...prev, description: '' }))
+                  }
+                }}
+                className={fieldErrors.description ? 'border-red-500 focus:border-red-500' : ''}
                 required
               />
+              {fieldErrors.description && (
+                <p className="text-xs text-red-500">{fieldErrors.description}</p>
+              )}
             </div>
 
             {/* Categoría + Subcategoría */}
@@ -718,9 +768,13 @@ function TransactionsContent({
                     ...categories.map((c) => ({ value: c.id, label: c.name })),
                   ]}
                   value={form.category_id}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
-                  }
+                    if (fieldErrors.category_id) {
+                      setFieldErrors((prev) => ({ ...prev, category_id: '' }))
+                    }
+                  }}
+                  error={fieldErrors.category_id}
                   required
                 />
               </div>
