@@ -42,6 +42,12 @@ import {
 import { toast } from 'sonner'
 import type { Category, Subcategory } from '@/lib/apiClient'
 import Link from 'next/link'
+import {
+  validateCategory,
+  validateUpdateCategory,
+  validateSubcategory,
+  validateUpdateSubcategory,
+} from '@/validators/category-validators'
 
 const COLORS = [
   '#22c55e',
@@ -94,11 +100,13 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
 
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm)
+  const [categoryFieldErrors, setCategoryFieldErrors] = useState<Record<string, string>>({})
   const [showCategoryModal, setShowCategoryModal] = useState(false)
 
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null)
   const [parentCategoryId, setParentCategoryId] = useState<string>('')
   const [subcategoryForm, setSubcategoryForm] = useState<SubcategoryForm>(emptySubcategoryForm)
+  const [subcategoryFieldErrors, setSubcategoryFieldErrors] = useState<Record<string, string>>({})
 
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
   const [reassignCategoryId, setReassignCategoryId] = useState('')
@@ -141,16 +149,33 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   function openCreateCategoryModal() {
     setEditingCategory(null)
     setCategoryForm(emptyCategoryForm)
+    setCategoryFieldErrors({})
     setShowCategoryModal(true)
   }
 
   function openEditCategoryModal(category: Category) {
     setEditingCategory(category)
     setCategoryForm({ name: category.name, color: category.color })
+    setCategoryFieldErrors({})
   }
 
   function handleSaveCategory() {
-    if (!account || !categoryForm.name.trim()) return
+    if (!account) return
+
+    const validation = editingCategory
+      ? validateUpdateCategory({ name: categoryForm.name, color: categoryForm.color })
+      : validateCategory({
+          account_id: account.id,
+          name: categoryForm.name,
+          color: categoryForm.color,
+        })
+
+    if (!validation.success) {
+      setCategoryFieldErrors(validation.errors)
+      return
+    }
+
+    setCategoryFieldErrors({})
 
     const mutation = editingCategory
       ? updateCategoryMutation.mutateAsync({
@@ -182,16 +207,29 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
     setEditingSubcategory(null)
     setParentCategoryId(categoryId)
     setSubcategoryForm(emptySubcategoryForm)
+    setSubcategoryFieldErrors({})
   }
 
   function openEditSubcategoryModal(sub: Subcategory, categoryId: string) {
     setEditingSubcategory(sub)
     setParentCategoryId(categoryId)
     setSubcategoryForm({ name: sub.name })
+    setSubcategoryFieldErrors({})
   }
 
   function handleSaveSubcategory() {
-    if (!parentCategoryId || !subcategoryForm.name.trim() || !account) return
+    if (!parentCategoryId || !account) return
+
+    const validation = editingSubcategory
+      ? validateUpdateSubcategory({ name: subcategoryForm.name })
+      : validateSubcategory({ category_id: parentCategoryId, name: subcategoryForm.name })
+
+    if (!validation.success) {
+      setSubcategoryFieldErrors(validation.errors)
+      return
+    }
+
+    setSubcategoryFieldErrors({})
 
     const mutation = editingSubcategory
       ? updateSubcategoryMutation.mutateAsync({
@@ -457,6 +495,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         onClose={() => {
           setEditingCategory(null)
           setShowCategoryModal(false)
+          setCategoryFieldErrors({})
         }}
         title={editingCategory ? 'Editar categoría' : 'Nueva categoría'}
       >
@@ -465,7 +504,13 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             label="Nombre"
             placeholder="Ej: Viajes"
             value={categoryForm.name}
-            onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+            onChange={(e) => {
+              setCategoryForm({ ...categoryForm, name: e.target.value })
+              if (categoryFieldErrors.name) {
+                setCategoryFieldErrors((prev) => ({ ...prev, name: '' }))
+              }
+            }}
+            error={categoryFieldErrors.name}
           />
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Color</label>
@@ -492,6 +537,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             onClick={() => {
               setEditingCategory(null)
               setShowCategoryModal(false)
+              setCategoryFieldErrors({})
             }}
           >
             Cancelar
@@ -510,6 +556,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         onClose={() => {
           setEditingSubcategory(null)
           setParentCategoryId('')
+          setSubcategoryFieldErrors({})
         }}
         title={editingSubcategory ? 'Editar subcategoría' : 'Nueva subcategoría'}
       >
@@ -518,7 +565,13 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             label="Nombre"
             placeholder="Ej: Almacén"
             value={subcategoryForm.name}
-            onChange={(e) => setSubcategoryForm({ ...subcategoryForm, name: e.target.value })}
+            onChange={(e) => {
+              setSubcategoryForm({ ...subcategoryForm, name: e.target.value })
+              if (subcategoryFieldErrors.name) {
+                setSubcategoryFieldErrors((prev) => ({ ...prev, name: '' }))
+              }
+            }}
+            error={subcategoryFieldErrors.name}
           />
         </div>
         <ModalFooter>
@@ -527,6 +580,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             onClick={() => {
               setEditingSubcategory(null)
               setParentCategoryId('')
+              setSubcategoryFieldErrors({})
             }}
           >
             Cancelar
