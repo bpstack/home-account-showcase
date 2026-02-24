@@ -1579,6 +1579,7 @@ function BudgetSettings() {
 
 function ChangePinSection() {
   const router = useRouter()
+  const [isEditing, setIsEditing] = useState(false)
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
@@ -1590,6 +1591,14 @@ function ChangePinSection() {
     if (pin.length > 8) return 'El PIN debe tener máximo 8 dígitos'
     if (!/^\d+$/.test(pin)) return 'El PIN solo puede contener números'
     return null
+  }
+
+  const resetForm = () => {
+    setCurrentPin('')
+    setNewPin('')
+    setConfirmPin('')
+    setMessage(null)
+    setIsEditing(false)
   }
 
   const handleChangePin = async (e: React.FormEvent) => {
@@ -1666,7 +1675,7 @@ function ChangePinSection() {
   return (
     <div className="bg-card rounded-lg border border-border">
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">Cambiar PIN de cifrado</h3>
+        <h3 className="text-sm font-semibold text-foreground">PIN de cifrado</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           El PIN protege tus datos cifrados. Se te pedirá cada vez que inicies sesión o recargues la
           página.
@@ -1686,52 +1695,93 @@ function ChangePinSection() {
           </div>
         )}
 
-        <form onSubmit={handleChangePin} className="space-y-4">
-          <Input
-            id="currentPin"
-            type="password"
-            label="PIN actual"
-            value={currentPin}
-            onChange={(e) => setCurrentPin(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-
-          <Input
-            id="newPin"
-            type="password"
-            label="Nuevo PIN (6-8 dígitos)"
-            value={newPin}
-            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            required
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="••••••"
-          />
-
-          <Input
-            id="confirmPin"
-            type="password"
-            label="Confirmar nuevo PIN"
-            value={confirmPin}
-            onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            required
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="••••••"
-          />
-
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              <strong>Importante:</strong> Al cambiar tu PIN, se re-cifrarán todas tus claves de
-              cuenta, se cerrará tu sesión y deberás volver a iniciar sesión con el nuevo PIN.
+        <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">Configurar PIN desde cero</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Si no tienes un PIN configurado o quieres crear uno nuevo, usa el asistente de
+              configuración.
             </p>
           </div>
-
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Cambiando PIN...' : 'Cambiar PIN'}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push('/setup-pin')}
+            className="shrink-0"
+          >
+            Ir al asistente
           </Button>
-        </form>
+        </div>
+
+        {!isEditing ? (
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-foreground flex-1">••••••</p>
+            <button
+              type="button"
+              onClick={() => {
+                setMessage(null)
+                setIsEditing(true)
+              }}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+              title="Cambiar PIN"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleChangePin} className="space-y-4 max-w-lg">
+            <Input
+              id="currentPin"
+              type="password"
+              label="PIN actual"
+              value={currentPin}
+              onChange={(e) => setCurrentPin(e.target.value)}
+              required
+              autoComplete="current-password"
+              autoFocus
+            />
+
+            <Input
+              id="newPin"
+              type="password"
+              label="Nuevo PIN (6-8 dígitos)"
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              required
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="••••••"
+            />
+
+            <Input
+              id="confirmPin"
+              type="password"
+              label="Confirmar nuevo PIN"
+              value={confirmPin}
+              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              required
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="••••••"
+            />
+
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                <strong>Importante:</strong> Al cambiar tu PIN, se re-cifrarán todas tus claves de
+                cuenta, se cerrará tu sesión y deberás volver a iniciar sesión con el nuevo PIN.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isLoading} isLoading={isLoading}>
+                Cambiar PIN
+              </Button>
+              <Button type="button" variant="outline" onClick={resetForm} disabled={isLoading}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )
@@ -1739,11 +1789,20 @@ function ChangePinSection() {
 
 function ChangePasswordSection() {
   const router = useRouter()
+  const [isEditing, setIsEditing] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const resetForm = () => {
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setMessage(null)
+    setIsEditing(false)
+  }
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1852,9 +1911,7 @@ function ChangePasswordSection() {
   return (
     <div className="bg-card rounded-lg border border-border">
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">
-          Cambiar contraseña de inicio de sesión
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground">Contraseña de inicio de sesión</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           Actualiza tu contraseña de login. Si tienes un PIN de cifrado configurado, no se verá
           afectado.
@@ -1874,49 +1931,72 @@ function ChangePasswordSection() {
           </div>
         )}
 
-        <form onSubmit={handleChangePassword} className="space-y-4">
-          <Input
-            id="currentPassword"
-            type="password"
-            label="Contraseña actual"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-
-          <Input
-            id="newPassword"
-            type="password"
-            label="Nueva contraseña"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            autoComplete="new-password"
-            minLength={6}
-          />
-
-          <Input
-            id="confirmPassword"
-            type="password"
-            label="Confirmar nueva contraseña"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            autoComplete="new-password"
-          />
-
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              <strong>Importante:</strong> Al cambiar tu contraseña, se cerrarán todas tus sesiones
-              y deberás volver a iniciar sesión.
-            </p>
+        {!isEditing ? (
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-foreground flex-1">••••••••</p>
+            <button
+              type="button"
+              onClick={() => {
+                setMessage(null)
+                setIsEditing(true)
+              }}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+              title="Cambiar contraseña"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
           </div>
+        ) : (
+          <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg">
+            <Input
+              id="currentPassword"
+              type="password"
+              label="Contraseña actual"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              autoFocus
+            />
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Cambiando contraseña...' : 'Cambiar contraseña'}
-          </Button>
-        </form>
+            <Input
+              id="newPassword"
+              type="password"
+              label="Nueva contraseña"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={6}
+            />
+
+            <Input
+              id="confirmPassword"
+              type="password"
+              label="Confirmar nueva contraseña"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
+
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                <strong>Importante:</strong> Al cambiar tu contraseña, se cerrarán todas tus
+                sesiones y deberás volver a iniciar sesión.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isLoading} isLoading={isLoading}>
+                Cambiar contraseña
+              </Button>
+              <Button type="button" variant="outline" onClick={resetForm} disabled={isLoading}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )
