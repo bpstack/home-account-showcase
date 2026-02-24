@@ -15,6 +15,10 @@ import { Send, MessageCircle, Bot, Loader2, Trash2, ChevronDown, History, X } fr
 import { formatDistanceToNow, cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
+import { validateChatMessage } from '@/validators/investment-validators'
+
+const CHAT_MAX_LENGTH = 5000
+const CHAT_COOLDOWN_MS = 1000
 
 interface AIChatProps {
   accountId: string
@@ -35,6 +39,8 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
     useAIChat({ accountId, sessionId })
 
   const [input, setInput] = useState('')
+  const [inputError, setInputError] = useState<string | null>(null)
+  const [isCooldown, setIsCooldown] = useState(false)
   const [sessions, setSessions] = useState<ChatSessionInfo[]>([])
   const [showSessions, setShowSessions] = useState(false)
   const [isLoadingSessions, setIsLoadingSessions] = useState(false)
@@ -89,9 +95,20 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
   }, [isTyping, messages.length])
 
   const handleSend = async () => {
-    if (!input.trim()) return
-    const tempInput = input
+    const validation = validateChatMessage(input)
+    if (!validation.success) {
+      setInputError(validation.error)
+      return
+    }
+
+    setInputError(null)
+    const tempInput = validation.data
     setInput('')
+
+    // Activate cooldown
+    setIsCooldown(true)
+    setTimeout(() => setIsCooldown(false), CHAT_COOLDOWN_MS)
+
     inputRef.current?.focus()
     await sendMessage(tempInput)
     loadSessions()
@@ -292,15 +309,24 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
             <Input
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= CHAT_MAX_LENGTH) {
+                  setInput(e.target.value)
+                  if (inputError) setInputError(null)
+                }
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu pregunta..."
-              disabled={isTyping}
-              className="flex-1 pr-10 rounded-xl border-border/60 focus-visible:ring-primary/20 bg-background/50"
+              disabled={isTyping || isCooldown}
+              maxLength={CHAT_MAX_LENGTH}
+              className={cn(
+                'flex-1 pr-10 rounded-xl border-border/60 focus-visible:ring-primary/20 bg-background/50',
+                inputError && 'border-red-500 focus-visible:ring-red-500/20'
+              )}
             />
             <Button
               onClick={handleSend}
-              disabled={!input.trim() || isTyping}
+              disabled={!input.trim() || isTyping || isCooldown}
               size="icon"
               className="absolute right-1 top-1 h-8 w-8 rounded-lg transition-transform active:scale-95"
             >
@@ -311,7 +337,20 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
               )}
             </Button>
           </div>
-          <DisclaimerAlert variant="compact" className="mt-3 opacity-80" type="chat" />
+          <div className="flex items-center justify-between mt-1 px-1">
+            {inputError ? <p className="text-xs text-red-500">{inputError}</p> : <span />}
+            {input.length > 0 && (
+              <span
+                className={cn(
+                  'text-xs',
+                  input.length > CHAT_MAX_LENGTH * 0.9 ? 'text-red-500' : 'text-muted-foreground'
+                )}
+              >
+                {input.length}/{CHAT_MAX_LENGTH}
+              </span>
+            )}
+          </div>
+          <DisclaimerAlert variant="compact" className="mt-2 opacity-80" type="chat" />
         </div>
       </CardContent>
     </Card>

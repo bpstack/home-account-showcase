@@ -11,6 +11,7 @@ import { useFinancialMetrics } from '@/hooks/useFinancialMetrics'
 import { cn } from '@/lib/utils'
 import { User, Shield, Clock, ArrowLeft, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react'
 import { InfoTooltip } from '@/components/ui/Tooltip'
+import { validateProfileField } from '@/validators/investment-validators'
 
 interface ProfileFormProps {
   accountId: string
@@ -104,6 +105,7 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [result, setResult] = useState<any>(null)
+  const [fieldError, setFieldError] = useState<string | null>(null)
 
   const analyzeMutation = useAnalyzeProfile()
 
@@ -143,9 +145,20 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
 
   const handleAnswer = (value: any) => {
     setAnswers((prev) => ({ ...prev, [step.field]: value }))
+    if (fieldError) setFieldError(null)
   }
 
   const handleNext = () => {
+    // Validate current field before advancing
+    if (step.type === 'number') {
+      const validation = validateProfileField(step.field, String(answers[step.field] ?? ''))
+      if (!validation.success) {
+        setFieldError(validation.error)
+        return
+      }
+    }
+    setFieldError(null)
+
     if (isLastStep) {
       submitForm()
     } else {
@@ -154,6 +167,7 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
   }
 
   const handleBack = () => {
+    setFieldError(null)
     if (currentStep === 0) {
       // Go back to profile view if a profile exists, otherwise no-op
       if (profile) {
@@ -274,17 +288,32 @@ export function ProfileForm({ accountId, selectedMonthSavings }: ProfileFormProp
           {/* Answer options */}
           <div className="space-y-3">
             {step.type === 'number' && (
-              <input
-                type="number"
-                min={step.min}
-                max={step.max}
-                step={step.step}
-                value={answers[step.field] || ''}
-                onChange={(e) => handleAnswer(e.target.value)}
-                className="w-full p-3 text-lg border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground"
-                placeholder={step.field === 'age' ? 'Tu edad' : 'Ingresos mensuales (€)'}
-                onKeyDown={(e) => e.key === 'Enter' && canGoNext && handleNext()}
-              />
+              <div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={step.field === 'age' ? 2 : 6}
+                  value={answers[step.field] || ''}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    if (step.field === 'age' && val.length > 2) return
+                    if (step.field === 'monthlyIncome' && val.length > 6) return
+                    handleAnswer(val)
+                  }}
+                  className={cn(
+                    'w-full p-3 text-lg border rounded-lg focus:ring-2 focus:ring-primary bg-background text-foreground',
+                    fieldError && 'border-red-500 focus:ring-red-500/20'
+                  )}
+                  placeholder={
+                    step.field === 'age'
+                      ? 'Tu edad (18-99)'
+                      : 'Ingresos mensuales en € (sin decimales)'
+                  }
+                  onKeyDown={(e) => e.key === 'Enter' && canGoNext && handleNext()}
+                  autoFocus
+                />
+                {fieldError && <p className="mt-2 text-sm text-red-500">{fieldError}</p>}
+              </div>
             )}
 
             {step.type === 'select' &&
