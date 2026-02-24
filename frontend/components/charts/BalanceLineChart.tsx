@@ -19,8 +19,10 @@ interface Props {
   year?: number
 }
 
-export function BalanceLineChart({ data, year }: Props) {
-  const formatCurrency = (value: number | undefined) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+
+  const formatValue = (value: number | undefined) => {
     if (value === undefined) return '-'
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -30,6 +32,19 @@ export function BalanceLineChart({ data, year }: Props) {
     }).format(Math.abs(value))
   }
 
+  return (
+    <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      {payload.map((entry: any) => (
+        <p key={entry.dataKey} className="text-sm text-muted-foreground">
+          {entry.name} : {formatValue(entry.value)}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+export function BalanceLineChart({ data, year }: Props) {
   const formatYAxis = (value: number) => {
     return (value / 1000).toFixed(1)
   }
@@ -48,17 +63,7 @@ export function BalanceLineChart({ data, year }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
             <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} />
             <YAxis tickFormatter={formatYAxis} stroke="#9CA3AF" fontSize={12} width={40} />
-            <Tooltip
-              cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-              formatter={(value: number | undefined) => formatCurrency(value)}
-              contentStyle={{
-                backgroundColor: '#1F2937',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                color: '#F9FAFB',
-              }}
-              labelStyle={{ color: '#F9FAFB' }}
-            />
+            <Tooltip cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }} content={<CustomTooltip />} />
             <Line
               type="monotone"
               dataKey="balance"
