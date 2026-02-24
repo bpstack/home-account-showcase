@@ -225,6 +225,21 @@ function SetupPinForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md p-8 space-y-6 bg-layer-1 rounded-xl border border-layer-2">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Volver atrás
+          </button>
+
           <div className="text-center">
             <h1 className="text-2xl font-bold text-text-primary">Configura tu PIN de cifrado</h1>
             <p className="text-text-secondary mt-2">
@@ -267,6 +282,21 @@ function SetupPinForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-lg p-8 space-y-6 bg-layer-1 rounded-xl border border-layer-2">
+          <button
+            onClick={() => setPhase('pin')}
+            className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Volver atrás
+          </button>
+
           <div className="text-center">
             <h1 className="text-2xl font-bold text-text-primary">
               Guarda tu frase de recuperación
@@ -328,6 +358,23 @@ function SetupPinForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md p-8 space-y-6 bg-layer-1 rounded-xl border border-layer-2">
+        {keysData?.encrypted_keys?.length ? (
+          <button
+            onClick={() => setPhase('password')}
+            className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Volver atrás
+          </button>
+        ) : null}
+
         <div className="text-center">
           <h1 className="text-2xl font-bold text-text-primary">Crea tu PIN de cifrado</h1>
           <p className="text-text-secondary mt-2">

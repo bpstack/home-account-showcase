@@ -45,6 +45,12 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
       return
     }
 
+    // Redirect to setup-pin if crypto is unlocked but user hasn't set up a separate PIN
+    if (user && isCryptoReady && !hasSeparatePin && pathname !== SETUP_PIN_PATH) {
+      router.replace(`${SETUP_PIN_PATH}?from=${encodeURIComponent(pathname)}`)
+      return
+    }
+
     // Redirect back after unlock
     if (user && isCryptoReady && pathname === UNLOCK_PATH) {
       const params = new URLSearchParams(window.location.search)
