@@ -198,25 +198,14 @@ export default function HomePage() {
 
           {/* Footer Stats */}
           <div className="relative flex items-center justify-center pt-5 border-t border-border">
-            {/* Stats con fondo geométrico */}
+            {/* Stats */}
             <div
               className={cn(
                 'relative flex items-center gap-3 sm:gap-4 px-4 py-3 rounded-xl overflow-hidden transition-all duration-500',
-                showAltFeatures &&
-                  'bg-gradient-to-r from-violet-500/10 via-blue-500/10 to-cyan-500/10'
+                showAltFeatures
+                  ? 'bg-gradient-to-r from-violet-500/10 via-blue-500/10 to-cyan-500/10'
+                  : 'bg-muted/40'
               )}
-              style={{
-                backgroundImage: showAltFeatures
-                  ? `linear-gradient(135deg, hsl(var(--violet-500) / 0.08) 1px, transparent 1px),
-                     linear-gradient(225deg, hsl(var(--cyan-500) / 0.08) 1px, transparent 1px),
-                     linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
-                     linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px)`
-                  : `linear-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px),
-                     linear-gradient(90deg, hsl(var(--foreground) / 0.03) 1px, transparent 1px)`,
-                backgroundSize: showAltFeatures
-                  ? '30px 30px, 30px 30px, 20px 20px, 20px 20px'
-                  : '20px 20px',
-              }}
             >
               {currentFeatures.map((stat, index) => (
                 <div key={index} className="flex items-center gap-2 sm:gap-3">
