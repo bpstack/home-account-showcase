@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Play,
   X,
+  FolderInput,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +24,7 @@ export default function HomePage() {
   const [showAccounts, setShowAccounts] = useState(false)
   const [showDemo, setShowDemo] = useState(false)
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
+  const [showAltFeatures, setShowAltFeatures] = useState(false)
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -63,6 +66,19 @@ export default function HomePage() {
     },
   ]
 
+  const mainFeatures = [
+    { value: '100%', label: 'Gratuito', color: 'text-emerald-500', icon: null },
+    { value: 'E2E', label: 'Cifrado', color: 'text-blue-500', icon: null },
+    { value: 'PWA', label: 'Multiplataforma', color: 'text-violet-500', icon: null },
+  ]
+
+  const altFeatures = [
+    { value: 'Multi', label: 'Multi-cuentas', color: 'text-amber-500', icon: Users },
+    { value: 'Bulk', label: 'Importación masiva', color: 'text-cyan-500', icon: FolderInput },
+  ]
+
+  const currentFeatures = showAltFeatures ? altFeatures : mainFeatures
+
   return (
     <div className="min-h-[100dvh] lg:h-[100dvh] lg:overflow-hidden bg-background text-foreground transition-colors duration-500">
       {/* Subtle color accents in background */}
@@ -84,7 +100,7 @@ export default function HomePage() {
       {/* Main Grid */}
       <div
         className={cn(
-          'h-full grid grid-cols-1 gap-0 transition-all duration-700 ease-in-out',
+          'h-full grid grid-cols-1 lg:grid-cols-2 gap-0 transition-all duration-700 ease-in-out',
           showDemo ? 'lg:grid-cols-[0.7fr,2fr]' : 'lg:grid-cols-[1fr,1.2fr]'
         )}
       >
@@ -180,49 +196,71 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Footer Stats + Múltiples cuentas */}
-          <div className="flex items-center justify-between pt-5 border-t border-border">
-            {/* Stats */}
-            <div className="flex items-center gap-6 sm:gap-10">
-              {[
-                { value: '100%', label: 'Gratuito', color: 'text-emerald-500' },
-                { value: 'E2E', label: 'Cifrado', color: 'text-blue-500' },
-                { value: 'PWA', label: 'Multiplataforma', color: 'text-violet-500' },
-              ].map((stat, index) => (
-                <div key={index} className="flex items-center gap-6 sm:gap-10">
-                  {index > 0 && <div className="w-px h-6 bg-border -ml-6 sm:-ml-10" />}
-                  <div className="group cursor-default">
-                    <p
-                      className={`text-base sm:text-lg font-bold transition-all duration-300 group-hover:scale-105 origin-left ${stat.color}`}
-                    >
-                      {stat.value}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">{stat.label}</p>
+          {/* Footer Stats */}
+          <div className="relative flex items-center justify-center pt-5 border-t border-border">
+            {/* Stats con fondo geométrico */}
+            <div
+              className={cn(
+                'relative flex items-center gap-3 sm:gap-4 px-4 py-3 rounded-xl overflow-hidden transition-all duration-500',
+                showAltFeatures &&
+                  'bg-gradient-to-r from-violet-500/10 via-blue-500/10 to-cyan-500/10'
+              )}
+              style={{
+                backgroundImage: showAltFeatures
+                  ? `linear-gradient(135deg, hsl(var(--violet-500) / 0.08) 1px, transparent 1px),
+                     linear-gradient(225deg, hsl(var(--cyan-500) / 0.08) 1px, transparent 1px),
+                     linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
+                     linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px)`
+                  : `linear-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px),
+                     linear-gradient(90deg, hsl(var(--foreground) / 0.03) 1px, transparent 1px)`,
+                backgroundSize: showAltFeatures
+                  ? '30px 30px, 30px 30px, 20px 20px, 20px 20px'
+                  : '20px 20px',
+              }}
+            >
+              {currentFeatures.map((stat, index) => (
+                <div key={index} className="flex items-center gap-2 sm:gap-3">
+                  {index > 0 && <div className="w-px h-5 bg-border" />}
+                  <div className="flex items-center gap-2 group cursor-default">
+                    {stat.icon && <stat.icon className={cn('w-4 h-4', stat.color)} />}
+                    <div>
+                      <p
+                        className={cn(
+                          'text-sm sm:text-base font-bold transition-all duration-300 group-hover:scale-105 origin-left',
+                          stat.color
+                        )}
+                      >
+                        {stat.value}
+                      </p>
+                      <p className="text-[9px] sm:text-[10px] text-muted-foreground -mt-0.5">
+                        {stat.label}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
-            </div>
 
-            {/* Múltiples cuentas button */}
-            <button
-              onMouseEnter={() => setShowAccounts(true)}
-              onMouseLeave={() => setShowAccounts(false)}
-              className={cn(
-                'flex lg:hidden items-center gap-2 text-sm px-3 py-1.5 rounded-full transition-all duration-300',
-                showAccounts
-                  ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                  : 'text-muted-foreground hover:text-blue-500'
-              )}
-            >
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Múltiples cuentas</span>
-              <span className="sm:hidden">Cuentas</span>
-            </button>
+              {/* Botón alternar */}
+              <button
+                onClick={() => setShowAltFeatures(!showAltFeatures)}
+                className={cn(
+                  'ml-2 flex items-center justify-center w-6 h-6 rounded-full transition-all duration-300',
+                  showAltFeatures
+                    ? 'bg-gradient-to-br from-violet-500/30 via-blue-500/30 to-cyan-500/30 text-white shadow-lg shadow-violet-500/20'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+                title={
+                  showAltFeatures ? 'Ver características principales' : 'Ver más características'
+                }
+              >
+                <ArrowLeftRight className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* RIGHT PANEL - Visual */}
-        <div className="relative bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 p-6 sm:p-8 lg:p-0 flex items-center justify-center overflow-hidden">
+        {/* RIGHT PANEL - Visual (Desktop only) */}
+        <div className="hidden lg:flex relative bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 p-6 sm:p-8 lg:p-0 flex items-center justify-center overflow-hidden">
           {/* Animated gradient orbs */}
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-emerald-500/20 dark:bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
           <div
@@ -295,33 +333,6 @@ export default function HomePage() {
                 showMobile ? 'rounded-[2.5rem]' : 'rounded-2xl'
               )}
             >
-              {/* Chrome Header */}
-              <div
-                className={cn(
-                  'flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/50 transition-all duration-500',
-                  showMobile ? 'justify-center rounded-t-[2.5rem]' : ''
-                )}
-              >
-                {showMobile ? (
-                  <div className="w-24 h-6 bg-foreground/90 rounded-full" />
-                ) : (
-                  <>
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-red-400 hover:bg-red-500 transition-colors cursor-pointer" />
-                      <div className="w-3 h-3 rounded-full bg-yellow-400 hover:bg-yellow-500 transition-colors cursor-pointer" />
-                      <div className="w-3 h-3 rounded-full bg-green-400 hover:bg-green-500 transition-colors cursor-pointer" />
-                    </div>
-                    <div className="flex-1 mx-4">
-                      <div className="max-w-xs mx-auto h-6 bg-background rounded-md flex items-center justify-center">
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {showAccounts ? 'homeaccount.app/accounts' : 'homeaccount.app/dashboard'}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
               {/* Content Area - Screenshots or Accounts List */}
               <div
                 className={cn(
