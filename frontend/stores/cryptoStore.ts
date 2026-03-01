@@ -99,12 +99,18 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
     const accountKey = await generateAccountKey()
     const encryptedKey = await encryptAccountKey(accountKey, userKey)
 
+    const effectiveCsrf =
+      csrfToken ||
+      (typeof document !== 'undefined'
+        ? document.cookie.match(/csrfToken=([^;]+)/)?.[1]
+        : undefined)
+
     const res = await fetch('/api/proxy/accounts', {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(csrfToken && { 'x-csrf-token': csrfToken }),
+        ...(effectiveCsrf && { 'x-csrf-token': effectiveCsrf }),
       },
       body: JSON.stringify({ name: 'Mi Cuenta', encryptedAccountKey: encryptedKey }),
     })

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { useAuthStore } from '@/stores/authStore'
 import { accounts, auth } from '@/lib/apiClient'
@@ -42,6 +43,8 @@ function SetupPinForm() {
   const [confirmPin, setConfirmPin] = useState('')
   const [pinError, setPinError] = useState('')
   const [pinLoading, setPinLoading] = useState(false)
+  const [showPin, setShowPin] = useState(false)
+  const [showConfirmPin, setShowConfirmPin] = useState(false)
 
   // bip39 phase
   const [mnemonic, setMnemonic] = useState('')
@@ -130,6 +133,8 @@ function SetupPinForm() {
     e.preventDefault()
     setPinError('')
 
+    const effectiveCsrf = csrfToken || document.cookie.match(/csrfToken=([^;]+)/)?.[1]
+
     if (pin.length < 6 || pin.length > 8) {
       setPinError('El PIN debe tener entre 6 y 8 dígitos')
       return
@@ -168,7 +173,7 @@ function SetupPinForm() {
         }
       } else {
         // OAuth / fresh setup → create a new account
-        await generateAndSaveAccountKey(csrfToken || undefined)
+        await generateAndSaveAccountKey(effectiveCsrf || undefined)
       }
 
       const userKey = useCryptoStore.getState().userKey
@@ -185,7 +190,6 @@ function SetupPinForm() {
         const { raw: userKeyRaw } = await deriveUserKeyExtractable(pin, kd.key_salt)
         const recoveryBlob = await generateRecoveryBlob(userKeyRaw, recoveryKey)
 
-        const effectiveCsrf = csrfToken || document.cookie.match(/csrfToken=([^;]+)/)?.[1] || ''
         await fetch('/api/proxy/auth/recovery-blob', {
           method: 'POST',
           headers: {
@@ -388,33 +392,51 @@ function SetupPinForm() {
             <label className="block text-sm font-medium text-text-secondary mb-1">
               PIN (6-8 dígitos)
             </label>
-            <input
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={8}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              className="w-full px-4 py-3 text-center text-2xl tracking-widest rounded-lg border border-layer-3 bg-background focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••"
-              autoFocus
-            />
+            <div className="relative">
+              <input
+                type={showPin ? 'text' : 'password'}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={8}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-4 py-3 pr-12 text-center text-2xl tracking-widest rounded-lg border border-layer-3 bg-background focus:ring-2 focus:ring-blue-500"
+                placeholder="••••••"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Confirmar PIN
             </label>
-            <input
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={8}
-              value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-              className="w-full px-4 py-3 text-center text-2xl tracking-widest rounded-lg border border-layer-3 bg-background focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••"
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPin ? 'text' : 'password'}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={8}
+                value={confirmPin}
+                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-4 py-3 pr-12 text-center text-2xl tracking-widest rounded-lg border border-layer-3 bg-background focus:ring-2 focus:ring-blue-500"
+                placeholder="••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPin(!showConfirmPin)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                {showConfirmPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
 
           {pinError && <p className="text-red-500 text-sm text-center">{pinError}</p>}

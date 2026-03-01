@@ -33,6 +33,7 @@ function LoginForm() {
   const [pinData, setPinData] = useState<PinData | null>(null)
   const [pinValue, setPinValue] = useState('')
   const [pinError, setPinError] = useState('')
+  const [showPin, setShowPin] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -178,7 +179,7 @@ function LoginForm() {
                         </div>
                         <input
                           id="pin"
-                          type="password"
+                          type={showPin ? 'text' : 'password'}
                           inputMode="numeric"
                           maxLength={8}
                           placeholder="••••••"
@@ -190,12 +191,19 @@ function LoginForm() {
                           onBlur={() => setFocusedField(null)}
                           autoFocus
                           required
-                          className={`w-full h-12 pl-11 pr-4 bg-muted/50 border-2 rounded-xl outline-none transition-all duration-300 tracking-widest text-center ${
+                          className={`w-full h-12 pl-11 pr-12 bg-muted/50 border-2 rounded-xl outline-none transition-all duration-300 tracking-widest text-center ${
                             focusedField === 'pin'
                               ? 'border-blue-500 bg-background shadow-lg shadow-blue-500/10'
                               : 'border-transparent hover:border-border'
                           }`}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPin(!showPin)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
 
