@@ -16,6 +16,9 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@emailjs/nodejs": "^5.0.2",
