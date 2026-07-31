@@ -2,7 +2,9 @@
 
 Personal finance tracker I built because every app I tried was either too complex or didn't fit my needs.
 
-> **Work in Progress** - Nothing to test yet, but coming together.
+> **Live demo**: [home-account.stackbp.es](https://home-account.stackbp.es/)
+>
+> Still a work in progress — features land as I need them, so expect rough edges.
 
 ## What I Built
 
@@ -341,6 +343,10 @@ Users can manage multiple accounts (e.g., personal, shared household, savings go
 - MySQL DECIMAL fields return strings in JS - always convert before arithmetic
 - BIP39 recovery provides a safety net without compromising E2E encryption
 - Trade-offs are design decisions - accepting client-side math, no server-side search, and separate recovery mechanisms for true privacy
+
+## License
+
+[MIT](LICENSE) © 2026 [bpstack](https://stackbp.es)
 
 ---
 
