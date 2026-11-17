@@ -235,7 +235,7 @@ AI-powered investment features integrated into the dashboard:
 
 ```
 Frontend: Next.js 16 (App Router) + TypeScript + React Query + Zustand + Tailwind
-Backend:  Express 5 + MySQL (Aiven)
+Backend:  Express 5 + MySQL 8.4 (self-hosted)
 Auth:     JWT httpOnly cookies (15min access + 8h refresh) + CSRF protection
 Charts:   Recharts (lazy loaded)
 Crypto:   AES-256-GCM + Argon2id (@noble/hashes)
@@ -310,12 +310,12 @@ queryClient.invalidateQueries({ queryKey: ['transactions'] })
 Production configuration included for:
 - **Vercel**: Frontend (Next.js App Router)
 - **Render**: Backend (Express)
-- **Aiven**: MySQL database
+- **Self-hosted MySQL 8.4**: database, run with Dokploy on a VPS (TLS required)
 
 ### Environment Variables (Backend)
 
 Required for full functionality in production:
-- DB: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`
+- DB: `REMOTE_DB_HOST`, `REMOTE_DB_PORT`, `REMOTE_DB_USER`, `REMOTE_DB_PASSWORD`, `REMOTE_DB_NAME`, `REMOTE_DB_CA_CERT`
 - JWT: `JWT_SECRET`
 - OAuth: `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET`, `OAUTH_CALLBACK_URL`
 - Email (password reset): `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY`
