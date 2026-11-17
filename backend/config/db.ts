@@ -12,6 +12,18 @@ const __dirname = path.dirname(__filename)
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 
+// Las variables se llaman REMOTE_DB_*. Los nombres antiguos AIVEN_* se aceptan
+// todavía, mientras se renombran en Render; se quitarán en un cambio posterior.
+const legacyNamesUsed: string[] = []
+const readEnv = (name: string, legacyName: string): string | undefined => {
+  if (process.env[name]) return process.env[name]
+  if (process.env[legacyName]) {
+    legacyNamesUsed.push(legacyName)
+    return process.env[legacyName]
+  }
+  return undefined
+}
+
 // SSL config: en desarrollo sin verificación, en producción con certificado CA
 const getSSLConfig = () => {
   if (isDevelopment) {
@@ -19,9 +31,10 @@ const getSSLConfig = () => {
   }
 
   // En producción, usar certificado desde variable de entorno
-  if (process.env.AIVEN_CA_CERT) {
+  const caCert = readEnv('REMOTE_DB_CA_CERT', 'AIVEN_CA_CERT')
+  if (caCert) {
     return {
-      ca: process.env.AIVEN_CA_CERT,
+      ca: caCert,
       rejectUnauthorized: true,
     }
   }
@@ -41,20 +54,28 @@ const getSSLConfig = () => {
 }
 
 const config = {
-  host: process.env.AIVEN_DB_HOST || '',
-  port: Number(process.env.AIVEN_PORT || 23999),
-  user: process.env.AIVEN_DB_USER || 'avnadmin',
-  password: process.env.AIVEN_PASSWORD,
-  database: process.env.AIVEN_DB_NAME || 'home_account',
+  host: readEnv('REMOTE_DB_HOST', 'AIVEN_DB_HOST') || '',
+  // El nombre antiguo del puerto era AIVEN_PORT (no AIVEN_DB_PORT)
+  port: Number(readEnv('REMOTE_DB_PORT', 'AIVEN_PORT') || 3306),
+  user: readEnv('REMOTE_DB_USER', 'AIVEN_DB_USER') || '',
+  password: readEnv('REMOTE_DB_PASSWORD', 'AIVEN_PASSWORD'),
+  database: readEnv('REMOTE_DB_NAME', 'AIVEN_DB_NAME') || 'home_account',
   charset: 'utf8mb4',
   ssl: getSSLConfig(),
 }
 
-if (!config.host) throw new Error('❌ Falta AIVEN_DB_HOST')
-if (!config.password) throw new Error('❌ Falta AIVEN_PASSWORD')
+if (!config.host) throw new Error('❌ Falta REMOTE_DB_HOST')
+if (!config.user) throw new Error('❌ Falta REMOTE_DB_USER')
+if (!config.password) throw new Error('❌ Falta REMOTE_DB_PASSWORD')
+
+if (legacyNamesUsed.length > 0) {
+  console.warn(
+    `⚠️  DB: usando nombres antiguos (${legacyNamesUsed.join(', ')}); renómbralos a REMOTE_DB_*`
+  )
+}
 
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-console.log('🗄️  MySQL Environment: AIVEN')
+console.log('🗄️  MySQL Environment: REMOTE')
 console.log(`📍 Host: ${config.host}:${config.port}`)
 console.log(`💾 Database: ${config.database}`)
 console.log(`👤 User: ${config.user}`)
