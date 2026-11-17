@@ -1,0 +1,7 @@
+# pnpm settings (layer 1, rule 11). .npmrc only carries registry and auth.
+
+# Do not install a version until it has been published for 7 days (minutes).
+minimumReleaseAge: 10080
+
+# Fail the install when engines.node does not accept the running Node.
+engineStrict: true
