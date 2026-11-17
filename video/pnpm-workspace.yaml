@@ -1,4 +1,3 @@
-approveBuilds: esbuild
 
 # pnpm settings (layer 1, rule 11). .npmrc only carries registry and auth.
 
