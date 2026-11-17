@@ -212,7 +212,7 @@ no lo es.
 
 ### ⚠️ Tres paquetes, tres entornos distintos
 
-- **`engines.node`: backend 22.x, frontend 24.x, video sin declarar.** Con `engine-strict` activo,
+- **`engines.node`: backend y frontend 24.x, video sin declarar.** Con `engine-strict` activo,
   usar el Node equivocado hace fallar el install.
 - **React y zod no coinciden entre paquetes** (las versiones, en cada tabla): no des por hecho que
   lo que compila en uno compila en otro.
@@ -232,8 +232,8 @@ no lo es.
 - **`zod` 4**: `z.email()` de nivel superior, no `z.string().email()` (deprecado). Nada de la API
   v3.
 - **`@noble/hashes` 2**: los subpaths y la API cambiaron respecto a v1.
-- **`@types/node` 25 con Node 22 en el backend**: si `tsc` acepta algo del runtime de Node,
-  verifícalo contra la doc de **Node 22**, no contra lo que permita el autocompletado. **No lo
+- **`@types/node` 25 con Node 24 en backend y frontend**: si `tsc` acepta algo del runtime de
+  Node, verifícalo contra la doc de **Node 24**, no contra lo que permita el autocompletado. **No lo
   "arregles" por iniciativa propia**: es decisión del propietario.
 
 ### `video/`

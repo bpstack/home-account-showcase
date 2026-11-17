@@ -4,7 +4,7 @@
 compartidas con el frontend y límites. Aquí solo va lo propio de `backend/`.
 
 API en **Express 5** con **mysql2** (SQL en crudo, sin ORM). Se ejecuta TypeScript directo con
-`tsx`: **no hay paso de build**. Node **22.x** (`engines.node`).
+`tsx`: **no hay paso de build**. Node **24.x** (`engines.node`).
 
 ## Versiones instaladas (fuente de verdad: `node_modules`, no los rangos `^`)
 
