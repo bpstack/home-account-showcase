@@ -34,9 +34,13 @@ jobs:
         with:
           package_json_file: ${{ matrix.package }}/package.json
 
+      # `check-latest`: `.nvmrc` names only the major. Without it, the runner's
+      # cached Node can lag behind the latest security patch, and the install
+      # fails because `engines.node` sets the patched version as the minimum.
       - uses: actions/setup-node@v7
         with:
           node-version-file: ${{ matrix.package }}/.nvmrc
+          check-latest: true
           cache: pnpm
           cache-dependency-path: ${{ matrix.package }}/pnpm-lock.yaml
 
