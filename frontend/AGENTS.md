@@ -33,4 +33,4 @@ compartidas con el backend y límites. Aquí solo va lo propio de `frontend/`.
 lo que ejecuta el CI.
 
 **Excepción declarada (regla 14): `pnpm run lint` queda fuera de `verify`** hasta que salga limpio
-con `--max-warnings=0` (2026-11-17: no sale). El detalle y el arreglo están en `docs/TODO.md`.
+con `--max-warnings=0` (2026-11-17: no sale). El arreglo es la fase 4 de `../docs/ROADMAP.md`.

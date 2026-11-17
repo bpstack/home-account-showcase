@@ -63,6 +63,7 @@ Ningún ejemplo publicado de Express trae esa anotación. **Si copias un router 
 errores**, todos `prettier/prettier`, repartidos por 14 archivos de `controllers/`, `validators/`,
 `scripts/` y `services/import/` (medido el 2026-07-27, otra vez 43 el 2026-11-17). Son
 preexistentes: si tras un cambio siguen siendo 43, no los has provocado tú; lo que no vale es
-**subir** la cifra. **No los arregles en masa** con `--fix`: ensuciaría el diff de cualquier tarea.
+**subir** la cifra. **No los arregles en masa** con `--fix` dentro de otra tarea, porque ensuciaría su
+diff: se arreglan en la fase 4 de `../docs/ROADMAP.md`, en un commit propio.
 
 El backend usa **estilo sin punto y coma**. Si escribes con `;`, el lint te marcará cada línea.

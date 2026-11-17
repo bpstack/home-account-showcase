@@ -142,7 +142,8 @@ este, no en su lugar**:
 
 Las tres `docs/` tienen la misma forma: `README.md` (arquitectura de su ámbito), `DECISIONS.md`,
 `TODO.md` y `_archive/` (documentos retirados, solo de consulta). Lo que afecta a más de un paquete
-va en las de la raíz; lo de un solo paquete, en las suyas. **Nunca en los dos sitios.**
+va en las de la raíz; lo de un solo paquete, en las suyas. **Nunca en los dos sitios.** El orden
+del trabajo pendiente está en `docs/ROADMAP.md`, solo en la raíz.
 
 **Excepción declarada (regla 14):** las tres `docs/` están ignoradas por git, así que las reglas 12
 y 13 se cumplen **solo en esta máquina**. Motivo: el repositorio es público y esa documentación no.
