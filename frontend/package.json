@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
+    "verify": "pnpm run build",
     "format": "prettier --write ."
   },
   "keywords": [],

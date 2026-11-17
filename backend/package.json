@@ -9,6 +9,7 @@
     "build": "echo 'Using tsx - no build needed'",
     "start": "tsx index.ts",
     "typecheck": "tsc --noEmit",
+    "verify": "pnpm run typecheck",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },
