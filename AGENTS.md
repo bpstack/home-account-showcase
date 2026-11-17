@@ -212,8 +212,9 @@ no lo es.
 
 ### ⚠️ Tres paquetes, tres entornos distintos
 
-- **`engines.node`: backend y frontend 24.x, video sin declarar.** Con `engine-strict` activo,
-  usar el Node equivocado hace fallar el install.
+- **`engines.node`: backend y frontend `>=24.22.3 <25`, video sin declarar.** Con `engineStrict`
+  activo, usar el Node equivocado hace fallar el install. El mínimo es el parche de seguridad más
+  reciente de la 24: se sube a mano con cada boletín de seguridad de Node.
 - **React y zod no coinciden entre paquetes** (las versiones, en cada tabla): no des por hecho que
   lo que compila en uno compila en otro.
 

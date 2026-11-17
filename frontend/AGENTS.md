@@ -3,7 +3,7 @@
 **Lee primero [`../AGENTS.md`](../AGENTS.md)**: layer 1, seguridad, flujo de context7, versiones
 compartidas con el backend y límites. Aquí solo va lo propio de `frontend/`.
 
-**Next.js 16** con App Router. Node **24.x** (`engines.node`) — **otro Node que el del backend**.
+**Next.js 16** con App Router. Node **24**, mínimo el del `engines.node`, el mismo que el backend.
 
 ## Versiones instaladas (fuente de verdad: `node_modules`, no los rangos `^`)
 
