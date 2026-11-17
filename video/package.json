@@ -1,6 +1,7 @@
 {
   "name": "home-account-video",
   "private": true,
+  "packageManager": "pnpm@10.34.1",
   "scripts": {
     "dev": "remotion studio src/index.ts",
     "build": "remotion render src/index.ts HomeAccountPromo out/promo.webm --codec=vp8 --video-bitrate=1M",
