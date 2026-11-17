@@ -18,7 +18,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.34.1",
   "engines": {
-    "node": "24.x"
+    "node": ">=24.22.3 <25"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

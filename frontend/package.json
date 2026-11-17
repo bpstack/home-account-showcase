@@ -16,7 +16,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.34.1",
   "engines": {
-    "node": "24.x"
+    "node": ">=24.22.3 <25"
   },
   "dependencies": {
     "@noble/hashes": "^2.0.1",
