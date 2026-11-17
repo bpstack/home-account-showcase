@@ -1,0 +1,52 @@
+# The CI calls `pnpm run verify` in each package and nothing else. What
+# `verify` covers is defined by that package's `package.json`, so adding a
+# check does not touch this file, and what runs locally is what runs here.
+#
+# One job per package: there is no pnpm workspace, so each one installs on
+# its own, with its own Node (`.nvmrc`) and its own pnpm (`packageManager`).
+#
+# Requires, per package: a `verify` script, a `.nvmrc`, and `packageManager`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [backend, frontend]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      # Actions pinned to the major. Check the major still sits on a live Node
+      # runtime: when the old one is switched off, the CI goes red without
+      # anyone having touched the repo.
+      - uses: actions/checkout@v7
+
+      # The pnpm version comes from the package's `packageManager`.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: ${{ matrix.package }}/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ${{ matrix.package }}/.nvmrc
+          cache: pnpm
+          cache-dependency-path: ${{ matrix.package }}/pnpm-lock.yaml
+
+      # `--frozen-lockfile`: install the exact versions in the lockfile, or
+      # fail. Without it the CI can resolve versions the local install did not.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run verify
+
+      # Uncomment once decided. It sits outside `verify` because it depends on
+      # a third party's advisory and can turn red without the repo changing,
+      # and an intermittent CI ends up ignored.
+      # - run: pnpm audit --audit-level=high
