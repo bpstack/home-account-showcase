@@ -6,6 +6,7 @@
 # Dependencies
 # --------------------------------------------
 node_modules/
+/docs
 
 # --------------------------------------------
 # Environment Variables
@@ -64,7 +65,6 @@ build/
 # Claude AI settings (PRIVATE)
 # --------------------------------------------
 .claude/
-CLAUDE.md
 
 # --------------------------------------------
 # TypeScript

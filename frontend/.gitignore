@@ -1,0 +1,5 @@
+# Local documentation (private for now): see ../AGENTS.md
+/docs/
+
+# Skills: rebuilt from skills-lock.json, which is committed (rule 16)
+/.agents/
