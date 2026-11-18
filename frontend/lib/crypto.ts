@@ -9,7 +9,6 @@
 import { argon2id } from '@noble/hashes/argon2.js'
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js'
 import { generateMnemonic, validateMnemonic } from '@scure/bip39'
-// eslint-disable-next-line import/extensions
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 
 // ============================================

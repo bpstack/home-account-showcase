@@ -49,7 +49,6 @@ export function BalanceTab({
   showTransactions,
   setShowTransactions,
   onCategoryClick,
-  periodLabel,
 }: BalanceTabProps) {
   const savingsRate = stats.income > 0 ? ((stats.balance / stats.income) * 100).toFixed(1) : '0'
 

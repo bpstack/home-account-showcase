@@ -90,8 +90,6 @@ const tabsList = [
   { id: 'investment', label: 'Inversión', icon: <Coins className="h-4 w-4" /> },
 ]
 
-type Period = 'month' | 'year' | 'all' | 'custom'
-
 interface Stats {
   income: number
   expenses: number
