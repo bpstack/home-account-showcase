@@ -33,8 +33,15 @@ compartidas con el backend y límites. Aquí solo va lo propio de `frontend/`.
 
 ## Comprobaciones
 
-`pnpm run verify` = `pnpm run build` (`next build`, que es lo que detecta los errores de tipos). Es
-lo que ejecuta el CI.
+`pnpm run verify` = `pnpm run lint` (`eslint . --max-warnings=0`) y después `pnpm run build`
+(`next build`, que es lo que detecta los errores de tipos). Es lo que ejecuta el CI: **un aviso de
+lint ya lo pone en rojo**.
 
-**Excepción declarada (regla 14): `pnpm run lint` queda fuera de `verify`** hasta que salga limpio
-con `--max-warnings=0` (2026-11-17: no sale). El arreglo es la fase 4 de `../docs/ROADMAP.md`.
+**Excepción declarada (regla 14): `react-hooks/set-state-in-effect` y
+`react-hooks/preserve-manual-memoization` están desactivadas** en `eslint.config.mjs`. Motivo: son
+reglas del React Compiler sobre rendimiento de render, no sobre errores, y el proyecto no usa el
+compilador (ni `reactCompiler` en `next.config.ts` ni el plugin instalado). Con ellas, 21 avisos en
+18 componentes, varios de sesión y cifrado. Alcance: esas dos reglas, todo el frontend, hasta que se
+adopte el React Compiler (decisión del propietario, 2026-11-18). Las demás de `react-hooks` 7 siguen
+activas: no metas componentes dentro de otros, JSX dentro de `try/catch` ni llamadas a funciones
+antes de declararlas.

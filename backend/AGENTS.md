@@ -49,21 +49,15 @@ Es la combinación de los tipos de Express 5 con el `node_modules` **aislado de 
 correcta, y la que **ya usan todos los routers del repo**:
 
 ```ts
-import { Router } from "express";
-const router: Router = Router();
+import { Router } from 'express'
+const router: Router = Router()
 ```
 
 Ningún ejemplo publicado de Express trae esa anotación. **Si copias un router de la doc, añádela.**
 
 ## Comprobaciones
 
-`pnpm run verify` = `pnpm run typecheck` (`tsc --noEmit`, 0 errores). Es lo que ejecuta el CI.
-
-**Excepción declarada (regla 14): `pnpm run lint` queda fuera de `verify`.** Sale con **43
-errores**, todos `prettier/prettier`, repartidos por 14 archivos de `controllers/`, `validators/`,
-`scripts/` y `services/import/` (medido el 2026-07-27, otra vez 43 el 2026-11-17). Son
-preexistentes: si tras un cambio siguen siendo 43, no los has provocado tú; lo que no vale es
-**subir** la cifra. **No los arregles en masa** con `--fix` dentro de otra tarea, porque ensuciaría su
-diff: se arreglan en la fase 4 de `../docs/ROADMAP.md`, en un commit propio.
+`pnpm run verify` = `pnpm run typecheck` (`tsc --noEmit`) y después `pnpm run lint` (`eslint .
+--ext .ts,.tsx --max-warnings=0`). Es lo que ejecuta el CI: **un aviso de lint ya lo pone en rojo**.
 
 El backend usa **estilo sin punto y coma**. Si escribes con `;`, el lint te marcará cada línea.
