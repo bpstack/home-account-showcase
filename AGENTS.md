@@ -223,7 +223,7 @@ no lo es.
 
 | Paquete         | Versión     | Nota                              |
 | --------------- | ----------- | --------------------------------- |
-| `typescript`    | **5.9.3**   |                                   |
+| `typescript`    | **6.0.3**   | ⚠️ No la 7: ver abajo             |
 | `eslint`        | ⚠️ distinta | 🔴 8.57.1 back · 9.39.5 front     |
 | `zod`           | **4.3.x**   | ⚠️ v4 (4.3.5 back, 4.3.6 front)   |
 | `@noble/hashes` | **2.0.1**   | ⚠️ v2                             |
@@ -233,6 +233,10 @@ no lo es.
   conviertas a flat config. El frontend va en **9 con `eslint.config.mjs`** (flat, `defineConfig()`)
   desde la fase 3; no a la 10, porque `eslint-plugin-react`, `-import` y `-jsx-a11y` aún no la
   admiten.
+- **`typescript` 6, no 7**: TypeScript 7 no trae todavía la API de JavaScript del compilador y
+  `typescript-eslint` solo admite `<6.1.0`; con la 7, el lint de `verify` se rompe. La 6 da error con
+  cualquier opción que la 7 quita (`TS5107`): **no la silencies con `ignoreDeprecations`**, cambia
+  la opción. `@typescript-eslint` va en 8.x en los dos paquetes.
 - **`zod` 4**: `z.email()` de nivel superior, no `z.string().email()` (deprecado). Nada de la API
   v3.
 - **`@noble/hashes` 2**: los subpaths y la API cambiaron respecto a v1.
