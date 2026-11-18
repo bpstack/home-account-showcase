@@ -174,6 +174,47 @@ export async function decrypt(encryptedData: string, accountKey: CryptoKey): Pro
 }
 
 // ============================================
+// KEYED HASHES (HMAC)
+// ============================================
+
+/**
+ * What a keyed hash is used for. Each purpose gets its own HMAC key, derived from the Account Key
+ * with HKDF-SHA-256, so the AES key is never used as an HMAC key and hashes made for one purpose
+ * cannot be matched against another. The server can compare these hashes but not reverse them.
+ */
+export type HmacPurpose = 'import-hash' | 'bank-category'
+
+const HMAC_INFO_PREFIX = 'home-account/hmac/v1/'
+
+/** Derives the HMAC-SHA-256 key for one purpose from an Account Key. */
+export async function deriveHmacKey(
+  accountKey: CryptoKey,
+  purpose: HmacPurpose
+): Promise<CryptoKey> {
+  const accountKeyRaw = await crypto.subtle.exportKey('raw', accountKey)
+  const base = await crypto.subtle.importKey('raw', accountKeyRaw, 'HKDF', false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      // RFC 5869 default: a salt of HashLen zero bytes (the input is already a random key)
+      salt: new Uint8Array(32),
+      info: toArrayBuffer(utf8ToBytes(HMAC_INFO_PREFIX + purpose)),
+    },
+    base,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 },
+    false, // not extractable
+    ['sign']
+  )
+}
+
+/** HMAC-SHA-256 of a UTF-8 message, as lowercase hex. */
+export async function hmacHex(hmacKey: CryptoKey, message: string): Promise<string> {
+  const signature = await crypto.subtle.sign('HMAC', hmacKey, toArrayBuffer(utf8ToBytes(message)))
+  return bytesToHex(new Uint8Array(signature))
+}
+
+// ============================================
 // VERIFICATION BLOB
 // ============================================
 
