@@ -188,8 +188,9 @@ la documentación de la **versión exacta instalada** en ese paquete — no la �
 que recuerdes.
 
 Este repo es, con diferencia, **el que más se aleja de los defaults del modelo**, y en direcciones
-opuestas dentro del mismo árbol: el backend va en **Express 5** (por delante), y el frontend en
-**Tailwind 3** y **ESLint 8 con `.eslintrc.json`** (por detrás).
+opuestas dentro del mismo árbol: el backend va en **Express 5** (por delante) y en **ESLint 8 con
+`.eslintrc.json`** (por detrás), y el frontend en **Tailwind 3** (por detrás) y **ESLint 9 con
+`eslint.config.mjs`**.
 
 ### Flujo
 
@@ -220,16 +221,18 @@ no lo es.
 
 ### Compartido por backend y frontend (fuente de verdad: `node_modules`, no los rangos `^`)
 
-| Paquete         | Versión    | Nota                              |
-| --------------- | ---------- | --------------------------------- |
-| `typescript`    | **5.9.3**  |                                   |
-| `eslint`        | **8.57.1** | 🔴 v8 con `.eslintrc.json`        |
-| `zod`           | **4.3.x**  | ⚠️ v4 (4.3.5 back, 4.3.6 front)   |
-| `@noble/hashes` | **2.0.1**  | ⚠️ v2                             |
-| `@types/node`   | **25.0.5** | ⚠️ Por delante del Node que corre |
+| Paquete         | Versión     | Nota                              |
+| --------------- | ----------- | --------------------------------- |
+| `typescript`    | **5.9.3**   |                                   |
+| `eslint`        | ⚠️ distinta | 🔴 8.57.1 back · 9.39.5 front     |
+| `zod`           | **4.3.x**   | ⚠️ v4 (4.3.5 back, 4.3.6 front)   |
+| `@noble/hashes` | **2.0.1**   | ⚠️ v2                             |
+| `@types/node`   | **25.0.5**  | ⚠️ Por delante del Node que corre |
 
-- **`eslint` 8 con `.eslintrc.json`**, no flat config. **Todos los demás repos del propietario van
-  en ESLint 9/10 con `eslint.config.mjs`**: no conviertas a `defineConfig()` ni a flat.
+- **`eslint`: dos versiones y dos formatos.** El backend va en **8 con `.eslintrc.json`**: no lo
+  conviertas a flat config. El frontend va en **9 con `eslint.config.mjs`** (flat, `defineConfig()`)
+  desde la fase 3; no a la 10, porque `eslint-plugin-react`, `-import` y `-jsx-a11y` aún no la
+  admiten.
 - **`zod` 4**: `z.email()` de nivel superior, no `z.string().email()` (deprecado). Nada de la API
   v3.
 - **`@noble/hashes` 2**: los subpaths y la API cambiaron respecto a v1.
@@ -254,8 +257,8 @@ ese `verify` en `backend/` y `frontend/`, cada uno con su Node y su pnpm. `video
 ## Límites de context7
 
 - Sirve para **verificar**, no para migrar. No apliques cambios de versión ni "modernices" código
-  que funciona sin que se pida explícitamente. En concreto: **no propongas subir a Tailwind 4, ni
-  migrar ESLint a flat config, ni alinear `eslint-config-next` con Next 16.**
+  que funciona sin que se pida explícitamente. En concreto: **no propongas subir a Tailwind 4 ni
+  migrar el ESLint del backend a flat config.**
 - Si la doc actual recomienda un patrón distinto al que ya usa el repo, **no reescribas**:
   señálalo y sigue la convención existente salvo que el propietario decida lo contrario.
 - Activación **reactiva y acotada**: solo código nuevo o modificado en la tarea en curso.

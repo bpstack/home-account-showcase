@@ -7,21 +7,25 @@ compartidas con el backend y límites. Aquí solo va lo propio de `frontend/`.
 
 ## Versiones instaladas (fuente de verdad: `node_modules`, no los rangos `^`)
 
-| Paquete                 | Versión     | Nota                              |
-| ----------------------- | ----------- | --------------------------------- |
-| `next`                  | **16.1.1**  | App Router                        |
-| `eslint-config-next`    | **15.5.9**  | 🔴 Una major por detrás de `next` |
-| `tailwindcss`           | **3.4.17**  | ⚠️ v3, no v4. Pineada exacta      |
-| `zustand`               | **5.0.9**   | ⚠️ v5                             |
-| `react` / `react-dom`   | **19.2.3**  |                                   |
-| `@tanstack/react-query` | **5.90.16** |                                   |
-| `zod`                   | **4.3.6**   | ⚠️ v4 — trampa en la raíz         |
-| `serwist`               | **9.5.3**   | `@serwist/next` va en **9.5.6**   |
+| Paquete                 | Versión     | Nota                             |
+| ----------------------- | ----------- | -------------------------------- |
+| `next`                  | **16.4.6**  | App Router                       |
+| `eslint-config-next`    | **16.4.6**  | Con `eslint` 9.39.5, flat config |
+| `tailwindcss`           | **3.4.17**  | ⚠️ v3, no v4. Pineada exacta     |
+| `zustand`               | **5.0.9**   | ⚠️ v5                            |
+| `react` / `react-dom`   | **19.2.3**  |                                  |
+| `@tanstack/react-query` | **5.90.16** |                                  |
+| `zod`                   | **4.3.6**   | ⚠️ v4 — trampa en la raíz        |
+| `serwist`               | **9.5.13**  | Con `@serwist/turbopack` 9.5.13  |
 
 ### Trampas de versión (aquí el modelo suele asumir mal)
 
-- **`eslint-config-next` 15.5.9 frente a `next` 16.1.1**: una major entera por detrás. Si una regla
-  de lint contradice la doc de Next 16, es esto. No lo "arregles" subiéndolo sin permiso.
+- **El service worker va con `@serwist/turbopack`, no con `@serwist/next`**: `@serwist/next` solo
+  corre con webpack y Next 16 compila con Turbopack. `app/sw.ts` se sirve en `/serwist/sw.js` desde
+  `app/serwist/[path]/route.ts`, no en `public/sw.js`. Los ejemplos con `withSerwistInit` y
+  `swDest` son de `@serwist/next`: aquí no valen.
+- **`serwist` y `@serwist/turbopack` van fijados exactos y en la misma versión**: si se separan,
+  pnpm instala dos copias de `serwist`.
 - **`tailwindcss` 3**: `tailwind.config` + directivas `@tailwind`. **NO** `@import "tailwindcss"` ni
   `@theme` de v4. Otros proyectos del propietario van en v4: no copies de ellos.
 - **`zustand` 5**: exige `create<T>()(...)` currificado en TS y quitó los selectores por defecto.
