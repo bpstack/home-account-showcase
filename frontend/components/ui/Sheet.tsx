@@ -10,10 +10,12 @@ interface SheetProps {
   children: ReactNode
   /** Buttons at the bottom (apply, cancel…) */
   footer?: ReactNode
+  /** The content scrolls and pads itself (a chat with its input pinned at the bottom) */
+  flush?: boolean
 }
 
 /** A panel for filters or quick edits: slides up from the bottom on phones, from the right on desktop. */
-export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
+export function Sheet({ open, onClose, title, children, footer, flush = false }: SheetProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -44,7 +46,7 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-xl border-t border-layer-3 bg-layer-1 shadow-xl focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-96 sm:rounded-none sm:border-l sm:border-t-0"
+        className={`absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col ${flush ? 'h-[85vh] sm:h-auto' : ''} rounded-t-xl border-t border-layer-3 bg-layer-1 shadow-xl focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-96 sm:rounded-none sm:border-l sm:border-t-0`}
       >
         <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-layer-3 px-4">
           <h2 id={titleId} className="text-base font-medium text-text-primary">
@@ -59,7 +61,13 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <div className="flex-1 space-y-6 overflow-y-auto p-4">{children}</div>
+        <div
+          className={
+            flush ? 'flex min-h-0 flex-1 flex-col' : 'flex-1 space-y-6 overflow-y-auto p-4'
+          }
+        >
+          {children}
+        </div>
         {footer && (
           <div className="flex flex-shrink-0 gap-2 border-t border-layer-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {footer}
