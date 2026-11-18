@@ -8,3 +8,8 @@ node_modules/
 
 # Logs
 *.log
+
+# Local scripts: git ignores backend/scripts/ except the tracked test-security.ts,
+# so lint the same set CI sees
+scripts/*
+!scripts/test-security.ts
