@@ -24,11 +24,15 @@ export const ProfileAnswersSchema = z.object({
     .int({ message: 'Los ingresos deben ser un número entero, sin decimales' })
     .positive('Los ingresos deben ser mayores a 0')
     .max(999999, 'Los ingresos no pueden superar 999.999€'),
-  jobStability: z.enum(['high', 'medium', 'low'], { error: 'Selecciona una opción de estabilidad' }),
+  jobStability: z.enum(['high', 'medium', 'low'], {
+    error: 'Selecciona una opción de estabilidad',
+  }),
   hasEmergencyFund: z.enum(['yes', 'partial', 'no'], { error: 'Selecciona una opción' }),
   horizonYears: z.enum(['<3', '3-10', '>10'], { error: 'Selecciona un horizonte temporal' }),
   reactionToDrop: z.enum(['sell', 'hold', 'buy_more'], { error: 'Selecciona una reacción' }),
-  experienceLevel: z.enum(['none', 'basic', 'intermediate', 'advanced'], { error: 'Selecciona tu nivel de experiencia' }),
+  experienceLevel: z.enum(['none', 'basic', 'intermediate', 'advanced'], {
+    error: 'Selecciona tu nivel de experiencia',
+  }),
   financialMetrics: FinancialMetricsSchema.optional(),
 })
 
@@ -46,7 +50,10 @@ export const ChatMessageSchema = z.object({
     .min(2, 'El mensaje debe tener al menos 2 caracteres')
     .max(5000, 'El mensaje no puede superar los 5.000 caracteres')
     .trim()
-    .refine((val) => val.length >= 2, 'El mensaje debe tener al menos 2 caracteres después de eliminar espacios'),
+    .refine(
+      (val) => val.length >= 2,
+      'El mensaje debe tener al menos 2 caracteres después de eliminar espacios'
+    ),
 })
 
 export const RecommendationsRequestSchema = z.object({

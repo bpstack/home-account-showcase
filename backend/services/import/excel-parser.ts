@@ -696,12 +696,23 @@ function parseGenericExcel(workbook: XLSX.WorkBook): ParseResult {
 
   const dateKeywords = ['fecha', 'date', 'valor fecha', 'f.valor']
   const amountKeywords = ['importe', 'amount', 'cantidad', 'monto']
-  const descKeywords = ['descripción', 'descripcion', 'description', 'detalle', 'concepto', 'movimiento']
+  const descKeywords = [
+    'descripción',
+    'descripcion',
+    'description',
+    'detalle',
+    'concepto',
+    'movimiento',
+  ]
   const catKeywords = ['categoría', 'categoria', 'category']
   const subCatKeywords = ['subcategoría', 'subcategoria', 'subcategory']
 
   let headerRow = -1
-  let dateCol = -1, amountCol = -1, descCol = -1, catCol = -1, subCatCol = -1
+  let dateCol = -1,
+    amountCol = -1,
+    descCol = -1,
+    catCol = -1,
+    subCatCol = -1
 
   for (let i = 0; i < Math.min(10, data.length); i++) {
     const row = data[i]
@@ -757,11 +768,18 @@ function parseGenericExcel(workbook: XLSX.WorkBook): ParseResult {
     const amount =
       typeof rawAmount === 'number'
         ? rawAmount
-        : parseFloat(String(rawAmount).replace(/\s/g, '').replace(',', '.').replace(/[^0-9.-]/g, ''))
+        : parseFloat(
+            String(rawAmount)
+              .replace(/\s/g, '')
+              .replace(',', '.')
+              .replace(/[^0-9.-]/g, '')
+          )
     if (isNaN(amount)) continue
 
     const description =
-      descCol >= 0 && row[descCol] ? sanitizeCSVValue(String(row[descCol]).trim()) : 'Sin descripción'
+      descCol >= 0 && row[descCol]
+        ? sanitizeCSVValue(String(row[descCol]).trim())
+        : 'Sin descripción'
     const bank_category =
       catCol >= 0 && row[catCol] ? sanitizeCSVValue(String(row[catCol]).trim()) : null
     const bank_subcategory =
@@ -783,7 +801,13 @@ function parseGenericExcel(workbook: XLSX.WorkBook): ParseResult {
     return { category, subcategory: subcategory ?? '' }
   })
 
-  return { success: transactions.length > 0, file_type: 'generic_excel', transactions, categories, errors }
+  return {
+    success: transactions.length > 0,
+    file_type: 'generic_excel',
+    transactions,
+    categories,
+    errors,
+  }
 }
 
 export function parseFile(buffer: Buffer, filename: string, sheetName?: string): ParseResult {

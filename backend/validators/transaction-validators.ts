@@ -99,7 +99,11 @@ export const updateTransactionSchema = z
       .min(3, 'La descripción debe tener al menos 3 caracteres')
       .max(60, 'La descripción no puede exceder 60 caracteres')
       .optional(),
-    amount: z.number().positive('El importe debe ser mayor a 0').finite('El importe debe ser un número válido').optional(),
+    amount: z
+      .number()
+      .positive('El importe debe ser mayor a 0')
+      .finite('El importe debe ser un número válido')
+      .optional(),
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -115,9 +119,11 @@ export const updateEncryptedTransactionSchema = z
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
     description_encrypted: z.string().optional(),
     amount_encrypted: z.string().optional(),
-    amount_sign: z.enum(['positive', 'negative'], {
-      message: 'El tipo de importe debe ser positivo o negativo',
-    }).optional(),
+    amount_sign: z
+      .enum(['positive', 'negative'], {
+        message: 'El tipo de importe debe ser positivo o negativo',
+      })
+      .optional(),
     bank_category_encrypted: z.string().optional().nullable(),
     bank_subcategory_encrypted: z.string().optional().nullable(),
   })

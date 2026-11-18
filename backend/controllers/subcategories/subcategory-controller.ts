@@ -3,7 +3,10 @@ import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { SubcategoryRepository } from '../../repositories/subcategories/subcategory-repository.js'
 import { sanitizeForStorage } from '../../utils/sanitize.js'
-import { createSubcategorySchema, updateSubcategorySchema } from '../../validators/category-validators.js'
+import {
+  createSubcategorySchema,
+  updateSubcategorySchema,
+} from '../../validators/category-validators.js'
 
 export const getSubcategories = asyncHandler(async (req: Request, res: Response) => {
   const { category_id } = req.query
@@ -36,9 +39,9 @@ export const getSubcategoryById = asyncHandler(async (req: Request, res: Respons
 
 export const createSubcategory = asyncHandler(async (req: Request, res: Response) => {
   const result = createSubcategorySchema.safeParse(req.body)
-  
+
   if (!result.success) {
-    const messages = result.error.issues.map(i => i.message).join(', ')
+    const messages = result.error.issues.map((i) => i.message).join(', ')
     throw new AppError(messages, 400)
   }
 
@@ -62,9 +65,9 @@ export const updateSubcategory = asyncHandler(async (req: Request, res: Response
   const { id } = req.params
 
   const result = updateSubcategorySchema.safeParse(req.body)
-  
+
   if (!result.success) {
-    const messages = result.error.issues.map(i => i.message).join(', ')
+    const messages = result.error.issues.map((i) => i.message).join(', ')
     throw new AppError(messages, 400)
   }
 

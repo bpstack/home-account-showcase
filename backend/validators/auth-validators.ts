@@ -6,10 +6,7 @@ import { z } from 'zod'
  * Schema de validación para registro
  */
 export const registerSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'El email es requerido')
-    .email('Por favor ingresa un email válido'),
+  email: z.string().min(1, 'El email es requerido').email('Por favor ingresa un email válido'),
   password: z
     .string()
     .min(6, 'La contraseña debe tener al menos 6 caracteres')

@@ -3,7 +3,10 @@ import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import type { UpdateUserDTO } from '../../models/auth/index.js'
-import { updateUserNameSchema, updateUserEmailSchema } from '../../validators/settings-validators.js'
+import {
+  updateUserNameSchema,
+  updateUserEmailSchema,
+} from '../../validators/settings-validators.js'
 
 export const getAllUsers = asyncHandler(async (_req: Request, res: Response) => {
   const users = await UserRepository.getAll()
@@ -26,7 +29,7 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
   if (name) {
     const nameResult = updateUserNameSchema.safeParse({ name })
     if (!nameResult.success) {
-      const messages = nameResult.error.issues.map(i => i.message).join(', ')
+      const messages = nameResult.error.issues.map((i) => i.message).join(', ')
       throw new AppError(messages, 400)
     }
   }
@@ -34,7 +37,7 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
   if (email) {
     const emailResult = updateUserEmailSchema.safeParse({ email })
     if (!emailResult.success) {
-      const messages = emailResult.error.issues.map(i => i.message).join(', ')
+      const messages = emailResult.error.issues.map((i) => i.message).join(', ')
       throw new AppError(messages, 400)
     }
   }
