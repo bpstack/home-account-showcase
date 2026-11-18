@@ -86,7 +86,7 @@ export function InvestmentWidget({
             icon={<PiggyBank className="h-4 w-4" />}
             label="Ahorro mensual"
             value={formatCurrency(savingsAmount)}
-            color="text-green-600"
+            color="text-success"
             tooltip="Media de ahorro mensual considerando todas tus transacciones"
           />
           <QuickStat
@@ -113,7 +113,7 @@ export function InvestmentWidget({
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
+                className="h-full rounded-full bg-success"
                 style={{
                   width: `${Math.min(100, (financialSummary.emergencyFundStatus / financialSummary.emergencyFundGoal) * 100)}%`,
                 }}
@@ -129,13 +129,13 @@ export function InvestmentWidget({
         {/* Market preview */}
         {marketPrices && (
           <div className="p-3 bg-background/50 rounded-lg space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase">Mercados</p>
+            <p className="text-xs font-medium text-muted-foreground">Mercados</p>
             <div className="flex justify-between text-sm">
               <span>S&P 500</span>
               <span
                 className={cn(
                   'font-medium',
-                  marketPrices.sp500.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                  marketPrices.sp500.change24h >= 0 ? 'text-success' : 'text-danger'
                 )}
               >
                 {marketPrices.sp500.change24h >= 0 ? '+' : ''}
@@ -147,7 +147,7 @@ export function InvestmentWidget({
               <span
                 className={cn(
                   'font-medium',
-                  marketPrices.btc.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                  marketPrices.btc.change24h >= 0 ? 'text-success' : 'text-danger'
                 )}
               >
                 {marketPrices.btc.change24h >= 0 ? '+' : ''}
@@ -171,7 +171,7 @@ export function InvestmentWidget({
         {/* CTA */}
         <Link
           href="/investment"
-          className="inline-flex items-center justify-center w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+          className="inline-flex items-center justify-center w-full h-10 px-4 py-2 text-sm font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Sparkles className="h-4 w-4 mr-2" />
           Acceder al módulo
@@ -210,7 +210,7 @@ function QuickStat({
           {label}
           {tooltip && <InfoTooltip content={tooltip} />}
         </p>
-        <p className="text-sm font-semibold">{value}</p>
+        <p className="text-sm font-medium">{value}</p>
       </div>
     </div>
   )

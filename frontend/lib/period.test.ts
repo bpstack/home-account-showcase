@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { periodLabel, periodRange, shiftPeriod, toPeriod, toYearMonth } from './period'
+import {
+  periodLabel,
+  periodRange,
+  previousPeriod,
+  shiftPeriod,
+  toPeriod,
+  toYearMonth,
+} from './period'
 
 describe('periodRange', () => {
   it('covers the whole month, first and last day included', () => {
@@ -71,5 +78,21 @@ describe('toPeriod and toYearMonth', () => {
       year: 2026,
       month: 3,
     })
+  })
+})
+
+describe('previousPeriod', () => {
+  it('compares a month with the month before and a year with the year before', () => {
+    expect(previousPeriod({ kind: 'month', year: 2026, month: 0 })).toEqual({
+      kind: 'month',
+      year: 2025,
+      month: 11,
+    })
+    expect(previousPeriod({ kind: 'year', year: 2026 })).toEqual({ kind: 'year', year: 2025 })
+  })
+
+  it('has nothing to compare "everything" or a range with', () => {
+    expect(previousPeriod({ kind: 'all' })).toBeNull()
+    expect(previousPeriod({ kind: 'range', start: '2026-01-01', end: '2026-01-31' })).toBeNull()
   })
 })

@@ -7,11 +7,6 @@ function ChartSkeleton() {
 }
 
 // Exports con lazy loading - ssr: false porque Recharts usa window
-export const CategoryPieChart = dynamic(
-  () => import('./CategoryPieChart').then((m) => m.CategoryPieChart),
-  { ssr: false, loading: ChartSkeleton }
-)
-
 export const MonthlyBarChart = dynamic(
   () => import('./MonthlyBarChart').then((m) => m.MonthlyBarChart),
   { ssr: false, loading: ChartSkeleton }

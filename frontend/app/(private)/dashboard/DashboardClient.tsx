@@ -4,12 +4,10 @@ import { Card, CardContent, Tabs, PeriodSelector } from '@/components/ui'
 import { periodRange, toPeriod, toYearMonth, type Period } from '@/lib/period'
 import { useAuth } from '@/hooks/useAuth'
 import { useTransactionStats, useTransactionSummary } from '@/lib/queries/transactions'
-import { HistoryInfoAlert } from '@/components/dashboard/HistoryInfoAlert'
-import { OverviewInfoAlert } from '@/components/dashboard/OverviewInfoAlert'
 import { EmptyAccountState } from '@/components/dashboard/EmptyAccountState'
 import { useHasAnyTransactions } from '@/lib/queries/transactions'
 import { useTransactionsStore } from '@/stores/transactionsStore'
-import { LayoutDashboard, History, LineChart, Coins } from 'lucide-react'
+import { LayoutDashboard, History, Coins } from 'lucide-react'
 import type {
   StatsResponse,
   SummaryResponse,
@@ -24,7 +22,6 @@ import { Suspense } from 'react'
 
 import { OverviewTab } from './components/OverviewTab'
 import { HistoryTab } from './components/HistoryTab'
-import { StatsTab } from './components/StatsTab'
 import { SavingsTab } from './components/SavingsTab'
 
 // Initial data types from RSC
@@ -87,7 +84,6 @@ function HistorySkeleton() {
 const tabsList = [
   { id: 'overview', label: 'Resumen', icon: <LayoutDashboard className="h-4 w-4" /> },
   { id: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
-  { id: 'stats', label: 'Estadísticas', icon: <LineChart className="h-4 w-4" /> },
   { id: 'investment', label: 'Inversión', icon: <Coins className="h-4 w-4" /> },
 ]
 
@@ -166,18 +162,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         />
       </div>
 
-      {activeTab === 'overview' && (
-        <div className="px-3 sm:px-4 mt-2">
-          <OverviewInfoAlert />
-        </div>
-      )}
-
-      {activeTab === 'history' && (
-        <div className="px-3 sm:px-4 mt-2">
-          <HistoryInfoAlert />
-        </div>
-      )}
-
       {/* Content area */}
       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
         {isLoadingCheck ? (
@@ -196,11 +180,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 {isLoading ? (
                   <DashboardSkeleton />
                 ) : (
-                  <OverviewTab
-                    stats={stats}
-                    summary={summary}
-                    incomeByType={statsData?.stats?.incomeByType}
-                  />
+                  <OverviewTab stats={stats} summary={summary} period={periodValue} />
                 )}
               </Suspense>
             )}
@@ -210,17 +190,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </Suspense>
             )}
 
-            {activeTab === 'stats' && (
-              <Suspense fallback={<DashboardSkeleton />}>
-                {isLoading ? <DashboardSkeleton /> : <StatsTab summary={summary} />}
-              </Suspense>
-            )}
             {activeTab === 'investment' && (
               <Suspense fallback={<DashboardSkeleton />}>
                 {isLoading ? (
                   <DashboardSkeleton />
                 ) : (
-                  <SavingsTab stats={stats} period={period} accountId={account?.id || ''} />
+                  <SavingsTab stats={stats} period={periodValue} accountId={account?.id || ''} />
                 )}
               </Suspense>
             )}

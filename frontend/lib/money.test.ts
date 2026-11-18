@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatMoney } from './money'
+import { formatMoney, formatMoneyCompact } from './money'
 
 // Intl puts a no-break space (U+00A0) before the euro sign; compare with plain spaces
 const plain = (s: string) => s.replace(/\u00a0/g, ' ')
@@ -26,5 +26,13 @@ describe('formatMoney', () => {
     expect(formatMoney(null)).toBe('—')
     expect(formatMoney(undefined, 'always')).toBe('—')
     expect(formatMoney(Number.NaN)).toBe('—')
+  })
+})
+
+describe('formatMoneyCompact', () => {
+  it('writes axis amounts in euros, short, with the true minus sign', () => {
+    expect(plain(formatMoneyCompact(1500))).toBe('1,5 mil €')
+    expect(plain(formatMoneyCompact(-300))).toBe('−300 €')
+    expect(plain(formatMoneyCompact(0))).toBe('0 €')
   })
 })

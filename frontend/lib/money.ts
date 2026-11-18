@@ -32,3 +32,16 @@ export function formatMoney(value: number | null | undefined, sign: SignMode = '
   if (rounded < 0) return `${MINUS}${body}`
   return sign === 'always' ? `+${body}` : body
 }
+
+const compactEuros = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+
+/** Short amounts for chart axes: "1,5 mil €", "−300 €". */
+export function formatMoneyCompact(value: number): string {
+  const body = compactEuros.format(Math.abs(value))
+  return value < 0 ? `${MINUS}${body}` : body
+}

@@ -63,6 +63,11 @@ export function shiftPeriod(period: Period, delta: -1 | 1): Period {
   return { kind: 'month', year: Math.floor(index / 12), month: ((index % 12) + 12) % 12 }
 }
 
+/** The period to compare with: the month or year before; nothing for "everything" or a range. */
+export function previousPeriod(period: Period): Period | null {
+  return canShift(period) ? shiftPeriod(period, -1) : null
+}
+
 export function canShift(period: Period): boolean {
   return period.kind === 'month' || period.kind === 'year'
 }
