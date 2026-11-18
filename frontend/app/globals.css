@@ -17,26 +17,26 @@
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 217.2 91.2% 59.8%; /* Blue accent for light mode */
+    --accent: 185.7 77.8% 26.5%; /* Petrol #0F6E78: the one accent of the app */
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 3.1 54% 49.4%; /* #C2413A, same as --danger */
+    --destructive-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 47.4% 11.2%;
+    --ring: 185.7 77.8% 26.5%;
     --radius: 0.75rem;
 
-    /* Status colors - Light mode */
-    --success: #16a34a;
-    --warning: #d97706;
-    --danger: #dc2626;
+    /* Status colors - Light mode (income, warning, expense; AA on white) */
+    --success: #1e7f4f;
+    --warning: #9a5b05;
+    --danger: #c2413a;
 
     /* Legacy compatibility */
-    --layer-1: #ffffff;
-    --layer-2: #f8fafc;
-    --layer-3: #e2e8f0;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
+    --layer-1: #ffffff; /* surface */
+    --layer-2: #f7f8fa; /* paper */
+    --layer-3: #e3e6eb; /* line */
+    --text-primary: #1b2430; /* ink */
+    --text-secondary: #5b6573;
   }
 
   .dark {
@@ -53,25 +53,25 @@
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 217.2 91.2% 59.8%; /* Blue accent for dark mode too */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --accent: 184.8 49.8% 49.2%; /* Petrol #3FB2BC; text on it is dark */
+    --accent-foreground: 187.8 51.1% 8.8%;
+    --destructive: 4.4 82% 67.3%; /* #F07167, same as --danger */
+    --destructive-foreground: 4 50% 8%;
     --border: 240 3.7% 15.9%; /* Subtle dark border */
     --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --ring: 184.8 49.8% 49.2%;
 
-    /* Status colors - Dark mode */
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --danger: #ef4444;
+    /* Status colors - Dark mode (AA on the dark surfaces) */
+    --success: #4cc38a;
+    --warning: #e0a43a;
+    --danger: #f07167;
 
     /* Legacy compatibility - darker */
-    --layer-1: #09090b; /* Zinc 950 */
-    --layer-2: #18181b; /* Zinc 900 */
-    --layer-3: #27272a; /* Zinc 800 */
-    --text-primary: #f3f4f6;
-    --text-secondary: #9ca3af;
+    --layer-1: #12161c; /* surface */
+    --layer-2: #1a1f27; /* raised */
+    --layer-3: #2a313c; /* line */
+    --text-primary: #e8ebf0; /* ink */
+    --text-secondary: #9aa3af;
   }
 }
 

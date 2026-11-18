@@ -13,8 +13,7 @@ export function Card({ children, className, hover = false, onClick }: CardProps)
     <div
       className={cn(
         'bg-layer-1 border border-layer-3 rounded-lg p-6',
-        hover &&
-          'transition-all duration-300 hover:border-accent hover:shadow-lg hover:shadow-accent/10',
+        hover && 'transition-colors hover:border-accent',
         className
       )}
       onClick={onClick}
@@ -41,10 +40,7 @@ interface CardTitleProps {
 export function CardTitle({ children, className }: CardTitleProps) {
   return (
     <h3
-      className={cn(
-        'text-xl font-semibold text-text-primary whitespace-nowrap truncate',
-        className
-      )}
+      className={cn('text-lg font-medium text-text-primary whitespace-nowrap truncate', className)}
     >
       {children}
     </h3>

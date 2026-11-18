@@ -73,7 +73,7 @@ export function Tabs({
               className={cn(
                 'flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
+                  ? 'bg-layer-1 text-text-primary shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -89,7 +89,7 @@ export function Tabs({
   // Underline responsive variant (modal mobile + tabs desktop)
   if (variant === 'underline-responsive') {
     return (
-      <div className={cn('border-b border-gray-200 dark:border-gray-800 bg-background', className)}>
+      <div className={cn('border-b border-layer-3 bg-layer-1', className)}>
         {/* Mobile: Tab selector con modal + filtros */}
         <div className="md:hidden px-3 py-2 space-y-2 pb-6">
           {/* Mobile Tab Selector con Modal */}
@@ -113,8 +113,8 @@ export function Tabs({
                   className={cn(
                     'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
                     isActive
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-muted-foreground hover:bg-muted hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-900 dark:hover:border-blue-900/40'
+                      ? 'border-accent text-text-primary'
+                      : 'border-transparent text-text-secondary hover:text-text-primary hover:border-layer-3'
                   )}
                 >
                   {tab.icon}
@@ -144,8 +144,8 @@ export function Tabs({
               className={cn(
                 'flex items-center gap-2 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors',
                 isActive
-                  ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-muted-foreground hover:bg-muted hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-blue-900/40'
+                  ? 'border-accent text-text-primary'
+                  : 'border-transparent text-text-secondary hover:text-text-primary hover:border-layer-3'
               )}
             >
               {tab.icon}
