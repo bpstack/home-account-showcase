@@ -14,10 +14,6 @@ interface RateLimitEntry {
 // Store per user per provider
 const rateLimitStore = new Map<string, RateLimitEntry>()
 
-// Track recent parse operations for parse+categorize combo
-const recentParseStore = new Map<string, number>()
-const PARSE_CATEGORIZE_WINDOW_MS = 60 * 1000 // 60 seconds
-
 const WINDOW_MS = 60 * 60 * 1000 // 1 hour
 
 // Limits per provider (per hour)
@@ -101,41 +97,13 @@ function incrementRateLimit(userId: string, provider: AIProviderType): void {
 }
 
 /**
- * Mark a parse operation for parse+categorize combo tracking
- */
-export function markParseOperation(userId: string): void {
-  recentParseStore.set(`parse_${userId}`, Date.now())
-}
-
-/**
- * Check if categorize should be free (recent parse exists)
- */
-function isCategorizeAfterParse(userId: string): boolean {
-  const parseTime = recentParseStore.get(`parse_${userId}`)
-  if (!parseTime) return false
-
-  const elapsed = Date.now() - parseTime
-  if (elapsed < PARSE_CATEGORIZE_WINDOW_MS) {
-    // Clear the parse marker so it can only be used once
-    recentParseStore.delete(`parse_${userId}`)
-    return true
-  }
-
-  return false
-}
-
-/**
  * Main rate limiter middleware
  * Options:
  * - skipRateLimit: true to skip (for test endpoint)
- * - isCategorize: true for categorize endpoint (check parse combo)
- * - isParse: true for parse endpoint (mark for combo)
  */
 export function aiRateLimiter(
   options: {
     skipRateLimit?: boolean
-    isParse?: boolean
-    isCategorize?: boolean
   } = {}
 ) {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -149,16 +117,6 @@ export function aiRateLimiter(
 
     // No provider configured
     if (provider === 'none') {
-      return next()
-    }
-
-    // Categorize after parse is free
-    if (options.isCategorize && isCategorizeAfterParse(userId)) {
-      logger.info(
-        'AI_RATE_LIMITER',
-        'aiRateLimiter',
-        `Categorize free (after parse) for user ${userId}`
-      )
       return next()
     }
 
@@ -178,10 +136,6 @@ export function aiRateLimiter(
     }
 
     incrementRateLimit(userId, provider)
-
-    if (options.isParse) {
-      markParseOperation(userId)
-    }
 
     logger.info(
       'AI_RATE_LIMITER',
@@ -256,13 +210,6 @@ export function cleanupExpiredEntries(): void {
   for (const [key, entry] of rateLimitStore.entries()) {
     if (now > entry.resetTime) {
       rateLimitStore.delete(key)
-    }
-  }
-
-  // Clean old parse markers
-  for (const [key, time] of recentParseStore.entries()) {
-    if (now - time > PARSE_CATEGORIZE_WINDOW_MS) {
-      recentParseStore.delete(key)
     }
   }
 }

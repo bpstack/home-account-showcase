@@ -11,7 +11,6 @@ API en **Express 5** con **mysql2** (SQL en crudo, sin ORM). Se ejecuta TypeScri
 | Paquete              | Versión    | Nota                         |
 | -------------------- | ---------- | ---------------------------- |
 | `express`            | **5.3.0**  | ⚠️ v5 — ver trampas          |
-| `multer`             | **2.5.0**  | ⚠️ v2 — ver trampas          |
 | `bcrypt`             | **6.0.0**  | ⚠️ v6 — ver trampas          |
 | `dotenv`             | **17.2.3** | ⚠️ v17 — ver trampas         |
 | `@anthropic-ai/sdk`  | **0.71.2** | ⚠️ Pre-1.0 — ver trampas     |
@@ -28,8 +27,6 @@ API en **Express 5** con **mysql2** (SQL en crudo, sin ORM). Se ejecuta TypeScri
   es **de solo lectura**, y los patrones de ruta son de path-to-regexp v8: **`*` suelto ya no
   vale**, hay que nombrar el comodín (`/*splat`). Es **lo contrario** de Express 4, que es lo que
   devuelve casi todo ejemplo.
-- **`multer` 2**: cambió el manejo de errores y las opciones respecto a v1, que es lo que devuelve
-  casi todo ejemplo.
 - **`bcrypt`**: es **v6**.
 - **`dotenv` 17**: el comportamiento por defecto de logs y override cambió respecto a las 8.x/16.x
   de los ejemplos.

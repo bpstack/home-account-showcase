@@ -2,28 +2,12 @@ import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import crypto from 'crypto'
-import { parseFile as parseImportFile } from '../../services/import/excel-parser.js'
 import { CategoryRepository } from '../../repositories/categories/category-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
 import { importConfirmSchema } from '../../validators/import-validators.js'
 import db from '../../config/db.js'
 
 const HMAC_HEX = '^[0-9a-f]{64}$'
-
-export const parseFile = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.file) {
-    throw new AppError('No se ha proporcionado ningún archivo', 400)
-  }
-
-  const sheetName = req.body.sheet_name as string | undefined
-  const filename = req.file.originalname || 'file.xlsx'
-  const result = parseImportFile(req.file.buffer, filename, sheetName)
-
-  res.status(200).json({
-    success: result.success,
-    data: result,
-  })
-})
 
 /**
  * Stores an import that arrives already encrypted (ADR-008): ciphertexts, the sign of the amount,

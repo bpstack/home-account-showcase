@@ -34,22 +34,6 @@ export interface AIStatus {
   >
 }
 
-export interface ParsedTransactionAI {
-  date: string
-  description: string
-  amount: number
-  category?: string
-  subcategory?: string
-}
-
-export interface AIParseResult {
-  success: boolean
-  transactions: ParsedTransactionAI[]
-  provider: string
-  responseTime: number
-  error?: string
-}
-
 export const PROVIDER_DEFAULTS: Record<AIProviderType, Partial<AIProviderConfig>> = {
   none: {
     provider: 'none',

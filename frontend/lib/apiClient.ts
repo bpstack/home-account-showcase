@@ -971,16 +971,6 @@ export const ai = {
       method: 'POST',
       body: JSON.stringify({ provider }),
     }),
-
-  categorize: (transactions: Array<{ description: string; date?: string; amount?: number }>) =>
-    request<{
-      success: boolean
-      categories: Array<{ category: string; subcategory: string }>
-      responseTime: number
-    }>('/ai/categorize', {
-      method: 'POST',
-      body: JSON.stringify({ transactions }),
-    }),
 }
 
 export { ApiError }
