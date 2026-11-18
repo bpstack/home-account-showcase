@@ -28,6 +28,9 @@ dotenv.config()
 
 const app = express()
 
+// Do not announce the framework in every response
+app.disable('x-powered-by')
+
 // 👇 Configuración para proxies como Render
 app.set('trust proxy', 1)
 
@@ -62,7 +65,8 @@ app.use(
         return callback(null, true)
       }
 
-      return callback(new Error(`Not allowed by CORS: ${origin}`))
+      // AppError so the global handler answers 403 instead of a generic 500
+      return callback(new AppError('Origen no permitido', 403))
     },
     credentials: true,
   })
