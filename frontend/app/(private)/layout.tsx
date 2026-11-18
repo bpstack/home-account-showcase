@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import Link from 'next/link'
-import { Menu, X, ChevronRight } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { useAuthStore } from '@/stores/authStore'
-import { Sidebar, ProfileDropdown } from '@/components/layout'
+import { Sidebar, ProfileDropdown, MobileNav } from '@/components/layout'
+import { pageTitle } from '@/components/layout/navigation'
 import { ThemeToggle } from '@/components/ui'
 
 const UNLOCK_PATH = '/unlock'
@@ -65,22 +65,6 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
     }
   }, [user, router, pathname, shouldRedirectToLogin, isUnlocked, hasSeparatePin])
 
-  const generateBreadcrumbs = () => {
-    const paths = pathname.split('/').filter(Boolean)
-    let currentPath = ''
-    return paths.map((path, index) => {
-      currentPath += `/${path}`
-      const label = path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ')
-      return {
-        label,
-        href: currentPath,
-        isLast: index === paths.length - 1,
-      }
-    })
-  }
-
-  const breadcrumbs = generateBreadcrumbs()
-
   // Don't show private layout on unlock page
   if (pathname === UNLOCK_PATH) {
     return <>{children}</>
@@ -99,75 +83,48 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Mobile Sidebar Overlay */}
+    <div className="flex h-screen bg-layer-2">
+      {/* Drawer overlay (below lg) */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar: static from lg up, a drawer below */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 transform transition-transform duration-200 ease-out motion-reduce:transition-none lg:static lg:z-auto lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <button
+          type="button"
           onClick={() => setSidebarOpen(false)}
-          className="lg:hidden absolute top-4 right-4 p-2 text-text-secondary hover:text-text-primary"
+          aria-label="Cerrar menú"
+          className="absolute right-3 top-3 rounded-md p-2 text-text-secondary hover:text-text-primary lg:hidden"
         >
           <X className="h-5 w-5" />
         </button>
         <Sidebar onNavigate={sidebarOpen ? () => setSidebarOpen(false) : undefined} />
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header - mismo color que el logo del sidebar */}
-        <header className="h-16 border-b border-layer-3 bg-background flex items-center justify-between px-4 md:px-6 flex-shrink-0">
-          {/* Left: Mobile menu + Breadcrumb */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-text-secondary hover:text-text-primary hover:bg-layer-2 rounded-lg transition-colors"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-
-            {/* Breadcrumb - Desktop */}
-            <nav className="hidden md:flex items-center gap-1">
-              {breadcrumbs.map((crumb, index) => (
-                <div key={crumb.href} className="flex items-center gap-1">
-                  {index > 0 && <ChevronRight className="h-4 w-4 text-text-secondary" />}
-                  {crumb.isLast ? (
-                    <span className="text-sm font-medium text-text-primary">{crumb.label}</span>
-                  ) : (
-                    <Link
-                      href={crumb.href}
-                      className="text-sm text-text-secondary hover:text-text-primary transition-colors"
-                    >
-                      {crumb.label}
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </nav>
-          </div>
-
-          {/* Right: Actions */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-layer-3 bg-layer-1 px-4 md:px-6">
+          <p className="text-base font-medium text-text-primary">{pageTitle(pathname)}</p>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <ProfileDropdown />
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="max-w-[1600px]">{children}</div>
+        {/* Bottom padding leaves room for the mobile bar */}
+        <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6 md:pb-24 lg:pb-6">
+          <div className="max-w-[1200px]">{children}</div>
         </main>
       </div>
+
+      <MobileNav onOpenMenu={() => setSidebarOpen(true)} />
     </div>
   )
 }

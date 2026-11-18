@@ -167,7 +167,7 @@ export function ProfileDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-lg transition-colors duration-200 hover:bg-muted border border-transparent hover:border-border"
       >
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-accent text-accent-foreground">
           <Wallet className="h-4 w-4" />
         </div>
         <div className="hidden md:flex flex-col items-start">
@@ -204,7 +204,7 @@ export function ProfileDropdown() {
                     {isSwitchingAccount ? (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     ) : (
-                      <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <Building2 className="h-4 w-4 text-accent" />
                     )}
                     <span className="font-medium">{currentAccount?.name}</span>
                   </div>
@@ -303,8 +303,8 @@ export function ProfileDropdown() {
           <div className="space-y-4">
             {/* Icon + description */}
             <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl border border-border">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center shrink-0 shadow-sm">
-                <Building2 className="w-4 h-4 text-white" />
+              <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-accent-foreground" />
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">Nueva cuenta independiente</p>
