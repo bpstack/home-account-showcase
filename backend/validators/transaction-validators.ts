@@ -9,7 +9,17 @@ export const getTransactionsSchema = z.object({
   account_id: z.string().uuid('account_id debe ser un UUID válido'),
   start_date: z.string().date('start_date debe ser fecha válida (YYYY-MM-DD)').optional(),
   end_date: z.string().date('end_date debe ser fecha válida (YYYY-MM-DD)').optional(),
-  subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional(),
+  // One subcategory or several, comma-separated (the filter allows choosing many)
+  subcategory_id: z
+    .string()
+    .transform((val) => val.split(',').filter(Boolean))
+    .pipe(
+      z
+        .array(z.uuid('subcategory_id debe ser un UUID válido'))
+        .min(1)
+        .max(200, 'Demasiadas subcategorías en el filtro')
+    )
+    .optional(),
   min_amount: z
     .string()
     .transform((val) => parseFloat(val))

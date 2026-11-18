@@ -37,7 +37,7 @@ export const getTransactions = asyncHandler(async (req: Request, res: Response) 
       account_id,
       startDate: start_date,
       endDate: end_date,
-      subcategory_id,
+      subcategory_ids: subcategory_id,
       minAmount: min_amount,
       maxAmount: max_amount,
       search,

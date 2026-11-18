@@ -149,9 +149,9 @@ export class TransactionRepository {
       params.push(filters.endDate)
     }
 
-    if (filters.subcategory_id) {
-      query += ' AND t.subcategory_id = ?'
-      params.push(filters.subcategory_id)
+    if (filters.subcategory_ids?.length) {
+      query += ' AND t.subcategory_id IN (?)'
+      params.push(filters.subcategory_ids)
     }
 
     if (filters.minAmount !== undefined) {
@@ -217,9 +217,9 @@ export class TransactionRepository {
       params.push(filters.endDate)
     }
 
-    if (filters.subcategory_id) {
-      query += ' AND t.subcategory_id = ?'
-      params.push(filters.subcategory_id)
+    if (filters.subcategory_ids?.length) {
+      query += ' AND t.subcategory_id IN (?)'
+      params.push(filters.subcategory_ids)
     }
 
     if (filters.minAmount !== undefined) {
