@@ -106,8 +106,8 @@ export function AISettings() {
   }
 
   const getStatusColor = () => {
-    if (!isActive) return 'bg-gray-400'
-    if (isOllama) return 'bg-blue-500'
+    if (!isActive) return 'bg-layer-3'
+    if (isOllama) return 'bg-accent/100'
     if (isConfigured) return 'bg-success'
     return 'bg-warning'
   }
@@ -115,11 +115,11 @@ export function AISettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-medium text-text-primary dark:text-white">
           Inteligencia Artificial
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Configura los proveedores de IA para el parsing de transacciones
+        <p className="text-sm text-text-secondary mt-1">
+          El proveedor de IA que usan las recomendaciones de inversión.
         </p>
       </div>
 
@@ -160,7 +160,6 @@ export function AISettings() {
                     value={selectedProvider}
                     onChange={(e) => handleProviderChange(e.target.value)}
                     options={PROVIDER_OPTIONS}
-                    className="w-full sm:w-72"
                     disabled={saving}
                   />
                   {hasChanges && (
@@ -255,24 +254,20 @@ export function AISettings() {
                   <div
                     className={`p-3 rounded-lg border ${
                       status.rateLimit.isUnlimited
-                        ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'
-                        : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+                        ? 'bg-success/10 border-success/30'
+                        : 'bg-accent/10 border-accent/30'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Zap
                           className={`h-4 w-4 ${
-                            status.rateLimit.isUnlimited
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-blue-600 dark:text-blue-400'
+                            status.rateLimit.isUnlimited ? 'text-success' : 'text-accent'
                           }`}
                         />
                         <span
                           className={`text-sm font-medium ${
-                            status.rateLimit.isUnlimited
-                              ? 'text-green-900 dark:text-green-100'
-                              : 'text-blue-900 dark:text-blue-100'
+                            status.rateLimit.isUnlimited ? 'text-success' : 'text-text-primary'
                           }`}
                         >
                           {status.rateLimit.isUnlimited ? (
@@ -288,7 +283,7 @@ export function AISettings() {
                       {!status.rateLimit.isUnlimited &&
                         status.rateLimit.resetTime &&
                         status.rateLimit.remaining < status.rateLimit.maxRequests && (
-                          <span className="text-xs text-blue-700 dark:text-blue-300">
+                          <span className="text-xs text-text-primary">
                             Resetea a las{' '}
                             {new Date(status.rateLimit.resetTime).toLocaleTimeString('es-ES', {
                               hour: '2-digit',
@@ -298,7 +293,7 @@ export function AISettings() {
                         )}
                     </div>
                     {!status.rateLimit.isUnlimited && status.rateLimit.remaining === 0 && (
-                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                      <p className="text-xs text-text-primary mt-1">
                         Has alcanzado el límite. Espera a que se reinicie o cambia a Ollama (local,
                         ilimitado).
                       </p>

@@ -1,84 +1,56 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { ProfileSidebar, SettingsPanel } from '@/components/profile'
-import { Shield } from 'lucide-react'
+import { Suspense, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Loader2, ShieldAlert } from 'lucide-react'
+import { SettingsPanel } from '@/components/profile'
 
-function ProfileSkeleton() {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-    </div>
-  )
-}
-
-function ProfileContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const activePanel = searchParams.get('panel')
-  const [bip39Verified, setBip39Verified] = useState<boolean | null>(null)
+/** Asks for the recovery phrase until it is set: without it, a forgotten PIN loses the data. */
+function RecoveryNotice() {
+  const [verified, setVerified] = useState<boolean | null>(null)
 
   useEffect(() => {
-    const fetchKeys = async () => {
-      try {
-        const res = await fetch('/api/proxy/auth/keys', { credentials: 'include' })
-        const data = await res.json()
-        if (data.success) {
-          setBip39Verified(data.bip39_verified ?? false)
-        }
-      } catch {
-        setBip39Verified(false)
-      }
-    }
-    fetchKeys()
+    fetch('/api/proxy/auth/keys', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => setVerified(data.success ? (data.bip39_verified ?? false) : false))
+      .catch(() => setVerified(false))
   }, [])
 
+  if (verified !== false) return null
   return (
-    <div className="h-full min-h-screen bg-background">
-      {/* BIP39 recovery banner */}
-      {bip39Verified === false && (
-        <div className="p-4 bg-amber-500/10 border-b border-amber-500/20">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/20 rounded-lg">
-                <Shield className="w-5 h-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                  Configura tu frase de recuperación para no perder tus datos si olvidas tu PIN.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => router.push('/setup-recovery')}
-              className="px-4 py-2 text-sm font-semibold bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
-            >
-              Configurar ahora
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="h-full flex flex-col lg:flex-row gap-6 p-4 md:p-6">
-        <aside className="w-full lg:w-72 xl:w-80 flex-shrink-0">
-          <ProfileSidebar />
-        </aside>
-
-        {activePanel === 'settings' && (
-          <main className="flex-1 min-w-0">
-            <SettingsPanel />
-          </main>
-        )}
-      </div>
+    <div
+      role="status"
+      className="flex flex-col gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4 sm:flex-row sm:items-center"
+    >
+      <ShieldAlert className="h-5 w-5 flex-shrink-0 text-warning" aria-hidden="true" />
+      <p className="flex-1 text-sm text-text-primary">
+        Guarda tu frase de recuperación: sin ella, si olvidas el PIN no podrás recuperar tus datos.
+      </p>
+      <Link
+        href="/setup-recovery"
+        className="inline-flex h-9 items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        Guardarla ahora
+      </Link>
     </div>
   )
 }
 
+/** Settings in one column; switching accounts, leaving one and signing out live in the header menu. */
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<ProfileSkeleton />}>
-      <ProfileContent />
+    <Suspense
+      fallback={
+        <p className="flex items-center justify-center gap-2 py-12 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          Cargando
+        </p>
+      }
+    >
+      <div className="mx-auto max-w-3xl space-y-6">
+        <RecoveryNotice />
+        <SettingsPanel />
+      </div>
     </Suspense>
   )
 }

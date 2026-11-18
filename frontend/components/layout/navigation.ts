@@ -32,7 +32,7 @@ const PAGE_TITLES: Record<string, string> = {
   categories: 'Categorías',
   import: 'Importar',
   investment: 'Inversión',
-  profile: 'Perfil',
+  profile: 'Configuración',
   'setup-recovery': 'Recuperación',
 }
 

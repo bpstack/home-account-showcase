@@ -9,6 +9,8 @@ import { canShift, periodLabel, periodRange, shiftPeriod, type Period } from '@/
 interface PeriodSelectorProps {
   value: Period
   onChange: (_period: Period) => void
+  /** Only months can be chosen (a monthly budget): no whole year, everything or dates */
+  monthsOnly?: boolean
   className?: string
 }
 
@@ -22,7 +24,12 @@ const optionClass =
  * One control for the period a page shows: arrows move a month (or a year) back and forward;
  * the label opens a panel to pick a month, a whole year, everything, or two dates.
  */
-export function PeriodSelector({ value, onChange, className }: PeriodSelectorProps) {
+export function PeriodSelector({
+  value,
+  onChange,
+  monthsOnly = false,
+  className,
+}: PeriodSelectorProps) {
   const [open, setOpen] = useState(false)
   const [viewYear, setViewYear] = useState(
     value.kind === 'month' || value.kind === 'year' ? value.year : new Date().getFullYear()
@@ -151,82 +158,89 @@ export function PeriodSelector({ value, onChange, className }: PeriodSelectorPro
             })}
           </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-1 border-t border-layer-3 pt-2">
-            <button
-              type="button"
-              onClick={() => choose({ kind: 'year', year: viewYear })}
-              aria-pressed={value.kind === 'year' && value.year === viewYear}
-              className={cn(
-                optionClass,
-                value.kind === 'year' && value.year === viewYear
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-text-primary hover:bg-layer-2'
-              )}
-            >
-              Todo {viewYear}
-            </button>
-            <button
-              type="button"
-              onClick={() => choose({ kind: 'all' })}
-              aria-pressed={value.kind === 'all'}
-              className={cn(
-                optionClass,
-                value.kind === 'all'
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-text-primary hover:bg-layer-2'
-              )}
-            >
-              Todo
-            </button>
-          </div>
-
-          <div className="mt-2 border-t border-layer-3 pt-2">
-            {showDates ? (
-              <form
-                className="space-y-2"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  if (datesValid) choose({ kind: 'range', ...dates })
-                }}
-              >
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="text-xs text-text-secondary">
-                    Desde
-                    <input
-                      type="date"
-                      value={dates.start}
-                      onChange={(e) => setDates({ ...dates, start: e.target.value })}
-                      className="mt-1 h-9 w-full rounded-md border border-layer-3 bg-layer-1 px-2 text-sm text-text-primary"
-                    />
-                  </label>
-                  <label className="text-xs text-text-secondary">
-                    Hasta
-                    <input
-                      type="date"
-                      value={dates.end}
-                      onChange={(e) => setDates({ ...dates, end: e.target.value })}
-                      className="mt-1 h-9 w-full rounded-md border border-layer-3 bg-layer-1 px-2 text-sm text-text-primary"
-                    />
-                  </label>
-                </div>
+          {!monthsOnly && (
+            <>
+              <div className="mt-2 grid grid-cols-2 gap-1 border-t border-layer-3 pt-2">
                 <button
-                  type="submit"
-                  disabled={!datesValid}
-                  className="h-9 w-full rounded-md bg-accent text-sm font-medium text-accent-foreground disabled:opacity-50"
+                  type="button"
+                  onClick={() => choose({ kind: 'year', year: viewYear })}
+                  aria-pressed={value.kind === 'year' && value.year === viewYear}
+                  className={cn(
+                    optionClass,
+                    value.kind === 'year' && value.year === viewYear
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-text-primary hover:bg-layer-2'
+                  )}
                 >
-                  Ver estas fechas
+                  Todo {viewYear}
                 </button>
-              </form>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowDates(true)}
-                className={cn(optionClass, 'w-full text-left text-text-secondary hover:bg-layer-2')}
-              >
-                Elegir fechas…
-              </button>
-            )}
-          </div>
+                <button
+                  type="button"
+                  onClick={() => choose({ kind: 'all' })}
+                  aria-pressed={value.kind === 'all'}
+                  className={cn(
+                    optionClass,
+                    value.kind === 'all'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-text-primary hover:bg-layer-2'
+                  )}
+                >
+                  Todo
+                </button>
+              </div>
+
+              <div className="mt-2 border-t border-layer-3 pt-2">
+                {showDates ? (
+                  <form
+                    className="space-y-2"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      if (datesValid) choose({ kind: 'range', ...dates })
+                    }}
+                  >
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="text-xs text-text-secondary">
+                        Desde
+                        <input
+                          type="date"
+                          value={dates.start}
+                          onChange={(e) => setDates({ ...dates, start: e.target.value })}
+                          className="mt-1 h-9 w-full rounded-md border border-layer-3 bg-layer-1 px-2 text-sm text-text-primary"
+                        />
+                      </label>
+                      <label className="text-xs text-text-secondary">
+                        Hasta
+                        <input
+                          type="date"
+                          value={dates.end}
+                          onChange={(e) => setDates({ ...dates, end: e.target.value })}
+                          className="mt-1 h-9 w-full rounded-md border border-layer-3 bg-layer-1 px-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!datesValid}
+                      className="h-9 w-full rounded-md bg-accent text-sm font-medium text-accent-foreground disabled:opacity-50"
+                    >
+                      Ver estas fechas
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowDates(true)}
+                    className={cn(
+                      optionClass,
+                      'w-full text-left text-text-secondary hover:bg-layer-2'
+                    )}
+                  >
+                    Elegir fechas…
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
