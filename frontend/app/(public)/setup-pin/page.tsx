@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, PasswordInput } from '@/components/ui'
-import { AuthShell, FormAlert } from '@/components/auth'
+import { AuthShell, FormAlert, RecoveryPhrase } from '@/components/auth'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { useAuthStore } from '@/stores/authStore'
 import { accounts, auth } from '@/lib/apiClient'
@@ -271,16 +271,7 @@ function SetupPinForm() {
         description="Estas 24 palabras son la única forma de recuperar tus datos si olvidas el PIN. Guárdalas en un lugar seguro, fuera de línea."
         wide
       >
-        <ol className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-border p-4 sm:grid-cols-3">
-          {mnemonic.split(' ').map((word, i) => (
-            <li key={i} className="flex items-baseline gap-2 text-sm">
-              <span className="w-6 text-right text-xs tabular-nums text-muted-foreground">
-                {i + 1}
-              </span>
-              <span className="font-mono font-medium">{word}</span>
-            </li>
-          ))}
-        </ol>
+        <RecoveryPhrase mnemonic={mnemonic} />
 
         <Button
           type="button"

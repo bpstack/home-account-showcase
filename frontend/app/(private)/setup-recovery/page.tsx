@@ -9,14 +9,17 @@ import {
   deriveUserKeyExtractable,
   generateRecoveryBlob,
 } from '@/lib/crypto'
-import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Shield } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button, PasswordInput } from '@/components/ui'
+import { FormAlert, RecoveryPhrase } from '@/components/auth'
+
+const FULL_CLASS = 'h-11 w-full sm:h-10'
 
 function SetupRecoveryForm() {
   const router = useRouter()
 
   const [phase, setPhase] = useState<'pin' | 'generating' | 'show'>('pin')
   const [currentPin, setCurrentPin] = useState('')
-  const [showPin, setShowPin] = useState(false)
   const [mnemonic, setMnemonic] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [error, setError] = useState('')
@@ -91,168 +94,115 @@ function SetupRecoveryForm() {
 
   if (phase === 'generating') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md p-8 space-y-6 text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-amber-500" />
-          <h1 className="text-xl font-bold text-foreground">Generando frase de recuperación</h1>
-          <p className="text-muted-foreground">Esto puede tomar unos segundos...</p>
-        </div>
-      </div>
+      <Column
+        title="Generando la frase de recuperación…"
+        description="Puede tardar unos segundos."
+      />
     )
   }
 
   if (phase === 'show') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-lg space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-6 h-6 text-green-500" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">Frase de recuperación generada</h1>
-              <p className="text-muted-foreground mt-2">
-                Estas 24 palabras son la ÚNICA forma de recuperar tus datos si olvidas tu PIN.
-                Cópialas y guárdalas en un lugar seguro offline.
-              </p>
-            </div>
+      <Column
+        title="Guarda tu frase de recuperación"
+        description="Estas 24 palabras son la única forma de recuperar tus datos si olvidas el PIN. Guárdalas en un lugar seguro, fuera de línea."
+      >
+        <RecoveryPhrase mnemonic={mnemonic} />
 
-            {/* Grid of words */}
-            <div className="grid grid-cols-3 gap-2 p-4 bg-muted/50 rounded-xl border border-border">
-              {mnemonic.split(' ').map((word, i) => (
-                <div key={i} className="flex items-center gap-2 p-2 text-sm">
-                  <span className="text-muted-foreground w-6 text-right">{i + 1}.</span>
-                  <span className="font-mono font-medium text-foreground">{word}</span>
-                </div>
-              ))}
-            </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={async () => {
+            await navigator.clipboard.writeText(mnemonic)
+            toast.success('Frase copiada al portapapeles')
+          }}
+          className={`mt-4 ${FULL_CLASS}`}
+        >
+          Copiar al portapapeles
+        </Button>
 
-            {/* Copy button */}
-            <button
-              onClick={() => navigator.clipboard.writeText(mnemonic)}
-              className="w-full py-2 text-sm border border-border rounded-lg hover:bg-muted"
-            >
-              Copiar al portapapeles
-            </button>
+        <label className="mt-6 flex items-start gap-3 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-accent"
+          />
+          He guardado esta frase en un lugar seguro. Entiendo que no se puede recuperar.
+        </label>
 
-            {/* Confirmation checkbox */}
-            <label className="flex items-start gap-3 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-                className="mt-1"
-              />
-              He guardado esta frase en un lugar seguro. Entiendo que no se puede recuperar.
-            </label>
-
-            <button
-              onClick={handleContinue}
-              disabled={!confirmed}
-              className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50"
-            >
-              Continuar al perfil
-            </button>
-          </div>
-        </div>
-      </div>
+        <Button onClick={handleContinue} disabled={!confirmed} className={`mt-6 ${FULL_CLASS}`}>
+          Volver a configuración
+        </Button>
+      </Column>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
-          <div className="text-center">
-            <div className="mx-auto w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-4">
-              <Shield className="w-6 h-6 text-amber-500" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Configura tu frase de recuperación
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Ingresa tu PIN actual para generar una frase de recuperación de 24 palabras. Esta
-              frase te permitirá recuperar tus datos si olvidas tu PIN.
-            </p>
-          </div>
+    <Column
+      title="Frase de recuperación"
+      description="Introduce tu PIN para generar 24 palabras con las que recuperar tus datos si lo olvidas."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <FormAlert>{error}</FormAlert>}
 
-          {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
+        <PasswordInput
+          id="currentPin"
+          label="PIN actual (6 a 8 dígitos)"
+          subject="PIN"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={8}
+          value={currentPin}
+          onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+          autoFocus
+          className="h-11 tracking-widest sm:h-10"
+        />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                PIN actual (6-8 dígitos)
-              </label>
-              <div className="relative">
-                <input
-                  type={showPin ? 'text' : 'password'}
-                  inputMode="numeric"
-                  maxLength={8}
-                  value={currentPin}
-                  onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full h-12 px-4 pr-12 text-center text-2xl tracking-widest bg-muted/50 border border-border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder="••••••"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPin(!showPin)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+        <Button
+          type="submit"
+          isLoading={loading}
+          disabled={currentPin.length < 6}
+          className={FULL_CLASS}
+        >
+          Generar frase
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => router.push('/profile')}
+          className={FULL_CLASS}
+        >
+          Cancelar
+        </Button>
+      </form>
+    </Column>
+  )
+}
 
-            <button
-              type="submit"
-              disabled={loading || currentPin.length < 6}
-              className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? 'Generando...' : 'Generar frase de recuperación'}
-            </button>
-          </form>
-
-          <p className="text-xs text-center text-muted-foreground">
-            <button
-              onClick={() => router.push('/profile')}
-              className="underline hover:text-foreground"
-            >
-              Cancelar
-            </button>
-          </p>
-        </div>
-      </div>
+/** A narrow centred column inside the app layout. */
+function Column({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="mx-auto w-full max-w-md py-8">
+      <h1 className="text-xl font-medium">{title}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      {children && <div className="mt-6">{children}</div>}
     </div>
   )
 }
 
 export default function SetupRecoveryPage() {
   return (
-    <Suspense fallback={<SetupRecoverySkeleton />}>
+    <Suspense fallback={<Column title="Frase de recuperación" description="" />}>
       <SetupRecoveryForm />
     </Suspense>
-  )
-}
-
-function SetupRecoverySkeleton() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md bg-card border border-border rounded-2xl p-8 space-y-6">
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-12 h-12 bg-muted rounded-full" />
-          <div className="h-7 bg-muted rounded w-48 mx-auto" />
-          <div className="h-4 bg-muted rounded w-64 mx-auto" />
-        </div>
-        <div className="h-12 bg-muted rounded-xl" />
-        <div className="h-12 bg-muted rounded-xl" />
-      </div>
-    </div>
   )
 }
