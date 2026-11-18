@@ -216,8 +216,8 @@ no lo es.
 - **`engines.node`: backend y frontend `>=24.22.3 <25`, video sin declarar.** Con `engineStrict`
   activo, usar el Node equivocado hace fallar el install. El mínimo es el parche de seguridad más
   reciente de la 24: se sube a mano con cada boletín de seguridad de Node.
-- **React y zod no coinciden entre paquetes** (las versiones, en cada tabla): no des por hecho que
-  lo que compila en uno compila en otro.
+- **React no coincide entre paquetes** (frontend 19.2.3, video 19.2.4): no des por hecho que lo que
+  compila en uno compila en otro.
 
 ### Compartido por backend y frontend (fuente de verdad: `node_modules`, no los rangos `^`)
 
@@ -225,7 +225,7 @@ no lo es.
 | --------------- | ----------- | --------------------------------- |
 | `typescript`    | **6.0.3**   | ⚠️ No la 7: ver abajo             |
 | `eslint`        | ⚠️ distinta | 🔴 8.57.1 back · 9.39.5 front     |
-| `zod`           | **4.3.x**   | ⚠️ v4 (4.3.5 back, 4.3.6 front)   |
+| `zod`           | **4.6.7**   | ⚠️ v4, la misma en los dos        |
 | `@noble/hashes` | **2.0.1**   | ⚠️ v2                             |
 | `@types/node`   | **25.0.5**  | ⚠️ Por delante del Node que corre |
 

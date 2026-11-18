@@ -15,7 +15,7 @@ compartidas con el backend y límites. Aquí solo va lo propio de `frontend/`.
 | `zustand`               | **5.0.9**   | ⚠️ v5                            |
 | `react` / `react-dom`   | **19.2.3**  |                                  |
 | `@tanstack/react-query` | **5.90.16** |                                  |
-| `zod`                   | **4.3.6**   | ⚠️ v4 — trampa en la raíz        |
+| `zod`                   | **4.6.7**   | ⚠️ v4 — trampa en la raíz        |
 | `serwist`               | **9.5.13**  | Con `@serwist/turbopack` 9.5.13  |
 
 ### Trampas de versión (aquí el modelo suele asumir mal)

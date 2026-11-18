@@ -10,15 +10,15 @@ API en **Express 5** con **mysql2** (SQL en crudo, sin ORM). Se ejecuta TypeScri
 
 | Paquete              | Versión    | Nota                         |
 | -------------------- | ---------- | ---------------------------- |
-| `express`            | **5.2.1**  | ⚠️ v5 — ver trampas          |
-| `multer`             | **2.0.2**  | ⚠️ v2 — ver trampas          |
+| `express`            | **5.3.0**  | ⚠️ v5 — ver trampas          |
+| `multer`             | **2.5.0**  | ⚠️ v2 — ver trampas          |
 | `bcrypt`             | **6.0.0**  | ⚠️ v6 — ver trampas          |
 | `dotenv`             | **17.2.3** | ⚠️ v17 — ver trampas         |
 | `@anthropic-ai/sdk`  | **0.71.2** | ⚠️ Pre-1.0 — ver trampas     |
-| `zod`                | **4.3.5**  | ⚠️ v4 — trampa en la raíz    |
-| `mysql2`             | **3.16.0** | SQL en crudo, sin ORM        |
+| `zod`                | **4.6.7**  | ⚠️ v4 — trampa en la raíz    |
+| `mysql2`             | **3.24.6** | SQL en crudo, sin ORM        |
 | `jose`               | **6.1.3**  |                              |
-| `express-rate-limit` | **8.2.1**  | v8, sobre Express 5          |
+| `express-rate-limit` | **8.7.4**  | v8, sobre Express 5          |
 | `passport`           | **0.7.0**  | Pre-1.0                      |
 | `tsx`                | **4.21.0** | Ejecuta TS sin paso de build |
 
