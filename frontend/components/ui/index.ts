@@ -5,6 +5,7 @@ export { ConfirmDialog, ConfirmDeleteDialog, ConfirmActionDialog } from './Confi
 export { DatePickerSimple } from './DatePickerSimple'
 export { Input } from './Input'
 export { PasswordInput } from './PasswordInput'
+export { Textarea } from './Textarea'
 export { Modal, ModalFooter } from './Modal'
 export { Select, FilterSelect } from './Select'
 export { Tabs, useActiveTab } from './Tabs'
