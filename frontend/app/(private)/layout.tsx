@@ -24,11 +24,10 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   const isUnlocked = useCryptoStore((s) => s.isUnlocked)
   const hasSeparatePin = useAuthStore((s) => s.hasSeparatePin)
 
+  // A user with a session but locked crypto is sent to /unlock by the effect below before this
+  // runs, so this only has to handle the case with no session at all.
   const shouldRedirectToLogin = useCallback(() => {
-    const cryptoStore = useCryptoStore.getState()
-    const isCryptoReady = cryptoStore.isUnlocked
     if (pathname === UNLOCK_PATH || pathname === SETUP_PIN_PATH) return false
-    if (!isCryptoReady && pathname !== '/login') return false
     return !isLoading && !isAuthenticated && !redirected
   }, [isLoading, isAuthenticated, pathname, redirected])
 
