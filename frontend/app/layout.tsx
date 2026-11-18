@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import React from 'react'
-import { Poppins } from 'next/font/google'
+import { Ubuntu } from 'next/font/google'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
@@ -11,11 +11,12 @@ import ServiceWorkerRegister from '@/components/service-worker/ServiceWorkerRegi
 import UpdateNotification from '@/components/service-worker/UpdateNotification'
 import InstallPrompt from '@/components/service-worker/InstallPrompt'
 
-const poppins = Poppins({
-  weight: ['300', '400', '500', '600', '700'],
+// Ubuntu is not a variable font: only the weights listed here are downloaded (self-hosted by Next)
+const ubuntu = Ubuntu({
+  weight: ['300', '400', '500', '700'],
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-poppins',
+  variable: '--font-ubuntu',
 })
 
 export const metadata: Metadata = {
@@ -59,7 +60,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" suppressHydrationWarning className={poppins.variable}>
+    <html lang="es" suppressHydrationWarning className={ubuntu.variable}>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
