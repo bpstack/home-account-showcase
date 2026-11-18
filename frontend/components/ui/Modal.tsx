@@ -61,7 +61,7 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
         {/* Header */}
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+            <h2 className="text-lg font-medium text-foreground">{title}</h2>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-5 w-5" />
             </Button>

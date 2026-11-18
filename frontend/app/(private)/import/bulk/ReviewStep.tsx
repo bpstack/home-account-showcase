@@ -134,7 +134,7 @@ function RowErrorsPanel({ errors }: { errors: RowError[] }) {
       <ul className="max-h-48 overflow-y-auto rounded-xl border border-layer-3 divide-y divide-layer-2 text-sm">
         {errors.slice(0, ERROR_ROWS).map((e) => (
           <li key={e.row} className="px-3 py-2 flex gap-3">
-            <span className="shrink-0 font-semibold tabular-nums text-text-primary">
+            <span className="shrink-0 font-medium tabular-nums text-text-primary">
               Fila {e.row}
             </span>
             <span className="text-text-secondary">{e.reason}</span>
@@ -320,7 +320,7 @@ export function ReviewStep(props: ReviewStepProps) {
           <Lock className="h-5 w-5 shrink-0 text-warning" />
           <span className="text-text-primary">
             La cuenta está bloqueada. Las transacciones se guardan cifradas con tu PIN:{' '}
-            <Link href="/unlock" className="font-semibold text-accent hover:underline">
+            <Link href="/unlock" className="font-medium text-accent hover:underline">
               desbloquéala
             </Link>{' '}
             para importar.
