@@ -120,7 +120,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
 
         {/* Bottom padding leaves room for the mobile bar */}
         <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6 md:pb-24 lg:pb-6">
-          <div className="max-w-[1200px]">{children}</div>
+          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
         </main>
       </div>
 

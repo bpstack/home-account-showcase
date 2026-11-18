@@ -40,25 +40,26 @@
   }
 
   .dark {
-    /* Deep Dark Mode - Zinc/Black Palette */
-    --background: 240 10% 3.9%; /* Zinc 950 */
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    /* One dark palette for everything: page #12161C, raised surfaces #1A1F27, muted #222833,
+       lines #2A313C. The shadcn names and the layer names point at the same colors. */
+    --background: 216 21.7% 9%;
+    --foreground: 217.5 21.1% 92.5%;
+    --card: 216.9 20% 12.7%;
+    --card-foreground: 217.5 21.1% 92.5%;
+    --popover: 216.9 20% 12.7%;
+    --popover-foreground: 217.5 21.1% 92.5%;
+    --primary: 217.5 21.1% 92.5%;
+    --primary-foreground: 216 21.7% 9%;
+    --secondary: 218.8 20% 16.7%;
+    --secondary-foreground: 217.5 21.1% 92.5%;
+    --muted: 218.8 20% 16.7%;
+    --muted-foreground: 214.3 11.6% 64.5%;
     --accent: 184.8 49.8% 49.2%; /* Petrol #3FB2BC; text on it is dark */
     --accent-foreground: 187.8 51.1% 8.8%;
     --destructive: 4.4 82% 67.3%; /* #F07167, same as --danger */
     --destructive-foreground: 4 50% 8%;
-    --border: 240 3.7% 15.9%; /* Subtle dark border */
-    --input: 240 3.7% 15.9%;
+    --border: 216.7 17.6% 20%;
+    --input: 216.7 17.6% 20%;
     --ring: 184.8 49.8% 49.2%;
 
     /* Status colors - Dark mode (AA on the dark surfaces) */
@@ -67,8 +68,8 @@
     --danger: #f07167;
 
     /* Legacy compatibility - darker */
-    --layer-1: #12161c; /* surface */
-    --layer-2: #1a1f27; /* raised */
+    --layer-1: #1a1f27; /* surface: cards, bars, menus (lighter than the page) */
+    --layer-2: #12161c; /* page */
     --layer-3: #2a313c; /* line */
     --text-primary: #e8ebf0; /* ink */
     --text-secondary: #9aa3af;
