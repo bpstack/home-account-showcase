@@ -15,43 +15,45 @@ interface Props {
   showLegend?: boolean
 }
 
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.abs(value))
+}
+
+const percentOf = (value: number, total: number) => {
+  return ((value / total) * 100).toFixed(1)
+}
+
+// Custom tooltip. Recharts clones it and adds `active` and `payload`.
+const CustomTooltip = ({ active, payload, total }: any) => {
+  if (active && payload && payload.length) {
+    const item = payload[0].payload
+    return (
+      <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+          <span className="font-medium text-foreground">{item.name}</span>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {formatCurrency(item.value)} ({percentOf(item.value, total)}%)
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
 export function CategoryPieChart({ data, showLegend = true }: Props) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(Math.abs(value))
-  }
-
-  const formatPercent = (value: number) => {
-    return ((value / total) * 100).toFixed(1)
-  }
-
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const item = payload[0].payload
-      return (
-        <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-            <span className="font-medium text-foreground">{item.name}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {formatCurrency(item.value)} ({formatPercent(item.value)}%)
-          </div>
-        </div>
-      )
-    }
-    return null
-  }
+  const formatPercent = (value: number) => percentOf(value, total)
 
   // Sort data by value descending for legend
   const sortedData = [...data].sort((a, b) => b.value - a.value)
@@ -101,7 +103,7 @@ export function CategoryPieChart({ data, showLegend = true }: Props) {
                   )
                 })}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip total={total} />} />
             </PieChart>
           </ResponsiveContainer>
         </div>

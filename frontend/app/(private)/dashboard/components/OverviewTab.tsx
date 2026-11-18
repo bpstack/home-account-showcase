@@ -106,83 +106,6 @@ export function OverviewTab({ stats, summary, incomeByType }: OverviewTabProps) 
     return MONTHS_ES[currentMonth] + ' ' + currentYear
   }
 
-  const StatCard = ({
-    title,
-    amount,
-    type,
-    icon: Icon,
-  }: {
-    title: string
-    amount: number
-    type: 'income' | 'expense' | 'balance'
-    icon: React.ElementType
-  }) => {
-    const gradientClass =
-      type === 'income'
-        ? 'from-emerald-50/80 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/20'
-        : type === 'expense'
-          ? 'from-rose-50/80 to-red-50/50 dark:from-rose-950/30 dark:to-red-950/20'
-          : amount >= 0
-            ? 'from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20'
-            : 'from-orange-50/80 to-amber-50/50 dark:from-orange-950/30 dark:to-amber-950/20'
-
-    const borderColor =
-      type === 'income'
-        ? 'border-emerald-200/50 dark:border-emerald-800/30'
-        : type === 'expense'
-          ? 'border-rose-200/50 dark:border-rose-800/30'
-          : amount >= 0
-            ? 'border-blue-200/50 dark:border-blue-800/30'
-            : 'border-orange-200/50 dark:border-orange-800/30'
-
-    const textClass =
-      type === 'income'
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : type === 'expense'
-          ? 'text-rose-600 dark:text-rose-400'
-          : amount >= 0
-            ? 'text-blue-600 dark:text-blue-400'
-            : 'text-orange-600 dark:text-orange-400'
-
-    const iconClass =
-      type === 'income'
-        ? 'text-emerald-500'
-        : type === 'expense'
-          ? 'text-rose-500'
-          : amount >= 0
-            ? 'text-blue-500'
-            : 'text-orange-500'
-
-    const formattedAmount = Math.abs(amount).toLocaleString('es-ES', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-
-    const sign = type === 'expense' ? '-' : amount >= 0 ? '+' : ''
-
-    return (
-      <Card className={`bg-gradient-to-br ${gradientClass} ${borderColor}`}>
-        <CardContent className="py-4 px-4 text-center">
-          <p className="text-xs text-muted-foreground mb-1">{title}</p>
-
-          <p className={`text-lg sm:text-2xl font-bold ${textClass}`}>
-            {sign}
-            {formattedAmount} €
-          </p>
-
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
-              <Icon className={`h-3 w-3 ${iconClass}`} />
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
-              {formatPeriodLabel()}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
   const expensesByCategory = summary
     .filter((item) => Number(item.total_amount) < 0)
     .reduce(
@@ -226,90 +149,32 @@ export function OverviewTab({ stats, summary, incomeByType }: OverviewTabProps) 
         }))
     : []
 
-  const calculateChange = (current: number, previous: number) => {
-    if (previous === 0) return { value: 0, percentage: 0, isPositive: current > 0 }
-    const change = current - previous
-    const percentage = (change / Math.abs(previous)) * 100
-    return {
-      value: change,
-      percentage: Math.abs(percentage),
-      isPositive: change >= 0,
-    }
-  }
-
-  const ComparisonCard = ({
-    title,
-    current,
-    previous,
-    type,
-  }: {
-    title: string
-    current: number
-    previous: number
-    type: 'income' | 'expense'
-  }) => {
-    const change = calculateChange(current, previous)
-    const periodLabel = period === 'month' ? 'vs mes ant.' : 'vs año ant.'
-
-    return (
-      <div className="bg-layer-2 rounded-lg p-3 sm:p-4">
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 items-center">
-          <div className="text-left">
-            <p className="text-base sm:text-lg font-semibold text-text-secondary">{title}</p>
-            <p className="text-xs text-text-secondary hidden sm:block">Período</p>
-            <p className="text-xs sm:text-sm font-medium text-accent">{formatPeriodLabel()}</p>
-          </div>
-
-          <div className="text-right">
-            <p
-              className={`text-xl sm:text-2xl ${type === 'income' ? 'text-success' : 'text-danger'}`}
-            >
-              <span className="text-text-secondary">{type === 'income' ? '+' : '-'}</span>
-              <span className="ml-1 text-xl sm:text-2xl">
-                {new Intl.NumberFormat('es-ES', {
-                  style: 'decimal',
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(current)}
-              </span>
-              <span className="text-text-secondary ml-1">€</span>
-            </p>
-            <div
-              className={`flex items-center justify-end gap-1 mt-0.5 ${change.isPositive ? 'text-success' : 'text-danger'}`}
-            >
-              {change.isPositive ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              <span className="text-xs sm:text-sm">
-                <span className="text-text-secondary">{change.isPositive ? '+' : '-'}</span>
-                <span className="ml-1">
-                  {new Intl.NumberFormat('es-ES', {
-                    style: 'decimal',
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(Math.abs(change.value))}
-                </span>
-                <span className="text-text-secondary ml-1">€</span>
-              </span>
-            </div>
-            <span className="text-xs text-text-secondary">
-              ({change.isPositive ? '+' : '-'}
-              {change.percentage.toFixed(0)}% {periodLabel})
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const periodLabel = formatPeriodLabel()
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
-        <StatCard title="Ingresos" amount={stats.income} type="income" icon={TrendingUp} />
-        <StatCard title="Gastos" amount={stats.expenses} type="expense" icon={TrendingDown} />
-        <StatCard title="Balance" amount={stats.balance} type="balance" icon={Wallet} />
+        <StatCard
+          title="Ingresos"
+          amount={stats.income}
+          type="income"
+          icon={TrendingUp}
+          periodLabel={periodLabel}
+        />
+        <StatCard
+          title="Gastos"
+          amount={stats.expenses}
+          type="expense"
+          icon={TrendingDown}
+          periodLabel={periodLabel}
+        />
+        <StatCard
+          title="Balance"
+          amount={stats.balance}
+          type="balance"
+          icon={Wallet}
+          periodLabel={periodLabel}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -327,6 +192,8 @@ export function OverviewTab({ stats, summary, incomeByType }: OverviewTabProps) 
                 current={stats.income}
                 previous={prevStats.income}
                 type="income"
+                period={period}
+                periodLabel={periodLabel}
               />
             </div>
             {incomeByCategory.length === 0 ? (
@@ -351,6 +218,8 @@ export function OverviewTab({ stats, summary, incomeByType }: OverviewTabProps) 
                 current={stats.expenses}
                 previous={prevStats.expenses}
                 type="expense"
+                period={period}
+                periodLabel={periodLabel}
               />
             </div>
             {expensesByCategory.length === 0 ? (
@@ -360,6 +229,167 @@ export function OverviewTab({ stats, summary, incomeByType }: OverviewTabProps) 
             )}
           </CardContent>
         </Card>
+      </div>
+    </div>
+  )
+}
+
+const StatCard = ({
+  title,
+  amount,
+  type,
+  icon: Icon,
+  periodLabel,
+}: {
+  title: string
+  amount: number
+  type: 'income' | 'expense' | 'balance'
+  icon: React.ElementType
+  periodLabel: string
+}) => {
+  const gradientClass =
+    type === 'income'
+      ? 'from-emerald-50/80 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/20'
+      : type === 'expense'
+        ? 'from-rose-50/80 to-red-50/50 dark:from-rose-950/30 dark:to-red-950/20'
+        : amount >= 0
+          ? 'from-blue-50/80 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/20'
+          : 'from-orange-50/80 to-amber-50/50 dark:from-orange-950/30 dark:to-amber-950/20'
+
+  const borderColor =
+    type === 'income'
+      ? 'border-emerald-200/50 dark:border-emerald-800/30'
+      : type === 'expense'
+        ? 'border-rose-200/50 dark:border-rose-800/30'
+        : amount >= 0
+          ? 'border-blue-200/50 dark:border-blue-800/30'
+          : 'border-orange-200/50 dark:border-orange-800/30'
+
+  const textClass =
+    type === 'income'
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : type === 'expense'
+        ? 'text-rose-600 dark:text-rose-400'
+        : amount >= 0
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-orange-600 dark:text-orange-400'
+
+  const iconClass =
+    type === 'income'
+      ? 'text-emerald-500'
+      : type === 'expense'
+        ? 'text-rose-500'
+        : amount >= 0
+          ? 'text-blue-500'
+          : 'text-orange-500'
+
+  const formattedAmount = Math.abs(amount).toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+
+  const sign = type === 'expense' ? '-' : amount >= 0 ? '+' : ''
+
+  return (
+    <Card className={`bg-gradient-to-br ${gradientClass} ${borderColor}`}>
+      <CardContent className="py-4 px-4 text-center">
+        <p className="text-xs text-muted-foreground mb-1">{title}</p>
+
+        <p className={`text-lg sm:text-2xl font-bold ${textClass}`}>
+          {sign}
+          {formattedAmount} €
+        </p>
+
+        <div className="flex items-center justify-center gap-3 mt-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40">
+            <Icon className={`h-3 w-3 ${iconClass}`} />
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/70 dark:bg-white/10 border border-border/40 text-muted-foreground">
+            {periodLabel}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+const calculateChange = (current: number, previous: number) => {
+  if (previous === 0) return { value: 0, percentage: 0, isPositive: current > 0 }
+  const change = current - previous
+  const percentage = (change / Math.abs(previous)) * 100
+  return {
+    value: change,
+    percentage: Math.abs(percentage),
+    isPositive: change >= 0,
+  }
+}
+
+const ComparisonCard = ({
+  title,
+  current,
+  previous,
+  type,
+  period,
+  periodLabel,
+}: {
+  title: string
+  current: number
+  previous: number
+  type: 'income' | 'expense'
+  period: string
+  periodLabel: string
+}) => {
+  const change = calculateChange(current, previous)
+  const comparisonLabel = period === 'month' ? 'vs mes ant.' : 'vs año ant.'
+
+  return (
+    <div className="bg-layer-2 rounded-lg p-3 sm:p-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 items-center">
+        <div className="text-left">
+          <p className="text-base sm:text-lg font-semibold text-text-secondary">{title}</p>
+          <p className="text-xs text-text-secondary hidden sm:block">Período</p>
+          <p className="text-xs sm:text-sm font-medium text-accent">{periodLabel}</p>
+        </div>
+
+        <div className="text-right">
+          <p
+            className={`text-xl sm:text-2xl ${type === 'income' ? 'text-success' : 'text-danger'}`}
+          >
+            <span className="text-text-secondary">{type === 'income' ? '+' : '-'}</span>
+            <span className="ml-1 text-xl sm:text-2xl">
+              {new Intl.NumberFormat('es-ES', {
+                style: 'decimal',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(current)}
+            </span>
+            <span className="text-text-secondary ml-1">€</span>
+          </p>
+          <div
+            className={`flex items-center justify-end gap-1 mt-0.5 ${change.isPositive ? 'text-success' : 'text-danger'}`}
+          >
+            {change.isPositive ? (
+              <TrendingUp className="h-3 w-3" />
+            ) : (
+              <TrendingDown className="h-3 w-3" />
+            )}
+            <span className="text-xs sm:text-sm">
+              <span className="text-text-secondary">{change.isPositive ? '+' : '-'}</span>
+              <span className="ml-1">
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'decimal',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(Math.abs(change.value))}
+              </span>
+              <span className="text-text-secondary ml-1">€</span>
+            </span>
+          </div>
+          <span className="text-xs text-text-secondary">
+            ({change.isPositive ? '+' : '-'}
+            {change.percentage.toFixed(0)}% {comparisonLabel})
+          </span>
+        </div>
       </div>
     </div>
   )
