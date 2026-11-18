@@ -16,6 +16,8 @@ type PinData = {
   redirectTo: string
 }
 
+const HOME = { href: '/', label: 'Inicio' }
+
 const submitClass = 'h-11 w-full sm:h-10'
 
 function LoginForm() {
@@ -137,7 +139,7 @@ function LoginForm() {
   }
 
   return (
-    <AuthShell title="Inicia sesión" backToHome>
+    <AuthShell title="Inicia sesión" back={HOME}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <FormAlert>{error}</FormAlert>}
 
@@ -198,7 +200,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <AuthShell title="Inicia sesión" backToHome>
+        <AuthShell title="Inicia sesión" back={HOME}>
           {null}
         </AuthShell>
       }

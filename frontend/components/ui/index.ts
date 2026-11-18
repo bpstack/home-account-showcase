@@ -1,4 +1,5 @@
-export { Button } from './Button'
+export { Button, buttonVariants } from './Button'
+export { ButtonLink } from './ButtonLink'
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card'
 export { ConfirmDialog, ConfirmDeleteDialog, ConfirmActionDialog } from './ConfirmDialog'
 export { DatePickerSimple } from './DatePickerSimple'

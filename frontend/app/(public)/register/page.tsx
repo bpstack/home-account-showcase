@@ -10,6 +10,8 @@ import { validateRegister } from '@/validators/auth-validators'
 import { Button, Input, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert, OAuthButtons } from '@/components/auth'
 
+const HOME = { href: '/', label: 'Inicio' }
+
 const fieldClass = 'h-11 sm:h-10'
 
 function RegisterForm() {
@@ -69,7 +71,7 @@ function RegisterForm() {
   }
 
   return (
-    <AuthShell title="Crear cuenta" backToHome>
+    <AuthShell title="Crear cuenta" back={HOME}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <FormAlert>{error}</FormAlert>}
 
@@ -178,7 +180,7 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <AuthShell title="Crear cuenta" backToHome>
+        <AuthShell title="Crear cuenta" back={HOME}>
           {null}
         </AuthShell>
       }
