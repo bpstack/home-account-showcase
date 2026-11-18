@@ -1,81 +1,62 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { RefreshCw, X } from 'lucide-react'
 
+/**
+ * Shown when ServiceWorkerRegister finds a new version installed and waiting (that is, after a
+ * deploy). "Actualizar" activates it and reloads once the new version is in control.
+ */
 export default function UpdateNotification() {
-  const [showUpdateNotification, setShowUpdateNotification] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
-    const handleUpdateAvailable = () => {
-      setShowUpdateNotification(true)
-    }
-
-    window.addEventListener('swUpdateAvailable', handleUpdateAvailable)
-
-    return () => {
-      window.removeEventListener('swUpdateAvailable', handleUpdateAvailable)
-    }
+    const show = () => setVisible(true)
+    window.addEventListener('swUpdateAvailable', show)
+    return () => window.removeEventListener('swUpdateAvailable', show)
   }, [])
 
-  const handleUpdate = () => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then((registration) => {
-        if (registration?.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' })
-        }
-      })
+  const handleUpdate = async () => {
+    setUpdating(true)
+    const registration = await navigator.serviceWorker?.getRegistration()
+    const waiting = registration?.waiting
+    if (!waiting) {
+      window.location.reload()
+      return
     }
-    window.location.reload()
+    // Reload only when the new worker has taken control; reloading right away kept the old one
+    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), {
+      once: true,
+    })
+    waiting.postMessage({ type: 'SKIP_WAITING' })
   }
 
-  const handleDismiss = () => {
-    setShowUpdateNotification(false)
-  }
-
-  if (!showUpdateNotification) return null
+  if (!visible) return null
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-50"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      role="status"
+      className="fixed inset-x-4 bottom-20 z-50 flex items-center gap-3 rounded-lg border border-layer-3 bg-layer-1 px-4 py-3 shadow-lg sm:left-auto sm:right-6 sm:w-auto lg:bottom-6"
     >
-      <div
-        className={`
-          bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 rounded-lg shadow-2xl
-          transition-all duration-300 cursor-pointer
-          ${isHovered ? 'scale-105 shadow-amber-500/25' : ''}
-        `}
+      <span className="text-sm text-text-primary">Hay una versión nueva de la app.</span>
+      <button
+        type="button"
         onClick={handleUpdate}
+        disabled={updating}
+        className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground disabled:opacity-60"
       >
-        <div className="flex items-center gap-3">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-          </span>
-          <span className="text-sm font-medium">Nueva versión disponible</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handleUpdate()
-            }}
-            className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm font-medium transition-colors"
-          >
-            Actualizar
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handleDismiss()
-            }}
-            className="text-white/70 hover:text-white ml-1"
-            aria-label="Cerrar"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
+        <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} aria-hidden="true" />
+        Actualizar
+      </button>
+      <button
+        type="button"
+        onClick={() => setVisible(false)}
+        aria-label="Cerrar aviso"
+        className="rounded-md p-1 text-text-secondary hover:text-text-primary"
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
+      </button>
     </div>
   )
 }
