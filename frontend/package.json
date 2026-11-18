@@ -7,8 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "verify": "pnpm run build",
+    "lint": "eslint . --max-warnings=0",
+    "verify": "pnpm run lint && pnpm run build",
     "format": "prettier --write ."
   },
   "keywords": [],

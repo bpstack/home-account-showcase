@@ -22,6 +22,11 @@ export default defineConfig([
       ],
       '@typescript-eslint/no-explicit-any': 'off',
       'no-undef': 'off',
+      // React Compiler rules from eslint-plugin-react-hooks 7. The project does not use the
+      // React Compiler, and these two flag render performance, not bugs. Turn them back on
+      // if the compiler is adopted (frontend/AGENTS.md, declared exception).
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
     },
   },
   globalIgnores([
