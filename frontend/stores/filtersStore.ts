@@ -26,12 +26,13 @@ import { create } from 'zustand'
 interface FiltersState {
   selectedYear: number | null
   selectedMonth: number | null
-  selectedCategory: string
+  /** Subcategory ids; empty means every category */
+  selectedCategories: string[]
   selectedType: 'all' | 'income' | 'expense'
 
   setYear: (_year: number | null) => void
   setMonth: (_month: number | null) => void
-  setCategory: (_category: string) => void
+  setCategories: (_ids: string[]) => void
   setType: (_type: 'all' | 'income' | 'expense') => void
   reset: () => void
 }
@@ -47,7 +48,7 @@ export const useFiltersStore = create<FiltersState>()(
     // Pages open on the current month
     selectedYear: currentYear,
     selectedMonth: currentMonth,
-    selectedCategory: '',
+    selectedCategories: [],
     selectedType: 'all',
 
     setYear: (year) =>
@@ -63,14 +64,14 @@ export const useFiltersStore = create<FiltersState>()(
         selectedYear:
           month !== null && state.selectedYear === null ? currentYear : state.selectedYear,
       })),
-    setCategory: (category) => set({ selectedCategory: category }),
+    setCategories: (ids) => set({ selectedCategories: ids }),
     setType: (type) => set({ selectedType: type }),
 
     reset: () =>
       set({
         selectedYear: currentYear,
         selectedMonth: currentMonth,
-        selectedCategory: '',
+        selectedCategories: [],
         selectedType: 'all',
       }),
   })

@@ -111,9 +111,9 @@ function TransactionsContent({
   const {
     selectedYear,
     selectedMonth,
-    selectedCategory,
+    selectedCategories,
     selectedType,
-    setCategory,
+    setCategories,
     setYear,
     setMonth,
     setType,
@@ -124,7 +124,10 @@ function TransactionsContent({
   const searchTerm = deferredSearch
 
   // The period is always set (PeriodSelector); these are the filters on top of it
-  const hasActiveFilters = selectedCategory !== '' || searchTerm !== '' || selectedType !== 'all'
+  const hasActiveFilters =
+    selectedCategories.length > 0 || searchTerm !== '' || selectedType !== 'all'
+  // The API takes one subcategory id or several, comma-separated
+  const subcategoryFilter = selectedCategories.length ? selectedCategories.join(',') : undefined
 
   const periodValue = toPeriod(
     selectedYear,
@@ -163,7 +166,7 @@ function TransactionsContent({
       start_date: startDate,
       end_date: endDate,
       type: selectedType === 'all' ? undefined : (selectedType as any),
-      subcategory_id: selectedCategory || undefined,
+      subcategory_id: subcategoryFilter,
       // When searching, fetch all transactions (no limit/offset) to search client-side
       // This is necessary because descriptions are encrypted and can't be searched on backend
       limit: isSearching ? 10000 : limit,
@@ -212,7 +215,7 @@ function TransactionsContent({
   // Now supports category filtering too
   const { data: statsData } = useTransactionStats(account?.id || '', startDate, endDate, {
     enabled: !!account?.id && !isSearching,
-    subcategory_id: selectedCategory || undefined,
+    subcategory_id: subcategoryFilter,
   })
 
   const totals = useMemo(() => {
@@ -252,7 +255,7 @@ function TransactionsContent({
     setPage,
     selectedMonth,
     selectedYear,
-    selectedCategory,
+    selectedCategories,
     searchTerm,
     selectedType,
     period,
@@ -509,7 +512,37 @@ function TransactionsContent({
     }
     return 'Categoría'
   }
-  const activeFilterCount = (selectedType !== 'all' ? 1 : 0) + (selectedCategory ? 1 : 0)
+  const activeFilterCount = (selectedType !== 'all' ? 1 : 0) + (selectedCategories.length ? 1 : 0)
+
+  const toggleSubcategory = (id: string) =>
+    setCategories(
+      selectedCategories.includes(id)
+        ? selectedCategories.filter((x) => x !== id)
+        : [...selectedCategories, id]
+    )
+  const toggleCategory = (subIds: string[]) => {
+    const all = subIds.every((id) => selectedCategories.includes(id))
+    setCategories(
+      all
+        ? selectedCategories.filter((id) => !subIds.includes(id))
+        : [...new Set([...selectedCategories, ...subIds])]
+    )
+  }
+
+  // Chips: a whole category reads as its name; many chips collapse into one
+  const categoryChips = (() => {
+    const chips: { label: string; ids: string[] }[] = []
+    for (const cat of categories) {
+      const subIds: string[] = (cat.subcategories || []).map((sub: Subcategory) => sub.id)
+      const chosen = subIds.filter((id) => selectedCategories.includes(id))
+      if (chosen.length === 0) continue
+      if (chosen.length === subIds.length) chips.push({ label: cat.name, ids: subIds })
+      else for (const id of chosen) chips.push({ label: subcategoryName(id), ids: [id] })
+    }
+    return chips.length > 4
+      ? [{ label: `${selectedCategories.length} subcategorías`, ids: selectedCategories }]
+      : chips
+  })()
   const bulkSubcategories =
     categories.find((c) => c.id === bulkCategory.categoryId)?.subcategories || []
 
@@ -615,17 +648,20 @@ function TransactionsContent({
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             )}
-            {selectedCategory && (
+            {categoryChips.map((chip) => (
               <button
+                key={chip.label}
                 type="button"
-                onClick={() => setCategory('')}
+                onClick={() =>
+                  setCategories(selectedCategories.filter((id) => !chip.ids.includes(id)))
+                }
                 className="inline-flex items-center gap-1 rounded-full border border-layer-3 px-3 py-1 text-text-primary hover:bg-layer-2"
-                aria-label={`Quitar filtro ${subcategoryName(selectedCategory)}`}
+                aria-label={`Quitar filtro ${chip.label}`}
               >
-                {subcategoryName(selectedCategory)}
+                {chip.label}
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
-            )}
+            ))}
             <span className="text-text-secondary" aria-live="polite">
               {totalCount === 1 ? '1 transacción' : `${totalCount} transacciones`}
             </span>
@@ -652,7 +688,7 @@ function TransactionsContent({
                 onClick={() => {
                   setLocalSearch('')
                   setType('all')
-                  setCategory('')
+                  setCategories([])
                 }}
               >
                 Quitar búsqueda y filtros
@@ -711,7 +747,7 @@ function TransactionsContent({
               className="flex-1"
               onClick={() => {
                 setType('all')
-                setCategory('')
+                setCategories([])
               }}
             >
               Quitar filtros
@@ -752,38 +788,52 @@ function TransactionsContent({
         {/* Options listed in the panel itself: a native dropdown of ~60 options opened near the
             bottom of the screen and was cut off */}
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-text-primary">Categoría</legend>
+          <legend className="mb-2 text-sm font-medium text-text-primary">Categorías</legend>
           <div className="divide-y divide-layer-3 border-y border-layer-3">
             <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm text-text-primary">
               Todas las categorías
               <input
-                type="radio"
-                name="filter-category"
-                checked={selectedCategory === ''}
-                onChange={() => setCategory('')}
+                type="checkbox"
+                checked={selectedCategories.length === 0}
+                onChange={() => setCategories([])}
                 className="h-4 w-4 accent-[hsl(var(--accent))]"
               />
             </label>
-            {categories.map((cat) => (
-              <div key={cat.id} role="group" aria-label={cat.name}>
-                <p className="pb-1 pt-3 text-xs text-text-secondary">{cat.name}</p>
-                {(cat.subcategories || []).map((sub: Subcategory) => (
-                  <label
-                    key={sub.id}
-                    className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm text-text-primary"
-                  >
-                    {sub.name}
+            {categories.map((cat) => {
+              const subIds: string[] = (cat.subcategories || []).map((sub: Subcategory) => sub.id)
+              const chosen = subIds.filter((id) => selectedCategories.includes(id)).length
+              return (
+                <div key={cat.id} role="group" aria-label={cat.name}>
+                  <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-medium text-text-primary">
+                    {cat.name}
                     <input
-                      type="radio"
-                      name="filter-category"
-                      checked={selectedCategory === sub.id}
-                      onChange={() => setCategory(sub.id)}
+                      type="checkbox"
+                      checked={subIds.length > 0 && chosen === subIds.length}
+                      ref={(el) => {
+                        if (el) el.indeterminate = chosen > 0 && chosen < subIds.length
+                      }}
+                      onChange={() => toggleCategory(subIds)}
+                      disabled={subIds.length === 0}
                       className="h-4 w-4 accent-[hsl(var(--accent))]"
                     />
                   </label>
-                ))}
-              </div>
-            ))}
+                  {(cat.subcategories || []).map((sub: Subcategory) => (
+                    <label
+                      key={sub.id}
+                      className="flex min-h-11 cursor-pointer items-center justify-between gap-3 pl-4 text-sm text-text-primary"
+                    >
+                      {sub.name}
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(sub.id)}
+                        onChange={() => toggleSubcategory(sub.id)}
+                        className="h-4 w-4 accent-[hsl(var(--accent))]"
+                      />
+                    </label>
+                  ))}
+                </div>
+              )
+            })}
           </div>
         </fieldset>
       </Sheet>
