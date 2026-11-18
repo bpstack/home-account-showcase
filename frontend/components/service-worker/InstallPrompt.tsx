@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { Download, Share, X } from 'lucide-react'
+import { Button, Sheet } from '@/components/ui'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -176,7 +178,8 @@ export default function InstallPrompt() {
     setShowPrompt(false)
   }
 
-  const handleClose = () => {
+  // Stable: Sheet re-runs its focus effect whenever onClose changes.
+  const handleClose = useCallback(() => {
     if (isIOS) {
       setShowIOSInstructions(false)
       localStorage.setItem(STORAGE_KEY_IOS_SHOWN, 'true')
@@ -185,7 +188,7 @@ export default function InstallPrompt() {
       localStorage.setItem(STORAGE_KEY_DISMISSED, 'true')
     }
     setShowPrompt(false)
-  }
+  }, [isIOS])
 
   // Don't render anything if installed
   if (isInstalled) {
@@ -196,91 +199,66 @@ export default function InstallPrompt() {
     return null
   }
 
+  const stepNumber =
+    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium'
+  const pillButton =
+    'flex h-11 items-center hover:bg-accent-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-foreground'
+
   return (
     <>
-      <div className="fixed bottom-6 left-6 z-50">
+      {/* Above the mobile tab bar (about 56 px); bottom-left corner on desktop. */}
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 z-50 flex items-center rounded-full bg-accent text-accent-foreground shadow-lg lg:bottom-6 lg:left-6">
         <button
+          type="button"
           onClick={handleInstallClick}
-          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-3 rounded-full shadow-2xl hover:scale-105 transition-all flex items-center gap-2 text-sm font-medium"
-          aria-label="Instalar aplicación"
+          className={`${pillButton} gap-2 rounded-l-full pl-4 pr-3 text-sm font-medium`}
         >
-          <span>📲</span>
-          <span>Instalar App</span>
+          <Download className="h-4 w-4" aria-hidden="true" />
+          Instalar app
         </button>
-
+        <span className="h-5 w-px bg-accent-foreground/30" aria-hidden="true" />
         <button
+          type="button"
           onClick={handleClose}
-          className="absolute -top-2 -right-2 bg-white/80 dark:bg-gray-800/80 rounded-full p-1 shadow"
-          aria-label="Cerrar"
+          aria-label="No mostrar más"
+          className={`${pillButton} w-11 justify-center rounded-r-full`}
         >
-          ✕
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
-      {showIOSInstructions && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
-          onClick={handleClose}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6 animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Instalar en iOS
-              </h3>
-              <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
-                aria-label="Cerrar"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Para instalar esta app en tu iPhone/iPad:
-            </p>
-
-            <ol className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 flex items-center justify-center text-xs font-semibold">
-                  1
-                </span>
-                <span className="pt-0.5">
-                  Pulsa el botón <strong style={{ color: '#007AFF' }}>⬆️ Compartir</strong> en la
-                  barra inferior de Safari
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 flex items-center justify-center text-xs font-semibold">
-                  2
-                </span>
-                <span className="pt-0.5">
-                  Desplázate hacia abajo y toca{' '}
-                  <strong>&quot;Añadir a pantalla de inicio&quot;</strong>
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 flex items-center justify-center text-xs font-semibold">
-                  3
-                </span>
-                <span className="pt-0.5">
-                  Pulsa <strong>&quot;Añadir&quot;</strong> arriba a la derecha
-                </span>
-              </li>
-            </ol>
-
-            <button
-              onClick={handleClose}
-              className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-lg transition-colors"
-            >
-              Entendido
-            </button>
-          </div>
-        </div>
-      )}
+      <Sheet
+        open={showIOSInstructions}
+        onClose={handleClose}
+        title="Instalar en iPhone o iPad"
+        footer={
+          <Button onClick={handleClose} className="h-11 w-full sm:h-10">
+            Entendido
+          </Button>
+        }
+      >
+        <ol className="space-y-4 text-sm">
+          <li className="flex items-start gap-3">
+            <span className={stepNumber}>1</span>
+            <span className="pt-0.5">
+              En Safari, pulsa <Share className="inline h-4 w-4" aria-hidden="true" />{' '}
+              <strong className="font-medium">Compartir</strong> en la barra inferior.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className={stepNumber}>2</span>
+            <span className="pt-0.5">
+              Baja y toca <strong className="font-medium">Añadir a pantalla de inicio</strong>.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className={stepNumber}>3</span>
+            <span className="pt-0.5">
+              Pulsa <strong className="font-medium">Añadir</strong>, arriba a la derecha.
+            </span>
+          </li>
+        </ol>
+      </Sheet>
     </>
   )
 }
