@@ -3,6 +3,7 @@ export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 export { ConfirmDialog, ConfirmDeleteDialog, ConfirmActionDialog } from './ConfirmDialog'
 export { DatePickerSimple } from './DatePickerSimple'
 export { Input } from './Input'
+export { PasswordInput } from './PasswordInput'
 export { Modal, ModalFooter } from './Modal'
 export { Select, FilterSelect } from './Select'
 export { Tabs, useActiveTab } from './Tabs'
