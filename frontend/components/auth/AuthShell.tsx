@@ -11,11 +11,6 @@ interface AuthShellProps {
   back?: { href: string; label: string }
   /** A wider column, for content that does not fit the form width (the recovery phrase). */
   wide?: boolean
-  /**
-   * Renders the theme switch. Pages under `app/(public)` get it from their layout; the unlock
-   * page lives outside it and asks for it here.
-   */
-  themeToggle?: boolean
   children: ReactNode
 }
 
@@ -23,14 +18,7 @@ interface AuthShellProps {
  * The frame of the sign-in screens: a slim header, the brand from the home page and one centred
  * column. Flat on mobile; a bordered panel from `sm` up.
  */
-export function AuthShell({
-  title,
-  description,
-  back,
-  wide = false,
-  themeToggle = false,
-  children,
-}: AuthShellProps) {
+export function AuthShell({ title, description, back, wide = false, children }: AuthShellProps) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
       <header className="flex h-[72px] shrink-0 items-center justify-between px-4 sm:px-6">
@@ -45,7 +33,7 @@ export function AuthShell({
         ) : (
           <span />
         )}
-        {themeToggle && <ThemeToggle />}
+        <ThemeToggle />
       </header>
 
       <main className="flex flex-1 justify-center px-4 pb-12 pt-2 sm:items-center sm:px-6">

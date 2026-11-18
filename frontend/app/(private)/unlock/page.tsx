@@ -84,7 +84,7 @@ export default function UnlockPage() {
   }
 
   return (
-    <AuthShell title="Sesión bloqueada" description={user?.email} themeToggle>
+    <AuthShell title="Sesión bloqueada" description={user?.email}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {(error || authError) && <FormAlert>{error || authError}</FormAlert>}
 

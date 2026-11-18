@@ -2,6 +2,10 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { ButtonLink } from '@/components/ui'
+import { AuthShell } from '@/components/auth'
+
+const LOADING_TITLE = 'Iniciando sesión…'
 
 function AuthCallbackHandler() {
   const searchParams = useSearchParams()
@@ -68,39 +72,21 @@ function AuthCallbackHandler() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center p-8">
-          <p className="text-red-500 mb-4">{error}</p>
-          <a href="/login" className="text-blue-500 hover:underline">
-            Volver al login
-          </a>
-        </div>
-      </div>
+      <AuthShell title="No se pudo iniciar sesión" description={error}>
+        <ButtonLink href="/login" className="h-11 w-full sm:h-10">
+          Volver a iniciar sesión
+        </ButtonLink>
+      </AuthShell>
     )
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground">Estableciendo sesión...</p>
-      </div>
-    </div>
-  )
+  return <AuthShell title={LOADING_TITLE}>{null}</AuthShell>
 }
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={<AuthCallbackSkeleton />}>
+    <Suspense fallback={<AuthShell title={LOADING_TITLE}>{null}</AuthShell>}>
       <AuthCallbackHandler />
     </Suspense>
-  )
-}
-
-function AuthCallbackSkeleton() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
-    </div>
   )
 }
