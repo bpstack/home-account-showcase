@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { AlertCircle, ArrowLeft, Columns3, Layers, Lock, TableProperties } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, CardTitle, Select } from '@/components/ui'
+import { Button, Money, Select } from '@/components/ui'
 import type { ColumnMap, ColumnRole, Movement, ParsedStatement, RowError } from '@/lib/import'
 
 /** One bank category pair found in the statement, with the subcategory currently chosen. */
@@ -45,8 +45,6 @@ const ROLE_OPTIONS: { value: ColumnRole | ''; label: string }[] = [
 
 const PREVIEW_ROWS = 20
 const ERROR_ROWS = 20
-
-const euros = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' })
 
 /** What is still missing for the columns to describe a movement, in words. */
 function missingRoles(columns: ColumnMap): string[] {
@@ -165,12 +163,12 @@ function PreviewPanel({
         className="flex items-center gap-2 text-sm font-bold text-text-primary"
       >
         <TableProperties className="h-4 w-4 text-accent" />
-        Movimientos
+        Transacciones
       </h3>
       <div className="max-h-[420px] overflow-auto rounded-xl border border-layer-3">
         <table className="w-full text-sm">
           <thead className="bg-layer-2/50 sticky top-0">
-            <tr className="text-left text-[10px] uppercase tracking-wider text-text-secondary">
+            <tr className="text-left text-xs font-medium text-text-secondary">
               <th scope="col" className="p-3">
                 Fecha
               </th>
@@ -192,18 +190,16 @@ function PreviewPanel({
                 <td className="p-3 max-w-[260px]">
                   <span className="block truncate">{m.description}</span>
                   {duplicates?.[i] && (
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-layer-2 text-[10px] font-bold uppercase text-text-secondary">
-                      Ya importado
+                    <span className="mt-1 inline-block rounded bg-layer-2 px-2 py-0.5 text-xs text-text-secondary">
+                      Ya importada
                     </span>
                   )}
                 </td>
                 <td className="p-3 hidden md:table-cell text-text-secondary">
                   {[m.category, m.subcategory].filter(Boolean).join(' → ') || '—'}
                 </td>
-                <td
-                  className={`p-3 text-right font-semibold tabular-nums whitespace-nowrap ${m.amount > 0 ? 'text-success' : 'text-danger'}`}
-                >
-                  {euros.format(m.amount)}
+                <td className="p-3 text-right">
+                  <Money value={m.amount} sign="always" tone="movement" className="font-medium" />
                 </td>
               </tr>
             ))}
@@ -240,7 +236,7 @@ function CategoriesPanel({
         Categorías
       </h3>
       <p className="text-xs text-text-secondary">
-        Elige en qué subcategoría van los movimientos de cada categoría del banco. Lo recordaremos
+        Elige en qué subcategoría van las transacciones de cada categoría del banco. Lo recordaremos
         para la próxima vez.
         {pending > 0 && ` Sin asignar: ${pending}.`}
       </p>
@@ -261,7 +257,7 @@ function CategoriesPanel({
 }
 
 function movements(n: number): string {
-  return n === 1 ? '1 movimiento' : `${n} movimientos`
+  return n === 1 ? '1 transacción' : `${n} transacciones`
 }
 
 /** Single review screen: columns, unreadable rows, movements and categories. */
@@ -276,86 +272,80 @@ export function ReviewStep(props: ReviewStepProps) {
   if (duplicates && duplicateCount > 0) {
     buttonLabel =
       newCount === 0
-        ? 'Ya estaban todos importados'
+        ? 'Ya estaban todas importadas'
         : newCount === 1
-          ? 'Importar 1 movimiento nuevo'
-          : `Importar ${newCount} movimientos nuevos`
+          ? 'Importar 1 transacción nueva'
+          : `Importar ${newCount} transacciones nuevas`
   }
 
   return (
-    <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-      <CardHeader className="pb-4 pt-4 px-4 sm:px-8">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={props.onBack}
-            aria-label="Elegir otro archivo"
-            className="h-8 w-8 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors flex items-center justify-center shrink-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div className="min-w-0">
-            <CardTitle className="text-base font-bold text-text-primary truncate">
-              {props.fileName}
-            </CardTitle>
-            <p className="text-xs text-text-secondary mt-0.5">
-              {count === 1 ? '1 movimiento leído' : `${count} movimientos leídos`}
-              {duplicateCount > 0 &&
-                ` · ${duplicateCount === 1 ? '1 ya importado' : `${duplicateCount} ya importados`}, no se volverán a guardar`}
-            </p>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-4 sm:p-8 space-y-8 border-t border-layer-3">
-        <ColumnsPanel
-          headers={props.headers}
-          columns={props.columns}
-          onChange={props.onColumnsChange}
-        />
-        <RowErrorsPanel errors={parsed.errors} />
-        <PreviewPanel movements={parsed.movements} duplicates={duplicates} />
-        <CategoriesPanel
-          pairs={props.pairs}
-          options={props.subcategoryOptions}
-          onChange={props.onChoiceChange}
-        />
-
-        {isLocked && (
-          <div
-            role="alert"
-            className="p-4 rounded-2xl bg-warning/10 border border-warning/20 text-sm flex items-center gap-3"
-          >
-            <Lock className="h-5 w-5 shrink-0 text-warning" />
-            <span className="text-text-primary">
-              La cuenta está bloqueada. Los movimientos se guardan cifrados con tu PIN:{' '}
-              <Link href="/unlock" className="font-semibold text-accent hover:underline">
-                desbloquéala
-              </Link>{' '}
-              para importar.
-            </span>
-          </div>
-        )}
-
-        {props.error && (
-          <div
-            role="alert"
-            className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3"
-          >
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            {props.error}
-          </div>
-        )}
-
-        <Button
-          className="h-12 w-full text-base font-semibold"
-          onClick={props.onConfirm}
-          disabled={!canImport}
-          isLoading={isImporting}
+    <div className="space-y-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={props.onBack}
+          aria-label="Elegir otro archivo"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-layer-2 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {buttonLabel}
-        </Button>
-      </CardContent>
-    </Card>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <div className="min-w-0">
+          <p className="truncate text-base font-medium text-text-primary">{props.fileName}</p>
+          <p className="text-sm text-text-secondary">
+            {count === 1 ? '1 transacción leída' : `${count} transacciones leídas`}
+            {duplicateCount > 0 &&
+              `; ${duplicateCount === 1 ? '1 ya importada' : `${duplicateCount} ya importadas`}, no se volverán a guardar`}
+          </p>
+        </div>
+      </div>
+
+      <ColumnsPanel
+        headers={props.headers}
+        columns={props.columns}
+        onChange={props.onColumnsChange}
+      />
+      <RowErrorsPanel errors={parsed.errors} />
+      <PreviewPanel movements={parsed.movements} duplicates={duplicates} />
+      <CategoriesPanel
+        pairs={props.pairs}
+        options={props.subcategoryOptions}
+        onChange={props.onChoiceChange}
+      />
+
+      {isLocked && (
+        <div
+          role="alert"
+          className="p-4 rounded-2xl bg-warning/10 border border-warning/20 text-sm flex items-center gap-3"
+        >
+          <Lock className="h-5 w-5 shrink-0 text-warning" />
+          <span className="text-text-primary">
+            La cuenta está bloqueada. Las transacciones se guardan cifradas con tu PIN:{' '}
+            <Link href="/unlock" className="font-semibold text-accent hover:underline">
+              desbloquéala
+            </Link>{' '}
+            para importar.
+          </span>
+        </div>
+      )}
+
+      {props.error && (
+        <div
+          role="alert"
+          className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3"
+        >
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          {props.error}
+        </div>
+      )}
+
+      <Button
+        className="w-full sm:w-auto"
+        onClick={props.onConfirm}
+        disabled={!canImport}
+        isLoading={isImporting}
+      >
+        {buttonLabel}
+      </Button>
+    </div>
   )
 }

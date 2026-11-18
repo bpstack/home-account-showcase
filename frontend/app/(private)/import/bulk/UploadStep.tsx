@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertCircle, Database, Loader2, Lock, Upload } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
+import { AlertCircle, Loader2, Lock, Upload } from 'lucide-react'
 import { MAX_FILE_BYTES, readStatement, type Rows } from '@/lib/import'
 
 interface UploadStepProps {
@@ -43,62 +42,54 @@ export function UploadStep({ onRead }: UploadStepProps) {
   }
 
   return (
-    <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-      <CardHeader className="pb-4 pt-4 sm:pb-6 sm:pt-6 px-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-            <Database className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="min-w-0">
-            <CardTitle className="text-base sm:text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary truncate">
-              Importación masiva
-            </CardTitle>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-text-secondary mt-0.5 hidden sm:block">
-              Sube el extracto de tu banco para importar sus movimientos.
-            </p>
-          </div>
+    <div className="space-y-4">
+      <label className="group block cursor-pointer">
+        <input
+          type="file"
+          className="peer sr-only"
+          accept=".xls,.xlsx,.csv"
+          onChange={handleFile}
+          disabled={isReading}
+        />
+        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-layer-3 bg-layer-1 px-6 py-12 text-center transition-colors group-hover:border-accent peer-focus-visible:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-ring sm:py-16">
+          {isReading ? (
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-accent" aria-hidden="true" />
+          ) : (
+            <Upload className="mb-3 h-8 w-8 text-accent" aria-hidden="true" />
+          )}
+          <p className="text-base font-medium text-text-primary">
+            {isReading ? 'Leyendo el archivo…' : 'Elige el extracto de tu banco'}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">Excel (.xls, .xlsx) o CSV, hasta 5 MB.</p>
+          <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-text-secondary">
+            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+            Se lee en tu navegador y se guarda cifrado
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="p-4 sm:p-8">
-        <label className="relative group cursor-pointer block">
-          <input
-            type="file"
-            className="hidden"
-            accept=".xls,.xlsx,.csv"
-            onChange={handleFile}
-            disabled={isReading}
-          />
-          <div className="py-8 sm:py-16 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 dark:border-emerald-500/20 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/[0.02] group-hover:bg-emerald-100/50 dark:group-hover:bg-emerald-500/[0.05] group-hover:border-emerald-400 dark:group-hover:border-emerald-500/40 transition-all duration-300 ease-out text-center">
-            <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-emerald-100 dark:bg-accent/10 flex items-center justify-center mb-3 sm:mb-4 border border-emerald-200 dark:border-accent/10">
-              {isReading ? (
-                <Loader2 className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 dark:text-accent animate-spin" />
-              ) : (
-                <Upload className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 dark:text-accent" />
-              )}
-            </div>
-            <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-text-primary mb-2">
-              {isReading ? 'Leyendo el archivo…' : 'Elige el extracto de tu banco'}
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-text-secondary max-w-sm px-4 mb-4 leading-relaxed">
-              Excel (.xls, .xlsx) o CSV, de hasta 5 MB.
-            </p>
-            <p className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-layer-2 border border-slate-200 dark:border-layer-3 text-xs font-medium text-slate-600 dark:text-text-secondary">
-              <Lock className="h-3.5 w-3.5" />
-              Se lee en tu navegador y se guarda cifrado
-            </p>
-          </div>
-        </label>
+      </label>
 
-        {error && (
-          <div
-            role="alert"
-            className="mt-6 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3"
-          >
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            {error}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {error && (
+        <p
+          role="alert"
+          className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          {error}
+        </p>
+      )}
+
+      <p className="text-sm text-text-secondary">
+        Reconocemos la fecha, el concepto y el importe por el nombre de su columna; si no, los
+        eliges tú. ¿Quieres ver un ejemplo?{' '}
+        <a href="/templates/import-template.xlsx" download className="text-accent hover:underline">
+          Descarga la plantilla
+        </a>
+        . Si tu banco no se lee bien,{' '}
+        <a href="mailto:contact.bstack@gmail.com" className="text-accent hover:underline">
+          escríbenos
+        </a>
+        .
+      </p>
+    </div>
   )
 }

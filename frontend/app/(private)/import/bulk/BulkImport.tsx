@@ -206,7 +206,10 @@ export function BulkImport({ accountId, categories }: BulkImportProps) {
           queryClient.invalidateQueries({ queryKey: ['import', 'hashes', accountId] })
           setStage({ step: 'result', result })
           toast.success('Importación completada', {
-            description: `${result.inserted} movimientos guardados`,
+            description:
+              result.inserted === 1
+                ? '1 transacción guardada'
+                : `${result.inserted} transacciones guardadas`,
           })
         },
         onError: (err) => {
