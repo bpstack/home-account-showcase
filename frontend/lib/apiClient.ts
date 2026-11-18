@@ -898,36 +898,6 @@ export interface CategorySummary {
 }
 
 // Import types
-export interface ParsedTransaction {
-  date: string
-  description: string
-  amount: number
-  bank_category: string
-  bank_subcategory: string
-}
-
-export interface ParseResult {
-  success: boolean
-  file_type:
-    | 'control_gastos'
-    | 'movimientos_cc'
-    | 'csv_revolut'
-    | 'csv_generic'
-    | 'ai_parsed'
-    | 'unknown'
-  sheet_name?: string
-  available_sheets?: string[]
-  transactions: ParsedTransaction[]
-  categories: { category: string; subcategory: string }[]
-  errors: string[]
-}
-
-export interface CategoryMapping {
-  bank_category: string
-  bank_subcategory: string
-  subcategory_id: string | null
-}
-
 export interface ImportResult {
   total: number
   inserted: number
@@ -937,22 +907,6 @@ export interface ImportResult {
 
 // Import API
 export const importApi = {
-  parse: async (
-    file: File,
-    sheetName?: string
-  ): Promise<{ success: boolean; data: ParseResult }> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    if (sheetName) {
-      formData.append('sheet_name', sheetName)
-    }
-
-    return request<{ success: boolean; data: ParseResult }>('/import/parse', {
-      method: 'POST',
-      body: formData,
-    })
-  },
-
   // Only ciphertexts and keyed hashes (ADR-008): built by buildImportPayload
   confirm: (data: ImportConfirmPayload) =>
     request<{ success: boolean; data: ImportResult }>('/import/confirm', {
@@ -1002,22 +956,6 @@ export interface AITestResult {
   error?: string
 }
 
-export interface ParsedTransactionAI {
-  date: string | null
-  description: string
-  amount: number
-  category?: string
-  subcategory?: string
-}
-
-export interface AIParseResult {
-  success: boolean
-  transactions: ParsedTransactionAI[]
-  provider: string
-  responseTime: number
-  error?: string
-}
-
 // AI API
 export const ai = {
   getStatus: () => request<AIStatus>('/ai/status'),
@@ -1032,12 +970,6 @@ export const ai = {
     request<AITestResult>('/ai/test', {
       method: 'POST',
       body: JSON.stringify({ provider }),
-    }),
-
-  parseTransactions: (text: string, provider?: string) =>
-    request<AIParseResult>('/ai/parse', {
-      method: 'POST',
-      body: JSON.stringify({ text, provider }),
     }),
 
   categorize: (transactions: Array<{ description: string; date?: string; amount?: number }>) =>
