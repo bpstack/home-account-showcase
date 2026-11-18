@@ -76,10 +76,6 @@ build/
 # --------------------------------------------
 next-env.d.ts
 
-# Serwist service worker, generated on every build from app/sw.ts
-frontend/public/sw.js
-frontend/public/sw.js.map
-
 # --------------------------------------------
 # Local Scripts
 # --------------------------------------------
