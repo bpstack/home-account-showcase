@@ -16,29 +16,15 @@ import {
   useDeleteSubcategory,
 } from '@/lib/queries/categories'
 import {
+  ActionMenu,
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
   Input,
   Modal,
   ModalFooter,
   Select,
   ConfirmDialog,
 } from '@/components/ui'
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  ChevronDown,
-  ChevronRight,
-  RefreshCw,
-  AlertCircle,
-  AlertTriangle,
-  Loader2,
-  Wallet,
-} from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronRight, AlertCircle, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Category, Subcategory } from '@/lib/apiClient'
 import Link from 'next/link'
@@ -109,6 +95,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   const [subcategoryFieldErrors, setSubcategoryFieldErrors] = useState<Record<string, string>>({})
 
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+  const [subcategoryToDelete, setSubcategoryToDelete] = useState<Subcategory | null>(null)
   const [reassignCategoryId, setReassignCategoryId] = useState('')
 
   const {
@@ -262,6 +249,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
       loading: 'Eliminando subcategoría...',
       success: () => {
         queryClient.invalidateQueries({ queryKey: ['categories'] })
+        setSubcategoryToDelete(null)
         return `"${sub.name}" eliminada`
       },
       error: 'Error al eliminar la subcategoría',
@@ -275,10 +263,14 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
 
   function handleConfirmDelete() {
     if (!categoryToDelete) return
-    if (orphanedQuery.data?.count && orphanedQuery.data.count > 0 && reassignCategoryId) {
-      reassignMutation.mutate({ fromId: categoryToDelete.id, toId: reassignCategoryId })
-    }
-    toast.promise(deleteCategoryMutation.mutateAsync(categoryToDelete.id), {
+    const category = categoryToDelete
+    const reassign =
+      orphanedQuery.data?.count && orphanedQuery.data.count > 0 && reassignCategoryId
+        ? reassignMutation.mutateAsync({ fromId: category.id, toId: reassignCategoryId })
+        : Promise.resolve()
+    // The transactions move first; deleting at the same time could leave them uncategorized
+    const work = reassign.then(() => deleteCategoryMutation.mutateAsync(category.id))
+    toast.promise(work, {
       loading: 'Eliminando categoría...',
       success: () => {
         queryClient.invalidateQueries({ queryKey: ['categories'] })
@@ -316,179 +308,171 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   const showDeleteModal = !!categoryToDelete
 
   return (
-    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
-      <div className="px-4 md:px-6 py-6">
-        {error && (
-          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            <span className="text-sm text-destructive">{error}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                createCategoryMutation.reset()
-                updateCategoryMutation.reset()
-                deleteCategoryMutation.reset()
-                addDefaultsMutation.reset()
-              }}
-              className="ml-auto"
-            >
-              ×
-            </Button>
-          </div>
-        )}
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-text-secondary">
+          {hasCategories
+            ? categoryList.length === 1
+              ? '1 categoría'
+              : `${categoryList.length} categorías`
+            : ''}
+        </p>
+        <Button onClick={openCreateCategoryModal} className="shrink-0">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Nueva categoría
+        </Button>
+      </div>
 
-        {!isLoadingCategories && !hasCategories && (
-          <div className="mb-6 p-6 bg-muted/50 border border-border rounded-xl text-center">
-            <h3 className="text-lg font-medium text-foreground mb-2">Sin categorías definidas</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Agrega las categorías por defecto basadas en tu control de gastos 2025
-            </p>
-            <Button onClick={handleAddDefaultCategories} isLoading={addDefaultsMutation.isPending}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Agregar categorías por defecto
-            </Button>
-          </div>
-        )}
-
-        <div className="flex justify-center gap-3 mb-6">
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          <span className="flex-1">{error}</span>
           <button
-            onClick={handleAddDefaultCategories}
-            disabled={addDefaultsMutation.isPending}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            type="button"
+            aria-label="Cerrar aviso"
+            className="rounded p-1 hover:bg-danger/10"
+            onClick={() => {
+              createCategoryMutation.reset()
+              updateCategoryMutation.reset()
+              deleteCategoryMutation.reset()
+              addDefaultsMutation.reset()
+            }}
           >
-            <RefreshCw className="h-4 w-4 text-primary stroke-[2.5]" />
-            Restablecer categorías
-          </button>
-          <button
-            onClick={openCreateCategoryModal}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Plus className="h-4 w-4 text-primary stroke-[2.5]" />
-            Nueva categoría
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
+      )}
 
-        {isLoadingCategories ? (
-          <div className="text-center py-12 text-muted-foreground">Cargando categorías...</div>
-        ) : hasCategories ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {categoryList.map((category) => {
-              const isExpanded = expandedCategories.includes(category.id)
-              const subcategories = getSubcategories(category)
-
-              return (
-                <Card key={category.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <button
-                        onClick={() => toggleCategory(category.id)}
-                        className="flex items-center gap-3 text-left"
-                      >
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: category.color }}
-                        />
-                        <CardTitle className="text-base">{category.name}</CardTitle>
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </button>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEditCategoryModal(category)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteClick(category)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  {isExpanded && (
-                    <CardContent className="pt-2">
-                      <div className="space-y-2 pl-7">
-                        {subcategories.map((sub) => (
-                          <div
-                            key={sub.id}
-                            className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg"
-                          >
-                            <span className="text-sm text-foreground">{sub.name}</span>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => openEditSubcategoryModal(sub, category.id)}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-destructive hover:text-destructive"
-                                onClick={() => handleDeleteSubcategory(sub)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start text-muted-foreground"
-                          onClick={() => openCreateSubcategoryModal(category.id)}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Añadir subcategoría
-                        </Button>
-                      </div>
-                    </CardContent>
-                  )}
-
-                  {!isExpanded && (
-                    <CardContent className="pt-0">
-                      <p className="text-sm text-muted-foreground">
-                        {subcategories.length} subcategorías
-                      </p>
-                    </CardContent>
-                  )}
-                </Card>
-              )
-            })}
-          </div>
-        ) : null}
-
-        {hasCategories && (
-          <Link
-            href="/profile?panel=settings&tab=budget"
-            className="mt-8 flex items-center justify-center gap-3 p-6 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl hover:from-primary/20 hover:to-primary/10 transition-all group"
+      {isLoadingCategories ? (
+        <p className="flex items-center justify-center gap-2 py-12 text-sm text-text-secondary">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          Cargando categorías
+        </p>
+      ) : !hasCategories ? (
+        <div className="rounded-lg border border-dashed border-layer-3 px-6 py-12 text-center">
+          <p className="text-sm text-text-primary">Aún no tienes categorías.</p>
+          <p className="mt-1 text-sm text-text-secondary">
+            Empieza con las habituales de una casa (alimentación, vivienda, ocio…) y cámbialas
+            cuando quieras.
+          </p>
+          <Button
+            className="mt-4"
+            onClick={handleAddDefaultCategories}
+            isLoading={addDefaultsMutation.isPending}
           >
-            <div className="p-3 bg-primary/10 rounded-full group-hover:scale-110 transition-transform">
-              <Wallet className="h-6 w-6 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="font-medium text-foreground">¿Necesitas un presupuesto?</p>
-              <p className="text-sm text-muted-foreground">
-                Crea tu propio presupuesto según las categorías y controla tus gastos
-              </p>
-            </div>
+            Añadir las categorías habituales
+          </Button>
+        </div>
+      ) : (
+        <ul className="divide-y divide-layer-3 border-y border-layer-3">
+          {categoryList.map((category) => {
+            const isExpanded = expandedCategories.includes(category.id)
+            const subcategories = getSubcategories(category)
+            return (
+              <li key={category.id}>
+                <div className="flex min-h-14 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(category.id)}
+                    aria-expanded={isExpanded}
+                    className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <ChevronRight
+                      aria-hidden="true"
+                      className={`h-4 w-4 flex-shrink-0 text-text-secondary transition-transform motion-reduce:transition-none ${isExpanded ? 'rotate-90' : ''}`}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="h-3 w-3 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <span className="truncate text-sm font-medium text-text-primary">
+                      {category.name}
+                    </span>
+                    <span className="flex-shrink-0 text-sm text-text-secondary">
+                      {subcategories.length === 1
+                        ? '1 subcategoría'
+                        : `${subcategories.length} subcategorías`}
+                    </span>
+                  </button>
+                  <ActionMenu
+                    label={`Acciones de ${category.name}`}
+                    items={[
+                      {
+                        label: 'Editar',
+                        icon: <Pencil className="h-4 w-4" aria-hidden="true" />,
+                        onSelect: () => openEditCategoryModal(category),
+                      },
+                      {
+                        label: 'Añadir subcategoría',
+                        icon: <Plus className="h-4 w-4" aria-hidden="true" />,
+                        onSelect: () => openCreateSubcategoryModal(category.id),
+                      },
+                      {
+                        label: 'Eliminar',
+                        icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+                        onSelect: () => handleDeleteClick(category),
+                        danger: true,
+                      },
+                    ]}
+                  />
+                </div>
+
+                {isExpanded && (
+                  <ul className="mb-3 ml-[3.25rem] divide-y divide-layer-3 border-l border-layer-3">
+                    {subcategories.map((sub) => (
+                      <li key={sub.id} className="flex min-h-11 items-center gap-2 pl-3">
+                        <span className="flex-1 truncate text-sm text-text-primary">
+                          {sub.name}
+                        </span>
+                        <ActionMenu
+                          label={`Acciones de ${sub.name}`}
+                          items={[
+                            {
+                              label: 'Renombrar',
+                              icon: <Pencil className="h-4 w-4" aria-hidden="true" />,
+                              onSelect: () => openEditSubcategoryModal(sub, category.id),
+                            },
+                            {
+                              label: 'Eliminar',
+                              icon: <Trash2 className="h-4 w-4" aria-hidden="true" />,
+                              onSelect: () => setSubcategoryToDelete(sub),
+                              danger: true,
+                            },
+                          ]}
+                        />
+                      </li>
+                    ))}
+                    <li className="pl-3">
+                      <button
+                        type="button"
+                        onClick={() => openCreateSubcategoryModal(category.id)}
+                        className="flex min-h-11 items-center gap-2 text-sm text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Añadir subcategoría
+                      </button>
+                    </li>
+                  </ul>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {hasCategories && (
+        <p className="text-sm text-text-secondary">
+          Para fijar cuánto quieres gastar en cada categoría, ve a{' '}
+          <Link href="/profile?panel=settings&tab=budget" className="text-accent hover:underline">
+            Configuración, presupuesto
           </Link>
-        )}
-      </div>
+          .
+        </p>
+      )}
 
       <Modal
         isOpen={isCategoryModalOpen}
@@ -513,16 +497,18 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
             error={categoryFieldErrors.name}
           />
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Color</label>
-            <div className="flex gap-2">
+            <p className="mb-2 text-sm font-medium text-text-primary">Color</p>
+            <div className="flex flex-wrap gap-3">
               {COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                  aria-label={`Color ${color}`}
+                  aria-pressed={categoryForm.color === color}
+                  className={`h-8 w-8 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     categoryForm.color === color
-                      ? 'border-white ring-2 ring-primary scale-110'
-                      : 'border-transparent hover:border-muted-foreground hover:scale-105'
+                      ? 'ring-2 ring-accent ring-offset-2 ring-offset-layer-1'
+                      : ''
                   }`}
                   style={{ backgroundColor: color }}
                   onClick={() => setCategoryForm({ ...categoryForm, color })}
@@ -607,19 +593,12 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
         {categoryToDelete && (
           <div className="space-y-4">
             {orphanedCount > 0 && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                      Esta categoría tiene {orphanedCount} transacción(es) asociada(s)
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Las transacciones perderán su categoría.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-text-primary">
+                {orphanedCount === 1
+                  ? 'Hay 1 transacción en esta categoría.'
+                  : `Hay ${orphanedCount} transacciones en esta categoría.`}{' '}
+                Si no la pasas a otra, se quedará sin categoría.
+              </p>
             )}
 
             <p className="text-sm text-foreground">
@@ -628,12 +607,11 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
 
             {orphanedCount > 0 && (
               <div className="pt-4 border-t border-border">
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  ¿Reasignar transacciones a otra categoría?
-                </label>
                 <Select
+                  id="reassign-category"
+                  label="Pasar sus transacciones a"
                   options={[
-                    { value: '', label: 'Mantener como "Sin categoría"' },
+                    { value: '', label: 'Ninguna: dejarlas sin categoría' },
                     ...reassignOptions,
                   ]}
                   value={reassignCategoryId}
@@ -645,6 +623,21 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
           </div>
         )}
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!subcategoryToDelete}
+        onOpenChange={(open) => !open && setSubcategoryToDelete(null)}
+        title="Eliminar subcategoría"
+        description={
+          subcategoryToDelete
+            ? `Se eliminará «${subcategoryToDelete.name}». Sus transacciones se quedarán sin categoría.`
+            : undefined
+        }
+        confirmLabel="Eliminar"
+        onConfirm={() => subcategoryToDelete && handleDeleteSubcategory(subcategoryToDelete)}
+        isLoading={deleteSubcategoryMutation.isPending}
+        variant="danger"
+      />
     </div>
   )
 }

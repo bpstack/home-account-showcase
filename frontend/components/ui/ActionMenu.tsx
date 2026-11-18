@@ -53,7 +53,7 @@ export function ActionMenu({ label, items }: ActionMenuProps) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1 min-w-44 rounded-lg border border-layer-3 bg-layer-1 py-1 shadow-lg"
+          className="absolute right-0 top-full z-30 mt-1 min-w-44 whitespace-nowrap rounded-lg border border-layer-3 bg-layer-1 py-1 shadow-lg"
         >
           {items.map((item) => (
             <button
