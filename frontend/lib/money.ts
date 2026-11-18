@@ -1,6 +1,6 @@
-// The one way to write an amount in the app (docs/design-brief.md): es-ES, thousands always
-// grouped ("1.500,00 €"), the true minus sign "−" for expenses, and "—" for a value that does
-// not exist. Pages must not format amounts on their own.
+// The one way to write an amount in the app (frontend/docs/README.md, «Interfaz»): es-ES,
+// thousands always grouped ("1.500,00 €"), the true minus sign "−" for expenses, and "—" for a
+// value that does not exist. Pages must not format amounts on their own.
 
 const euros = new Intl.NumberFormat('es-ES', {
   style: 'currency',
