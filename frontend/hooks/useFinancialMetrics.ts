@@ -80,7 +80,8 @@ export function useFinancialMetrics(accountId: string) {
       monthlySavings[month] = (monthlySavings[month] || 0) + amount
     })
 
-    const months = Object.keys(monthlyIncome)
+    // Every month with a movement counts: a month with expenses only must lower the averages
+    const months = [...new Set([...Object.keys(monthlyIncome), ...Object.keys(monthlyExpenses)])]
     const count = Math.max(1, months.length)
 
     const avgMonthlyIncome = totalIncome / count
