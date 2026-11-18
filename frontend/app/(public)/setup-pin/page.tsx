@@ -2,7 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
+import { Button, PasswordInput } from '@/components/ui'
+import { AuthShell, FormAlert } from '@/components/auth'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { useAuthStore } from '@/stores/authStore'
 import { accounts, auth } from '@/lib/apiClient'
@@ -17,6 +18,10 @@ import {
   verifyUserKey,
 } from '@/lib/crypto'
 import { toast } from 'sonner'
+
+const PIN_TITLE = 'Crea tu PIN de cifrado'
+const FIELD_CLASS = 'h-11 sm:h-10'
+const FULL_CLASS = 'h-11 w-full sm:h-10'
 
 interface KeysData {
   key_salt: string
@@ -43,8 +48,6 @@ function SetupPinForm() {
   const [confirmPin, setConfirmPin] = useState('')
   const [pinError, setPinError] = useState('')
   const [pinLoading, setPinLoading] = useState(false)
-  const [showPin, setShowPin] = useState(false)
-  const [showConfirmPin, setShowConfirmPin] = useState(false)
 
   // bip39 phase
   const [mnemonic, setMnemonic] = useState('')
@@ -215,261 +218,172 @@ function SetupPinForm() {
     }
   }
 
-  // Loading
   if (phase === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-      </div>
-    )
+    return <AuthShell title={PIN_TITLE}>{null}</AuthShell>
   }
 
   // Step 1 — password
   if (phase === 'password') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md p-8 space-y-6 bg-layer-1 rounded-xl border border-layer-2">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+      <AuthShell
+        title="Configura tu PIN de cifrado"
+        description="Primero confirma tu contraseña de acceso para desbloquear tus datos."
+      >
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          {passwordError && <FormAlert>{passwordError}</FormAlert>}
+
+          <PasswordInput
+            id="password"
+            label="Contraseña de acceso"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+            className={FIELD_CLASS}
+          />
+
+          <Button
+            type="submit"
+            isLoading={passwordLoading}
+            disabled={!password}
+            className={FULL_CLASS}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Volver atrás
-          </button>
-
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-text-primary">Configura tu PIN de cifrado</h1>
-            <p className="text-text-secondary mt-2">
-              Primero confirma tu contraseña de acceso para desbloquear tus datos.
-            </p>
-          </div>
-
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">
-                Contraseña de acceso
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-layer-3 bg-background focus:ring-2 focus:ring-blue-500"
-                placeholder="Tu contraseña"
-                autoFocus
-              />
-            </div>
-
-            {passwordError && <p className="text-red-500 text-sm text-center">{passwordError}</p>}
-
-            <button
-              type="submit"
-              disabled={passwordLoading || !password}
-              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {passwordLoading ? 'Verificando...' : 'Continuar'}
-            </button>
-          </form>
-        </div>
-      </div>
+            Continuar
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.back()}
+            className={FULL_CLASS}
+          >
+            Volver
+          </Button>
+        </form>
+      </AuthShell>
     )
   }
 
-  // Step 3 — BIP39 mnemonic
+  // Step 3 — BIP39 mnemonic (the PIN is already saved: there is no going back from here)
   if (phase === 'bip39') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-lg p-8 space-y-6 bg-layer-1 rounded-xl border border-layer-2">
-          <button
-            onClick={() => setPhase('pin')}
-            className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Volver atrás
-          </button>
+      <AuthShell
+        title="Guarda tu frase de recuperación"
+        description="Estas 24 palabras son la única forma de recuperar tus datos si olvidas el PIN. Guárdalas en un lugar seguro, fuera de línea."
+        wide
+      >
+        <ol className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-border p-4 sm:grid-cols-3">
+          {mnemonic.split(' ').map((word, i) => (
+            <li key={i} className="flex items-baseline gap-2 text-sm">
+              <span className="w-6 text-right text-xs tabular-nums text-muted-foreground">
+                {i + 1}
+              </span>
+              <span className="font-mono font-medium">{word}</span>
+            </li>
+          ))}
+        </ol>
 
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-text-primary">
-              Guarda tu frase de recuperación
-            </h1>
-            <p className="text-text-secondary mt-2">
-              Estas 24 palabras son la ÚNICA forma de recuperar tus datos si olvidas tu PIN.
-              Cópialas y guárdalas en un lugar seguro offline.
-            </p>
-          </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={async () => {
+            await navigator.clipboard.writeText(mnemonic)
+            toast.success('Frase copiada al portapapeles')
+          }}
+          className={`mt-4 ${FULL_CLASS}`}
+        >
+          Copiar al portapapeles
+        </Button>
 
-          <div className="grid grid-cols-3 gap-2 p-4 bg-background rounded-lg border border-layer-3">
-            {mnemonic.split(' ').map((word, i) => (
-              <div key={i} className="flex items-center gap-2 p-2 text-sm">
-                <span className="text-text-tertiary w-6 text-right">{i + 1}.</span>
-                <span className="font-mono font-medium text-text-primary">{word}</span>
-              </div>
-            ))}
-          </div>
+        <label className="mt-6 flex items-start gap-3 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-accent"
+          />
+          He guardado esta frase en un lugar seguro. Entiendo que no se puede recuperar.
+        </label>
 
-          <button
-            onClick={async () => {
-              await navigator.clipboard.writeText(mnemonic)
-              toast.success('Frase copiada al portapapeles', {
-                duration: 3000,
-                style: { background: '#22c55e', border: 'none', color: 'white' },
-              })
-            }}
-            className="w-full py-2 text-sm border border-layer-3 rounded-lg hover:bg-layer-2 transition-all duration-200 active:scale-[0.98]"
-          >
-            Copiar al portapapeles
-          </button>
-
-          <label className="flex items-start gap-3 text-sm text-text-secondary">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-              className="mt-1"
-            />
-            He guardado esta frase en un lugar seguro. Entiendo que no se puede recuperar.
-          </label>
-
-          <button
-            onClick={() => {
-              forceUnlockAfterSetup()
-              router.push(fromParam)
-            }}
-            disabled={!confirmed}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-          >
-            Continuar al dashboard
-          </button>
-        </div>
-      </div>
+        <Button
+          type="button"
+          onClick={() => {
+            forceUnlockAfterSetup()
+            router.push(fromParam)
+          }}
+          disabled={!confirmed}
+          className={`mt-6 ${FULL_CLASS}`}
+        >
+          Continuar
+        </Button>
+      </AuthShell>
     )
   }
 
   // Step 2 — PIN creation
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md p-8 space-y-6 bg-layer-1 rounded-xl border border-layer-2">
+    <AuthShell
+      title={PIN_TITLE}
+      description="Protege tus datos financieros. Lo necesitarás cada vez que recargues la página."
+    >
+      <form onSubmit={handlePinSubmit} className="space-y-4">
+        {pinError && <FormAlert>{pinError}</FormAlert>}
+
+        <PasswordInput
+          id="pin"
+          label="PIN (6 a 8 dígitos)"
+          subject="PIN"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={8}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+          autoFocus
+          className={`${FIELD_CLASS} tracking-widest`}
+        />
+
+        <PasswordInput
+          id="confirmPin"
+          label="Repite el PIN"
+          subject="PIN"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={8}
+          value={confirmPin}
+          onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+          className={`${FIELD_CLASS} tracking-widest`}
+        />
+
+        <Button
+          type="submit"
+          isLoading={pinLoading}
+          disabled={pin.length < 6 || confirmPin.length < 6}
+          className={FULL_CLASS}
+        >
+          Guardar PIN
+        </Button>
         {keysData?.encrypted_keys?.length ? (
-          <button
+          <Button
+            type="button"
+            variant="ghost"
             onClick={() => setPhase('password')}
-            className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+            className={FULL_CLASS}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Volver atrás
-          </button>
+            Volver
+          </Button>
         ) : null}
+      </form>
 
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-text-primary">Crea tu PIN de cifrado</h1>
-          <p className="text-text-secondary mt-2">
-            Este PIN protegerá tus datos financieros. Lo necesitarás cada vez que recargues la
-            página.
-          </p>
-        </div>
-
-        <form onSubmit={handlePinSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              PIN (6-8 dígitos)
-            </label>
-            <div className="relative">
-              <input
-                type={showPin ? 'text' : 'password'}
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={8}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                className="w-full px-4 py-3 pr-12 text-center text-2xl tracking-widest rounded-lg border border-layer-3 bg-background focus:ring-2 focus:ring-blue-500"
-                placeholder="••••••"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => setShowPin(!showPin)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
-              >
-                {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Confirmar PIN
-            </label>
-            <div className="relative">
-              <input
-                type={showConfirmPin ? 'text' : 'password'}
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={8}
-                value={confirmPin}
-                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                className="w-full px-4 py-3 pr-12 text-center text-2xl tracking-widest rounded-lg border border-layer-3 bg-background focus:ring-2 focus:ring-blue-500"
-                placeholder="••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPin(!showConfirmPin)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
-              >
-                {showConfirmPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          {pinError && <p className="text-red-500 text-sm text-center">{pinError}</p>}
-
-          <button
-            type="submit"
-            disabled={pinLoading || pin.length < 6 || confirmPin.length < 6}
-            className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {pinLoading ? 'Configurando...' : 'Guardar PIN'}
-          </button>
-        </form>
-
-        <p className="text-xs text-text-tertiary text-center">
-          Tu frase de recuperación se mostrará después de configurar el PIN.
-        </p>
-      </div>
-    </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Después de guardar el PIN verás tu frase de recuperación.
+      </p>
+    </AuthShell>
   )
 }
 
 export default function SetupPinPage() {
   return (
-    <Suspense fallback={<SetupPinSkeleton />}>
+    <Suspense fallback={<AuthShell title={PIN_TITLE}>{null}</AuthShell>}>
       <SetupPinForm />
     </Suspense>
-  )
-}
-
-function SetupPinSkeleton() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-    </div>
   )
 }

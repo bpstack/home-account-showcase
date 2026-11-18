@@ -14,7 +14,13 @@ import {
   encryptAccountKey,
   decryptAccountKey,
 } from '@/lib/crypto'
-import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, Shield } from 'lucide-react'
+import { Button, ButtonLink, PasswordInput, Textarea } from '@/components/ui'
+import { AuthShell, FormAlert } from '@/components/auth'
+
+const TITLE = 'Recupera tu cuenta'
+// Recovery needs the session: it is reached from /unlock, so that is where back goes.
+const BACK_TO_UNLOCK = { href: '/unlock', label: 'Volver' }
+const FULL_CLASS = 'h-11 w-full sm:h-10'
 
 function RecoveryForm() {
   const router = useRouter()
@@ -24,8 +30,6 @@ function RecoveryForm() {
   const [confirmPin, setConfirmPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showPin, setShowPin] = useState(false)
-  const [showConfirmPin, setShowConfirmPin] = useState(false)
 
   const [recoveryData, setRecoveryData] = useState<{
     recoveryBlob: string
@@ -200,190 +204,120 @@ function RecoveryForm() {
 
   if (step === 'done') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md p-8 space-y-6 text-center">
-          <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
-            <CheckCircle2 className="w-8 h-8 text-green-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Recuperación exitosa</h1>
-          <p className="text-muted-foreground">Redirigiendo a la página de inicio de sesión...</p>
-        </div>
-      </div>
+      <AuthShell title="Cuenta recuperada" description="Te llevamos a iniciar sesión…">
+        <ButtonLink href="/login" className={FULL_CLASS}>
+          Iniciar sesión
+        </ButtonLink>
+      </AuthShell>
     )
   }
 
   if (step === 'processing') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md p-8 space-y-6 text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-amber-500" />
-          <h1 className="text-xl font-bold text-foreground">Procesando recuperación</h1>
-          <p className="text-muted-foreground">
-            Esto puede tomar unos segundos. No cierres esta página.
-          </p>
-        </div>
-      </div>
+      <AuthShell
+        title="Recuperando tu cuenta…"
+        description="Puede tardar unos segundos. No cierres esta página."
+      >
+        {null}
+      </AuthShell>
+    )
+  }
+
+  if (step === 'newpin') {
+    return (
+      <AuthShell
+        title="Frase verificada"
+        description="Ahora crea un PIN nuevo para proteger tus datos."
+      >
+        <form onSubmit={handleNewPinSubmit} className="space-y-4">
+          {error && <FormAlert>{error}</FormAlert>}
+
+          <PasswordInput
+            id="newPin"
+            label="PIN nuevo (6 a 8 dígitos)"
+            subject="PIN"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={8}
+            value={newPin}
+            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+            autoFocus
+            className="h-11 tracking-widest sm:h-10"
+          />
+
+          <PasswordInput
+            id="confirmPin"
+            label="Repite el PIN"
+            subject="PIN"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={8}
+            value={confirmPin}
+            onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+            className="h-11 tracking-widest sm:h-10"
+          />
+
+          <Button
+            type="submit"
+            isLoading={loading}
+            disabled={newPin.length < 6 || confirmPin.length < 6}
+            className={FULL_CLASS}
+          >
+            Recuperar cuenta
+          </Button>
+        </form>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-lg space-y-6">
-        {step === 'mnemonic' ? (
-          <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-4">
-                <Shield className="w-6 h-6 text-amber-500" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">Recupera tu cuenta</h1>
-              <p className="text-muted-foreground mt-2">
-                Ingresa tus 24 palabras de recuperación para restaurar el acceso a tus datos.
-              </p>
-            </div>
+    <AuthShell
+      title={TITLE}
+      description="Introduce tus 24 palabras de recuperación para restaurar el acceso a tus datos."
+      back={BACK_TO_UNLOCK}
+    >
+      <form onSubmit={handleMnemonicSubmit} className="space-y-4">
+        {error && <FormAlert>{error}</FormAlert>}
 
-            {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              </div>
-            )}
+        <div>
+          <label htmlFor="mnemonic" className="mb-1 block text-sm font-medium">
+            Frase de recuperación (24 palabras)
+          </label>
+          <Textarea
+            id="mnemonic"
+            value={mnemonic}
+            onChange={(e) => setMnemonic(e.target.value)}
+            rows={4}
+            autoFocus
+            autoComplete="off"
+            spellCheck={false}
+            className="font-mono"
+          />
+        </div>
 
-            <form onSubmit={handleMnemonicSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Frase de recuperación (24 palabras)
-                </label>
-                <textarea
-                  value={mnemonic}
-                  onChange={(e) => setMnemonic(e.target.value)}
-                  placeholder="word1 word2 word3 ..."
-                  className="w-full h-32 p-4 text-sm font-mono bg-muted/50 border border-border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
-                  autoFocus
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || !mnemonic.trim()}
-                className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? 'Verificando...' : 'Continuar'}
-              </button>
-            </form>
-
-            <p className="text-xs text-center text-muted-foreground">
-              <Link href="/login" className="underline hover:text-foreground">
-                Cancelar y volver al login
-              </Link>
-            </p>
-          </div>
-        ) : (
-          <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-6 h-6 text-green-500" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">Frase verificada</h1>
-              <p className="text-muted-foreground mt-2">
-                Ahora crea un nuevo PIN para proteger tus datos.
-              </p>
-            </div>
-
-            {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleNewPinSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Nuevo PIN (6-8 dígitos)
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPin ? 'text' : 'password'}
-                    inputMode="numeric"
-                    maxLength={8}
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                    className="w-full h-12 px-4 pr-12 text-center text-2xl tracking-widest bg-muted/50 border border-border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPin(!showPin)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Confirmar PIN
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPin ? 'text' : 'password'}
-                    inputMode="numeric"
-                    maxLength={8}
-                    value={confirmPin}
-                    onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                    className="w-full h-12 px-4 pr-12 text-center text-2xl tracking-widest bg-muted/50 border border-border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPin(!showConfirmPin)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showConfirmPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || newPin.length < 6 || confirmPin.length < 6}
-                className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? 'Procesando...' : 'Recuperar cuenta'}
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
-    </div>
+        <Button
+          type="submit"
+          isLoading={loading}
+          disabled={!mnemonic.trim()}
+          className={FULL_CLASS}
+        >
+          Continuar
+        </Button>
+      </form>
+    </AuthShell>
   )
 }
-
-import Link from 'next/link'
 
 export default function RecoveryPage() {
   return (
-    <Suspense fallback={<RecoverySkeleton />}>
+    <Suspense
+      fallback={
+        <AuthShell title={TITLE} back={BACK_TO_UNLOCK}>
+          {null}
+        </AuthShell>
+      }
+    >
       <RecoveryForm />
     </Suspense>
-  )
-}
-
-function RecoverySkeleton() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-lg bg-card border border-border rounded-2xl p-8 space-y-6">
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-12 h-12 bg-muted rounded-full" />
-          <div className="h-7 bg-muted rounded w-48 mx-auto" />
-          <div className="h-4 bg-muted rounded w-64 mx-auto" />
-        </div>
-        <div className="h-32 bg-muted rounded-xl" />
-        <div className="h-12 bg-muted rounded-xl" />
-      </div>
-    </div>
   )
 }
