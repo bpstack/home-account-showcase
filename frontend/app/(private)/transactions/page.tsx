@@ -27,26 +27,30 @@ export default async function TransactionsPage() {
   const startDate = formatLocalDate(createLocalDate(currentYear, currentMonth, 1))
   const endDate = formatLocalDate(createLocalDate(currentYear, currentMonth + 1, 0))
 
-  try {
-    const [transactionsResponse, categoriesResponse] = await Promise.all([
-      getTransactions(accountId, {
-        startDate,
-        endDate,
-        limit: 100,
-        offset: 0,
-      }),
-      getCategories(accountId),
-    ])
-
-    return (
-      <TransactionsClient
-        initialTransactions={transactionsResponse.transactions}
-        initialTotal={transactionsResponse.total}
-        initialCategories={categoriesResponse.categories}
-      />
-    )
-  } catch (error) {
+  const initialData = await Promise.all([
+    getTransactions(accountId, {
+      startDate,
+      endDate,
+      limit: 100,
+      offset: 0,
+    }),
+    getCategories(accountId),
+  ]).catch((error) => {
     console.error('Error fetching initial data:', error)
+    return null
+  })
+
+  if (!initialData) {
     return <TransactionsClient />
   }
+
+  const [transactionsResponse, categoriesResponse] = initialData
+
+  return (
+    <TransactionsClient
+      initialTransactions={transactionsResponse.transactions}
+      initialTotal={transactionsResponse.total}
+      initialCategories={categoriesResponse.categories}
+    />
+  )
 }

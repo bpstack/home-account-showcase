@@ -18,11 +18,12 @@ export default async function CategoriesPage() {
     return <CategoriesClient initialCategories={[]} />
   }
 
-  try {
-    const categoriesResponse = await getCategories(accountId)
-    return <CategoriesClient initialCategories={categoriesResponse.categories} />
-  } catch (error) {
+  const categoriesResponse = await getCategories(accountId).catch((error) => {
     console.error('Error fetching categories:', error)
-    return <CategoriesClient initialCategories={[]} />
-  }
+    return null
+  })
+
+  return (
+    <CategoriesClient initialCategories={categoriesResponse ? categoriesResponse.categories : []} />
+  )
 }
