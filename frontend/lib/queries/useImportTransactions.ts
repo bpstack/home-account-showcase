@@ -4,9 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { importApi, ParsedTransaction, CategoryMapping } from '../apiClient'
 import { transactionKeys } from './transactions'
 import { useCryptoStore } from '@/stores/cryptoStore'
-import { encrypt, getAmountSign } from '../crypto'
-import { sha256 } from '@noble/hashes/sha2.js'
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js'
+import { buildImportPayload } from '../import/confirm'
 
 export interface OptimisticTransaction {
   id: string
@@ -46,56 +44,36 @@ interface TransactionsCache {
   offset: number
 }
 
-function generateImportHash(tx: ParsedTransaction): string {
-  const normalized = [
-    (tx.date || '').split('T')[0],
-    (tx.description || '').toLowerCase().trim().replace(/\s+/g, ' '),
-    (Math.round(tx.amount * 100) / 100).toFixed(2),
-  ].join('|')
-  return bytesToHex(sha256(utf8ToBytes(normalized)))
-}
-
 export function useImportTransactions() {
   const queryClient = useQueryClient()
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
 
   return useMutation({
     mutationFn: async (data: ImportConfirmData) => {
+      // No unencrypted fallback (ADR-008): a locked account does not import
       const accountKey = getAccountKey(data.account_id)
-
-      // Generate dedup hashes from plaintext before encryption
-      const txsWithHash = data.transactions.map((tx) => ({
-        ...tx,
-        import_hash: generateImportHash(tx),
-      }))
-
-      // If account is unlocked, encrypt all transactions before sending
-      if (accountKey) {
-        const encryptedTransactions = await Promise.all(
-          txsWithHash.map(async (tx) => ({
-            ...tx,
-            description_encrypted: await encrypt(tx.description, accountKey),
-            amount_encrypted: await encrypt(tx.amount.toString(), accountKey),
-            amount_sign: getAmountSign(tx.amount),
-            bank_category_encrypted: tx.bank_category
-              ? await encrypt(tx.bank_category, accountKey)
-              : null,
-            bank_subcategory_encrypted: tx.bank_subcategory
-              ? await encrypt(tx.bank_subcategory, accountKey)
-              : null,
-          }))
-        )
-        return importApi.confirm({
-          ...data,
-          transactions: encryptedTransactions as any,
-        })
+      if (!accountKey) {
+        throw new Error('La cuenta está bloqueada: introduce el PIN para importar')
       }
 
-      // Fallback: send unencrypted (legacy mode)
-      return importApi.confirm({
-        ...data,
-        transactions: txsWithHash as any,
-      })
+      const payload = await buildImportPayload(
+        data.account_id,
+        accountKey,
+        data.transactions.map((tx) => ({
+          date: tx.date,
+          description: tx.description,
+          amount: tx.amount,
+          category: tx.bank_category || null,
+          subcategory: tx.bank_subcategory || null,
+        })),
+        data.category_mappings.map((m) => ({
+          category: m.bank_category || null,
+          subcategory: m.bank_subcategory || null,
+          subcategory_id: m.subcategory_id,
+        }))
+      )
+      const res = await importApi.confirm(payload)
+      return res.data
     },
 
     // Optimistic update: mostrar transacciones inmediatamente

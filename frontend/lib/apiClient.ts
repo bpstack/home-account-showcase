@@ -4,6 +4,8 @@
 
 // Usar proxy de Next.js para todas las peticiones desde el cliente
 // Esto evita problemas de cookies cross-site en producción
+import type { HashedCategoryMapping, ImportConfirmPayload } from './import/confirm'
+
 const isClient = typeof window !== 'undefined'
 
 const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
@@ -951,11 +953,8 @@ export const importApi = {
     })
   },
 
-  confirm: (data: {
-    account_id: string
-    transactions: ParsedTransaction[]
-    category_mappings: CategoryMapping[]
-  }) =>
+  // Only ciphertexts and keyed hashes (ADR-008): built by buildImportPayload
+  confirm: (data: ImportConfirmPayload) =>
     request<{ success: boolean; data: ImportResult }>('/import/confirm', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -967,10 +966,9 @@ export const importApi = {
     ),
 
   getSavedMappings: (accountId: string) =>
-    request<{
-      success: boolean
-      mappings: { bank_category: string; bank_subcategory: string; subcategory_id: string }[]
-    }>(`/import/mappings?account_id=${accountId}`),
+    request<{ success: boolean; mappings: HashedCategoryMapping[] }>(
+      `/import/mappings?account_id=${accountId}`
+    ),
 }
 
 // AI Types

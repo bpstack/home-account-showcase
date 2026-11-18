@@ -7,6 +7,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCategories } from '@/lib/queries/categories'
 import { useImportTransactions } from '@/lib/queries/useImportTransactions'
 import { useCreateTransaction } from '@/lib/queries/transactions'
+import { matchSavedMappings, type HashedCategoryMapping } from '@/lib/import/confirm'
+import { useCryptoStore } from '@/stores/cryptoStore'
 import {
   importApi,
   ai,
@@ -85,12 +87,6 @@ interface SingleForm {
   amount: string
   type: 'expense' | 'income'
   category_id: string
-  subcategory_id: string
-}
-
-interface SavedMapping {
-  bank_category: string
-  bank_subcategory: string
   subcategory_id: string
 }
 
@@ -361,7 +357,10 @@ export default function ImportClient() {
   const [file, setFile] = useState<File | null>(null)
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
   const [mappings, setMappings] = useState<MappingState>({})
-  const [savedMappings, setSavedMappings] = useState<SavedMapping[]>([])
+  const [savedMappings, setSavedMappings] = useState<HashedCategoryMapping[]>([])
+  // Saved choices found for this file's bank categories, keyed as `mappings` is
+  const [remembered, setRemembered] = useState<Map<string, string>>(new Map())
+  const getAccountKey = useCryptoStore((s) => s.getAccountKey)
   const [importResult, setImportResult] = useState<{
     total: number
     inserted: number
@@ -497,28 +496,52 @@ export default function ImportClient() {
     []
   )
 
+  // Saved choices are stored as keyed hashes: hash this file's bank categories to find them
+  useEffect(() => {
+    const fileCategories = parseResult?.categories
+    const accountKey = account?.id ? getAccountKey(account.id) : null
+    if (!fileCategories || !accountKey || savedMappings.length === 0) {
+      setRemembered(new Map())
+      return
+    }
+    let cancelled = false
+    matchSavedMappings(
+      accountKey,
+      fileCategories.map((c) => ({
+        category: c.category || null,
+        subcategory: c.subcategory || null,
+      })),
+      savedMappings
+    ).then((found) => {
+      if (cancelled) return
+      const map = new Map<string, string>()
+      found.forEach((subId, i) => {
+        if (subId) map.set(`${fileCategories[i].category}|${fileCategories[i].subcategory}`, subId)
+      })
+      setRemembered(map)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [parseResult?.categories, savedMappings, account?.id, getAccountKey])
+
   const initializeMappings = useCallback(
     (fileCategories: { category: string; subcategory: string }[]) => {
       const initialMappings: MappingState = {}
-      const savedMappingsMap = new Map<string, string>()
-      savedMappings.forEach((m) =>
-        savedMappingsMap.set(`${m.bank_category}|${m.bank_subcategory}`, m.subcategory_id)
-      )
-
       fileCategories.forEach((fileCat) => {
         const key = `${fileCat.category}|${fileCat.subcategory}`
-        initialMappings[key] = savedMappingsMap.get(key) || findBestMatch(fileCat, categories)
+        initialMappings[key] = remembered.get(key) || findBestMatch(fileCat, categories)
       })
       setMappings(initialMappings)
     },
-    [savedMappings, categories, findBestMatch]
+    [remembered, categories, findBestMatch]
   )
 
   useEffect(() => {
     if (parseResult?.categories && categories.length > 0) {
       initializeMappings(parseResult.categories)
     }
-  }, [categories, savedMappings, parseResult?.categories, initializeMappings])
+  }, [categories, remembered, parseResult?.categories, initializeMappings])
 
   const readFileAsText = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
