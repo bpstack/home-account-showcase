@@ -41,11 +41,9 @@ export const useBalanceStore = create<BalanceState>()(
     }),
     {
       name: 'balance-storage',
+      // The period is not kept between visits (see filtersStore)
       partialize: (state) => ({
         activeTab: state.activeTab,
-        period: state.period,
-        customStartDate: state.customStartDate,
-        customEndDate: state.customEndDate,
       }),
     }
   )

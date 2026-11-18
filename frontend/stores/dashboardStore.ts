@@ -42,11 +42,9 @@ export const useDashboardStore = create<DashboardState>()(
     }),
     {
       name: 'dashboard-storage',
+      // The period is not kept between visits (see filtersStore)
       partialize: (state) => ({
         activeTab: state.activeTab,
-        period: state.period,
-        customStartDate: state.customStartDate,
-        customEndDate: state.customEndDate,
       }),
     }
   )

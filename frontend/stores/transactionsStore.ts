@@ -47,11 +47,9 @@ export const useTransactionsStore = create<TransactionsState>()(
     }),
     {
       name: 'transactions-storage',
+      // The period is not kept between visits (see filtersStore)
       partialize: (state) => ({
         page: state.page,
-        period: state.period,
-        customStartDate: state.customStartDate,
-        customEndDate: state.customEndDate,
       }),
     }
   )

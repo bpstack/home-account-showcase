@@ -1,6 +1,7 @@
 'use client'
 
-import { Card, CardContent, Tabs, PageFilters } from '@/components/ui'
+import { Card, CardContent, Tabs, PeriodSelector } from '@/components/ui'
+import { periodRange, toPeriod, toYearMonth, type Period } from '@/lib/period'
 import { useAuth } from '@/hooks/useAuth'
 import { useTransactionStats, useTransactionSummary } from '@/lib/queries/transactions'
 import { HistoryInfoAlert } from '@/components/dashboard/HistoryInfoAlert'
@@ -115,100 +116,25 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     account?.id || ''
   )
 
-  const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
+  const { selectedYear, selectedMonth, setYear, setMonth } = useFiltersStore()
 
-  const now = new Date()
-  const currentMonth = now.getMonth()
-  const currentYear = now.getFullYear()
+  const currentYear = new Date().getFullYear()
 
-  const handleMonthChange = (month: number | null) => {
-    setMonth(month)
-    setPeriod(month === null ? 'year' : 'month')
-    // Exclusión mutua: al activar mes, anulamos periodo custom
-    setCustomDates('', '')
-  }
+  const periodValue = toPeriod(
+    selectedYear,
+    selectedMonth,
+    period === 'custom' ? { start: customStartDate, end: customEndDate } : null
+  )
 
-  const handleYearChange = (year: number | null) => {
+  const handlePeriodChange = (next: Period) => {
+    const { year, month } = toYearMonth(next)
     setYear(year)
-    if (year !== null) {
-      setMonth(null)
-      // Exclusión mutua: al activar año, anulamos periodo custom
-      setCustomDates('', '')
-      setPeriod('year')
-    }
+    setMonth(month)
+    setPeriod(next.kind === 'range' ? 'custom' : next.kind)
+    setCustomDates(next.kind === 'range' ? next.start : '', next.kind === 'range' ? next.end : '')
   }
 
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setCustomDates(startDate, endDate)
-    setPeriod('custom')
-    // Exclusión mutua: al activar periodo, anulamos mes y año
-    setYear(null)
-    setMonth(null)
-  }
-
-  const getDateRange = () => {
-    // Periodo custom tiene prioridad
-    if (period === 'custom' && customStartDate && customEndDate) {
-      return {
-        startDate: customStartDate,
-        endDate: customEndDate,
-      }
-    }
-
-    // Si hay mes seleccionado, calcular el rango del mes
-    if (selectedMonth !== null) {
-      const yearToUse = selectedYear ?? currentYear
-      return {
-        startDate: new Date(yearToUse, selectedMonth, 1).toISOString().split('T')[0],
-        endDate: new Date(yearToUse, selectedMonth + 1, 0).toISOString().split('T')[0],
-      }
-    }
-
-    // Si hay año seleccionado (sin mes), mostrar todo el año
-    if (selectedYear !== null) {
-      return {
-        startDate: `${selectedYear}-01-01`,
-        endDate: `${selectedYear}-12-31`,
-      }
-    }
-
-    // Fallback al period
-    switch (period) {
-      case 'month':
-        return {
-          startDate: new Date(currentYear, currentMonth, 1).toISOString().split('T')[0],
-          endDate: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
-        }
-      case 'year':
-        return {
-          startDate: `${currentYear}-01-01`,
-          endDate: `${currentYear}-12-31`,
-        }
-      case 'all':
-        return {
-          startDate: '2020-01-01',
-          endDate: now.toISOString().split('T')[0],
-        }
-      default:
-        return {
-          startDate: `${currentYear}-01-01`,
-          endDate: `${currentYear}-12-31`,
-        }
-    }
-  }
-
-  const hasActiveFilters =
-    selectedMonth !== null ||
-    (selectedYear !== null && selectedYear !== currentYear) ||
-    period === 'custom'
-
-  const clearFilters = () => {
-    resetFilters() // Esto ya resetea a currentYear y month=null
-    setPeriod('year')
-    setCustomDates('', '')
-  }
-
-  const { startDate, endDate } = getDateRange()
+  const { start: startDate, end: endDate } = periodRange(periodValue)
 
   // Use client-side calculation hooks (work with encrypted data)
   const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(
@@ -236,37 +162,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as any)}
           variant="underline-responsive"
-          rightContent={
-            activeTab === 'history' ? (
-              <PageFilters
-                showYearSelect
-                year={selectedYear}
-                onYearChange={(y) => setYear(y)}
-                showClear={selectedYear !== null && selectedYear !== currentYear}
-                onClear={() => setYear(null)}
-                className="ml-auto"
-              />
-            ) : (
-              <PageFilters
-                showMonthSelect
-                selectedMonth={selectedMonth}
-                onMonthChange={handleMonthChange}
-                showYearSelect
-                year={selectedYear}
-                onYearChange={handleYearChange}
-                showDatePicker
-                startDate={period === 'custom' ? customStartDate : undefined}
-                endDate={period === 'custom' ? customEndDate : undefined}
-                onDatesChange={handleDateRangeChange}
-                showClear={hasActiveFilters}
-                onClear={clearFilters}
-                className="ml-auto"
-              />
-            )
-          }
+          rightContent={<PeriodSelector value={periodValue} onChange={handlePeriodChange} />}
         />
-
-        {/* Mobile secondary filters could go here if needed, but PageFilters handles them in Tabs rightContent */}
       </div>
 
       {activeTab === 'overview' && (

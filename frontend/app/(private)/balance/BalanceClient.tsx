@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTransactionStats, useTransactions } from '@/lib/queries/transactions'
 import { useTransactionSummary } from '@/lib/queries/transactions'
-import { Card, CardHeader, CardContent, Tabs, PageFilters } from '@/components/ui'
+import { Card, CardHeader, CardContent, Tabs, PeriodSelector } from '@/components/ui'
+import { periodLabel, periodRange, toPeriod, toYearMonth, type Period } from '@/lib/period'
 import { CategoryChangeModal } from '@/components/transactions'
 import { BalanceTab } from './components/BalanceTab'
 import { IncomeTab } from './components/IncomeTab'
@@ -14,34 +15,12 @@ import type { Transaction } from '@/lib/apiClient'
 import { useBalanceStore } from '@/stores/balanceStore'
 import { useFiltersStore } from '@/stores/filtersStore'
 
-const monthsFull = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-]
-
 // Tabs definidos fuera del componente para evitar recrearlos en cada render
 const balanceTabs = [
   { id: 'balance', label: 'Balance', icon: <Wallet className="h-4 w-4" /> },
   { id: 'income', label: 'Ingresos', icon: <TrendingUp className="h-4 w-4" /> },
   { id: 'expenses', label: 'Gastos', icon: <TrendingDown className="h-4 w-4" /> },
 ]
-
-const formatLocalDate = (date: Date): string => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 const PAGE_SIZE = 50
 
@@ -153,7 +132,7 @@ function BalanceContent({
   const { account } = useAuth()
 
   // Usar stores de Zustand como fuente de verdad
-  const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
+  const { selectedYear, selectedMonth, setYear, setMonth } = useFiltersStore()
   const {
     activeTab,
     period,
@@ -162,19 +141,17 @@ function BalanceContent({
     setActiveTab,
     setPeriod,
     setCustomDates,
-    reset: resetBalance,
   } = useBalanceStore()
 
-  const hasActiveFilters =
-    selectedMonth !== null ||
-    selectedYear !== new Date().getFullYear() ||
-    period !== 'monthly' ||
-    activeTab !== 'balance'
-
-  const clearFilters = () => {
-    resetFilters()
-    resetBalance()
-  }
+  const periodValue = toPeriod(
+    selectedYear,
+    selectedMonth,
+    period === 'custom' ? { start: customStartDate, end: customEndDate } : null
+  )
+  const isCurrentMonth =
+    periodValue.kind === 'month' &&
+    periodValue.year === new Date().getFullYear() &&
+    periodValue.month === new Date().getMonth()
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -183,62 +160,14 @@ function BalanceContent({
     }).format(value)
   }
 
-  const getPeriodLabel = () => {
-    switch (period) {
-      case 'monthly':
-        return `${monthsFull[selectedMonth ?? new Date().getMonth()]} ${selectedYear}`
-      case 'yearly':
-        return `Año ${selectedYear}`
-      case 'custom':
-        if (!customStartDate || !customEndDate) return 'Período personalizado'
-        {
-          const start = new Date(customStartDate)
-          const end = new Date(customEndDate)
-          return `${start.toLocaleDateString('es-ES')} - ${end.toLocaleDateString('es-ES')}`
-        }
-      default:
-        return ''
-    }
-  }
+  const getPeriodLabel = () => periodLabel(periodValue)
 
   const [page, setPage] = useState(1)
   const [showTransactions, setShowTransactions] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
 
-  const getDateRange = useCallback(() => {
-    switch (period) {
-      case 'monthly': {
-        const yearToUse = selectedYear ?? new Date().getFullYear()
-        if (selectedMonth === null) {
-          return {
-            startDate: `${yearToUse}-01-01`,
-            endDate: `${yearToUse}-12-31`,
-          }
-        }
-        return {
-          startDate: formatLocalDate(new Date(yearToUse, selectedMonth, 1)),
-          endDate: formatLocalDate(new Date(yearToUse, selectedMonth + 1, 0)),
-        }
-      }
-
-      case 'yearly': {
-        const yToUse = selectedYear ?? new Date().getFullYear()
-        return {
-          startDate: `${yToUse}-01-01`,
-          endDate: `${yToUse}-12-31`,
-        }
-      }
-
-      case 'custom':
-        return {
-          startDate: customStartDate || '',
-          endDate: customEndDate || '',
-        }
-    }
-  }, [period, selectedYear, selectedMonth, customStartDate, customEndDate])
-
-  const { startDate, endDate } = useMemo(() => getDateRange(), [getDateRange])
+  const { start: startDate, end: endDate } = periodRange(periodValue)
 
   // Calculate type filter directly based on activeTab
   const typeFilter: 'income' | 'expense' | undefined =
@@ -272,7 +201,8 @@ function BalanceContent({
     {
       staleTime: 30_000,
       initialData:
-        initialTransactions && page === 1 && !hasActiveFilters
+        // Initial data, when given, is the current month
+        initialTransactions && page === 1 && isCurrentMonth
           ? {
               transactions: initialTransactions,
               total: initialTotal || 0,
@@ -345,34 +275,12 @@ function BalanceContent({
     setPage(1)
   }, [period, selectedMonth, selectedYear, customStartDate, customEndDate, activeTab])
 
-  // Manejar cambio de periodo personalizado a través del DatePicker
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setCustomDates(startDate, endDate)
-    setPeriod('custom')
-    // Exclusión mutua: al activar periodo, anulamos mes y año
-    setYear(null)
-    setMonth(null)
-  }
-
-  const handleYearChange = (year: number | null) => {
+  const handlePeriodChange = (next: Period) => {
+    const { year, month } = toYearMonth(next)
     setYear(year)
-    if (year !== null) {
-      setMonth(null)
-      // Exclusión mutua: al activar año, anulamos periodo custom
-      setCustomDates('', '')
-      setPeriod('yearly')
-    }
-  }
-
-  const handleMonthChange = (month: number | null) => {
     setMonth(month)
-    if (month === null) {
-      setPeriod('yearly')
-    } else {
-      setPeriod('monthly')
-    }
-    // Exclusión mutua: al activar mes, anulamos periodo custom
-    setCustomDates('', '')
+    setPeriod(next.kind === 'range' ? 'custom' : next.kind === 'month' ? 'monthly' : 'yearly')
+    setCustomDates(next.kind === 'range' ? next.start : '', next.kind === 'range' ? next.end : '')
   }
 
   const handleCategoryClick = (transaction: Transaction) => {
@@ -389,23 +297,7 @@ function BalanceContent({
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as 'balance' | 'income' | 'expenses')}
           variant="underline-responsive"
-          rightContent={
-            <PageFilters
-              showMonthSelect
-              selectedMonth={selectedMonth}
-              onMonthChange={handleMonthChange}
-              showYearSelect
-              year={selectedYear}
-              onYearChange={handleYearChange}
-              showDatePicker
-              startDate={period === 'custom' ? customStartDate : undefined}
-              endDate={period === 'custom' ? customEndDate : undefined}
-              onDatesChange={handleDateRangeChange}
-              showClear={hasActiveFilters}
-              onClear={clearFilters}
-              className="ml-auto"
-            />
-          }
+          rightContent={<PeriodSelector value={periodValue} onChange={handlePeriodChange} />}
         />
       </div>
 

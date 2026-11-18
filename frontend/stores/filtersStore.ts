@@ -37,13 +37,16 @@ interface FiltersState {
   reset: () => void
 }
 
-const currentYear = new Date().getFullYear()
+const now = new Date()
+const currentYear = now.getFullYear()
+const currentMonth = now.getMonth()
 
 export const useFiltersStore = create<FiltersState>()(
   persist(
     (set) => ({
-      selectedYear: null,
-      selectedMonth: null,
+      // Pages open on the current month
+      selectedYear: currentYear,
+      selectedMonth: currentMonth,
       selectedCategory: '',
       selectedType: 'all',
 
@@ -66,7 +69,7 @@ export const useFiltersStore = create<FiltersState>()(
       reset: () =>
         set({
           selectedYear: currentYear,
-          selectedMonth: null,
+          selectedMonth: currentMonth,
           selectedCategory: '',
           selectedType: 'all',
         }),
@@ -74,9 +77,8 @@ export const useFiltersStore = create<FiltersState>()(
 
     {
       name: 'filters-storage',
+      // The period is not kept between visits: the app always opens on the current month
       partialize: (state) => ({
-        selectedYear: state.selectedYear,
-        selectedMonth: state.selectedMonth,
         selectedCategory: state.selectedCategory,
         selectedType: state.selectedType,
       }),

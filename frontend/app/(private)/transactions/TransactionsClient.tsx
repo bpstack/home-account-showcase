@@ -22,7 +22,7 @@ import {
   Modal,
   ModalFooter,
   Tabs,
-  PageFilters,
+  PeriodSelector,
   FilterSelect,
   DatePickerSimple,
   ConfirmDeleteDialog,
@@ -36,6 +36,7 @@ import {
 } from '@/components/transactions'
 import { useTransactionsStore } from '@/stores/transactionsStore'
 import { getTodayLocal } from '@/lib/date-utils'
+import { periodRange, toPeriod, toYearMonth, type Period } from '@/lib/period'
 import { validateTransaction } from '@/validators/transaction-validators'
 
 interface TransactionForm {
@@ -108,7 +109,6 @@ function TransactionsContent({
     customStartDate,
     customEndDate,
     setCustomDates,
-    reset: resetTransactions,
   } = useTransactionsStore()
 
   const {
@@ -120,47 +120,32 @@ function TransactionsContent({
     setYear,
     setMonth,
     setType,
-    reset: resetFilters,
   } = useFiltersStore()
   const [localSearch, setLocalSearch] = useState('')
   const deferredSearch = useDeferredValue(localSearch)
 
   const searchTerm = deferredSearch
 
-  const hasActiveFilters =
-    selectedMonth !== null ||
-    (selectedYear !== null && selectedYear !== new Date().getFullYear()) ||
-    selectedCategory !== '' ||
-    searchTerm !== '' ||
-    selectedType !== 'all' ||
-    period !== 'monthly'
+  // The period is always set (PeriodSelector); these are the filters on top of it
+  const hasActiveFilters = selectedCategory !== '' || searchTerm !== '' || selectedType !== 'all'
 
-  const clearFilters = () => {
-    resetFilters()
-    resetTransactions()
-    setLocalSearch('')
-  }
+  const periodValue = toPeriod(
+    selectedYear,
+    selectedMonth,
+    period === 'custom' ? { start: customStartDate, end: customEndDate } : null
+  )
+  const isCurrentMonth =
+    periodValue.kind === 'month' &&
+    periodValue.year === new Date().getFullYear() &&
+    periodValue.month === new Date().getMonth()
 
-  const handleMonthChange = (month: number | null) => {
-    setMonth(month)
-    setPeriod(month === null ? 'yearly' : 'monthly')
-    setCustomDates('', '')
-  }
-
-  const handleYearChange = (year: number | null) => {
+  const handlePeriodChange = (next: Period) => {
+    const { year, month } = toYearMonth(next)
     setYear(year)
-    if (year !== null) {
-      setMonth(null)
-      setPeriod('yearly')
-      setCustomDates('', '')
-    }
-  }
-
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setCustomDates(startDate, endDate)
-    setPeriod('custom')
-    setYear(null)
-    setMonth(null)
+    setMonth(month)
+    setPeriod(next.kind === 'range' ? 'custom' : next.kind === 'month' ? 'monthly' : 'yearly')
+    setCustomDates(next.kind === 'range' ? next.start : '', next.kind === 'range' ? next.end : '')
+    setPage(1)
   }
 
   const activeTab = selectedType
@@ -181,29 +166,7 @@ function TransactionsContent({
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [subcategoryList, setSubcategoryList] = useState<Subcategory[]>([])
 
-  // Calculate date range based on filters
-  // When selectedYear is null and no month selected, show ALL transactions (no date filter)
-  const startDate =
-    period === 'custom' && customStartDate
-      ? customStartDate
-      : selectedMonth !== null
-        ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth, 1)
-            .toISOString()
-            .split('T')[0]
-        : selectedYear !== null
-          ? new Date(selectedYear, 0, 1).toISOString().split('T')[0]
-          : '2020-01-01' // Show all when no year selected
-
-  const endDate =
-    period === 'custom' && customEndDate
-      ? customEndDate
-      : selectedMonth !== null
-        ? new Date(selectedYear ?? new Date().getFullYear(), selectedMonth + 1, 0)
-            .toISOString()
-            .split('T')[0]
-        : selectedYear !== null
-          ? new Date(selectedYear, 11, 31).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0] // Today when no year selected
+  const { start: startDate, end: endDate } = periodRange(periodValue)
 
   const { data: txData, isLoading: isLoadingTx } = useTransactions(
     {
@@ -220,7 +183,8 @@ function TransactionsContent({
     {
       // Only use initialData when there are no active filters
       initialData:
-        initialTransactions && page === 1 && !hasActiveFilters && !searchTerm
+        // The server prefetches the current month with no other filter
+        initialTransactions && page === 1 && isCurrentMonth && !hasActiveFilters
           ? { transactions: initialTransactions, total: initialTotal || 0, limit, offset: 0 }
           : undefined,
     }
@@ -556,23 +520,7 @@ function TransactionsContent({
           activeTab={activeTab}
           onChange={(id) => setType(id as any)}
           variant="underline-responsive"
-          rightContent={
-            <PageFilters
-              showMonthSelect
-              selectedMonth={selectedMonth}
-              onMonthChange={handleMonthChange}
-              showYearSelect
-              year={selectedYear}
-              onYearChange={handleYearChange}
-              showDatePicker
-              startDate={period === 'custom' ? customStartDate : undefined}
-              endDate={period === 'custom' ? customEndDate : undefined}
-              onDatesChange={handleDateRangeChange}
-              showClear={hasActiveFilters}
-              onClear={clearFilters}
-              className="ml-auto"
-            />
-          }
+          rightContent={<PeriodSelector value={periodValue} onChange={handlePeriodChange} />}
         />
       </div>
 

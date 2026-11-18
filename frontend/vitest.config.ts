@@ -9,5 +9,7 @@ export default defineConfig({
   test: {
     include: ['lib/**/*.test.ts'],
     environment: 'node',
+    // Spain's time zone, so date code that converts to UTC by mistake fails here as it does for users
+    env: { TZ: 'Europe/Madrid' },
   },
 })
