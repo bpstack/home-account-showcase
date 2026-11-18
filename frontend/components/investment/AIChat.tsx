@@ -50,6 +50,18 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
+  const loadSessions = async () => {
+    setIsLoadingSessions(true)
+    try {
+      const data = await investmentApi.getChatSessions(accountId)
+      setSessions(data)
+    } catch (err) {
+      console.error('Error loading sessions:', err)
+    } finally {
+      setIsLoadingSessions(false)
+    }
+  }
+
   // Load sessions on mount
   useEffect(() => {
     loadSessions()
@@ -66,18 +78,6 @@ export function AIChat({ accountId, sessionId = null, className = '' }: AIChatPr
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  const loadSessions = async () => {
-    setIsLoadingSessions(true)
-    try {
-      const data = await investmentApi.getChatSessions(accountId)
-      setSessions(data)
-    } catch (err) {
-      console.error('Error loading sessions:', err)
-    } finally {
-      setIsLoadingSessions(false)
-    }
-  }
 
   // Auto-scroll to bottom only when a new message is added
   useEffect(() => {

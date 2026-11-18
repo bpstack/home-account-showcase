@@ -451,17 +451,6 @@ function AccountSettings() {
   const isOwner = account?.role === 'owner'
   const canDeleteAccount = isOwner && allAccounts.length > 1
 
-  useEffect(() => {
-    if (account?.id) {
-      loadMembers()
-      loadInvitations()
-      setAccountNameValue(account.name || '')
-      setIsEditingAccountName(false)
-      setRenameError('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.id])
-
   // ─── Data Loading ──────────────────────────────
 
   const loadMembers = async () => {
@@ -489,6 +478,17 @@ function AccountSettings() {
       setIsLoadingInvitations(false)
     }
   }
+
+  useEffect(() => {
+    if (account?.id) {
+      loadMembers()
+      loadInvitations()
+      setAccountNameValue(account.name || '')
+      setIsEditingAccountName(false)
+      setRenameError('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.id])
 
   // ─── Handlers ──────────────────────────────────
 

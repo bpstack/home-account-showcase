@@ -49,14 +49,6 @@ export function useAIChat({
     messagesRef.current = messages
   }, [messages])
 
-  // Load existing session if provided
-  useEffect(() => {
-    if (initialSessionId) {
-      loadChatHistory(initialSessionId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSessionId, accountId])
-
   const loadChatHistory = async (sessionId: string) => {
     try {
       setIsLoading(true)
@@ -211,6 +203,14 @@ export function useAIChat({
   const clearSessionError = useCallback(() => {
     setError(null)
   }, [])
+
+  // Load existing session if provided
+  useEffect(() => {
+    if (initialSessionId) {
+      loadChatHistory(initialSessionId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSessionId, accountId])
 
   return {
     session,

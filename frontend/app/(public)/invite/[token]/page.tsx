@@ -43,12 +43,6 @@ export default function InvitePage() {
 
   const isUnlocked = useCryptoStore((s) => s.isUnlocked)
 
-  // Cargar invitación al montar y re-evaluar cuando cambia auth/crypto
-  useEffect(() => {
-    loadInvitation()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isAuthenticated, isUnlocked])
-
   const loadInvitation = async () => {
     try {
       const data = await invitations.getByToken(token)
@@ -184,6 +178,12 @@ export default function InvitePage() {
       setIsAccepting(false)
     }
   }
+
+  // Cargar invitación al montar y re-evaluar cuando cambia auth/crypto
+  useEffect(() => {
+    loadInvitation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isAuthenticated, isUnlocked])
 
   if (state === 'loading') {
     return (
