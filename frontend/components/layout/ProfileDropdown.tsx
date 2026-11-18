@@ -246,7 +246,7 @@ export function ProfileDropdown() {
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
               >
-                <Plus className="h-4 w-4 text-green-600" />
+                <Plus className="h-4 w-4 text-muted-foreground" />
                 <span>Nueva cuenta</span>
                 <span className="ml-auto text-xs text-muted-foreground">
                   {ownedAccountsCount}/{MAX_OWNED_ACCOUNTS}

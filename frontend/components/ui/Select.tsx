@@ -184,7 +184,7 @@ function FilterSelect({
                     option.level === 1 && 'pl-6',
                     option.level === 2 && 'pl-9',
                     isSelected
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      ? 'bg-accent/10 text-accent'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
@@ -248,7 +248,7 @@ function FilterSelect({
                   option.level === 1 && 'pl-6',
                   option.level === 2 && 'pl-9',
                   isSelected
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
+                    ? 'bg-accent/10 text-accent font-medium'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
