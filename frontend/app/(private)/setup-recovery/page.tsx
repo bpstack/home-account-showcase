@@ -192,7 +192,7 @@ function Column({
 }) {
   return (
     <div className="mx-auto w-full max-w-md py-8">
-      <h1 className="text-xl font-medium">{title}</h1>
+      <h2 className="text-xl font-medium">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       {children && <div className="mt-6">{children}</div>}
     </div>
