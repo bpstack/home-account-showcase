@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
-    "verify": "pnpm run lint && pnpm run build",
+    "test": "vitest run",
+    "verify": "pnpm run lint && pnpm run test && pnpm run build",
     "format": "prettier --write ."
   },
   "keywords": [],
@@ -52,6 +53,8 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "prettier": "^3.6.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "8.1.7",
+    "vitest": "5.1.0"
   }
 }
