@@ -24,12 +24,15 @@ interface CategoryRow {
   subcategories: { name: string; amount: number }[]
 }
 
-/** Expenses grouped by category, largest first (income items are left out). */
-function expensesByCategory(summary: CategorySummary[]): CategoryRow[] {
+type Kind = 'expense' | 'income'
+
+/** Expenses (or income) grouped by category, largest first; the other kind is left out. */
+function byCategory(summary: CategorySummary[], kind: Kind): CategoryRow[] {
   const map = new Map<string, CategoryRow>()
   for (const item of summary) {
-    const amount = Number(item.total_amount)
-    if (!(amount < 0)) continue
+    const signed = Number(item.total_amount)
+    if (!(kind === 'expense' ? signed < 0 : signed > 0)) continue
+    const amount = -Math.abs(signed)
     const name = item.category_name || 'Sin categoría'
     let row = map.get(name)
     if (!row) {
@@ -72,12 +75,12 @@ function ExpensesComparison({ period, expenses }: { period: Period; expenses: nu
   )
 }
 
-function CategoryBreakdown({ rows }: { rows: CategoryRow[] }) {
+function CategoryBreakdown({ rows, emptyText }: { rows: CategoryRow[]; emptyText: string }) {
   const [open, setOpen] = useState<string | null>(null)
   const total = rows.reduce((sum, row) => sum + row.amount, 0)
 
   if (rows.length === 0) {
-    return <p className="py-6 text-sm text-text-secondary">No hay gastos en este periodo.</p>
+    return <p className="py-6 text-sm text-text-secondary">{emptyText}</p>
   }
 
   return (
@@ -165,7 +168,8 @@ function LatestMovements({ period }: { period: Period }) {
 
 /** The period at a glance: the three figures, where the money went, and the latest transactions. */
 export function OverviewTab({ stats, summary, period }: OverviewTabProps) {
-  const categories = useMemo(() => expensesByCategory(summary), [summary])
+  const [kind, setKind] = useState<Kind>('expense')
+  const categories = useMemo(() => byCategory(summary, kind), [summary, kind])
 
   return (
     <div className="space-y-8">
@@ -176,10 +180,41 @@ export function OverviewTab({ stats, summary, period }: OverviewTabProps) {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <section aria-labelledby="overview-categories">
-          <h2 id="overview-categories" className="mb-3 text-sm font-medium text-text-primary">
-            Gastos por categoría
-          </h2>
-          <CategoryBreakdown rows={categories} />
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 id="overview-categories" className="text-sm font-medium text-text-primary">
+              Por categoría
+            </h2>
+            <div className="flex rounded-lg bg-layer-2 p-0.5 text-sm">
+              {(
+                [
+                  ['expense', 'Gastos'],
+                  ['income', 'Ingresos'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setKind(value)}
+                  aria-pressed={kind === value}
+                  className={`rounded-md px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    kind === value
+                      ? 'bg-layer-1 font-medium text-text-primary shadow-sm'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <CategoryBreakdown
+            rows={categories}
+            emptyText={
+              kind === 'expense'
+                ? 'No hay gastos en este periodo.'
+                : 'No hay ingresos en este periodo.'
+            }
+          />
         </section>
 
         <section aria-labelledby="overview-latest">

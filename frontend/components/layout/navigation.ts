@@ -1,14 +1,6 @@
 // One definition of the app's navigation, shared by the sidebar (desktop) and the bottom bar (mobile).
 
-import {
-  LayoutDashboard,
-  Receipt,
-  Settings,
-  Tags,
-  Upload,
-  Wallet,
-  type LucideIcon,
-} from 'lucide-react'
+import { LayoutDashboard, Receipt, Settings, Tags, Upload, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   name: string
@@ -19,7 +11,6 @@ export interface NavItem {
 export const mainNav: NavItem[] = [
   { name: 'Resumen', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Transacciones', href: '/transactions', icon: Receipt },
-  { name: 'Balance', href: '/balance', icon: Wallet },
   { name: 'Categorías', href: '/categories', icon: Tags },
   { name: 'Importar', href: '/import', icon: Upload },
 ]
@@ -38,7 +29,6 @@ export const mobileNav: NavItem[] = mainNav.filter((item) =>
 const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Resumen',
   transactions: 'Transacciones',
-  balance: 'Balance',
   categories: 'Categorías',
   import: 'Importar',
   investment: 'Inversión',

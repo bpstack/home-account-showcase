@@ -19,14 +19,14 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" aria-label="Toggle theme" disabled>
+      <Button variant="ghost" size="icon" aria-label="Cambiar tema claro u oscuro" disabled>
         <div className="h-5 w-5" />
       </Button>
     )
   }
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+    <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Cambiar tema claro u oscuro">
       {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </Button>
   )
