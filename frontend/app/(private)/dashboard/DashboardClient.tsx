@@ -7,7 +7,7 @@ import { useTransactionStats, useTransactionSummary } from '@/lib/queries/transa
 import { EmptyAccountState } from '@/components/dashboard/EmptyAccountState'
 import { useHasAnyTransactions } from '@/lib/queries/transactions'
 import { useTransactionsStore } from '@/stores/transactionsStore'
-import { LayoutDashboard, History, Coins } from 'lucide-react'
+import { LayoutDashboard, History, PiggyBank } from 'lucide-react'
 import type {
   StatsResponse,
   SummaryResponse,
@@ -84,7 +84,8 @@ function HistorySkeleton() {
 const tabsList = [
   { id: 'overview', label: 'Resumen', icon: <LayoutDashboard className="h-4 w-4" /> },
   { id: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
-  { id: 'investment', label: 'Inversión', icon: <Coins className="h-4 w-4" /> },
+  // The id stays 'investment': it is the tab remembered in the dashboard store
+  { id: 'investment', label: 'Ahorro', icon: <PiggyBank className="h-4 w-4" /> },
 ]
 
 interface Stats {
@@ -195,7 +196,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 {isLoading ? (
                   <DashboardSkeleton />
                 ) : (
-                  <SavingsTab stats={stats} period={periodValue} accountId={account?.id || ''} />
+                  <SavingsTab stats={stats} period={periodValue} />
                 )}
               </Suspense>
             )}

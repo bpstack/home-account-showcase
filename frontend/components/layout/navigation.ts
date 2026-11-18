@@ -1,6 +1,14 @@
 // One definition of the app's navigation, shared by the sidebar (desktop) and the bottom bar (mobile).
 
-import { LayoutDashboard, Receipt, Settings, Tags, Upload, type LucideIcon } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Receipt,
+  Settings,
+  Tags,
+  TrendingUp,
+  Upload,
+  type LucideIcon,
+} from 'lucide-react'
 
 export interface NavItem {
   name: string
@@ -13,6 +21,7 @@ export const mainNav: NavItem[] = [
   { name: 'Transacciones', href: '/transactions', icon: Receipt },
   { name: 'Categorías', href: '/categories', icon: Tags },
   { name: 'Importar', href: '/import', icon: Upload },
+  { name: 'Inversión', href: '/investment', icon: TrendingUp },
 ]
 
 export const settingsNav: NavItem = {

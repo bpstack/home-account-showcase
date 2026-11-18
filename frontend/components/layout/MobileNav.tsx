@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { isActive, mobileNav } from './navigation'
 
 interface MobileNavProps {
-  /** Opens the drawer with the full navigation (Balance, Configuración…) */
+  /** Opens the drawer with the full navigation (Inversión, Configuración…) */
   onOpenMenu: () => void
 }
 
@@ -18,6 +18,8 @@ const itemClass =
 export function MobileNav({ onOpenMenu }: MobileNavProps) {
   const pathname = usePathname()
   const panel = useSearchParams().get('panel')
+  // Pages kept in the drawer (Inversión, Configuración) light up "Más"
+  const inDrawer = !mobileNav.some((item) => isActive(item, pathname, panel))
 
   return (
     <nav
@@ -38,7 +40,12 @@ export function MobileNav({ onOpenMenu }: MobileNavProps) {
           </Link>
         )
       })}
-      <button type="button" onClick={onOpenMenu} className={cn(itemClass, 'text-text-secondary')}>
+      <button
+        type="button"
+        onClick={onOpenMenu}
+        aria-current={inDrawer ? 'page' : undefined}
+        className={cn(itemClass, inDrawer ? 'text-accent' : 'text-text-secondary')}
+      >
         <Menu aria-hidden="true" className="h-5 w-5" />
         Más
       </button>
