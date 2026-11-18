@@ -22,7 +22,6 @@
  */
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 interface FiltersState {
   selectedYear: number | null
@@ -42,46 +41,37 @@ const currentYear = now.getFullYear()
 const currentMonth = now.getMonth()
 
 export const useFiltersStore = create<FiltersState>()(
-  persist(
-    (set) => ({
-      // Pages open on the current month
-      selectedYear: currentYear,
-      selectedMonth: currentMonth,
-      selectedCategory: '',
-      selectedType: 'all',
+  // In memory only: the app always opens on the current month with no filters. Values kept in
+  // localStorage by earlier versions ('filters-storage') are no longer read.
+  (set) => ({
+    // Pages open on the current month
+    selectedYear: currentYear,
+    selectedMonth: currentMonth,
+    selectedCategory: '',
+    selectedType: 'all',
 
-      setYear: (year) =>
-        set({
-          selectedYear: year,
-          // Al seleccionar un año, si el mes es null (Período previo), lo mantenemos o lo forzamos?
-          // El requisito dice: al elegir año se asigna "Todos" (null)
-        }),
-      setMonth: (month) =>
-        set((state) => ({
-          selectedMonth: month,
-          // Si eliges un mes y no hay año, forzamos el actual
-          selectedYear:
-            month !== null && state.selectedYear === null ? currentYear : state.selectedYear,
-        })),
-      setCategory: (category) => set({ selectedCategory: category }),
-      setType: (type) => set({ selectedType: type }),
-
-      reset: () =>
-        set({
-          selectedYear: currentYear,
-          selectedMonth: currentMonth,
-          selectedCategory: '',
-          selectedType: 'all',
-        }),
-    }),
-
-    {
-      name: 'filters-storage',
-      // The period is not kept between visits: the app always opens on the current month
-      partialize: (state) => ({
-        selectedCategory: state.selectedCategory,
-        selectedType: state.selectedType,
+    setYear: (year) =>
+      set({
+        selectedYear: year,
+        // Al seleccionar un año, si el mes es null (Período previo), lo mantenemos o lo forzamos?
+        // El requisito dice: al elegir año se asigna "Todos" (null)
       }),
-    }
-  )
+    setMonth: (month) =>
+      set((state) => ({
+        selectedMonth: month,
+        // Si eliges un mes y no hay año, forzamos el actual
+        selectedYear:
+          month !== null && state.selectedYear === null ? currentYear : state.selectedYear,
+      })),
+    setCategory: (category) => set({ selectedCategory: category }),
+    setType: (type) => set({ selectedType: type }),
+
+    reset: () =>
+      set({
+        selectedYear: currentYear,
+        selectedMonth: currentMonth,
+        selectedCategory: '',
+        selectedType: 'all',
+      }),
+  })
 )

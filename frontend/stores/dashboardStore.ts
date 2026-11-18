@@ -43,6 +43,12 @@ export const useDashboardStore = create<DashboardState>()(
     {
       name: 'dashboard-storage',
       // The period is not kept between visits (see filtersStore)
+      version: 1,
+      // Version 0 also kept the period; drop it so an old period is not restored
+      migrate: (persisted, version) => {
+        const old = (persisted ?? {}) as Record<string, unknown>
+        return version === 0 ? { activeTab: old.activeTab } : old
+      },
       partialize: (state) => ({
         activeTab: state.activeTab,
       }),

@@ -111,7 +111,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-layer-3 bg-layer-1 px-4 md:px-6">
-          <p className="text-base font-medium text-text-primary">{pageTitle(pathname)}</p>
+          <h1 className="text-base font-medium text-text-primary">{pageTitle(pathname)}</h1>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <ProfileDropdown />
