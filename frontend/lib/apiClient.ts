@@ -923,6 +923,10 @@ export const importApi = {
     request<{ success: boolean; mappings: HashedCategoryMapping[] }>(
       `/import/mappings?account_id=${accountId}`
     ),
+
+  // Keyed hashes of the movements already imported, to mark duplicates in the review
+  getImportHashes: (accountId: string) =>
+    request<{ success: boolean; hashes: string[] }>(`/import/hashes?account_id=${accountId}`),
 }
 
 // AI Types

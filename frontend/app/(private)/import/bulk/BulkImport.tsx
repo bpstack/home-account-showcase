@@ -11,7 +11,7 @@ import {
   type ColumnMap,
   type Rows,
 } from '@/lib/import'
-import { matchSavedMappings } from '@/lib/import/confirm'
+import { computeImportHashes, matchSavedMappings } from '@/lib/import/confirm'
 import { useImportTransactions } from '@/lib/queries/useImportTransactions'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { loadColumns, saveColumns } from './columnMemory'
@@ -63,6 +63,8 @@ export function BulkImport({ accountId, categories }: BulkImportProps) {
   // Choices the user made on this screen; the rest come from saved mappings or suggestions
   const [chosen, setChosen] = useState<Record<string, string | null>>({})
   const [remembered, setRemembered] = useState<Map<string, string>>(new Map())
+  // For each movement, whether it is already imported (null until known)
+  const [duplicates, setDuplicates] = useState<boolean[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const statement = stage.step === 'review' ? stage.statement : null
@@ -117,6 +119,29 @@ export function BulkImport({ accountId, categories }: BulkImportProps) {
       cancelled = true
     }
   }, [accountKey, savedMappings, bankPairs])
+
+  const { data: stored } = useQuery({
+    queryKey: ['import', 'hashes', accountId],
+    queryFn: () => importApi.getImportHashes(accountId),
+    enabled: !!accountId && stage.step === 'review',
+  })
+  const storedHashes = stored?.hashes
+
+  // Same hashes the import will send: a match is a movement the server will skip
+  useEffect(() => {
+    if (!accountKey || !storedHashes || parsed.movements.length === 0) {
+      setDuplicates(null)
+      return
+    }
+    let cancelled = false
+    const known = new Set(storedHashes)
+    computeImportHashes(accountKey, parsed.movements).then((hashes) => {
+      if (!cancelled) setDuplicates(hashes.map((h) => known.has(h)))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [accountKey, storedHashes, parsed.movements])
 
   const pairs: BankPair[] = useMemo(
     () =>
@@ -178,6 +203,7 @@ export function BulkImport({ accountId, categories }: BulkImportProps) {
         onSuccess: (result) => {
           saveColumns(statement.signature, columns)
           queryClient.invalidateQueries({ queryKey: ['import', 'mappings', accountId] })
+          queryClient.invalidateQueries({ queryKey: ['import', 'hashes', accountId] })
           setStage({ step: 'result', result })
           toast.success('Importación completada', {
             description: `${result.inserted} movimientos guardados`,
@@ -201,6 +227,7 @@ export function BulkImport({ accountId, categories }: BulkImportProps) {
         columns={columns}
         onColumnsChange={setColumns}
         parsed={parsed}
+        duplicates={duplicates}
         pairs={pairs}
         subcategoryOptions={subcategoryOptions}
         onChoiceChange={(key, id) => setChosen((prev) => ({ ...prev, [key]: id }))}

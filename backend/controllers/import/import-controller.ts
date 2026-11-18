@@ -4,7 +4,7 @@ import { Request, Response } from 'express'
 import crypto from 'crypto'
 import { CategoryRepository } from '../../repositories/categories/category-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
-import { importConfirmSchema } from '../../validators/import-validators.js'
+import { importConfirmSchema, importHashesQuerySchema } from '../../validators/import-validators.js'
 import db from '../../config/db.js'
 
 const HMAC_HEX = '^[0-9a-f]{64}$'
@@ -187,5 +187,33 @@ export const getSavedMappings = asyncHandler(async (req: Request, res: Response)
   res.status(200).json({
     success: true,
     mappings: result[0],
+  })
+})
+
+/**
+ * The import hashes already stored for an account, so the review screen can mark the movements
+ * that will be skipped as duplicates. They are keyed hashes: they reveal nothing without the
+ * account key, and only members of the account get them.
+ */
+export const getImportHashes = asyncHandler(async (req: Request, res: Response) => {
+  const validation = importHashesQuerySchema.safeParse(req.query)
+  if (!validation.success) {
+    throw new AppError(validation.error.issues[0]?.message || 'account_id es requerido', 400)
+  }
+  const { account_id } = validation.data
+
+  const hasAccess = await AccountRepository.hasAccess(account_id, req.user!.id)
+  if (!hasAccess) {
+    throw new AppError('No tienes acceso a esta cuenta', 403)
+  }
+
+  const [rows] = await db.query<any[]>(
+    `SELECT import_hash FROM transactions WHERE account_id = ? AND import_hash IS NOT NULL`,
+    [account_id]
+  )
+
+  res.status(200).json({
+    success: true,
+    hashes: rows.map((row) => row.import_hash as string),
   })
 })

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { decrypt, generateAccountKey } from '../crypto'
-import { buildImportPayload, matchSavedMappings, type ImportMovement } from './confirm'
+import {
+  buildImportPayload,
+  computeImportHashes,
+  matchSavedMappings,
+  type ImportMovement,
+} from './confirm'
 
 // Invented data. Distinctive strings so a leak is easy to find in the serialized payload.
 const ACCOUNT = '00000000-0000-4000-8000-000000000001'
@@ -194,5 +199,24 @@ describe('matchSavedMappings', () => {
       saved.category_mappings
     )
     expect(found).toEqual([null])
+  })
+})
+
+describe('computeImportHashes', () => {
+  it('gives the hashes the payload sends, so the review marks what the server will skip', async () => {
+    const key = await generateAccountKey()
+    const movements = [coffee, coffee, fuel, salary]
+    const { transactions } = await buildImportPayload(ACCOUNT, key, movements, [])
+    expect(await computeImportHashes(key, movements)).toEqual(
+      transactions.map((t) => t.import_hash)
+    )
+  })
+
+  it('finds an earlier statement inside a later one, and only that', async () => {
+    const key = await generateAccountKey()
+    const stored = new Set(await computeImportHashes(key, [coffee, fuel]))
+    const later = await computeImportHashes(key, [coffee, coffee, fuel, salary])
+    // The second coffee of the later statement is a new purchase, not the stored one
+    expect(later.map((h) => stored.has(h))).toEqual([true, false, true, false])
   })
 })

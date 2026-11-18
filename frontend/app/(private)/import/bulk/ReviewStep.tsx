@@ -20,6 +20,8 @@ interface ReviewStepProps {
   columns: ColumnMap
   onColumnsChange: (columns: ColumnMap) => void
   parsed: ParsedStatement
+  /** For each movement, whether it is already imported; null while unknown (or account locked) */
+  duplicates: boolean[] | null
   pairs: BankPair[]
   subcategoryOptions: { value: string; label: string }[]
   onChoiceChange: (pairKey: string, subcategoryId: string | null) => void
@@ -148,7 +150,13 @@ function RowErrorsPanel({ errors }: { errors: RowError[] }) {
   )
 }
 
-function PreviewPanel({ movements }: { movements: Movement[] }) {
+function PreviewPanel({
+  movements,
+  duplicates,
+}: {
+  movements: Movement[]
+  duplicates: boolean[] | null
+}) {
   if (movements.length === 0) return null
   return (
     <section aria-labelledby="import-preview" className="space-y-2">
@@ -178,10 +186,17 @@ function PreviewPanel({ movements }: { movements: Movement[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-layer-2">
-            {movements.slice(0, PREVIEW_ROWS).map((m) => (
-              <tr key={m.row}>
+            {movements.slice(0, PREVIEW_ROWS).map((m, i) => (
+              <tr key={m.row} className={duplicates?.[i] ? 'opacity-60' : undefined}>
                 <td className="p-3 whitespace-nowrap tabular-nums">{m.date}</td>
-                <td className="p-3 max-w-[260px] truncate">{m.description}</td>
+                <td className="p-3 max-w-[260px]">
+                  <span className="block truncate">{m.description}</span>
+                  {duplicates?.[i] && (
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-layer-2 text-[10px] font-bold uppercase text-text-secondary">
+                      Ya importado
+                    </span>
+                  )}
+                </td>
                 <td className="p-3 hidden md:table-cell text-text-secondary">
                   {[m.category, m.subcategory].filter(Boolean).join(' → ') || '—'}
                 </td>
@@ -245,11 +260,27 @@ function CategoriesPanel({
   )
 }
 
+function movements(n: number): string {
+  return n === 1 ? '1 movimiento' : `${n} movimientos`
+}
+
 /** Single review screen: columns, unreadable rows, movements and categories. */
 export function ReviewStep(props: ReviewStepProps) {
-  const { parsed, isLocked, isImporting } = props
+  const { parsed, duplicates, isLocked, isImporting } = props
   const count = parsed.movements.length
-  const canImport = count > 0 && !isLocked && !isImporting
+  const duplicateCount = duplicates ? duplicates.filter(Boolean).length : 0
+  const newCount = count - duplicateCount
+  const canImport = newCount > 0 && !isLocked && !isImporting
+
+  let buttonLabel = `Importar ${movements(count)}`
+  if (duplicates && duplicateCount > 0) {
+    buttonLabel =
+      newCount === 0
+        ? 'Ya estaban todos importados'
+        : newCount === 1
+          ? 'Importar 1 movimiento nuevo'
+          : `Importar ${newCount} movimientos nuevos`
+  }
 
   return (
     <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
@@ -269,6 +300,8 @@ export function ReviewStep(props: ReviewStepProps) {
             </CardTitle>
             <p className="text-xs text-text-secondary mt-0.5">
               {count === 1 ? '1 movimiento leído' : `${count} movimientos leídos`}
+              {duplicateCount > 0 &&
+                ` · ${duplicateCount === 1 ? '1 ya importado' : `${duplicateCount} ya importados`}, no se volverán a guardar`}
             </p>
           </div>
         </div>
@@ -281,7 +314,7 @@ export function ReviewStep(props: ReviewStepProps) {
           onChange={props.onColumnsChange}
         />
         <RowErrorsPanel errors={parsed.errors} />
-        <PreviewPanel movements={parsed.movements} />
+        <PreviewPanel movements={parsed.movements} duplicates={duplicates} />
         <CategoriesPanel
           pairs={props.pairs}
           options={props.subcategoryOptions}
@@ -320,7 +353,7 @@ export function ReviewStep(props: ReviewStepProps) {
           disabled={!canImport}
           isLoading={isImporting}
         >
-          {count === 1 ? 'Importar 1 movimiento' : `Importar ${count} movimientos`}
+          {buttonLabel}
         </Button>
       </CardContent>
     </Card>

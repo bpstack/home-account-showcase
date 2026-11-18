@@ -65,6 +65,26 @@ function importHashMessage(movement: ImportMovement, occurrence: number): string
   return JSON.stringify([movement.date, normalizeText(movement.description), cents, occurrence])
 }
 
+/**
+ * The import_hash of each movement, in order. The review screen compares them with the hashes
+ * already stored to mark duplicates, and buildImportPayload sends the same ones.
+ */
+export async function computeImportHashes(
+  accountKey: CryptoKey,
+  movements: ImportMovement[]
+): Promise<string[]> {
+  const key = await deriveHmacKey(accountKey, 'import-hash')
+  const seen = new Map<string, number>()
+  const hashes: string[] = []
+  for (const movement of movements) {
+    const identity = importHashMessage(movement, 0)
+    const occurrence = seen.get(identity) ?? 0
+    seen.set(identity, occurrence + 1)
+    hashes.push(await hmacHex(key, importHashMessage(movement, occurrence)))
+  }
+  return hashes
+}
+
 async function bankCategoryHmacs(
   key: CryptoKey,
   category: string | null,
@@ -92,18 +112,13 @@ export async function buildImportPayload(
   movements: ImportMovement[],
   choices: CategoryChoice[]
 ): Promise<ImportConfirmPayload> {
-  const importHashKey = await deriveHmacKey(accountKey, 'import-hash')
   const categoryKey = await deriveHmacKey(accountKey, 'bank-category')
+  const importHashes = await computeImportHashes(accountKey, movements)
 
   const chosen = new Map(choices.map((c) => [choiceKey(c.category, c.subcategory), c]))
-  const seen = new Map<string, number>()
 
   const transactions: EncryptedImportTransaction[] = []
-  for (const movement of movements) {
-    const identity = importHashMessage(movement, 0)
-    const occurrence = seen.get(identity) ?? 0
-    seen.set(identity, occurrence + 1)
-
+  for (const [i, movement] of movements.entries()) {
     transactions.push({
       date: movement.date,
       description_encrypted: await encrypt(movement.description, accountKey),
@@ -111,7 +126,7 @@ export async function buildImportPayload(
       amount_sign: getAmountSign(movement.amount),
       bank_category_encrypted: await encryptOptional(movement.category, accountKey),
       bank_subcategory_encrypted: await encryptOptional(movement.subcategory, accountKey),
-      import_hash: await hmacHex(importHashKey, importHashMessage(movement, occurrence)),
+      import_hash: importHashes[i],
       subcategory_id:
         chosen.get(choiceKey(movement.category, movement.subcategory))?.subcategory_id ?? null,
     })

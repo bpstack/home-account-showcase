@@ -40,4 +40,8 @@ export const importConfirmSchema = z.strictObject({
   category_mappings: z.array(hashedCategoryMapping).max(MAX_MAPPINGS),
 })
 
+export const importHashesQuerySchema = z.object({
+  account_id: z.uuid('account_id debe ser un UUID válido'),
+})
+
 export type ImportConfirmInput = z.infer<typeof importConfirmSchema>
