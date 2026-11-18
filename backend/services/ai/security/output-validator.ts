@@ -227,7 +227,7 @@ export function validateJSONOutput(
     }
 
     return { valid: true, issues: [], parsed }
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       issues: ['Invalid JSON structure'],

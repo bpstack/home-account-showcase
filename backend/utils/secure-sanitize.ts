@@ -80,7 +80,7 @@ export function secureXSS(input: string | null | undefined): string {
 
   try {
     return purify.sanitize(input.trim())
-  } catch (error) {
+  } catch {
     logger.warn('SECURE_SANITIZE', 'secureXSS', 'DOMPurify sanitization failed, using fallback')
     return basicEscape(input)
   }
@@ -122,7 +122,7 @@ export function sanitizeForStorage(input: string | null | undefined): string {
     })
 
     return tempPurify.sanitize(input.trim())
-  } catch (error) {
+  } catch {
     logger.warn('SECURE_SANITIZE', 'sanitizeForStorage', 'DOMPurify storage sanitization failed')
     return input
       .replace(/<[^>]*>?/gm, '')

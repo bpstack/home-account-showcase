@@ -87,7 +87,7 @@ async function getCurrencyChange24h(currency: CurrencyPair): Promise<number> {
         return ((currentRate - yesterdayRate) / yesterdayRate) * 100
       }
     }
-  } catch (error) {
+  } catch {
     logger.warn('FRANKFURTER', 'getCurrencyChange24h', `Could not fetch 24h change for ${currency}`)
   }
 

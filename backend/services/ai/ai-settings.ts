@@ -34,7 +34,7 @@ function loadSettings(): AISettings {
       const settings = JSON.parse(data) as AISettings
       return settings
     }
-  } catch (error) {
+  } catch {
     logger.warn('AI_SETTINGS', 'loadSettings', 'Error loading settings')
   }
   settingsFileExists = false
