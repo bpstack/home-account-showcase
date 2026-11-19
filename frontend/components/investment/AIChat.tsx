@@ -9,6 +9,7 @@ import { investmentApi } from '@/lib/api/investment'
 import { cn, formatDistanceToNow } from '@/lib/utils'
 import { validateChatMessage } from '@/validators/investment-validators'
 import { AiNote } from './AiNote'
+import { ChatText } from './ChatText'
 
 const CHAT_MAX_LENGTH = 5000
 const CHAT_COOLDOWN_MS = 1000
@@ -188,9 +189,11 @@ export function AIChat({ accountId, sessionId, onSessionChange }: AIChatProps) {
                       : 'bg-layer-2 text-text-primary'
                   )}
                 >
-                  {m.content.split('\n').map((paragraph, i) => (
-                    <p key={i}>{paragraph}</p>
-                  ))}
+                  {m.role === 'user' ? (
+                    m.content.split('\n').map((paragraph, i) => <p key={i}>{paragraph}</p>)
+                  ) : (
+                    <ChatText text={m.content} />
+                  )}
                 </div>
                 <span className="mt-1 text-xs text-text-secondary">
                   {m.role === 'user' ? 'Tú' : 'Asesor'} ·{' '}
