@@ -1,7 +1,7 @@
 // Expected splits are the model portfolios agreed with the owner (2026-11-19): conservative
 // 25 / 65 / 10, balanced 55 / 40 / 5, dynamic 85 / 15 / 0 (stocks / bonds / cash), no crypto.
 import { describe, expect, it } from 'vitest'
-import { buildMonthlyPlan, type RiskProfile } from './investment-plan'
+import { buildMonthlyPlan, investmentShare, type RiskProfile } from './investment-plan'
 
 const PROFILES: RiskProfile[] = ['conservative', 'balanced', 'dynamic']
 
@@ -51,5 +51,36 @@ describe('buildMonthlyPlan', () => {
     const plan = buildMonthlyPlan('dynamic', -50)
     expect(plan.total).toBe(0)
     expect(plan.items.every((i) => i.amount === 0)).toBe(true)
+  })
+})
+
+// Thresholds agreed with the owner (2026-11-19, ADR-016): below 3 months of expenses saved, nothing
+// is invested; from there until the user's goal, the low share of the profile; with the goal met,
+// the usual share. Shares per profile from ADR-011: conservative 5 / 10, balanced 15 / 25,
+// dynamic 30 / 40 (low / usual).
+describe('investmentShare', () => {
+  // 1,000 € of expenses a month and a 6-month goal: 3 months is 3,000 €, the goal 6,000 €
+  const fund = (saved: number, goalMonths = 6) => ({ saved, goalMonths, monthlyExpenses: 1000 })
+
+  it.each([
+    ['conservative', 5, 10],
+    ['balanced', 15, 25],
+    ['dynamic', 30, 40],
+  ] as const)('%s: 0 below 3 months, %i until the goal, %i with it met', (profile, low, usual) => {
+    expect(investmentShare(profile, fund(0))).toBe(0)
+    expect(investmentShare(profile, fund(2999))).toBe(0)
+    expect(investmentShare(profile, fund(3000))).toBe(low)
+    expect(investmentShare(profile, fund(5999))).toBe(low)
+    expect(investmentShare(profile, fund(6000))).toBe(usual)
+    expect(investmentShare(profile, fund(20000))).toBe(usual)
+  })
+
+  it('a goal under 3 months is enough on its own', () => {
+    expect(investmentShare('balanced', fund(1999, 2))).toBe(0)
+    expect(investmentShare('balanced', fund(2000, 2))).toBe(25)
+  })
+
+  it('without expenses on record, the usual share', () => {
+    expect(investmentShare('balanced', { saved: 0, goalMonths: 6, monthlyExpenses: 0 })).toBe(25)
   })
 })

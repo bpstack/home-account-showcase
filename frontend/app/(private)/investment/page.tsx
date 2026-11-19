@@ -85,6 +85,7 @@ export default function InvestmentPage() {
           <Recommendations
             accountId={accountId}
             monthlySavings={metrics.savingsCapacity}
+            monthlyExpenses={metrics.avgMonthlyExpenses}
             onTakeTest={() => setTestOpen(true)}
           />
           <Simulator key={profile?.riskProfile} riskProfile={profile?.riskProfile} />
@@ -93,8 +94,8 @@ export default function InvestmentPage() {
           <RiskProfile profile={profile} onTakeTest={() => setTestOpen(true)} />
           <EmergencyFund
             accountId={accountId}
-            saved={profile?.liquidityReserve ?? 0}
-            months={profile?.emergencyFundMonths || 6}
+            saved={overview?.emergencyFund.saved ?? 0}
+            months={overview?.emergencyFund.months ?? 6}
             monthlyExpenses={metrics.avgMonthlyExpenses}
           />
           <MarketSummary accountId={accountId} />

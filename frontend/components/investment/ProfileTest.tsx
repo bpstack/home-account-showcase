@@ -39,17 +39,6 @@ const STEPS: Step[] = [
     ],
   },
   {
-    field: 'hasEmergencyFund',
-    question: '¿Tienes un fondo de emergencia?',
-    hint: 'Ahorro apartado para imprevistos.',
-    type: 'choice',
-    options: [
-      { value: 'yes', label: 'Sí, de 3 meses de gastos o más' },
-      { value: 'partial', label: 'En parte, de 1 a 3 meses' },
-      { value: 'no', label: 'No' },
-    ],
-  },
-  {
     field: 'horizonYears',
     question: '¿Cuánto tiempo puedes dejar el dinero invertido sin tocarlo?',
     type: 'choice',
@@ -157,11 +146,6 @@ export function ProfileTest({ accountId, metrics, onClose }: ProfileTestProps) {
             {result.score} de {result.maxScore} puntos · el perfil{' '}
             {PROFILE_LABELS[result.recommendedProfile].toLowerCase()} va de {result.scoreRange.min}{' '}
             a {result.scoreRange.max}
-          </p>
-          <p className="mt-1 text-sm text-text-secondary">
-            {result.investmentPercentage > 0
-              ? `Inviertes el ${result.investmentPercentage} % de lo que ahorras.`
-              : 'De momento no inviertes: todo tu ahorro va al fondo de emergencia.'}
           </p>
         </div>
         {result.reasoning && <p className="text-sm text-text-primary">{result.reasoning}</p>}

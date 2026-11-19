@@ -29,14 +29,16 @@ async function investmentRequest<T>(
 
 // FinancialSummary interface moved to hooks/useFinancialMetrics.ts
 
+/** The result of the profile test; null in the overview until it is taken */
 export interface InvestmentProfile {
   riskProfile: 'conservative' | 'balanced' | 'dynamic'
   horizonYears: number
-  hasEmergencyFund: boolean
-  investmentPercentage: number
-  monthlyInvestable: number
-  liquidityReserve: number
-  emergencyFundMonths: number
+}
+
+/** The emergency fund, test or not: what is saved and how many months of expenses it should cover */
+export interface EmergencyFundSettings {
+  saved: number
+  months: number
 }
 
 export interface MarketPrices {
@@ -54,6 +56,7 @@ export interface InvestmentOverview {
   accountId: string
   // Financial summary removed - calculated client-side
   profile: InvestmentProfile | null
+  emergencyFund: EmergencyFundSettings
   marketPrices: MarketPrices
   aiEnabled: boolean
   activeProvider: string
@@ -63,7 +66,6 @@ export interface ProfileAnswers {
   age: number
   monthlyIncome: number
   jobStability: 'high' | 'medium' | 'low'
-  hasEmergencyFund: 'yes' | 'partial' | 'no'
   horizonYears: '<3' | '3-10' | '>10'
   reactionToDrop: 'sell' | 'hold' | 'buy_more'
   experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
@@ -86,9 +88,6 @@ export interface ProfileAssessmentResult {
   scoreRange: { min: number; max: number }
   confidence: number
   reasoning: string
-  investmentPercentage: number
-  monthlyInvestable: number
-  liquidityReserve: number
   historicalInsights: {
     monthsAnalyzed: number
     trend: string

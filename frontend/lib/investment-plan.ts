@@ -99,3 +99,37 @@ export function buildMonthlyPlan(profile: RiskProfile, monthlyAmount: number): M
 
   return { total, allocation, items }
 }
+
+/** Share of the monthly savings to invest, [while the fund is being completed, once complete]. */
+const SHARE: Record<RiskProfile, [number, number]> = {
+  conservative: [5, 10],
+  balanced: [15, 25],
+  dynamic: [30, 40],
+}
+
+/** Months of expenses the emergency fund must hold before anything is invested */
+export const MIN_FUND_MONTHS = 3
+
+export interface FundStatus {
+  /** What the user has put aside */
+  saved: number
+  /** Months of expenses the user wants covered */
+  goalMonths: number
+  /** Average monthly expenses */
+  monthlyExpenses: number
+}
+
+/**
+ * How much of the monthly savings to invest, in per cent, from the emergency fund as it stands
+ * (ADR-016): nothing below 3 months of expenses (or the goal, if smaller), the low share until the
+ * goal is met, the profile's usual share after. Without expenses on record the fund cannot be
+ * measured, and there are no savings to split either: the usual share.
+ */
+export function investmentShare(profile: RiskProfile, fund: FundStatus): number {
+  const [low, usual] = SHARE[profile]
+  if (fund.monthlyExpenses <= 0) return usual
+  const monthsCovered = fund.saved / fund.monthlyExpenses
+  if (monthsCovered < Math.min(MIN_FUND_MONTHS, fund.goalMonths)) return 0
+  if (monthsCovered < fund.goalMonths) return low
+  return usual
+}

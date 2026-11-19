@@ -3,12 +3,20 @@
 import { Button, Money } from '@/components/ui'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useInvestmentOverview } from '@/lib/queries/investment'
-import { buildMonthlyPlan, type AssetClass, type PlanItem } from '@/lib/investment-plan'
+import {
+  buildMonthlyPlan,
+  investmentShare,
+  MIN_FUND_MONTHS,
+  type AssetClass,
+  type PlanItem,
+} from '@/lib/investment-plan'
 
 interface RecommendationsProps {
   accountId: string
   /** Average monthly savings: the plan invests a share of it */
   monthlySavings: number
+  /** Average monthly expenses: they measure the emergency fund */
+  monthlyExpenses: number
   /** Opens the risk-profile test */
   onTakeTest: () => void
 }
@@ -29,11 +37,23 @@ const ALLOCATION: Array<{ key: AssetClass; label: string; swatch: string }> = [
 const percent = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 })
 
 /** The monthly plan, by fixed rules: how much to invest, how it splits and in what. */
-export function Recommendations({ accountId, monthlySavings, onTakeTest }: RecommendationsProps) {
+export function Recommendations({
+  accountId,
+  monthlySavings,
+  monthlyExpenses,
+  onTakeTest,
+}: RecommendationsProps) {
   const { data: overview } = useInvestmentOverview(accountId, { refetchOnMount: false })
   const profile = overview?.profile
-  const share = profile?.investmentPercentage ?? 0
+  const fund = {
+    saved: overview?.emergencyFund.saved ?? 0,
+    goalMonths: overview?.emergencyFund.months ?? 6,
+    monthlyExpenses,
+  }
+  // How much to invest follows the emergency fund as it stands, not the day of the test
+  const share = profile ? investmentShare(profile.riskProfile, fund) : 0
   const monthly = (monthlySavings * share) / 100
+  const completingFund = monthlyExpenses > 0 && fund.saved < fund.goalMonths * monthlyExpenses
 
   const header = (
     <h2 id="investment-plan" className="mb-3 text-sm font-medium text-text-primary">
@@ -47,7 +67,7 @@ export function Recommendations({ accountId, monthlySavings, onTakeTest }: Recom
         {header}
         <EmptyState
           title="Falta tu perfil de inversor"
-          description="Con siete preguntas sobre tu edad, tus ingresos y cómo llevas el riesgo, el plan reparte cada mes una parte de lo que ahorras."
+          description="Con seis preguntas sobre tu edad, tus ingresos y cómo llevas el riesgo, el plan reparte cada mes una parte de lo que ahorras."
           action={
             <Button variant="outline" onClick={onTakeTest}>
               Hacer el test
@@ -64,7 +84,7 @@ export function Recommendations({ accountId, monthlySavings, onTakeTest }: Recom
         {header}
         <p className="text-sm text-text-secondary">
           {share === 0
-            ? 'De momento no inviertes: hasta tener un fondo de emergencia de 3 meses de gastos, todo tu ahorro va a él.'
+            ? `De momento no inviertes: hasta tener en el fondo de emergencia ${MIN_FUND_MONTHS} meses de gastos, todo tu ahorro va a él.`
             : 'Este mes no hay ahorro que invertir: el plan se prepara cuando ingreses más de lo que gastas.'}
         </p>
       </section>
@@ -81,6 +101,8 @@ export function Recommendations({ accountId, monthlySavings, onTakeTest }: Recom
         Inviertes{' '}
         <Money value={plan.total} tone="neutral" className="text-base font-medium sm:text-xl" /> al
         mes: el {percent.format(share)} % de lo que ahorras.
+        {completingFund &&
+          ' Mientras completas el fondo de emergencia, la parte baja de tu perfil.'}
       </p>
 
       <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-layer-3" aria-hidden="true">

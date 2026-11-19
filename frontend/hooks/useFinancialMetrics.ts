@@ -47,7 +47,7 @@ export function useFinancialMetrics(accountId: string) {
       trend: 'stable' as const,
       deficitMonths: 0,
       historicalMonths: 0,
-      emergencyFundStatus: investmentData?.profile?.liquidityReserve || 0,
+      emergencyFundStatus: investmentData?.emergencyFund.saved ?? 0,
       emergencyFundGoal: 0,
       monthlyBreakdown: {},
       availableMonths: [],
@@ -105,7 +105,7 @@ export function useFinancialMetrics(accountId: string) {
     // Emergency fund calculations
     // emergencyFundStatus comes from liquidity_reserve (profile)
     // emergencyFundGoal = avgMonthlyExpenses * emergencyFundMonths
-    const emergencyFundMonths = investmentData?.profile?.emergencyFundMonths || 6
+    const emergencyFundMonths = investmentData?.emergencyFund.months ?? 6
     const emergencyFundGoal = avgMonthlyExpenses * emergencyFundMonths
 
     // Current month metrics
@@ -141,7 +141,7 @@ export function useFinancialMetrics(accountId: string) {
       trend,
       deficitMonths,
       historicalMonths: months.length,
-      emergencyFundStatus: investmentData?.profile?.liquidityReserve || 0,
+      emergencyFundStatus: investmentData?.emergencyFund.saved ?? 0,
       emergencyFundGoal,
       monthlyBreakdown,
       availableMonths: allMonthKeys,
