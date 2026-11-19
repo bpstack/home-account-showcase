@@ -188,20 +188,6 @@ export function getAIRateLimitStatus(userId: string = 'anonymous') {
 }
 
 /**
- * Get all provider limits (for frontend display)
- */
-export function getProviderLimits(): Record<AIProviderType, number | 'unlimited'> {
-  return {
-    ollama: 'unlimited',
-    groq: PROVIDER_LIMITS.groq,
-    claude: PROVIDER_LIMITS.claude,
-    gemini: PROVIDER_LIMITS.gemini,
-    huggingface: PROVIDER_LIMITS.huggingface,
-    none: 0,
-  }
-}
-
-/**
  * Cleanup expired entries (run periodically)
  */
 export function cleanupExpiredEntries(): void {
