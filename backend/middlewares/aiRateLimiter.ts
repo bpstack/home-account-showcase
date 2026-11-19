@@ -1,204 +1,112 @@
 // middlewares/aiRateLimiter.ts
-// Rate limiter for AI providers with per-provider limits
+// Limits AI questions per user per hour and for everyone per day. The counts come from the stored
+// chat questions, so they survive restarts and are shared by every instance. This instance also
+// keeps its own log of the questions it let through, so deleting conversations does not free the
+// quota; the larger of the two counts applies (services/ai/ai-quota.ts).
 
 import { Request, Response, NextFunction } from 'express'
 import { getActiveProvider } from '../services/ai/ai-client.js'
-import type { AIProviderType } from '../services/ai/types.js'
+import {
+  decideAIQuota,
+  quotaMessage,
+  readAILimits,
+  usedThisHour,
+  type LocalAIUsage,
+} from '../services/ai/ai-quota.js'
+import { InvestmentRepository } from '../repositories/investment/investment-repository.js'
 import { logger } from '../utils/logger.js'
 
-interface RateLimitEntry {
-  count: number
-  resetTime: number
-}
+const HOUR_MS = 60 * 60 * 1000
+const DAY_MS = 24 * HOUR_MS
 
-// Store per user per provider
-const rateLimitStore = new Map<string, RateLimitEntry>()
+const inFlightByUser = new Map<string, number>()
+let inFlightAll = 0
+/** When this instance let each question through, per user (last hour) and for everyone (last day). */
+const letThroughByUser = new Map<string, number[]>()
+let letThroughAll: number[] = []
 
-const WINDOW_MS = 60 * 60 * 1000 // 1 hour
-
-// Limits per provider (per hour)
-const PROVIDER_LIMITS: Record<AIProviderType, number> = {
-  ollama: Infinity, // Unlimited (local)
-  groq: 15,
-  claude: 5,
-  gemini: 5,
-  huggingface: 10,
-  none: 0,
-}
-
-/**
- * Get the effective provider that will be used
- * No fallback - respects user selection
- */
-function getEffectiveProvider(): AIProviderType {
-  return getActiveProvider()
-}
-
-/**
- * Get rate limit key for a user and provider
- */
-function getRateLimitKey(userId: string, provider: AIProviderType): string {
-  return `ai_rate_${provider}_${userId}`
-}
-
-/**
- * Check if request should be rate limited
- */
-function checkRateLimit(
-  userId: string,
-  provider: AIProviderType
-): {
-  allowed: boolean
-  remaining: number
-  resetTime: number | null
-  limit: number
-} {
-  const limit = PROVIDER_LIMITS[provider]
-
-  // Unlimited providers always allowed
-  if (limit === Infinity) {
-    return { allowed: true, remaining: Infinity, resetTime: null, limit: Infinity }
-  }
-
-  const key = getRateLimitKey(userId, provider)
-  const now = Date.now()
-  const entry = rateLimitStore.get(key)
-
-  // No entry or expired - create new window
-  if (!entry || now > entry.resetTime) {
-    return { allowed: true, remaining: limit - 1, resetTime: now + WINDOW_MS, limit }
-  }
-
-  // Check if within limit
-  if (entry.count < limit) {
-    return { allowed: true, remaining: limit - entry.count - 1, resetTime: entry.resetTime, limit }
-  }
-
-  // Rate limited
-  return { allowed: false, remaining: 0, resetTime: entry.resetTime, limit }
-}
-
-/**
- * Increment rate limit counter
- */
-function incrementRateLimit(userId: string, provider: AIProviderType): void {
-  const limit = PROVIDER_LIMITS[provider]
-  if (limit === Infinity) return
-
-  const key = getRateLimitKey(userId, provider)
-  const now = Date.now()
-  const entry = rateLimitStore.get(key)
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + WINDOW_MS })
-  } else {
-    entry.count++
+function prune(now: number): void {
+  letThroughAll = letThroughAll.filter((t) => now - t < DAY_MS)
+  for (const [userId, times] of letThroughByUser) {
+    const recent = times.filter((t) => now - t < HOUR_MS)
+    if (recent.length > 0) letThroughByUser.set(userId, recent)
+    else letThroughByUser.delete(userId)
   }
 }
 
-/**
- * Main rate limiter middleware
- * Options:
- * - skipRateLimit: true to skip (for test endpoint)
- */
-export function aiRateLimiter(
-  options: {
-    skipRateLimit?: boolean
-  } = {}
-) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    // Skip if explicitly disabled
-    if (options.skipRateLimit) {
-      return next()
-    }
+function localUsage(userId: string, now: number): LocalAIUsage {
+  prune(now)
+  const recent = letThroughByUser.get(userId) ?? []
+  return {
+    inFlightUser: inFlightByUser.get(userId) ?? 0,
+    inFlightAll,
+    recentUser: recent.length,
+    oldestRecentUserAgeSec: recent.length > 0 ? Math.floor((now - recent[0]) / 1000) : null,
+    recentAll: letThroughAll.length,
+  }
+}
 
-    const userId = (req as any).user?.id || 'anonymous'
-    const provider = getEffectiveProvider()
+function recordLetThrough(userId: string, res: Response, now: number): void {
+  letThroughByUser.set(userId, [...(letThroughByUser.get(userId) ?? []), now])
+  letThroughAll.push(now)
 
-    // No provider configured
-    if (provider === 'none') {
-      return next()
-    }
+  inFlightByUser.set(userId, (inFlightByUser.get(userId) ?? 0) + 1)
+  inFlightAll++
+  let released = false
+  const release = () => {
+    if (released) return
+    released = true
+    const left = (inFlightByUser.get(userId) ?? 1) - 1
+    if (left > 0) inFlightByUser.set(userId, left)
+    else inFlightByUser.delete(userId)
+    inFlightAll = Math.max(0, inFlightAll - 1)
+  }
+  res.on('finish', release)
+  res.on('close', release)
+}
 
-    const { allowed, remaining, resetTime, limit } = checkRateLimit(userId, provider)
+export function aiRateLimiter() {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (getActiveProvider() === 'none') return next()
 
-    if (!allowed) {
-      const timeRemaining = Math.ceil((resetTime! - Date.now()) / 60000)
-      res.status(429).json({
-        success: false,
-        error: `${provider.toUpperCase()} request limit exceeded`,
-        message: `You have reached the limit of ${limit} requests per hour. Try again in ${timeRemaining} minutes.`,
-        remaining: 0,
-        resetTime,
-        provider,
-      })
+    const userId = (req as any).user?.id
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'No autorizado' })
       return
     }
 
-    incrementRateLimit(userId, provider)
+    const now = Date.now()
+    const limits = readAILimits(process.env)
+    const usage = await InvestmentRepository.getChatUsage(userId)
+    const decision = decideAIQuota(usage, localUsage(userId, now), limits)
 
-    logger.info(
-      'AI_RATE_LIMITER',
-      'aiRateLimiter',
-      `${provider}: ${remaining}/${limit} remaining for user ${userId}`
-    )
+    if (!decision.allowed) {
+      logger.warn('AI_RATE_LIMITER', 'aiRateLimiter', `Limit reached (${decision.reason})`)
+      res.status(429).json({ success: false, error: quotaMessage(decision, limits) })
+      return
+    }
 
+    recordLetThrough(userId, res, now)
     next()
   }
 }
 
-/**
- * Get rate limit status for a user across all providers
- */
-export function getAIRateLimitStatus(userId: string = 'anonymous') {
-  const provider = getEffectiveProvider()
-  const limit = PROVIDER_LIMITS[provider]
-
-  if (limit === Infinity) {
-    return {
-      provider,
-      remaining: Infinity,
-      resetTime: null,
-      maxRequests: Infinity,
-      isUnlimited: true,
-    }
-  }
-
-  const key = getRateLimitKey(userId, provider)
+/** The user's remaining questions this hour, for Settings > IA. */
+export async function getAIRateLimitStatus(userId: string) {
   const now = Date.now()
-  const entry = rateLimitStore.get(key)
-
-  if (!entry || now > entry.resetTime) {
-    return {
-      provider,
-      remaining: limit,
-      resetTime: null,
-      maxRequests: limit,
-      isUnlimited: false,
-    }
-  }
+  const limits = readAILimits(process.env)
+  const usage = await InvestmentRepository.getChatUsage(userId)
+  const local = localUsage(userId, now)
+  const oldestAge = Math.max(
+    usage.oldestUserQuestionAgeSec ?? -1,
+    local.oldestRecentUserAgeSec ?? -1
+  )
 
   return {
-    provider,
-    remaining: Math.max(0, limit - entry.count),
-    resetTime: entry.resetTime,
-    maxRequests: limit,
+    provider: getActiveProvider(),
+    remaining: Math.max(0, limits.perUserPerHour - usedThisHour(usage, local)),
+    resetTime: oldestAge < 0 ? null : now + (3600 - oldestAge) * 1000,
+    maxRequests: limits.perUserPerHour,
     isUnlimited: false,
   }
 }
-
-/**
- * Cleanup expired entries (run periodically)
- */
-export function cleanupExpiredEntries(): void {
-  const now = Date.now()
-
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key)
-    }
-  }
-}
-
-// Run cleanup every 10 minutes
-setInterval(cleanupExpiredEntries, 10 * 60 * 1000)

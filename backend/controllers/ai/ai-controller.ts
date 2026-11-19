@@ -11,13 +11,13 @@ export const getStatus = asyncHandler(async (req: Request, res: Response) => {
   const client = new AIClient()
   const active = client.isAvailable()
 
-  const userId = (req as any).user?.id || 'anonymous'
+  const userId = (req as any).user?.id
 
   res.status(200).json({
     success: true,
     active,
     provider: active ? client.getProviderName() : null,
     model: active ? client.getConfig().model : null,
-    rateLimit: active ? getAIRateLimitStatus(userId) : null,
+    rateLimit: active && userId ? await getAIRateLimitStatus(userId) : null,
   })
 })

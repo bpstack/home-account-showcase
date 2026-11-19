@@ -3,6 +3,7 @@
 
 import db from '../../config/db.js'
 import crypto from 'crypto'
+import type { RowDataPacket } from 'mysql2'
 import type {
   InvestmentProfile,
   InvestmentProfileRow,
@@ -374,6 +375,37 @@ export class InvestmentRepository {
       throw error
     } finally {
       conn.release()
+    }
+  }
+
+  /**
+   * AI usage from the stored questions: the user's in the last hour (and how old the oldest is)
+   * and everyone's in the last day. Ages are computed inside MySQL, so the Node/MySQL time zone
+   * offset does not apply.
+   */
+  static async getChatUsage(userId: string): Promise<{
+    userLastHour: number
+    oldestUserQuestionAgeSec: number | null
+    allLastDay: number
+  }> {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT
+         (SELECT COUNT(*) FROM ai_chat_messages m JOIN ai_chat_sessions s ON s.id = m.session_id
+          WHERE s.user_id = ? AND m.role = 'user' AND m.created_at > NOW() - INTERVAL 1 HOUR)
+           AS user_last_hour,
+         (SELECT TIMESTAMPDIFF(SECOND, MIN(m.created_at), NOW())
+          FROM ai_chat_messages m JOIN ai_chat_sessions s ON s.id = m.session_id
+          WHERE s.user_id = ? AND m.role = 'user' AND m.created_at > NOW() - INTERVAL 1 HOUR)
+           AS oldest_age_sec,
+         (SELECT COUNT(*) FROM ai_chat_messages
+          WHERE role = 'user' AND created_at > NOW() - INTERVAL 1 DAY) AS all_last_day`,
+      [userId, userId]
+    )
+    const row = rows[0]
+    return {
+      userLastHour: Number(row.user_last_hour),
+      oldestUserQuestionAgeSec: row.oldest_age_sec === null ? null : Number(row.oldest_age_sec),
+      allLastDay: Number(row.all_last_day),
     }
   }
 
