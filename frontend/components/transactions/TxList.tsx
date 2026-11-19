@@ -26,18 +26,6 @@ const dayFormat = new Intl.DateTimeFormat('es-ES', {
   year: 'numeric',
 })
 
-/**
- * The local calendar day of a movement as YYYY-MM-DD. The API sends either "2026-02-13" or a
- * timestamp like "2026-02-12T23:00:00.000Z" (local midnight in UTC): cutting the string would
- * give the day before in Spain, so a timestamp is read as a Date in local time.
- */
-function localDayKey(value: string): string {
-  if (value.length <= 10) return value
-  const date = new Date(value)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
-
 function dayLabel(day: string): string {
   const [y, m, d] = day.split('-').map(Number)
   const text = dayFormat.format(new Date(y, m - 1, d))
@@ -57,7 +45,8 @@ export function TxList({
   const days = useMemo(() => {
     const groups = new Map<string, Row[]>()
     for (const tx of transactions) {
-      const day = localDayKey(tx.date)
+      // The API sends the day as YYYY-MM-DD or as midnight UTC of that day
+      const day = tx.date.slice(0, 10)
       const list = groups.get(day)
       if (list) list.push(tx)
       else groups.set(day, [tx])

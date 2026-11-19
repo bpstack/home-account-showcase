@@ -440,10 +440,9 @@ function calculateMonthlySummaryFromTransactions(
 
   // Group by month
   for (const tx of transactions) {
-    const date = new Date(tx.date)
-    if (date.getFullYear() !== year) continue
+    if (Number(tx.date.slice(0, 4)) !== year) continue
 
-    const month = date.getMonth()
+    const month = Number(tx.date.slice(5, 7)) - 1
     const amount = Number(tx.amount)
 
     if (amount > 0) {
@@ -536,10 +535,9 @@ function calculateBalanceHistoryFromTransactions(
   // Group transactions by month
   const transactionsByMonth: Record<number, number> = {}
   for (const tx of sortedTxs) {
-    const date = new Date(tx.date)
-    if (date.getFullYear() !== year) continue
+    if (Number(tx.date.slice(0, 4)) !== year) continue
 
-    const month = date.getMonth()
+    const month = Number(tx.date.slice(5, 7)) - 1
     transactionsByMonth[month] = (transactionsByMonth[month] || 0) + Number(tx.amount)
   }
 
