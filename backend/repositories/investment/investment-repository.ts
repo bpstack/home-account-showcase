@@ -231,14 +231,32 @@ export class InvestmentRepository {
     return rows[0] || null
   }
 
-  static async getChatSessionsByAccount(accountId: string): Promise<AIChatSession[]> {
+  /**
+   * The session only if it belongs to this account and to this user: each chat is private to the
+   * user who created it, even inside a shared account (ADR-013).
+   */
+  static async getOwnChatSession(
+    sessionId: string,
+    accountId: string,
+    userId: string
+  ): Promise<AIChatSession | null> {
     const [rows] = await db.query<AIChatSessionRow[]>(
       `SELECT id, account_id, user_id, provider, message_count, created_at, last_message_at
        FROM ai_chat_sessions
-       WHERE account_id = ?
+       WHERE id = ? AND account_id = ? AND user_id = ?`,
+      [sessionId, accountId, userId]
+    )
+    return rows[0] || null
+  }
+
+  static async getChatSessionsByUser(accountId: string, userId: string): Promise<AIChatSession[]> {
+    const [rows] = await db.query<AIChatSessionRow[]>(
+      `SELECT id, account_id, user_id, provider, message_count, created_at, last_message_at
+       FROM ai_chat_sessions
+       WHERE account_id = ? AND user_id = ?
        ORDER BY last_message_at DESC
        LIMIT 50`,
-      [accountId]
+      [accountId, userId]
     )
     return rows
   }
@@ -253,8 +271,15 @@ export class InvestmentRepository {
     )
   }
 
-  static async deleteChatSession(sessionId: string): Promise<boolean> {
-    const [result] = await db.query(`DELETE FROM ai_chat_sessions WHERE id = ?`, [sessionId])
+  static async deleteChatSession(
+    sessionId: string,
+    accountId: string,
+    userId: string
+  ): Promise<boolean> {
+    const [result] = await db.query(
+      `DELETE FROM ai_chat_sessions WHERE id = ? AND account_id = ? AND user_id = ?`,
+      [sessionId, accountId, userId]
+    )
     return (result as any).affectedRows > 0
   }
 

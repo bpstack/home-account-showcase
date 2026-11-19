@@ -307,8 +307,8 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
     throw new AppError('No tienes acceso a esta cuenta', 403)
   }
 
-  const session = await InvestmentRepository.getChatSessionById(sessionId)
-  if (!session || session.account_id !== accountId) {
+  const session = await InvestmentRepository.getOwnChatSession(sessionId, accountId, userId)
+  if (!session) {
     throw new AppError('Sesión no encontrada', 404)
   }
 
@@ -353,8 +353,8 @@ export const getChatHistory = asyncHandler(async (req: Request, res: Response) =
     throw new AppError('No tienes acceso a esta cuenta', 403)
   }
 
-  const session = await InvestmentRepository.getChatSessionById(sessionId)
-  if (!session || session.account_id !== accountId) {
+  const session = await InvestmentRepository.getOwnChatSession(sessionId, accountId, userId)
+  if (!session) {
     throw new AppError('Sesión no encontrada', 404)
   }
 
@@ -433,7 +433,7 @@ export const getChatSessions = asyncHandler(async (req: Request, res: Response) 
     throw new AppError('No tienes acceso a esta cuenta', 403)
   }
 
-  const sessions = await InvestmentRepository.getChatSessionsByAccount(accountId)
+  const sessions = await InvestmentRepository.getChatSessionsByUser(accountId, userId)
 
   res.status(200).json({
     success: true,
@@ -460,13 +460,13 @@ export const deleteChatSession = asyncHandler(async (req: Request, res: Response
     throw new AppError('No tienes acceso a esta cuenta', 403)
   }
 
-  const session = await InvestmentRepository.getChatSessionById(sessionId)
-  if (!session || session.account_id !== accountId) {
+  const session = await InvestmentRepository.getOwnChatSession(sessionId, accountId, userId)
+  if (!session) {
     throw new AppError('Sesión no encontrada', 404)
   }
 
   await InvestmentRepository.deleteChatMessagesBySession(sessionId)
-  await InvestmentRepository.deleteChatSession(sessionId)
+  await InvestmentRepository.deleteChatSession(sessionId, accountId, userId)
 
   res.status(200).json({
     success: true,
