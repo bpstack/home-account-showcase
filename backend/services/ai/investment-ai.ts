@@ -4,6 +4,7 @@
 import { AIClient, createAIClient } from './ai-client.js'
 import type { AIProviderType } from './types.js'
 import { buildChatPrompt, buildSystemMessage } from './prompts/chat-prompt.js'
+import { capChatReply } from './chat-limits.js'
 import { buildEducationPrompt } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
@@ -110,7 +111,8 @@ export class InvestmentAI {
     }
 
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Calling chat')
-    const result = await this.chat(message, chatContext, history, accountId, userId)
+    const raw = await this.chat(message, chatContext, history, accountId, userId)
+    const result: ChatResult = { ...raw, answer: capChatReply(raw.answer) }
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Chat result received')
 
     await InvestmentRepository.addChatMessage({

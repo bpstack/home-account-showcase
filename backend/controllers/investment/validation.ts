@@ -2,6 +2,7 @@
 // Zod schemas for investment module validation
 
 import { z } from 'zod'
+import { CHAT_MESSAGE_MAX_CHARS } from '../../services/ai/chat-limits.js'
 
 export const FinancialMetricsSchema = z.object({
   avgMonthlyIncome: z.number().min(0),
@@ -47,9 +48,9 @@ export const UpdateLiquidityReserveSchema = z.object({
 export const ChatMessageSchema = z.object({
   message: z
     .string({ error: 'El mensaje es obligatorio' })
-    .min(2, 'El mensaje debe tener al menos 2 caracteres')
-    .max(5000, 'El mensaje no puede superar los 5.000 caracteres')
     .trim()
+    .min(2, 'El mensaje debe tener al menos 2 caracteres')
+    .max(CHAT_MESSAGE_MAX_CHARS, 'El mensaje no puede superar los 2.000 caracteres')
     .refine(
       (val) => val.length >= 2,
       'El mensaje debe tener al menos 2 caracteres después de eliminar espacios'

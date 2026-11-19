@@ -286,7 +286,7 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
 
   const validation = ChatMessageSchema.safeParse(req.body)
   if (!validation.success) {
-    throw new AppError('Mensaje requerido', 400)
+    throw new AppError(validation.error.issues[0]?.message ?? 'Mensaje no válido', 400)
   }
 
   const { message } = validation.data
