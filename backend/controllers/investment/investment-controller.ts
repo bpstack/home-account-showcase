@@ -6,7 +6,7 @@ import { getActiveProvider } from '../../services/ai/ai-client.js'
 import { getMarketData, getMarketDataFull } from '../../services/market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
-import type { ProfileAnswers, InvestmentContext } from '../../services/ai/prompts/types.js'
+import type { InvestmentContext } from '../../services/ai/prompts/types.js'
 import {
   ProfileAnswersSchema,
   UpdateEmergencyFundMonthsSchema,
@@ -14,6 +14,10 @@ import {
   ChatMessageSchema,
 } from './validation.js'
 import { checkInputSecurity, checkOutputSecurity } from '../../services/ai/security/index.js'
+import {
+  assessProfile,
+  type ProfileTestAnswers,
+} from '../../services/investment/profile-assessment.js'
 
 async function getAccountFinancialContext(
   accountId: string,
@@ -104,14 +108,10 @@ export const updateEmergencyFundMonths = asyncHandler(async (req: Request, res: 
 
   const { months } = validation.data
 
+  // Only this field: the rest of the profile is the test's, not to be reset here.
   await InvestmentRepository.upsertProfile({
     account_id: accountId,
     emergency_fund_months: months,
-    risk_profile: 'balanced',
-    investment_percentage: 20,
-    has_emergency_fund: true,
-    experience_level: 'none',
-    horizon_years: 5,
   })
 
   res.status(200).json({
@@ -140,14 +140,10 @@ export const updateLiquidityReserve = asyncHandler(async (req: Request, res: Res
 
   const { amount } = validation.data
 
+  // Only this field: the rest of the profile is the test's, not to be reset here.
   await InvestmentRepository.upsertProfile({
     account_id: accountId,
     liquidity_reserve: amount,
-    risk_profile: 'balanced',
-    investment_percentage: 20,
-    has_emergency_fund: true,
-    experience_level: 'none',
-    horizon_years: 5,
   })
 
   res.status(200).json({
@@ -159,7 +155,7 @@ export const updateLiquidityReserve = asyncHandler(async (req: Request, res: Res
 export const analyzeProfile = asyncHandler(async (req: Request, res: Response) => {
   const { accountId } = req.params
   const userId = (req as any).user?.id
-  const answers = req.body as ProfileAnswers
+  const answers = req.body as ProfileTestAnswers
 
   const decodeHtmlEntities = (str: string) =>
     str.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
@@ -199,56 +195,27 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
     )
   }
 
-  const validAnswers = validation.data
+  const { financialMetrics, ...validAnswers } = validation.data
 
-  const financialContext = await getAccountFinancialContext(accountId, userId)
+  // Fixed rules, no AI: the same answers always give the same profile, and the answers (age,
+  // income) and the account's metrics never leave the server.
+  const current = await InvestmentRepository.getProfileByAccountId(accountId)
+  const result = assessProfile(validAnswers, financialMetrics, current?.liquidity_reserve ?? 0)
 
-  if (validAnswers.financialMetrics) {
-    const fm = validAnswers.financialMetrics
-    financialContext.avgMonthlyIncome = fm.avgMonthlyIncome
-    financialContext.avgMonthlyExpenses = fm.avgMonthlyExpenses
-    financialContext.savingsCapacity = fm.savingsCapacity
-    financialContext.savingsRate = fm.savingsRate
-    financialContext.historicalMonths = fm.historicalMonths
-    financialContext.trend = fm.trend
-    financialContext.deficitMonths = fm.deficitMonths
-  }
-
-  const ai = createInvestmentAI()
-  if (!ai.isAvailable()) {
-    throw new AppError('IA no disponible', 503)
-  }
-
-  const result = await ai.assessProfile(answers, financialContext)
-
-  const profileMap: Record<string, 'conservative' | 'balanced' | 'dynamic'> = {
-    conservador: 'conservative',
-    conservative: 'conservative',
-    equilibrado: 'balanced',
-    balanced: 'balanced',
-    dinámico: 'dynamic',
-    dinamico: 'dynamic',
-    dynamic: 'dynamic',
-    agresivo: 'dynamic',
-    aggressive: 'dynamic',
-  }
-
-  const dbProfile = profileMap[result.recommendedProfile?.toLowerCase()] || 'balanced'
-
-  const horizonYearsMap: Record<string, number> = {
+  const horizonYearsMap: Record<ProfileTestAnswers['horizonYears'], number> = {
     '<3': 2,
     '3-10': 5,
     '>10': 15,
   }
-  const horizonYearsNum = horizonYearsMap[answers.horizonYears] || 5
 
   await InvestmentRepository.upsertProfile({
     account_id: accountId,
-    risk_profile: dbProfile,
+    risk_profile: result.recommendedProfile,
     investment_percentage: result.investmentPercentage,
-    has_emergency_fund: answers.hasEmergencyFund !== 'no',
-    experience_level: answers.experienceLevel,
-    horizon_years: horizonYearsNum,
+    monthly_investable: result.monthlyInvestable,
+    has_emergency_fund: validAnswers.hasEmergencyFund !== 'no',
+    experience_level: validAnswers.experienceLevel,
+    horizon_years: horizonYearsMap[validAnswers.horizonYears],
   })
 
   res.status(200).json({

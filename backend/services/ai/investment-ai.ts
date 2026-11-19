@@ -3,14 +3,12 @@
 
 import { AIClient, createAIClient } from './ai-client.js'
 import type { AIProviderType } from './types.js'
-import { buildProfileAssessmentPrompt, ProfileAnswers } from './prompts/profile-prompt.js'
 import { buildRecommendationPrompt } from './prompts/recommendation-prompt.js'
 import { buildChatPrompt, buildSystemMessage } from './prompts/chat-prompt.js'
 import { buildEducationPrompt } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
   ChatContext,
-  ProfileAssessmentResult,
   RecommendationResult,
   ChatResult,
   ChatMessage,
@@ -35,38 +33,6 @@ export class InvestmentAI {
 
   getProviderName(): string {
     return this.client.getProviderName()
-  }
-
-  // ========================
-  // PROFILE ASSESSMENT
-  // ========================
-
-  async assessProfile(
-    answers: ProfileAnswers,
-    context: InvestmentContext
-  ): Promise<ProfileAssessmentResult> {
-    const startTime = Date.now()
-
-    if (!this.isAvailable()) {
-      throw new AppError('AI not available', 503)
-    }
-
-    const marketData = await getMarketData()
-
-    const prompt = buildProfileAssessmentPrompt(answers, context, marketData)
-
-    const response = await this.client.sendPromptJSON<ProfileAssessmentResult>(prompt)
-
-    const responseTime = Date.now() - startTime
-    await this.logInvestmentSession(
-      context.accountId || '',
-      context.userId || '',
-      'profile_assessment',
-      responseTime,
-      response
-    )
-
-    return response
   }
 
   // ========================

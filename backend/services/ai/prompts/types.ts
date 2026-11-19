@@ -52,24 +52,6 @@ export interface MarketDataContext {
 // RESULTADOS DE PROMPTS
 // ========================
 
-export interface ProfileAssessmentResult {
-  recommendedProfile: 'conservative' | 'balanced' | 'dynamic'
-  confidence: number
-  reasoning: string
-  investmentPercentage: number
-  monthlyInvestable: number
-  liquidityReserve: number
-  historicalInsights: {
-    monthsAnalyzed: number
-    trend: string
-    bestMonth: string
-    worstMonth: string
-    savingsConsistency: string
-  }
-  warnings: string[]
-  marketContext: string
-}
-
 export interface RecommendationItem {
   type: 'ETF' | 'BOND_FUND' | 'CRYPTO' | 'STOCK' | 'SAVINGS'
   symbol: string
@@ -140,16 +122,6 @@ export interface EducationResult {
 // ========================
 // PROFILE ANSWERS
 // ========================
-
-export interface ProfileAnswers {
-  age: number
-  monthlyIncome: number
-  jobStability: 'high' | 'medium' | 'low'
-  hasEmergencyFund: 'yes' | 'partial' | 'no'
-  horizonYears: '<3' | '3-10' | '>10'
-  reactionToDrop: 'sell' | 'hold' | 'buy_more'
-  experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
-}
 
 // ========================
 // SIMULATION

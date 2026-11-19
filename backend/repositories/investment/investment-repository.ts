@@ -36,18 +36,38 @@ export class InvestmentRepository {
   }
 
   static async createProfile(data: CreateInvestmentProfileDTO): Promise<InvestmentProfile> {
-    const [_result] = await db.query(
-      `INSERT INTO investment_profiles
-       (account_id, risk_profile, investment_percentage, horizon_years, has_emergency_fund, experience_level)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        data.account_id,
-        data.risk_profile || 'balanced',
-        data.investment_percentage || 20,
-        data.horizon_years || 5,
-        data.has_emergency_fund || false,
-        data.experience_level || 'none',
-      ]
+    // The test fields get defaults; the amounts and months only when given, so the table's own
+    // defaults apply otherwise (they used to be dropped even when given).
+    const columns = [
+      'account_id',
+      'risk_profile',
+      'investment_percentage',
+      'horizon_years',
+      'has_emergency_fund',
+      'experience_level',
+    ]
+    const values: unknown[] = [
+      data.account_id,
+      data.risk_profile || 'balanced',
+      data.investment_percentage || 20,
+      data.horizon_years || 5,
+      data.has_emergency_fund || false,
+      data.experience_level || 'none',
+    ]
+    for (const column of [
+      'monthly_investable',
+      'liquidity_reserve',
+      'emergency_fund_months',
+    ] as const) {
+      if (data[column] !== undefined) {
+        columns.push(column)
+        values.push(data[column])
+      }
+    }
+
+    await db.query(
+      `INSERT INTO investment_profiles (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+      values
     )
 
     return this.getProfileByAccountId(data.account_id) as Promise<InvestmentProfile>

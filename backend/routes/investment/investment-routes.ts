@@ -38,8 +38,8 @@ router.patch('/:accountId/emergency-fund-months', updateEmergencyFundMonths)
 // PATCH /api/investment/:accountId/liquidity-reserve
 router.patch('/:accountId/liquidity-reserve', updateLiquidityReserve)
 
-// POST /api/investment/:accountId/analyze-profile (uses AI - 1 request)
-router.post('/:accountId/analyze-profile', aiRateLimiter(), analyzeProfile)
+// POST /api/investment/:accountId/analyze-profile (fixed rules, no AI)
+router.post('/:accountId/analyze-profile', analyzeProfile)
 
 // POST /api/investment/:accountId/recommendations (uses AI - 1 request)
 router.post('/:accountId/recommendations', aiRateLimiter(), getRecommendations)
