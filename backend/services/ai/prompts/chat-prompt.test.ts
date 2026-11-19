@@ -23,6 +23,12 @@ const context: ChatContext = {
     eurUsd: { value: 1.08, change24h: 0.1 },
     eurGbp: { value: 0.85, change24h: null },
     lastUpdated: '2026-11-19T10:00:00.000Z',
+    economy: {
+      inflationSpain: { value: 4.9, period: '2026-10' },
+      euribor12m: null,
+      ecbDepositRate: null,
+      unemploymentSpain: null,
+    },
   },
 }
 

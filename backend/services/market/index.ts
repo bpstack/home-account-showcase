@@ -4,30 +4,62 @@
 
 import { getCryptoPrices } from './coinGecko.js'
 import { getCurrencyRates } from './frankfurter.js'
+import { fetchEconomy } from './economy.js'
 import {
-  getCachedMarketData,
-  cacheMarketData,
+  readCache,
+  writeCache,
   getCacheDuration,
   PARTIAL_CACHE_DURATION_MS,
+  ECONOMY_CACHE_DURATION_MS,
+  ECONOMY_PARTIAL_CACHE_DURATION_MS,
 } from './market-cache.js'
-import type { CryptoCoin, CurrencyPair, MarketData, MarketDataContext, Quote } from './types.js'
+import type {
+  CryptoCoin,
+  CurrencyPair,
+  Economy,
+  MarketData,
+  MarketDataContext,
+  MarketQuotes,
+  Quote,
+} from './types.js'
 import { logger } from '../../utils/logger.js'
 
 type Trend = 'alcista' | 'bajista' | 'neutral'
 
 /** True when every source answered */
-export function isComplete(context: MarketDataContext): boolean {
-  return [context.btc, context.eth, context.eurUsd, context.eurGbp].every((quote) => quote !== null)
+export function isComplete(quotes: MarketQuotes): boolean {
+  return [quotes.btc, quotes.eth, quotes.eurUsd, quotes.eurGbp].every((quote) => quote !== null)
 }
 
-export async function getMarketData(): Promise<MarketDataContext> {
-  const cached = await getCachedMarketData()
-  if (cached) {
-    logger.info('MARKET', 'getMarketData', 'Returning cached market data')
-    return cached
-  }
+/** True when every economic indicator came */
+export function isEconomyComplete(economy: Economy): boolean {
+  return Object.values(economy).every((indicator) => indicator !== null)
+}
 
-  logger.info('MARKET', 'getMarketData', 'Fetching fresh market data from all APIs')
+/** Quotes and economy, each from its own cache or, when it has expired, from its sources */
+export async function getMarketData(): Promise<MarketDataContext> {
+  const [quotes, economy] = await Promise.all([getQuotes(), getEconomy()])
+  return { ...quotes, economy }
+}
+
+async function getEconomy(): Promise<Economy> {
+  const cached = await readCache<Economy>('economy')
+  if (cached) return cached
+
+  const economy = await fetchEconomy()
+  await writeCache(
+    'economy',
+    economy,
+    isEconomyComplete(economy) ? ECONOMY_CACHE_DURATION_MS : ECONOMY_PARTIAL_CACHE_DURATION_MS
+  )
+  return economy
+}
+
+async function getQuotes(): Promise<MarketQuotes> {
+  const cached = await readCache<MarketQuotes>('aggregate-v2')
+  if (cached) return cached
+
+  logger.info('MARKET', 'getQuotes', 'Fetching fresh quotes')
   const startTime = Date.now()
 
   const [crypto, currencies] = await Promise.all([
@@ -40,11 +72,15 @@ export async function getMarketData(): Promise<MarketDataContext> {
   const complete = isComplete(result)
   logger.info(
     'MARKET',
-    'getMarketData',
+    'getQuotes',
     `Fetched in ${Date.now() - startTime}ms${complete ? '' : ', with missing figures'}`
   )
 
-  await cacheMarketData(result, complete ? getCacheDuration().ms : PARTIAL_CACHE_DURATION_MS)
+  await writeCache(
+    'aggregate-v2',
+    result,
+    complete ? getCacheDuration().ms : PARTIAL_CACHE_DURATION_MS
+  )
 
   return result
 }
@@ -55,7 +91,7 @@ export function buildMarketContext(
     currencies: Partial<Record<CurrencyPair, Quote>>
   },
   now: Date
-): MarketDataContext {
+): MarketQuotes {
   return {
     btc: sources.crypto.bitcoin ?? null,
     eth: sources.crypto.ethereum ?? null,
@@ -105,6 +141,7 @@ export function buildMarketDataFull(context: MarketDataContext): MarketData {
   return {
     cryptocurrencies,
     currencies,
+    economy: context.economy,
     cachedAt: context.lastUpdated,
     cacheExpiresIn: getCacheDuration().seconds,
     marketTrend,

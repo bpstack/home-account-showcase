@@ -1,16 +1,21 @@
 // Market figures (2026-11-19): a figure a source cannot give is shown as missing, never replaced by
-// a made-up one. Expected values come from that requirement, not from the code.
+// a made-up one; the economy is told with the period each figure belongs to. Expected values come
+// from those requirements and from the shape of the real ECB and Eurostat answers, not from the
+// code.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./market-cache.js', () => ({
-  getCachedMarketData: vi.fn(),
-  cacheMarketData: vi.fn(),
+  readCache: vi.fn(),
+  writeCache: vi.fn(),
   getCacheDuration: () => ({ ms: 300_000, seconds: 300, minutes: 5 }),
   PARTIAL_CACHE_DURATION_MS: 60_000,
+  ECONOMY_CACHE_DURATION_MS: 43_200_000,
+  ECONOMY_PARTIAL_CACHE_DURATION_MS: 3_600_000,
 }))
 
 const { getCryptoPrices } = await import('./coinGecko.js')
 const { getCurrencyRates } = await import('./frankfurter.js')
+const { fetchEconomy, parseEcb, parseEurostat } = await import('./economy.js')
 const { buildMarketContext, buildMarketDataFull, isComplete } = await import('./index.js')
 const { buildChatPrompt } = await import('../ai/prompts/chat-prompt.js')
 
@@ -19,6 +24,20 @@ const json = (body: unknown, status = 200) =>
 
 const nothing = { crypto: {}, currencies: {} }
 const now = new Date('2026-11-19T10:00:00.000Z')
+const noEconomy = {
+  inflationSpain: null,
+  euribor12m: null,
+  ecbDepositRate: null,
+  unemploymentSpain: null,
+}
+type Economy = Parameters<typeof buildMarketDataFull>[0]['economy']
+const context = (
+  sources: Parameters<typeof buildMarketContext>[0],
+  economy: Economy = noEconomy
+) => ({
+  ...buildMarketContext(sources, now),
+  economy,
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -38,15 +57,15 @@ describe('a source that fails gives no figure', () => {
   }
 
   it('every figure is null and the data counts as incomplete', () => {
-    const context = buildMarketContext(nothing, now)
-    expect(context).toEqual({
+    const quotes = buildMarketContext(nothing, now)
+    expect(quotes).toEqual({
       btc: null,
       eth: null,
       eurUsd: null,
       eurGbp: null,
       lastUpdated: '2026-11-19T10:00:00.000Z',
     })
-    expect(isComplete(context)).toBe(false)
+    expect(isComplete(quotes)).toBe(false)
   })
 })
 
@@ -84,7 +103,7 @@ describe('what the sources give', () => {
 
 describe('the market card', () => {
   it('keeps every row, with no figure where the source did not answer', () => {
-    const full = buildMarketDataFull(buildMarketContext(nothing, now))
+    const full = buildMarketDataFull(context(nothing))
     const figures = [
       ...full.cryptocurrencies.map((r) => [r.price, r.change24h]),
       ...full.currencies.map((r) => [r.rate, r.change24h]),
@@ -95,24 +114,21 @@ describe('the market card', () => {
   })
 
   it('dates the data when it was fetched, not when it is asked for', () => {
-    expect(buildMarketDataFull(buildMarketContext(nothing, now)).cachedAt).toBe(
-      '2026-11-19T10:00:00.000Z'
-    )
+    expect(buildMarketDataFull(context(nothing)).cachedAt).toBe('2026-11-19T10:00:00.000Z')
   })
 
   it('takes the trend only from the changes that are known', () => {
     // One known rise of 1 %: the market is up. Counting the missing one as 0 would average
     // 0.5 % and call it flat
-    const context = buildMarketContext(
-      { ...nothing, crypto: { bitcoin: { value: 80000, change24h: 1 } } },
-      now
+    const full = buildMarketDataFull(
+      context({ ...nothing, crypto: { bitcoin: { value: 80000, change24h: 1 } } })
     )
-    expect(buildMarketDataFull(context).marketTrend).toBe('alcista')
+    expect(full.marketTrend).toBe('alcista')
   })
 })
 
 describe('the chat', () => {
-  const chatContext = (marketPrices: ReturnType<typeof buildMarketContext>) => ({
+  const chatContext = (marketPrices: ReturnType<typeof context>) => ({
     accountId: 'account-1',
     financialSummary: {
       avgMonthlyIncome: 2000,
@@ -125,13 +141,14 @@ describe('the chat', () => {
     },
     marketPrices,
   })
-  const marketLines = (prompt: string) =>
-    prompt.split('\n').filter((line) => /^- (Bitcoin|EUR\/USD):/.test(line))
+  const linesStarting = (prompt: string, start: RegExp) =>
+    prompt.split('\n').filter((line) => start.test(line))
+  const marketLines = (prompt: string) => linesStarting(prompt, /^- (Bitcoin|EUR\/USD):/)
+  const economyLines = (prompt: string) =>
+    linesStarting(prompt, /^- (Inflación|Euríbor|Tipo de depósito|Paro)/)
 
   it('is told a missing figure is not available, with no number standing in for it', () => {
-    const lines = marketLines(
-      buildChatPrompt('Hola', chatContext(buildMarketContext(nothing, now)), [])
-    )
+    const lines = marketLines(buildChatPrompt('Hola', chatContext(context(nothing)), []))
     expect(lines).toHaveLength(2)
     for (const line of lines) {
       expect(line).toMatch(/: no disponible$/)
@@ -139,12 +156,78 @@ describe('the chat', () => {
   })
 
   it('is told the price with its change', () => {
-    const context = buildMarketContext(
-      { ...nothing, crypto: { bitcoin: { value: 80000, change24h: 1.5 } } },
-      now
-    )
-    expect(marketLines(buildChatPrompt('Hola', chatContext(context), []))[0]).toBe(
+    const prices = context({ ...nothing, crypto: { bitcoin: { value: 80000, change24h: 1.5 } } })
+    expect(marketLines(buildChatPrompt('Hola', chatContext(prices), []))[0]).toBe(
       '- Bitcoin: 80.000,00 € (+1,50 %)'
     )
+  })
+
+  it('is told each economic figure with its period, and a missing one as not available', () => {
+    const prices = context(nothing, {
+      ...noEconomy,
+      inflationSpain: { value: 4.9, period: '2026-10' },
+    })
+    expect(economyLines(buildChatPrompt('Hola', chatContext(prices), []))).toEqual([
+      '- Inflación en España, interanual: 4,9 % (2026-10)',
+      '- Euríbor a 12 meses, media mensual: no disponible',
+      '- Tipo de depósito del BCE: no disponible',
+      '- Paro en España: no disponible',
+    ])
+  })
+})
+
+describe('the economy', () => {
+  // Shapes of the real answers, trimmed: ECB SDMX-JSON (detail=dataonly) and Eurostat JSON-stat
+  const ecbAnswer = (values: number[], periods: string[]) => ({
+    dataSets: [
+      {
+        series: {
+          '0:0:0:0:0:0:0': {
+            observations: Object.fromEntries(values.map((v, i) => [String(i), [v]])),
+          },
+        },
+      },
+    ],
+    structure: {
+      dimensions: { observation: [{ id: 'TIME_PERIOD', values: periods.map((id) => ({ id })) }] },
+    },
+  })
+  const eurostatAnswer = (values: Record<string, number>, periods: string[]) => ({
+    value: values,
+    dimension: {
+      time: { category: { index: Object.fromEntries(periods.map((p, i) => [p, i])) } },
+    },
+  })
+
+  it('ECB: the last observation with its period', () => {
+    expect(parseEcb(ecbAnswer([3.247, 3.2385909], ['2026-09', '2026-10']))).toEqual({
+      value: 3.2385909,
+      period: '2026-10',
+    })
+  })
+
+  it('Eurostat: the last month with a value, when the newest month comes empty', () => {
+    // Unemployment comes like this: the newest month is listed with no value yet
+    expect(
+      parseEurostat(eurostatAnswer({ '0': 10.2, '1': 10.3 }, ['2026-08', '2026-09', '2026-10']))
+    ).toEqual({ value: 10.3, period: '2026-09' })
+  })
+
+  it('an answer without values gives no figure, not 0', () => {
+    expect(parseEcb({})).toBeNull()
+    expect(parseEurostat(eurostatAnswer({}, ['2026-10']))).toBeNull()
+  })
+
+  it('every indicator is null when the sources fail', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => json({}, 503))
+    )
+    expect(await fetchEconomy()).toEqual(noEconomy)
+  })
+
+  it('reaches the market card as the sources gave it', () => {
+    const economy = { ...noEconomy, ecbDepositRate: { value: 2.5, period: '2026-11-19' } }
+    expect(buildMarketDataFull(context(nothing, economy)).economy).toEqual(economy)
   })
 })
