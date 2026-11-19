@@ -1,161 +1,62 @@
 // services/market/frankfurter.ts
-// Frankfurter API - Currencies (100% free, no API key)
+// Frankfurter API - ECB reference rates against the euro (100% free, no API key)
 
-import type { CurrencyRate, CurrencyPair } from './types.js'
+import type { CurrencyPair, Quote } from './types.js'
 import { logger } from '../../utils/logger.js'
 
-const FRANKFURTER_BASE = 'https://api.frankfurter.app'
+const FRANKFURTER_BASE = 'https://api.frankfurter.dev/v1'
+// Enough days back to hold two working days across a weekend and a bank holiday
+const DAYS_BACK = 10
 
+/**
+ * Rate of each currency against the euro on the last published day, and its change from the
+ * working day before; a currency Frankfurter does not give is left out
+ */
 export async function getCurrencyRates(
-  currencies: CurrencyPair[] = ['USD', 'GBP']
-): Promise<Record<CurrencyPair, CurrencyRate>> {
-  const symbols = currencies.join(',')
-  const url = `${FRANKFURTER_BASE}/latest?from=EUR&to=${symbols}`
-
+  currencies: readonly CurrencyPair[]
+): Promise<Partial<Record<CurrencyPair, Quote>>> {
+  const start = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const url = `${FRANKFURTER_BASE}/${start}..?from=EUR&to=${currencies.join(',')}`
   const startTime = Date.now()
-  logger.info('FRANKFURTER', 'getCurrencyRates', `Fetching rates for: ${currencies.join(', ')}`)
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-    })
+    const response = await fetch(url, { headers: { Accept: 'application/json' } })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      logger.error(
-        'FRANKFURTER',
-        'getCurrencyRates',
-        `API error: ${response.status}`,
-        new Error(errorText)
-      )
-      return getFallbackCurrencyRates(currencies)
+      logger.warn('FRANKFURTER', 'getCurrencyRates', `API error ${response.status}`)
+      return {}
     }
 
     const data = await response.json()
-    const elapsed = Date.now() - startTime
-    logger.info('FRANKFURTER', 'getCurrencyRates', `Response received in ${elapsed}ms`)
+    logger.info(
+      'FRANKFURTER',
+      'getCurrencyRates',
+      `Response received in ${Date.now() - startTime}ms`
+    )
 
-    const result: Record<CurrencyPair, CurrencyRate> = {} as Record<CurrencyPair, CurrencyRate>
+    const days = Object.keys(data.rates ?? {}).sort()
+    const last = data.rates?.[days[days.length - 1]] ?? {}
+    const previous = data.rates?.[days[days.length - 2]] ?? {}
 
+    const result: Partial<Record<CurrencyPair, Quote>> = {}
     for (const currency of currencies) {
-      if (data.rates && data.rates[currency]) {
-        const rate = data.rates[currency]
-
-        const change24h = await getCurrencyChange24h(currency)
-
-        result[currency] = {
-          pair: `EUR/${currency}`,
-          rate: rate,
-          change24h: change24h,
-          source: 'frankfurter',
-        }
+      const rate = last[currency]
+      if (typeof rate !== 'number' || rate <= 0) continue
+      const before = previous[currency]
+      result[currency] = {
+        value: rate,
+        change24h:
+          typeof before === 'number' && before > 0 ? ((rate - before) / before) * 100 : null,
       }
     }
-
     return result
   } catch (error) {
-    const elapsed = Date.now() - startTime
-    logger.error('FRANKFURTER', 'getCurrencyRates', `Error after ${elapsed}ms`, error as Error)
-    return getFallbackCurrencyRates(currencies)
+    logger.error(
+      'FRANKFURTER',
+      'getCurrencyRates',
+      `Error after ${Date.now() - startTime}ms`,
+      error as Error
+    )
+    return {}
   }
-}
-
-async function getCurrencyChange24h(currency: CurrencyPair): Promise<number> {
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  const dateStr = yesterday.toISOString().split('T')[0]
-
-  try {
-    const url = `${FRANKFURTER_BASE}/${dateStr}?from=EUR&to=${currency}`
-    const response = await fetch(url)
-
-    if (!response.ok) return 0
-
-    const data = await response.json()
-    const yesterdayRate = data.rates?.[currency]
-
-    if (yesterdayRate) {
-      const currentUrl = `${FRANKFURTER_BASE}/latest?from=EUR&to=${currency}`
-      const currentResponse = await fetch(currentUrl)
-      const currentData = await currentResponse.json()
-      const currentRate = currentData.rates?.[currency]
-
-      if (currentRate && yesterdayRate) {
-        return ((currentRate - yesterdayRate) / yesterdayRate) * 100
-      }
-    }
-  } catch {
-    logger.warn('FRANKFURTER', 'getCurrencyChange24h', `Could not fetch 24h change for ${currency}`)
-  }
-
-  return 0
-}
-
-function getFallbackCurrencyRates(currencies: CurrencyPair[]): Record<CurrencyPair, CurrencyRate> {
-  logger.warn('FRANKFURTER', 'getFallbackCurrencyRates', 'Using fallback rates')
-
-  const fallbackRates: Record<CurrencyPair, CurrencyRate> = {
-    USD: {
-      pair: 'EUR/USD',
-      rate: 1.042,
-      change24h: 0.15,
-      source: 'frankfurter',
-    },
-    GBP: {
-      pair: 'EUR/GBP',
-      rate: 0.862,
-      change24h: -0.08,
-      source: 'frankfurter',
-    },
-    JPY: {
-      pair: 'EUR/JPY',
-      rate: 163.5,
-      change24h: 0.1,
-      source: 'frankfurter',
-    },
-    CHF: {
-      pair: 'EUR/CHF',
-      rate: 0.94,
-      change24h: 0.05,
-      source: 'frankfurter',
-    },
-    CAD: {
-      pair: 'EUR/CAD',
-      rate: 1.48,
-      change24h: -0.1,
-      source: 'frankfurter',
-    },
-    AUD: {
-      pair: 'EUR/AUD',
-      rate: 1.62,
-      change24h: 0.2,
-      source: 'frankfurter',
-    },
-  }
-
-  const result: Record<CurrencyPair, CurrencyRate> = {} as Record<CurrencyPair, CurrencyRate>
-  for (const currency of currencies) {
-    result[currency] = fallbackRates[currency]
-  }
-  return result
-}
-
-export async function getEurToUsd(): Promise<CurrencyRate> {
-  const rates = await getCurrencyRates(['USD'])
-  return rates.USD
-}
-
-export async function getEurToGbp(): Promise<CurrencyRate> {
-  const rates = await getCurrencyRates(['GBP'])
-  return rates.GBP
-}
-
-export async function getAllMajorRates(): Promise<CurrencyRate[]> {
-  const currencies: CurrencyPair[] = ['USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD']
-  const rates = await getCurrencyRates(currencies)
-
-  return Object.values(rates)
 }

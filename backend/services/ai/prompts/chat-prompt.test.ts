@@ -18,13 +18,11 @@ const context: ChatContext = {
     trend: 'stable',
   },
   marketPrices: {
-    sp500: { value: 5000, change24h: 0.5 },
-    msciWorld: { value: 3500, change24h: -0.2 },
-    nasdaq: { value: 16000, change24h: 1 },
     btc: { value: 60000, change24h: 2 },
     eth: { value: 3000, change24h: 1.5 },
-    eurUsd: 1.08,
-    eurGbp: 0.85,
+    eurUsd: { value: 1.08, change24h: 0.1 },
+    eurGbp: { value: 0.85, change24h: null },
+    lastUpdated: '2026-11-19T10:00:00.000Z',
   },
 }
 

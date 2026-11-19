@@ -161,9 +161,8 @@ export class InvestmentAI {
 
     const marketData = await getMarketData()
     const prompt = buildEducationPrompt(concept, userLevel, {
-      sp500: marketData.sp500.value,
-      btc: marketData.btc.value,
-      eurUsd: marketData.eurUsd,
+      btc: marketData.btc?.value,
+      eurUsd: marketData.eurUsd?.value,
     })
 
     return this.client.sendPromptJSON(prompt)

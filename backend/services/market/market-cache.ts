@@ -8,16 +8,24 @@ import { logger } from '../../utils/logger.js'
 
 const CACHE_DURATION_MS = 5 * 60 * 1000 // 5 minutos
 const CACHE_DURATION_SECONDS = 300
+/** A result with gaps is kept only briefly, so a source that comes back shows up soon */
+export const PARTIAL_CACHE_DURATION_MS = 60 * 1000
+
+// The shape of the cached data changed with the removal of the fallback figures: rows written
+// before carry the old one under 'aggregate' and are never read again
+const CACHE_SYMBOL = 'aggregate-v2'
+const CACHE_SOURCE = 'multiple'
 
 export async function getCachedMarketData(): Promise<MarketDataContext | null> {
   try {
     const [rows] = await db.query<any[]>(
       `SELECT data, cached_at, expires_at
        FROM market_data_cache
-       WHERE symbol = 'aggregate' AND source = 'multiple'
+       WHERE symbol = ? AND source = ?
        AND expires_at > NOW()
        ORDER BY cached_at DESC
-       LIMIT 1`
+       LIMIT 1`,
+      [CACHE_SYMBOL, CACHE_SOURCE]
     )
 
     if (rows.length === 0) {
@@ -33,29 +41,28 @@ export async function getCachedMarketData(): Promise<MarketDataContext | null> {
       `Using cached data from ${rows[0].cached_at}`
     )
 
-    return {
-      ...cached,
-      lastUpdated: rows[0].cached_at,
-    }
+    return cached
   } catch (error) {
     logger.error('MARKET_CACHE', 'getCachedMarketData', 'Error reading cache', error as Error)
     return null
   }
 }
 
-export async function cacheMarketData(data: MarketDataContext): Promise<void> {
+export async function cacheMarketData(
+  data: MarketDataContext,
+  durationMs: number = CACHE_DURATION_MS
+): Promise<void> {
   const id = crypto.randomUUID()
-  const expiresAt = new Date(Date.now() + CACHE_DURATION_MS)
+  const expiresAt = new Date(Date.now() + durationMs)
 
   try {
-    await db.query(
-      `DELETE FROM market_data_cache WHERE symbol = 'aggregate' AND source = 'multiple'`
-    )
+    // Also clears the rows of the old shape
+    await db.query(`DELETE FROM market_data_cache WHERE source = ?`, [CACHE_SOURCE])
 
     await db.query(
       `INSERT INTO market_data_cache (id, symbol, source, data, cached_at, expires_at)
        VALUES (?, ?, ?, ?, NOW(), ?)`,
-      [id, 'aggregate', 'multiple', JSON.stringify(data), expiresAt]
+      [id, CACHE_SYMBOL, CACHE_SOURCE, JSON.stringify(data), expiresAt]
     )
 
     logger.info(
@@ -65,103 +72,6 @@ export async function cacheMarketData(data: MarketDataContext): Promise<void> {
     )
   } catch (error) {
     logger.error('MARKET_CACHE', 'cacheMarketData', 'Error caching data', error as Error)
-  }
-}
-
-export async function getCachedSymbol(
-  symbol: string,
-  source: string
-): Promise<{ data: any; cachedAt: Date } | null> {
-  try {
-    const [rows] = await db.query<any[]>(
-      `SELECT data, cached_at
-       FROM market_data_cache
-       WHERE symbol = ? AND source = ?
-       AND expires_at > NOW()
-       ORDER BY cached_at DESC
-       LIMIT 1`,
-      [symbol, source]
-    )
-
-    if (rows.length === 0) return null
-
-    const rawData = rows[0].data
-    return {
-      data: typeof rawData === 'string' ? JSON.parse(rawData) : rawData,
-      cachedAt: rows[0].cached_at,
-    }
-  } catch (error) {
-    logger.error(
-      'MARKET_CACHE',
-      'getCachedSymbol',
-      `Error reading cache for ${symbol}/${source}`,
-      error as Error
-    )
-    return null
-  }
-}
-
-export async function cacheSymbol(symbol: string, source: string, data: any): Promise<void> {
-  const id = crypto.randomUUID()
-  const expiresAt = new Date(Date.now() + CACHE_DURATION_MS)
-
-  try {
-    await db.query(`DELETE FROM market_data_cache WHERE symbol = ? AND source = ?`, [
-      symbol,
-      source,
-    ])
-
-    await db.query(
-      `INSERT INTO market_data_cache (id, symbol, source, data, cached_at, expires_at)
-       VALUES (?, ?, ?, ?, NOW(), ?)`,
-      [id, symbol, source, JSON.stringify(data), expiresAt]
-    )
-  } catch (error) {
-    logger.error('MARKET_CACHE', 'cacheSymbol', `Error caching ${symbol}/${source}`, error as Error)
-  }
-}
-
-export async function clearExpiredCache(): Promise<number> {
-  try {
-    const [result] = await db.query<any>(`DELETE FROM market_data_cache WHERE expires_at < NOW()`)
-
-    const deleted = (result as any).affectedRows
-    if (deleted > 0) {
-      logger.info('MARKET_CACHE', 'clearExpiredCache', `Cleared ${deleted} expired cache entries`)
-    }
-
-    return deleted
-  } catch (error) {
-    logger.error(
-      'MARKET_CACHE',
-      'clearExpiredCache',
-      'Error clearing expired cache',
-      error as Error
-    )
-    return 0
-  }
-}
-
-export async function getCacheStats(): Promise<{
-  totalEntries: number
-  expiredEntries: number
-  validEntries: number
-}> {
-  try {
-    const [totalRows] = await db.query<any[]>(`SELECT COUNT(*) as total FROM market_data_cache`)
-
-    const [expiredRows] = await db.query<any[]>(
-      `SELECT COUNT(*) as expired FROM market_data_cache WHERE expires_at < NOW()`
-    )
-
-    return {
-      totalEntries: totalRows[0]?.total || 0,
-      expiredEntries: expiredRows[0]?.expired || 0,
-      validEntries: (totalRows[0]?.total || 0) - (expiredRows[0]?.expired || 0),
-    }
-  } catch (error) {
-    logger.error('MARKET_CACHE', 'getCacheStats', 'Error getting stats', error as Error)
-    return { totalEntries: 0, expiredEntries: 0, validEntries: 0 }
   }
 }
 

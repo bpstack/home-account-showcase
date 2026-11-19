@@ -1,6 +1,10 @@
 // services/ai/prompts/types.ts
 // Tipos compartidos para todos los prompts de inversión
 
+import type { MarketDataContext } from '../../market/types.js'
+
+export type { MarketDataContext }
+
 // ========================
 // CONTEXTO DE INVERSIÓN
 // ========================
@@ -36,16 +40,6 @@ export interface InvestmentContext {
     date: string
     category?: string
   }>
-}
-
-export interface MarketDataContext {
-  sp500: { value: number; change24h: number }
-  msciWorld: { value: number; change24h: number }
-  nasdaq: { value: number; change24h: number }
-  btc: { value: number; change24h: number }
-  eth: { value: number; change24h: number }
-  eurUsd: number
-  eurGbp: number
 }
 
 // ========================
