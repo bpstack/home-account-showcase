@@ -9,8 +9,9 @@
     "build": "echo 'Using tsx - no build needed'",
     "start": "tsx index.ts",
     "typecheck": "tsc --noEmit",
-    "verify": "pnpm run typecheck && pnpm run lint",
+    "verify": "pnpm run typecheck && pnpm run lint && pnpm run test",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
+    "test": "vitest run",
     "format": "prettier --write ."
   },
   "keywords": [],
@@ -60,6 +61,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "prettier": "^3.6.2",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "5.1.0"
   }
 }
