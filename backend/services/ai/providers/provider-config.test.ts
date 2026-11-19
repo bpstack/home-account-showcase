@@ -1,5 +1,5 @@
 // Groq model (ADR-010, 2026-11-19): the server works with openai/gpt-oss-120b whether or not the
-// environment names a model; llama-3.3-70b-versatile was retired by Groq on 2026-11-18, and with
+// environment names a model; llama-3.3-70b-versatile was retired by Groq (ADR-010), and with
 // it as the default the chat failed wherever the variable was missing.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getProviderConfigFromEnv } from './index.js'
