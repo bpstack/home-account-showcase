@@ -224,48 +224,6 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
   })
 })
 
-export const getRecommendations = asyncHandler(async (req: Request, res: Response) => {
-  const { accountId } = req.params
-  const userId = (req as any).user?.id
-  const { profile, monthlyAmount, includeExplanation: _includeExplanation } = req.body
-
-  if (!userId) {
-    throw new AppError('No autorizado', 401)
-  }
-
-  const hasAccess = await AccountRepository.hasAccess(accountId, userId)
-  if (!hasAccess) {
-    throw new AppError('No tienes acceso a esta cuenta', 403)
-  }
-
-  const financialContext = await getAccountFinancialContext(accountId, userId)
-
-  const ai = createInvestmentAI()
-  if (!ai.isAvailable()) {
-    throw new AppError('IA no disponible', 503)
-  }
-
-  const monthlyInvest =
-    monthlyAmount ||
-    financialContext.savingsCapacity * (financialContext.investmentPercentage / 100)
-
-  const result = await ai.generateRecommendations(
-    profile ||
-      (financialContext.investmentPercentage <= 10
-        ? 'conservative'
-        : financialContext.investmentPercentage >= 30
-          ? 'dynamic'
-          : 'balanced'),
-    monthlyInvest,
-    financialContext
-  )
-
-  res.status(200).json({
-    success: true,
-    data: result,
-  })
-})
-
 export const getMarketPrices = asyncHandler(async (req: Request, res: Response) => {
   const { accountId } = req.params
   const userId = (req as any).user?.id

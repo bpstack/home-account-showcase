@@ -3,13 +3,11 @@
 
 import { AIClient, createAIClient } from './ai-client.js'
 import type { AIProviderType } from './types.js'
-import { buildRecommendationPrompt } from './prompts/recommendation-prompt.js'
 import { buildChatPrompt, buildSystemMessage } from './prompts/chat-prompt.js'
 import { buildEducationPrompt } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
   ChatContext,
-  RecommendationResult,
   ChatResult,
   ChatMessage,
   EducationResult,
@@ -32,38 +30,6 @@ export class InvestmentAI {
 
   getProviderName(): string {
     return this.client.getProviderName()
-  }
-
-  // ========================
-  // RECOMMENDATIONS
-  // ========================
-
-  async generateRecommendations(
-    profile: 'conservative' | 'balanced' | 'dynamic',
-    monthlyAmount: number,
-    context: InvestmentContext
-  ): Promise<RecommendationResult> {
-    const startTime = Date.now()
-
-    if (!this.isAvailable()) {
-      throw new AppError('AI not available', 503)
-    }
-
-    const marketData = await getMarketData()
-    const prompt = buildRecommendationPrompt(profile, monthlyAmount, context, marketData)
-
-    const response = await this.client.sendPromptJSON<RecommendationResult>(prompt)
-
-    const responseTime = Date.now() - startTime
-    await this.logInvestmentSession(
-      context.accountId || '',
-      context.userId || '',
-      'recommendation',
-      responseTime,
-      response
-    )
-
-    return response
   }
 
   // ========================

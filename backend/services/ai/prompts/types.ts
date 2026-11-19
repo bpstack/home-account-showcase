@@ -52,31 +52,6 @@ export interface MarketDataContext {
 // RESULTADOS DE PROMPTS
 // ========================
 
-export interface RecommendationItem {
-  type: 'ETF' | 'BOND_FUND' | 'CRYPTO' | 'STOCK' | 'SAVINGS'
-  symbol: string
-  name: string
-  percentage: number
-  amount: number
-  currentPrice?: number
-  units?: number
-  reason: string
-  risk: 'low' | 'medium' | 'high'
-}
-
-export interface RecommendationResult {
-  recommendations: RecommendationItem[]
-  totalMonthly: number
-  assetAllocation: {
-    stocks: number
-    bonds: number
-    crypto: number
-    cash: number
-  }
-  marketContext: string
-  disclaimer: string
-}
-
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string

@@ -56,12 +56,6 @@ export const ChatMessageSchema = z.object({
     ),
 })
 
-export const RecommendationsRequestSchema = z.object({
-  profile: z.enum(['conservative', 'balanced', 'dynamic']).optional(),
-  monthlyAmount: z.number().positive().optional(),
-  includeExplanation: z.boolean().optional(),
-})
-
 export const ExplainConceptSchema = z.object({
   q: z.string().min(1).max(200),
 })
