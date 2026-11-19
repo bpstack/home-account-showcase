@@ -35,20 +35,6 @@ export function useMarketPrices(
   })
 }
 
-export function useRecommendations(
-  accountId: string,
-  options?: { profile?: string; monthlyAmount?: number },
-  { enabled = true }: { enabled?: boolean } = {}
-) {
-  return useQuery({
-    queryKey: ['investment', 'recommendations', accountId, options],
-    queryFn: () => investmentApi.getRecommendations(accountId, options),
-    // Each request spends AI quota (15 an hour): reuse the plan for a while within the session
-    staleTime: 30 * 60 * 1000,
-    enabled: !!accountId && enabled,
-  })
-}
-
 export function useChatHistory(accountId: string, sessionId: string) {
   return useQuery({
     queryKey: ['investment', 'chat', 'history', sessionId],
@@ -71,9 +57,6 @@ export function useAnalyzeProfile() {
     onSuccess: (_, variables) => {
       // Invalidate overview to reflect new profile
       queryClient.invalidateQueries({ queryKey: ['investment', 'overview', variables.accountId] })
-      queryClient.invalidateQueries({
-        queryKey: ['investment', 'recommendations', variables.accountId],
-      })
     },
   })
 }

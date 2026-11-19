@@ -98,32 +98,6 @@ export interface ProfileAssessmentResult {
   marketContext: string
 }
 
-export interface RecommendationItem {
-  type: 'ETF' | 'BOND_FUND' | 'CRYPTO' | 'STOCK' | 'SAVINGS'
-  symbol: string
-  name: string
-  percentage: number
-  amount: number
-  currentPrice?: number
-  units?: number
-  reason: string
-  risk: 'low' | 'medium' | 'high'
-}
-
-export interface RecommendationResult {
-  recommendations: RecommendationItem[]
-  totalMonthly: number
-  assetAllocation: {
-    stocks: number
-    bonds: number
-    crypto: number
-    cash: number
-  }
-  marketContext: string
-  disclaimer: string
-  error?: string
-}
-
 export interface ChatSession {
   sessionId: string
   provider: string
@@ -204,21 +178,6 @@ export const investmentApi = {
       {
         method: 'POST',
         body: JSON.stringify(answers),
-      }
-    )
-    return data.data
-  },
-
-  // Get recommendations
-  getRecommendations: async (
-    accountId: string,
-    options?: { profile?: string; monthlyAmount?: number; includeExplanation?: boolean }
-  ): Promise<RecommendationResult> => {
-    const data = await investmentRequest<{ data: RecommendationResult }>(
-      `/investment/${accountId}/recommendations`,
-      {
-        method: 'POST',
-        body: JSON.stringify(options || {}),
       }
     )
     return data.data

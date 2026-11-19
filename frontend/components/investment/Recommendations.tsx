@@ -2,10 +2,8 @@
 
 import { Button, Money } from '@/components/ui'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Skeleton } from '@/components/ui/Skeleton'
-import { useInvestmentOverview, useRecommendations } from '@/lib/queries/investment'
-import type { RecommendationItem } from '@/lib/api/investment'
-import { AiNote } from './AiNote'
+import { useInvestmentOverview } from '@/lib/queries/investment'
+import { buildMonthlyPlan, type AssetClass, type PlanItem } from '@/lib/investment-plan'
 
 interface RecommendationsProps {
   accountId: string
@@ -15,32 +13,27 @@ interface RecommendationsProps {
   onTakeTest: () => void
 }
 
-const RISK_LABELS: Record<RecommendationItem['risk'], string> = {
+const RISK_LABELS: Record<PlanItem['risk'], string> = {
   low: 'riesgo bajo',
   medium: 'riesgo medio',
   high: 'riesgo alto',
 }
 
-// One accent in four strengths: the split reads as one thing, not as four categories
-const ALLOCATION = [
+// One accent in three strengths: the split reads as one thing, not as three categories
+const ALLOCATION: Array<{ key: AssetClass; label: string; swatch: string }> = [
   { key: 'stocks', label: 'Acciones', swatch: 'bg-accent' },
-  { key: 'bonds', label: 'Bonos', swatch: 'bg-accent/60' },
-  { key: 'crypto', label: 'Cripto', swatch: 'bg-accent/30' },
+  { key: 'bonds', label: 'Bonos', swatch: 'bg-accent/50' },
   { key: 'cash', label: 'Liquidez', swatch: 'bg-text-secondary' },
-] as const
+]
 
 const percent = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 })
 
-/** The monthly plan: how much to invest, how it splits and in what. */
+/** The monthly plan, by fixed rules: how much to invest, how it splits and in what. */
 export function Recommendations({ accountId, monthlySavings, onTakeTest }: RecommendationsProps) {
   const { data: overview } = useInvestmentOverview(accountId, { refetchOnMount: false })
   const profile = overview?.profile
   const share = profile?.investmentPercentage ?? 0
   const monthly = (monthlySavings * share) / 100
-  // The AI is asked only when there is a profile and something to invest
-  const { data, isLoading, isError, refetch } = useRecommendations(accountId, undefined, {
-    enabled: !!profile && monthly > 0,
-  })
 
   const header = (
     <h2 id="investment-plan" className="mb-3 text-sm font-medium text-text-primary">
@@ -78,94 +71,61 @@ export function Recommendations({ accountId, monthlySavings, onTakeTest }: Recom
     )
   }
 
-  if (isLoading) {
-    return (
-      <section aria-labelledby="investment-plan" aria-busy="true">
-        {header}
-        <div className="space-y-3">
-          <Skeleton className="h-6 w-2/3" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </section>
-    )
-  }
-
-  if (isError || !data?.assetAllocation) {
-    const aiDown = data?.error?.includes('IA no disponible') || data?.error?.includes('rate limit')
-    return (
-      <section aria-labelledby="investment-plan">
-        {header}
-        <p className="text-sm text-text-secondary">
-          {aiDown
-            ? 'La IA no está disponible ahora mismo. Prueba dentro de unos minutos.'
-            : 'No se ha podido preparar el plan.'}
-        </p>
-        <Button variant="ghost" size="sm" className="mt-2 -ml-3" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </section>
-    )
-  }
-
-  const allocation = ALLOCATION.map((part) => ({
-    ...part,
-    value: Number(data.assetAllocation[part.key]) || 0,
-  })).filter((part) => part.value > 0)
+  const plan = buildMonthlyPlan(profile.riskProfile, monthly)
+  const allocation = ALLOCATION.filter((part) => plan.allocation[part.key] > 0)
 
   return (
     <section aria-labelledby="investment-plan">
       {header}
       <p className="text-sm text-text-secondary">
         Inviertes{' '}
-        <Money value={monthly} tone="neutral" className="text-base font-medium sm:text-xl" /> al
+        <Money value={plan.total} tone="neutral" className="text-base font-medium sm:text-xl" /> al
         mes: el {percent.format(share)} % de lo que ahorras.
       </p>
 
       <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-layer-3" aria-hidden="true">
         {allocation.map((part) => (
-          <div key={part.key} className={part.swatch} style={{ width: `${part.value}%` }} />
+          <div
+            key={part.key}
+            className={part.swatch}
+            style={{ width: `${plan.allocation[part.key]}%` }}
+          />
         ))}
       </div>
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
         {allocation.map((part) => (
           <li key={part.key} className="flex items-center gap-1.5">
             <span aria-hidden="true" className={`h-2 w-2 rounded-full ${part.swatch}`} />
-            {part.label} {percent.format(part.value)} %
+            {part.label} {percent.format(plan.allocation[part.key])} %
           </li>
         ))}
       </ul>
 
       <ul className="mt-4 divide-y divide-layer-3 border-y border-layer-3">
-        {data.recommendations.map((rec) => (
-          <li key={`${rec.type}-${rec.symbol}`} className="flex items-center gap-3 py-3">
+        {plan.items.map((item) => (
+          <li key={item.id} className="flex items-center gap-3 py-3">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm text-text-primary">
-                {rec.name} <span className="text-xs text-text-secondary">{rec.symbol}</span>
-              </p>
-              <p className="truncate text-xs text-text-secondary" title={rec.reason}>
-                {RISK_LABELS[rec.risk] ?? rec.risk} · {rec.reason}
+              <p className="text-sm text-text-primary">{item.name}</p>
+              <p className="text-xs text-text-secondary">
+                {item.isin && <span className="tabular-nums">{item.isin} · </span>}
+                {RISK_LABELS[item.risk]} · {item.reason}
               </p>
             </div>
             <div className="shrink-0 text-right">
-              <Money
-                value={(monthly * rec.percentage) / 100}
-                tone="neutral"
-                className="text-sm font-medium"
-              />
+              <Money value={item.amount} tone="neutral" className="text-sm font-medium" />
               <p className="text-xs tabular-nums text-text-secondary">
-                {percent.format(rec.percentage)} %
+                {percent.format(item.percentage)} %
               </p>
             </div>
           </li>
         ))}
       </ul>
 
-      {data.marketContext && (
-        <p className="mt-3 text-sm text-text-secondary">{data.marketContext}</p>
-      )}
-      <AiNote className="mt-3" />
+      <p className="mt-3 text-xs text-text-secondary">
+        Reparto orientativo con reglas fijas según tu perfil. Los fondos son ejemplos UCITS:
+        comprueba en tu bróker que estén disponibles y sus comisiones. No es asesoramiento
+        financiero.
+      </p>
     </section>
   )
 }
