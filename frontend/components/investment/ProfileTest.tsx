@@ -6,7 +6,6 @@ import { useAnalyzeProfile } from '@/lib/queries/investment'
 import type { ProfileAnswers, ProfileAssessmentResult } from '@/lib/api/investment'
 import type { FinancialSummary } from '@/hooks/useFinancialMetrics'
 import { validateProfileField } from '@/validators/investment-validators'
-import { AiNote } from './AiNote'
 import { PROFILE_LABELS } from './RiskProfile'
 
 type Field = Exclude<keyof ProfileAnswers, 'financialMetrics'>
@@ -166,7 +165,10 @@ export function ProfileTest({ accountId, metrics, onClose }: ProfileTestProps) {
             ))}
           </ul>
         )}
-        <AiNote />
+        <p className="text-xs text-text-secondary">
+          Orientativo, calculado con reglas fijas a partir de tus respuestas y tus movimientos: no
+          es asesoramiento financiero.
+        </p>
       </Sheet>
     )
   }
