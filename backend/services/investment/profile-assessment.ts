@@ -28,6 +28,11 @@ export interface ProfileTestMetrics {
 
 export interface ProfileAssessment {
   recommendedProfile: RiskProfile
+  /** Risk tolerance points, 0 to MAX_SCORE, before the caps */
+  score: number
+  maxScore: number
+  /** Points range of the profile given (it can come from a cap, not from the points) */
+  scoreRange: { min: number; max: number }
   confidence: number
   reasoning: string
   investmentPercentage: number
@@ -51,6 +56,14 @@ const LABEL: Record<RiskProfile, string> = {
   dynamic: 'dinámico',
 }
 
+/** Points range of each profile: 0–5 conservative, 6–10 balanced, 11–15 dynamic. */
+export const MAX_SCORE = 15
+export const SCORE_RANGE: Record<RiskProfile, { min: number; max: number }> = {
+  conservative: { min: 0, max: 5 },
+  balanced: { min: 6, max: 10 },
+  dynamic: { min: 11, max: MAX_SCORE },
+}
+
 /** Share of the monthly savings that goes to investing, [low, usual, high], by profile. */
 const PERCENTAGE: Record<RiskProfile, [number, number, number]> = {
   conservative: [5, 10, 10],
@@ -71,7 +84,7 @@ const lower = (a: RiskProfile, b: RiskProfile) =>
   ORDER[Math.min(ORDER.indexOf(a), ORDER.indexOf(b))]
 
 /**
- * Risk tolerance score, 0 to 15: horizon (0/2/4), reaction to a 20 % drop (0/2/4), experience
+ * Risk tolerance score, 0 to MAX_SCORE: horizon (0/2/4), reaction to a 20 % drop (0/2/4), experience
  * (0–3), age (2 under 35, 1 up to 54, 0 from 55) and income stability (0–2).
  */
 export function riskScore(a: ProfileTestAnswers): number {
@@ -89,7 +102,12 @@ export function assessProfile(
   liquidityReserve = 0
 ): ProfileAssessment {
   const score = riskScore(answers)
-  const byScore: RiskProfile = score <= 5 ? 'conservative' : score <= 10 ? 'balanced' : 'dynamic'
+  const byScore: RiskProfile =
+    score <= SCORE_RANGE.conservative.max
+      ? 'conservative'
+      : score <= SCORE_RANGE.balanced.max
+        ? 'balanced'
+        : 'dynamic'
 
   const reasons: string[] = []
   const warnings: string[] = []
@@ -130,10 +148,13 @@ export function assessProfile(
     reasons.unshift(`Por tus respuestas tu perfil sería ${LABEL[byScore]}.`)
   }
 
-  // How much of the savings goes to investing.
+  // How much of the savings goes to investing. Without an emergency fund, nothing: the savings
+  // build the fund first, as an adviser would say.
   const [low, usual, high] = PERCENTAGE[profile]
   let percentage = usual
-  if (answers.hasEmergencyFund !== 'yes') {
+  if (answers.hasEmergencyFund === 'no') {
+    percentage = 0
+  } else if (answers.hasEmergencyFund === 'partial') {
     percentage = low
   } else if (metrics && metrics.savingsRate >= 25) {
     percentage = high
@@ -141,7 +162,7 @@ export function assessProfile(
 
   if (answers.hasEmergencyFund === 'no') {
     warnings.push(
-      'Antes de invertir, reúne un fondo de emergencia de al menos 3 meses de gastos; mientras, se invierte lo mínimo.'
+      'Antes de invertir, reúne un fondo de emergencia de al menos 3 meses de gastos: hasta entonces, todo tu ahorro va al fondo.'
     )
   } else if (answers.hasEmergencyFund === 'partial') {
     warnings.push(
@@ -187,6 +208,9 @@ export function assessProfile(
 
   return {
     recommendedProfile: profile,
+    score,
+    maxScore: MAX_SCORE,
+    scoreRange: SCORE_RANGE[profile],
     confidence: 1,
     reasoning: reasons.join(' '),
     investmentPercentage: percentage,

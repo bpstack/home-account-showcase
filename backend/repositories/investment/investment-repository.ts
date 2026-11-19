@@ -48,11 +48,11 @@ export class InvestmentRepository {
     ]
     const values: unknown[] = [
       data.account_id,
-      data.risk_profile || 'balanced',
-      data.investment_percentage || 20,
-      data.horizon_years || 5,
-      data.has_emergency_fund || false,
-      data.experience_level || 'none',
+      data.risk_profile ?? 'balanced',
+      data.investment_percentage ?? 20,
+      data.horizon_years ?? 5,
+      data.has_emergency_fund ?? false,
+      data.experience_level ?? 'none',
     ]
     for (const column of [
       'monthly_investable',
