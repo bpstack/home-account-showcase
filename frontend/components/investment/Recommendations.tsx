@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { Button, Money } from '@/components/ui'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -34,14 +33,14 @@ const percent = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 })
 
 /** The monthly plan: how much to invest, how it splits and in what. */
 export function Recommendations({ accountId, monthlySavings, onTakeTest }: RecommendationsProps) {
-  const { data, isLoading, isError, refetch } = useRecommendations(accountId)
   const { data: overview } = useInvestmentOverview(accountId, { refetchOnMount: false })
   const profile = overview?.profile
-
-  // The first request can go out before the profile exists; ask again once it does
-  useEffect(() => {
-    if (profile && !data) refetch()
-  }, [profile, data, refetch])
+  const share = profile?.investmentPercentage ?? 0
+  const monthly = (monthlySavings * share) / 100
+  // The AI is asked only when there is a profile and something to invest
+  const { data, isLoading, isError, refetch } = useRecommendations(accountId, undefined, {
+    enabled: !!profile && monthly > 0,
+  })
 
   const header = (
     <h2 id="investment-plan" className="mb-3 text-sm font-medium text-text-primary">
@@ -62,6 +61,19 @@ export function Recommendations({ accountId, monthlySavings, onTakeTest }: Recom
             </Button>
           }
         />
+      </section>
+    )
+  }
+
+  if (monthly <= 0) {
+    return (
+      <section aria-labelledby="investment-plan">
+        {header}
+        <p className="text-sm text-text-secondary">
+          {share === 0
+            ? 'De momento no inviertes: hasta tener un fondo de emergencia de 3 meses de gastos, todo tu ahorro va a él.'
+            : 'Este mes no hay ahorro que invertir: el plan se prepara cuando ingreses más de lo que gastas.'}
+        </p>
       </section>
     )
   }
@@ -97,8 +109,6 @@ export function Recommendations({ accountId, monthlySavings, onTakeTest }: Recom
     )
   }
 
-  const share = profile.investmentPercentage
-  const monthly = (monthlySavings * share) / 100
   const allocation = ALLOCATION.map((part) => ({
     ...part,
     value: Number(data.assetAllocation[part.key]) || 0,

@@ -37,13 +37,15 @@ export function useMarketPrices(
 
 export function useRecommendations(
   accountId: string,
-  options?: { profile?: string; monthlyAmount?: number }
+  options?: { profile?: string; monthlyAmount?: number },
+  { enabled = true }: { enabled?: boolean } = {}
 ) {
   return useQuery({
     queryKey: ['investment', 'recommendations', accountId, options],
     queryFn: () => investmentApi.getRecommendations(accountId, options),
-    staleTime: 0, // staleTime = 0 for recommendations
-    enabled: !!accountId,
+    // Each request spends AI quota (15 an hour): reuse the plan for a while within the session
+    staleTime: 30 * 60 * 1000,
+    enabled: !!accountId && enabled,
   })
 }
 

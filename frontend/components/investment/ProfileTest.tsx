@@ -154,7 +154,14 @@ export function ProfileTest({ accountId, metrics, onClose }: ProfileTestProps) {
             {PROFILE_LABELS[result.recommendedProfile]}
           </p>
           <p className="mt-1 text-sm text-text-secondary">
-            Inviertes el {result.investmentPercentage} % de lo que ahorras.
+            {result.score} de {result.maxScore} puntos · el perfil{' '}
+            {PROFILE_LABELS[result.recommendedProfile].toLowerCase()} va de {result.scoreRange.min}{' '}
+            a {result.scoreRange.max}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {result.investmentPercentage > 0
+              ? `Inviertes el ${result.investmentPercentage} % de lo que ahorras.`
+              : 'De momento no inviertes: todo tu ahorro va al fondo de emergencia.'}
           </p>
         </div>
         {result.reasoning && <p className="text-sm text-text-primary">{result.reasoning}</p>}

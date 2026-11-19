@@ -78,6 +78,10 @@ export interface ProfileAnswers {
 
 export interface ProfileAssessmentResult {
   recommendedProfile: 'conservative' | 'balanced' | 'dynamic'
+  /** Risk tolerance points, 0 to maxScore, and the points range of the profile given */
+  score: number
+  maxScore: number
+  scoreRange: { min: number; max: number }
   confidence: number
   reasoning: string
   investmentPercentage: number
