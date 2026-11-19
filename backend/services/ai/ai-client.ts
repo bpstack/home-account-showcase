@@ -5,6 +5,7 @@ import type { AIProviderConfig, AIProviderType, IAIProvider, AIStatus } from './
 import { PROVIDER_DEFAULTS } from './types.js'
 import { createProvider, getProviderConfigFromEnv } from './providers/index.js'
 import { AppError } from '../../utils/app-error.js'
+import { AI_UNAVAILABLE_MESSAGE, isRetryableAIError, toClientAIError } from './ai-errors.js'
 import { logger } from '../../utils/logger.js'
 
 /**
@@ -140,7 +141,7 @@ export class AIClient {
    */
   async sendPrompt(prompt: string, retryCount = 0): Promise<string> {
     if (!this.provider || !this.enabled) {
-      throw new AppError('AI provider not available', 503)
+      throw new AppError(AI_UNAVAILABLE_MESSAGE, 503)
     }
 
     const startTime = Date.now()
@@ -162,7 +163,7 @@ export class AIClient {
     } catch (error) {
       logger.error('AI_CLIENT', 'sendPrompt', `Attempt ${retryCount + 1} failed`, error as Error)
 
-      if (retryCount < this.config.maxRetries) {
+      if (retryCount < this.config.maxRetries && isRetryableAIError(error)) {
         logger.info(
           'AI_CLIENT',
           'sendPrompt',
@@ -172,7 +173,8 @@ export class AIClient {
         return this.sendPrompt(prompt, retryCount + 1)
       }
 
-      throw error
+      // The provider's message and status are in the log above; the client gets a generic one
+      throw toClientAIError(error)
     }
   }
 
@@ -236,7 +238,7 @@ export class AIClient {
       'Failed to parse response',
       new Error('No valid JSON found')
     )
-    throw new AppError('No valid JSON found in response', 500)
+    throw new AppError('La IA ha devuelto una respuesta no válida. Inténtalo de nuevo.', 502)
   }
 
   private delay(ms: number): Promise<void> {
