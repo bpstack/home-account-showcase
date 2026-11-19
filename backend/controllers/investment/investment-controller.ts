@@ -70,17 +70,17 @@ export const getOverview = asyncHandler(async (req: Request, res: Response) => {
     success: true,
     data: {
       accountId,
-      profile: investmentProfile
+      // The profile only once the test is taken; the emergency fund on its own, test or not
+      profile: investmentProfile?.risk_profile
         ? {
             riskProfile: investmentProfile.risk_profile,
             horizonYears: investmentProfile.horizon_years,
-            hasEmergencyFund: investmentProfile.has_emergency_fund,
-            investmentPercentage: investmentProfile.investment_percentage,
-            monthlyInvestable: investmentProfile.monthly_investable,
-            liquidityReserve: investmentProfile.liquidity_reserve,
-            emergencyFundMonths: investmentProfile.emergency_fund_months,
           }
         : null,
+      emergencyFund: {
+        saved: Number(investmentProfile?.liquidity_reserve ?? 0),
+        months: investmentProfile?.emergency_fund_months ?? 6,
+      },
       marketPrices: marketData,
       aiEnabled: true,
       activeProvider: getActiveProvider(),
@@ -199,8 +199,7 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
 
   // Fixed rules, no AI: the same answers always give the same profile, and the answers (age,
   // income) and the account's metrics never leave the server.
-  const current = await InvestmentRepository.getProfileByAccountId(accountId)
-  const result = assessProfile(validAnswers, financialMetrics, current?.liquidity_reserve ?? 0)
+  const result = assessProfile(validAnswers, financialMetrics)
 
   const horizonYearsMap: Record<ProfileTestAnswers['horizonYears'], number> = {
     '<3': 2,
@@ -208,12 +207,11 @@ export const analyzeProfile = asyncHandler(async (req: Request, res: Response) =
     '>10': 15,
   }
 
+  // Only the test's own fields: the emergency fund is the user's, and how much to invest is
+  // worked out in the plan from the fund as it stands (ADR-016)
   await InvestmentRepository.upsertProfile({
     account_id: accountId,
     risk_profile: result.recommendedProfile,
-    investment_percentage: result.investmentPercentage,
-    monthly_investable: result.monthlyInvestable,
-    has_emergency_fund: validAnswers.hasEmergencyFund !== 'no',
     experience_level: validAnswers.experienceLevel,
     horizon_years: horizonYearsMap[validAnswers.horizonYears],
   })

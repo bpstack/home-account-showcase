@@ -28,7 +28,6 @@ export const ProfileAnswersSchema = z.object({
   jobStability: z.enum(['high', 'medium', 'low'], {
     error: 'Selecciona una opción de estabilidad',
   }),
-  hasEmergencyFund: z.enum(['yes', 'partial', 'no'], { error: 'Selecciona una opción' }),
   horizonYears: z.enum(['<3', '3-10', '>10'], { error: 'Selecciona un horizonte temporal' }),
   reactionToDrop: z.enum(['sell', 'hold', 'buy_more'], { error: 'Selecciona una reacción' }),
   experienceLevel: z.enum(['none', 'basic', 'intermediate', 'advanced'], {

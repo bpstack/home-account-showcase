@@ -37,25 +37,17 @@ export class InvestmentRepository {
   }
 
   static async createProfile(data: CreateInvestmentProfileDTO): Promise<InvestmentProfile> {
-    // The test fields get defaults; the amounts and months only when given, so the table's own
-    // defaults apply otherwise (they used to be dropped even when given).
-    const columns = [
-      'account_id',
+    // Only the fields given; the table's defaults apply to the rest. Saving the emergency fund
+    // before the test leaves risk_profile empty (null): the test was not taken (ADR-016). Filling
+    // it with a default here is what created profiles nobody chose.
+    const columns: string[] = ['account_id']
+    const values: unknown[] = [data.account_id]
+    for (const column of [
       'risk_profile',
       'investment_percentage',
       'horizon_years',
       'has_emergency_fund',
       'experience_level',
-    ]
-    const values: unknown[] = [
-      data.account_id,
-      data.risk_profile ?? 'balanced',
-      data.investment_percentage ?? 20,
-      data.horizon_years ?? 5,
-      data.has_emergency_fund ?? false,
-      data.experience_level ?? 'none',
-    ]
-    for (const column of [
       'monthly_investable',
       'liquidity_reserve',
       'emergency_fund_months',

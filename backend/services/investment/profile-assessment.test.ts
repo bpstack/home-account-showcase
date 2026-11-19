@@ -1,6 +1,8 @@
 // Real-life personas and the rules table. The expected profiles were written from what a typical
 // adviser would accept for each person, before running the rules; where two are reasonable, both
-// are accepted. Ranges come from the rules table, not from the code.
+// are accepted. Ranges come from the rules table, not from the code. The emergency fund is not an
+// input any more (ADR-016): the profile describes the person, the fund only decides how much of
+// the savings is invested, in the plan.
 import { describe, expect, it } from 'vitest'
 import {
   assessProfile,
@@ -23,7 +25,6 @@ const answers = (over: Partial<ProfileTestAnswers>): ProfileTestAnswers => ({
   age: 35,
   monthlyIncome: 2000,
   jobStability: 'medium',
-  hasEmergencyFund: 'yes',
   horizonYears: '3-10',
   reactionToDrop: 'hold',
   experienceLevel: 'basic',
@@ -36,12 +37,11 @@ const D: RiskProfile = 'dynamic'
 
 const PERSONAS: Array<[string, Partial<ProfileTestAnswers>, ProfileTestMetrics, RiskProfile[]]> = [
   [
-    'student, unstable, no fund, long horizon',
+    'student, unstable, long horizon',
     {
       age: 22,
       monthlyIncome: 900,
       jobStability: 'low',
-      hasEmergencyFund: 'no',
       horizonYears: '>10',
       experienceLevel: 'none',
     },
@@ -67,12 +67,7 @@ const PERSONAS: Array<[string, Partial<ProfileTestAnswers>, ProfileTestMetrics, 
     saving(1800, 15),
     [B],
   ],
-  [
-    'family, partial fund, medium horizon',
-    { age: 41, monthlyIncome: 3200, hasEmergencyFund: 'partial' },
-    saving(3200, 12),
-    [B],
-  ],
+  ['family, medium horizon', { age: 41, monthlyIncome: 3200 }, saving(3200, 12), [B]],
   [
     'self-employed, unstable, long horizon',
     {
@@ -142,22 +137,21 @@ const PERSONAS: Array<[string, Partial<ProfileTestAnswers>, ProfileTestMetrics, 
     [B, D],
   ],
   [
-    'young risk taker without a fund',
+    'young risk taker, unstable income',
     {
       age: 24,
       monthlyIncome: 1500,
       jobStability: 'low',
-      hasEmergencyFund: 'no',
       horizonYears: '>10',
       reactionToDrop: 'buy_more',
       experienceLevel: 'advanced',
     },
     saving(1500, 10),
-    [B],
+    [B, D],
   ],
   [
     'spends more than earns',
-    { hasEmergencyFund: 'partial', horizonYears: '>10', experienceLevel: 'intermediate' },
+    { horizonYears: '>10', experienceLevel: 'intermediate' },
     saving(2000, -5),
     [C],
   ],
@@ -217,25 +211,14 @@ describe('rules table', () => {
     expect(assessProfile(a, saving(3000, 30)).recommendedProfile).toBe(C)
   })
 
-  it('without an emergency fund, nothing is invested and it says why', () => {
-    const r = assessProfile(
-      answers({ hasEmergencyFund: 'no', horizonYears: '>10', reactionToDrop: 'buy_more' }),
-      saving(2000, 20)
-    )
-    expect(r.investmentPercentage).toBe(0)
-    expect(r.monthlyInvestable).toBe(0)
-    expect(r.warnings.join(' ')).toMatch(/fondo de emergencia/)
-  })
-
-  it('with no savings in the recorded months, nothing to invest', () => {
+  it('with no savings in the recorded months, conservative and it says why', () => {
     const r = assessProfile(answers({ horizonYears: '>10' }), saving(2000, -5))
     expect(r.recommendedProfile).toBe(C)
-    expect(r.monthlyInvestable).toBe(0)
+    expect(r.warnings.join(' ')).toMatch(/no hay ahorro/)
   })
 
-  it('without movements, nothing to invest and it says why', () => {
+  it('without movements, it says the savings cannot be worked out', () => {
     const r = assessProfile(answers({}))
-    expect(r.monthlyInvestable).toBe(0)
     expect(r.warnings.join(' ')).toMatch(/no hay movimientos/i)
   })
 
@@ -246,29 +229,19 @@ describe('rules table', () => {
 })
 
 describe('every combination of answers', () => {
-  // conservative 0–5 points and 5–10 %, balanced 6–10 and 15–30 %, dynamic 11–15 and 30–45 %
-  const RANGES: Record<RiskProfile, { points: [number, number]; percent: [number, number] }> = {
-    conservative: { points: [0, 5], percent: [5, 10] },
-    balanced: { points: [6, 10], percent: [15, 30] },
-    dynamic: { points: [11, 15], percent: [30, 45] },
+  // conservative 0–5 points, balanced 6–10, dynamic 11–15
+  const RANGES: Record<RiskProfile, [number, number]> = {
+    conservative: [0, 5],
+    balanced: [6, 10],
+    dynamic: [11, 15],
   }
   const all: ProfileTestAnswers[] = []
   for (const age of [22, 45, 68])
     for (const jobStability of ['high', 'medium', 'low'] as const)
-      for (const hasEmergencyFund of ['yes', 'partial', 'no'] as const)
-        for (const horizonYears of ['<3', '3-10', '>10'] as const)
-          for (const reactionToDrop of ['sell', 'hold', 'buy_more'] as const)
-            for (const experienceLevel of ['none', 'basic', 'intermediate', 'advanced'] as const)
-              all.push(
-                answers({
-                  age,
-                  jobStability,
-                  hasEmergencyFund,
-                  horizonYears,
-                  reactionToDrop,
-                  experienceLevel,
-                })
-              )
+      for (const horizonYears of ['<3', '3-10', '>10'] as const)
+        for (const reactionToDrop of ['sell', 'hold', 'buy_more'] as const)
+          for (const experienceLevel of ['none', 'basic', 'intermediate', 'advanced'] as const)
+            all.push(answers({ age, jobStability, horizonYears, reactionToDrop, experienceLevel }))
 
   it.each([-5, 10, 30])('stay within the profile ranges, saving %i per cent', (rate) => {
     for (const a of all) {
@@ -276,13 +249,7 @@ describe('every combination of answers', () => {
       const range = RANGES[r.recommendedProfile]
       expect(r.score).toBeGreaterThanOrEqual(0)
       expect(r.score).toBeLessThanOrEqual(15)
-      expect(r.scoreRange).toEqual({ min: range.points[0], max: range.points[1] })
-      if (a.hasEmergencyFund === 'no') {
-        expect(r.investmentPercentage).toBe(0)
-      } else {
-        expect(r.investmentPercentage).toBeGreaterThanOrEqual(range.percent[0])
-        expect(r.investmentPercentage).toBeLessThanOrEqual(range.percent[1])
-      }
+      expect(r.scoreRange).toEqual({ min: range[0], max: range[1] })
       expect(r.reasoning.length).toBeGreaterThan(0)
     }
   })

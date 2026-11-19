@@ -1,7 +1,9 @@
 // services/investment/profile-assessment.ts
-// The investor profile from the seven test answers, by fixed rules: the same answers always give
+// The investor profile from the six test answers, by fixed rules: the same answers always give
 // the same profile, and nothing leaves the server. The rules are the table the AI prompt used to
-// apply (conservative / balanced / dynamic by savings, horizon and reaction to a drop).
+// apply (conservative / balanced / dynamic by savings, horizon and reaction to a drop). How much
+// of the savings to invest is not here: it depends on the emergency fund as it stands each month,
+// so the plan works it out in the browser (frontend/lib/investment-plan.ts).
 
 export type RiskProfile = 'conservative' | 'balanced' | 'dynamic'
 
@@ -9,7 +11,6 @@ export interface ProfileTestAnswers {
   age: number
   monthlyIncome: number
   jobStability: 'high' | 'medium' | 'low'
-  hasEmergencyFund: 'yes' | 'partial' | 'no'
   horizonYears: '<3' | '3-10' | '>10'
   reactionToDrop: 'sell' | 'hold' | 'buy_more'
   experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
@@ -35,9 +36,6 @@ export interface ProfileAssessment {
   scoreRange: { min: number; max: number }
   confidence: number
   reasoning: string
-  investmentPercentage: number
-  monthlyInvestable: number
-  liquidityReserve: number
   historicalInsights: {
     monthsAnalyzed: number
     trend: string
@@ -62,13 +60,6 @@ export const SCORE_RANGE: Record<RiskProfile, { min: number; max: number }> = {
   conservative: { min: 0, max: 5 },
   balanced: { min: 6, max: 10 },
   dynamic: { min: 11, max: MAX_SCORE },
-}
-
-/** Share of the monthly savings that goes to investing, [low, usual, high], by profile. */
-const PERCENTAGE: Record<RiskProfile, [number, number, number]> = {
-  conservative: [5, 10, 10],
-  balanced: [15, 25, 30],
-  dynamic: [30, 40, 45],
 }
 
 const MIN_RELIABLE_MONTHS = 3
@@ -98,8 +89,7 @@ export function riskScore(a: ProfileTestAnswers): number {
 
 export function assessProfile(
   answers: ProfileTestAnswers,
-  metrics?: ProfileTestMetrics,
-  liquidityReserve = 0
+  metrics?: ProfileTestMetrics
 ): ProfileAssessment {
   const score = riskScore(answers)
   const byScore: RiskProfile =
@@ -129,10 +119,6 @@ export function assessProfile(
       'Venderías tras una caída del 20 %, y quien vende en las caídas convierte la bajada en pérdida: perfil conservador.'
     )
   }
-  if (answers.hasEmergencyFund === 'no' && profile === 'dynamic') {
-    profile = 'balanced'
-    reasons.push('Sin fondo de emergencia, el perfil se limita a equilibrado.')
-  }
   if (noSavings && profile !== 'conservative') {
     profile = lower(profile, 'conservative')
     reasons.push(
@@ -146,28 +132,6 @@ export function assessProfile(
     )
   } else {
     reasons.unshift(`Por tus respuestas tu perfil sería ${LABEL[byScore]}.`)
-  }
-
-  // How much of the savings goes to investing. Without an emergency fund, nothing: the savings
-  // build the fund first, as an adviser would say.
-  const [low, usual, high] = PERCENTAGE[profile]
-  let percentage = usual
-  if (answers.hasEmergencyFund === 'no') {
-    percentage = 0
-  } else if (answers.hasEmergencyFund === 'partial') {
-    percentage = low
-  } else if (metrics && metrics.savingsRate >= 25) {
-    percentage = high
-  }
-
-  if (answers.hasEmergencyFund === 'no') {
-    warnings.push(
-      'Antes de invertir, reúne un fondo de emergencia de al menos 3 meses de gastos: hasta entonces, todo tu ahorro va al fondo.'
-    )
-  } else if (answers.hasEmergencyFund === 'partial') {
-    warnings.push(
-      'Completa el fondo de emergencia hasta 3 meses de gastos; mientras, se invierte la parte baja del rango.'
-    )
   }
 
   if (hasHistory) {
@@ -199,11 +163,6 @@ export function assessProfile(
     )
   }
 
-  const monthlyInvestable =
-    hasHistory && metrics.savingsCapacity > 0
-      ? Math.round((metrics.savingsCapacity * percentage) / 100)
-      : 0
-
   const deficitShare = hasHistory ? metrics.deficitMonths / metrics.historicalMonths : 0
 
   return {
@@ -213,9 +172,6 @@ export function assessProfile(
     scoreRange: SCORE_RANGE[profile],
     confidence: 1,
     reasoning: reasons.join(' '),
-    investmentPercentage: percentage,
-    monthlyInvestable,
-    liquidityReserve,
     historicalInsights: {
       monthsAnalyzed: metrics?.historicalMonths ?? 0,
       trend: metrics?.trend ?? 'stable',

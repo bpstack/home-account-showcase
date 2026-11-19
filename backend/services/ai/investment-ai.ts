@@ -103,7 +103,7 @@ export class InvestmentAI {
         historicalMonths: financialContext.historicalMonths,
         trend: financialContext.trend,
       },
-      investmentProfile: investmentProfile
+      investmentProfile: investmentProfile?.risk_profile
         ? {
             risk_profile: investmentProfile.risk_profile,
           }
