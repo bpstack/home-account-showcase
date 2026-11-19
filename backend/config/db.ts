@@ -47,6 +47,10 @@ const config = {
   password: process.env.REMOTE_DB_PASSWORD,
   database: process.env.REMOTE_DB_NAME || 'home_account',
   charset: 'utf8mb4',
+  // The database keeps its dates in UTC. Without this, mysql2 reads and writes them in the time
+  // zone of the machine running Node: an hour off on a machine in Spain, and a DATE one day early
+  // once it goes out as JSON.
+  timezone: 'Z',
   ssl: getSSLConfig(),
 }
 
