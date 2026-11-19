@@ -930,51 +930,24 @@ export const importApi = {
 }
 
 // AI Types
-export interface AIProviderInfo {
-  configured: boolean
-  enabled: boolean
-  model: string
-  baseUrl?: string
-}
-
+/** Read-only: the provider is set in the server configuration (ADR-014). */
 export interface AIStatus {
   success: boolean
-  enabled: boolean
-  activeProvider: string
-  providers: Record<string, AIProviderInfo>
-  rateLimit?: {
+  active: boolean
+  provider: string | null
+  model: string | null
+  rateLimit: {
     provider: string
     remaining: number
     resetTime: number | null
     maxRequests: number
     isUnlimited: boolean
-  }
-  providerLimits?: Record<string, number | 'unlimited'>
-}
-
-export interface AITestResult {
-  success: boolean
-  provider?: string
-  model?: string
-  responseTime?: number
-  error?: string
+  } | null
 }
 
 // AI API
 export const ai = {
   getStatus: () => request<AIStatus>('/ai/status'),
-
-  setProvider: (provider: string) =>
-    request<{ success: boolean; activeProvider: string }>('/ai/provider', {
-      method: 'PUT',
-      body: JSON.stringify({ provider }),
-    }),
-
-  testConnection: (provider: string) =>
-    request<AITestResult>('/ai/test', {
-      method: 'POST',
-      body: JSON.stringify({ provider }),
-    }),
 }
 
 export { ApiError }
