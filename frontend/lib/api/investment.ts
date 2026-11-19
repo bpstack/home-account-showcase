@@ -41,14 +41,18 @@ export interface EmergencyFundSettings {
   months: number
 }
 
+/** A price and its daily change; the change is null when the source does not give it */
+export interface Quote {
+  value: number
+  change24h: number | null
+}
+
+/** Each figure is null when its source did not answer: there are no fallback figures */
 export interface MarketPrices {
-  sp500: { value: number; change24h: number }
-  msciWorld: { value: number; change24h: number }
-  nasdaq: { value: number; change24h: number }
-  btc: { value: number; change24h: number }
-  eth: { value: number; change24h: number }
-  eurUsd: number
-  eurGbp: number
+  btc: Quote | null
+  eth: Quote | null
+  eurUsd: Quote | null
+  eurGbp: Quote | null
   lastUpdated: string
 }
 
@@ -117,27 +121,24 @@ export interface ChatResponse {
   needsDisclaimer: boolean
 }
 
+/** Every row is always there; a figure its source did not give is null */
 export interface MarketDataResponse {
   cryptocurrencies: Array<{
     symbol: string
     name: string
-    price: number
-    change24h: number
+    price: number | null
+    change24h: number | null
   }>
   currencies: Array<{
     pair: string
-    rate: number
-    change24h: number
+    rate: number | null
+    change24h: number | null
   }>
-  indices: Array<{
-    symbol: string
-    name: string
-    value: number
-    change24h: number
-  }>
+  /** When the data was fetched */
   cachedAt: string
   cacheExpiresIn: number
-  marketTrend?: 'alcista' | 'bajista' | 'neutral'
+  /** null when no change is known */
+  marketTrend: 'alcista' | 'bajista' | 'neutral' | null
 }
 
 // ========================

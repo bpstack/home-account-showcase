@@ -6,11 +6,6 @@ import { useMarketPrices } from '@/lib/queries/investment'
 import { formatMoney, MISSING } from '@/lib/money'
 import { cn, formatDistanceToNow } from '@/lib/utils'
 
-const points = new Intl.NumberFormat('es-ES', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-  useGrouping: 'always',
-})
 const rate = new Intl.NumberFormat('es-ES', {
   minimumFractionDigits: 4,
   maximumFractionDigits: 4,
@@ -28,7 +23,13 @@ interface Row {
   change: number | null | undefined
 }
 
-/** Today's markets in one table: indices, crypto and currencies against the euro. */
+const orMissing = (value: number | null, format: (v: number) => string) =>
+  value === null ? MISSING : format(value)
+
+/**
+ * Today's markets in one table: crypto and currencies against the euro. A figure its
+ * source did not give shows as missing; none is made up.
+ */
 export function MarketSummary({ accountId }: { accountId: string }) {
   const { data, isLoading, isError, isFetching, refetch } = useMarketPrices(accountId, {
     refetchOnMount: false,
@@ -36,15 +37,6 @@ export function MarketSummary({ accountId }: { accountId: string }) {
 
   const groups: { title: string; rows: Row[] }[] = data
     ? [
-        {
-          title: 'Índices',
-          rows: data.indices.map((i) => ({
-            key: i.symbol,
-            name: i.name,
-            value: points.format(i.value),
-            change: i.change24h,
-          })),
-        },
         {
           title: 'Cripto',
           rows: data.cryptocurrencies.map((c) => ({
@@ -58,9 +50,8 @@ export function MarketSummary({ accountId }: { accountId: string }) {
           title: 'Divisas',
           rows: data.currencies.map((c) => ({
             key: c.pair,
-            // The live source sends "USD"; the fallback sends "EUR/USD"
-            name: c.pair.includes('/') ? c.pair : `EUR/${c.pair}`,
-            value: rate.format(c.rate),
+            name: c.pair,
+            value: orMissing(c.rate, (v) => rate.format(v)),
             change: c.change24h,
           })),
         },
