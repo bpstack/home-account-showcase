@@ -4,6 +4,7 @@ import { RefreshCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useMarketPrices } from '@/lib/queries/investment'
 import { formatMoney, MISSING } from '@/lib/money'
+import { ECONOMY_ROWS, formatIndicator, formatIndicatorPeriod } from '@/lib/economy'
 import { cn, formatDistanceToNow } from '@/lib/utils'
 
 const rate = new Intl.NumberFormat('es-ES', {
@@ -27,8 +28,9 @@ const orMissing = (value: number | null, format: (v: number) => string) =>
   value === null ? MISSING : format(value)
 
 /**
- * Today's markets in one table: crypto and currencies against the euro. A figure its
- * source did not give shows as missing; none is made up.
+ * Today's markets in one table, crypto and currencies against the euro, and how the economy is
+ * doing in another, each figure with the period it belongs to. A figure its source did not give
+ * shows as missing; none is made up.
  */
 export function MarketSummary({ accountId }: { accountId: string }) {
   const { data, isLoading, isError, isFetching, refetch } = useMarketPrices(accountId, {
@@ -134,6 +136,40 @@ export function MarketSummary({ accountId }: { accountId: string }) {
               ))}
             </tbody>
           ))}
+        </table>
+      )}
+
+      {data && (
+        <table className="mt-4 w-full text-sm" aria-labelledby="economy">
+          <caption
+            id="economy"
+            className="border-t border-layer-3 pb-1 pt-3 text-left text-xs font-medium text-text-secondary"
+          >
+            Economía
+          </caption>
+          <thead className="sr-only">
+            <tr>
+              <th scope="col">Indicador</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Periodo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ECONOMY_ROWS.map(({ key, name, detail }) => (
+              <tr key={key}>
+                <th scope="row" className="py-1.5 text-left font-normal text-text-primary">
+                  {name}
+                  <span className="block text-xs text-text-secondary">{detail}</span>
+                </th>
+                <td className="py-1.5 text-right tabular-nums text-text-primary">
+                  {formatIndicator(data.economy[key])}
+                </td>
+                <td className="py-1.5 pl-3 text-right tabular-nums text-text-secondary">
+                  {formatIndicatorPeriod(data.economy[key])}
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       )}
     </section>

@@ -47,6 +47,24 @@ export interface Quote {
   change24h: number | null
 }
 
+/** A percentage published for a period: a month ("2026-10") or a day ("2026-11-19") */
+export interface Indicator {
+  value: number
+  period: string
+}
+
+/** How the economy is doing; each indicator is null when its source did not answer */
+export interface Economy {
+  /** Annual HICP inflation in Spain, % (Eurostat) */
+  inflationSpain: Indicator | null
+  /** 12-month Euribor, monthly average, % (ECB) */
+  euribor12m: Indicator | null
+  /** ECB deposit facility rate, % (ECB) */
+  ecbDepositRate: Indicator | null
+  /** Unemployment rate in Spain, seasonally adjusted, % (Eurostat) */
+  unemploymentSpain: Indicator | null
+}
+
 /** Each figure is null when its source did not answer: there are no fallback figures */
 export interface MarketPrices {
   btc: Quote | null
@@ -54,6 +72,7 @@ export interface MarketPrices {
   eurUsd: Quote | null
   eurGbp: Quote | null
   lastUpdated: string
+  economy: Economy
 }
 
 export interface InvestmentOverview {
@@ -134,7 +153,8 @@ export interface MarketDataResponse {
     rate: number | null
     change24h: number | null
   }>
-  /** When the data was fetched */
+  economy: Economy
+  /** When the quotes were fetched; each economic figure carries its own period */
   cachedAt: string
   cacheExpiresIn: number
   /** null when no change is known */
