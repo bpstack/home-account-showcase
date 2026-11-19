@@ -74,6 +74,13 @@ const pool: Pool = mysql.createPool({
   connectTimeout: 30000,
 })
 
+// Each connection works in UTC whatever the server's own time zone, so NOW() and TIMESTAMP
+// columns agree with `timezone: 'Z'` above. The event hands over the core (callback) connection,
+// not the promise one its type says: the query runs before any other on that connection.
+pool.on('connection', (connection) => {
+  void connection.query("SET time_zone = '+00:00'")
+})
+
 // Retry connection test for cold starts
 const testConnection = async (retries = 3, delay = 5000) => {
   for (let i = 0; i < retries; i++) {
