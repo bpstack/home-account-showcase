@@ -4,7 +4,8 @@
 import { AIClient, createAIClient } from './ai-client.js'
 import type { AIProviderType } from './types.js'
 import { buildChatPrompt, buildSystemMessage } from './prompts/chat-prompt.js'
-import { capChatReply } from './chat-limits.js'
+import { toSafeChatReply } from './chat-reply.js'
+import { logSecurityEvent } from './security/audit-logger.js'
 import { buildEducationPrompt } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
@@ -112,8 +113,21 @@ export class InvestmentAI {
 
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Calling chat')
     const raw = await this.chat(message, chatContext, history, accountId, userId)
-    const result: ChatResult = { ...raw, answer: capChatReply(raw.answer) }
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Chat result received')
+
+    // Filter before storing: the history and the next prompts only ever see the filtered reply
+    const safe = toSafeChatReply(raw)
+    if (!safe) {
+      throw new AppError('La IA ha devuelto una respuesta no válida. Inténtalo de nuevo.', 502)
+    }
+    if (safe.issues.length > 0) {
+      await logSecurityEvent({
+        type: 'unsafe_output_detected',
+        userId,
+        details: `Output issues: ${safe.issues.join(', ')}`,
+      })
+    }
+    const result = safe.result
 
     await InvestmentRepository.addChatMessage({
       session_id: sessionId,

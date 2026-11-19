@@ -327,13 +327,11 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
     financialContext
   )
 
-  const outputCheck = await checkOutputSecurity(userId, result.answer)
-  const safeReply = outputCheck.safe ? result.answer : outputCheck.sanitizedOutput
-
+  // The reply comes back already filtered and size-limited: the same text that was stored
   res.status(200).json({
     success: true,
     data: {
-      reply: safeReply,
+      reply: result.answer,
       relatedConcepts: result.relatedConcepts,
       needsDisclaimer: result.needsDisclaimer,
     },
