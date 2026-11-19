@@ -243,12 +243,13 @@ export class InvestmentRepository {
     return rows
   }
 
-  static async updateChatSession(sessionId: string, messageCount: number): Promise<void> {
+  /** Adds `added` messages to the session's count and marks it as just used. */
+  static async updateChatSession(sessionId: string, added: number): Promise<void> {
     await db.query(
       `UPDATE ai_chat_sessions
-       SET message_count = ?, last_message_at = NOW()
+       SET message_count = message_count + ?, last_message_at = NOW()
        WHERE id = ?`,
-      [messageCount, sessionId]
+      [added, sessionId]
     )
   }
 
@@ -287,11 +288,17 @@ export class InvestmentRepository {
     limit: number = 50
   ): Promise<AIChatMessage[]> {
     const [rows] = await db.query<AIChatMessageRow[]>(
+      // The last `limit` messages, oldest first. Ids are random and a question and its answer can
+      // be saved in the same second, so ties put the question before the answer.
       `SELECT id, session_id, role, content, tokens, created_at
-       FROM ai_chat_messages
-       WHERE session_id = ?
-       ORDER BY created_at ASC
-       LIMIT ?`,
+       FROM (
+         SELECT id, session_id, role, content, tokens, created_at
+         FROM ai_chat_messages
+         WHERE session_id = ?
+         ORDER BY created_at DESC, FIELD(role, 'assistant', 'user', 'system')
+         LIMIT ?
+       ) AS latest
+       ORDER BY created_at ASC, FIELD(role, 'system', 'user', 'assistant')`,
       [sessionId, limit]
     )
     return rows

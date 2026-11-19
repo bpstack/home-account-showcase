@@ -16,7 +16,6 @@ import {
 } from './prompts/types.js'
 import { getMarketData } from '../market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
-import { getActiveProvider } from './ai-client.js'
 import { AppError } from '../../utils/app-error.js'
 import { logger } from '../../utils/logger.js'
 
@@ -100,29 +99,18 @@ export class InvestmentAI {
     return response
   }
 
+  /** One message in an existing conversation; the caller has checked it belongs to the account. */
   async chatWithSession(
     message: string,
+    sessionId: string,
     accountId: string,
     userId: string,
     financialContext: InvestmentContext
   ): Promise<ChatResult> {
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Starting')
 
-    let session = (await InvestmentRepository.getChatSessionsByAccount(accountId))[0]
-    logger.info('INVESTMENT_AI', 'chatWithSession', `Existing session: ${session?.id || 'none'}`)
-
-    if (!session || this.isSessionExpired(session.last_message_at)) {
-      logger.info('INVESTMENT_AI', 'chatWithSession', 'Creating new session')
-      session = await InvestmentRepository.createChatSession({
-        account_id: accountId,
-        user_id: userId,
-        provider: getActiveProvider(),
-      })
-      logger.info('INVESTMENT_AI', 'chatWithSession', `New session created: ${session.id}`)
-    }
-
     const history = (await InvestmentRepository.getChatMessagesForContext(
-      session.id,
+      sessionId,
       20
     )) as ChatMessage[]
     logger.info('INVESTMENT_AI', 'chatWithSession', `History messages: ${history.length}`)
@@ -160,28 +148,21 @@ export class InvestmentAI {
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Chat result received')
 
     await InvestmentRepository.addChatMessage({
-      session_id: session.id,
+      session_id: sessionId,
       role: 'user',
       content: message,
     })
 
     await InvestmentRepository.addChatMessage({
-      session_id: session.id,
+      session_id: sessionId,
       role: 'assistant',
       content: result.answer,
     })
 
-    const messageCount = history.length + 2
-    await InvestmentRepository.updateChatSession(session.id, messageCount)
+    await InvestmentRepository.updateChatSession(sessionId, 2)
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Messages saved, done')
 
     return result
-  }
-
-  private isSessionExpired(lastMessageAt?: Date): boolean {
-    if (!lastMessageAt) return true
-    const expiry = 30 * 60 * 1000 // 30 minutes
-    return Date.now() - new Date(lastMessageAt).getTime() > expiry
   }
 
   // ========================

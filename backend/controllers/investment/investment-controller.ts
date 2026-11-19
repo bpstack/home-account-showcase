@@ -361,7 +361,13 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
     throw new AppError('IA no disponible. Verifica la configuración.', 503)
   }
 
-  const result = await ai.chatWithSession(safeMessage, accountId, userId, financialContext)
+  const result = await ai.chatWithSession(
+    safeMessage,
+    sessionId,
+    accountId,
+    userId,
+    financialContext
+  )
 
   const outputCheck = await checkOutputSecurity(userId, result.answer)
   const safeReply = outputCheck.safe ? result.answer : outputCheck.sanitizedOutput
