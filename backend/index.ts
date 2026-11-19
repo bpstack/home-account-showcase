@@ -20,6 +20,7 @@ import investmentRoutes from './routes/investment/investment-routes.js'
 import cryptoRoutes from './routes/crypto/crypto-routes.js'
 import budgetRoutes from './routes/budget/budget-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
+import { startChatRetention } from './services/ai/chat-retention.js'
 import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
 import { AppError } from './utils/app-error.js'
 import { logger } from './utils/logger.js'
@@ -125,4 +126,5 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
   logAIStatus()
+  startChatRetention()
 })

@@ -340,6 +340,43 @@ export class InvestmentRepository {
     }))
   }
 
+  /**
+   * Retention (ADR-013): deletes every chat message older than `days`, then every conversation
+   * left empty for over an hour (the hour leaves room between creating one and its first
+   * message), and fixes the message count of the rest. Dates are compared inside MySQL, so the
+   * Node/MySQL time zone offset does not apply.
+   */
+  static async purgeOldChatHistory(days: number): Promise<{ messages: number; sessions: number }> {
+    const conn = await db.getConnection()
+    try {
+      await conn.beginTransaction()
+      const [msgs] = await conn.query(
+        `DELETE FROM ai_chat_messages WHERE created_at < NOW() - INTERVAL ? DAY`,
+        [days]
+      )
+      const [sessions] = await conn.query(
+        `DELETE FROM ai_chat_sessions
+         WHERE created_at < NOW() - INTERVAL 1 HOUR
+           AND NOT EXISTS (SELECT 1 FROM ai_chat_messages m WHERE m.session_id = ai_chat_sessions.id)`
+      )
+      await conn.query(
+        `UPDATE ai_chat_sessions s
+         SET s.message_count = (SELECT COUNT(*) FROM ai_chat_messages m WHERE m.session_id = s.id)
+         WHERE s.message_count <> (SELECT COUNT(*) FROM ai_chat_messages m WHERE m.session_id = s.id)`
+      )
+      await conn.commit()
+      return {
+        messages: (msgs as any).affectedRows,
+        sessions: (sessions as any).affectedRows,
+      }
+    } catch (error) {
+      await conn.rollback()
+      throw error
+    } finally {
+      conn.release()
+    }
+  }
+
   static async deleteChatMessagesBySession(sessionId: string): Promise<number> {
     const [result] = await db.query(`DELETE FROM ai_chat_messages WHERE session_id = ?`, [
       sessionId,
