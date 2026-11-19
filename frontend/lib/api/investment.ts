@@ -2,6 +2,8 @@
 // API client for investment endpoints
 
 // Usar proxy en cliente para evitar problemas de cookies cross-site
+import { ApiError } from '../apiClient'
+
 const isClient = typeof window !== 'undefined'
 const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
 
@@ -20,7 +22,7 @@ async function investmentRequest<T>(
 
   const data = await response.json()
   if (!response.ok) {
-    throw new Error(data.error || 'Error del servidor')
+    throw new ApiError(response.status, data.error || 'Error del servidor')
   }
   return data
 }

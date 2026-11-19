@@ -7,11 +7,12 @@ import { Button, Input } from '@/components/ui'
 import { useAIChat, QUICK_QUESTIONS } from '@/hooks/useAIChat'
 import { investmentApi } from '@/lib/api/investment'
 import { cn, formatDistanceToNow } from '@/lib/utils'
-import { validateChatMessage } from '@/validators/investment-validators'
+import { CHAT_MESSAGE_MAX_CHARS, validateChatMessage } from '@/validators/investment-validators'
 import { AiNote } from './AiNote'
 import { ChatText } from './ChatText'
 
-const CHAT_MAX_LENGTH = 5000
+/** From here on, the counter shows how much room is left. */
+const CHAT_COUNTER_FROM = CHAT_MESSAGE_MAX_CHARS - 300
 const CHAT_COOLDOWN_MS = 1000
 
 interface ChatSessionInfo {
@@ -226,7 +227,6 @@ export function AIChat({ accountId, sessionId, onSessionChange }: AIChatProps) {
             aria-label="Tu pregunta"
             placeholder="Escribe tu pregunta"
             value={input}
-            maxLength={CHAT_MAX_LENGTH}
             disabled={busy}
             error={inputError ?? undefined}
             onChange={(e) => {
@@ -244,6 +244,17 @@ export function AIChat({ accountId, sessionId, onSessionChange }: AIChatProps) {
             <Send className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
+        {input.length >= CHAT_COUNTER_FROM && (
+          <p
+            aria-live="polite"
+            className={`text-right text-xs ${
+              input.trim().length > CHAT_MESSAGE_MAX_CHARS ? 'text-danger' : 'text-text-secondary'
+            }`}
+          >
+            {input.trim().length.toLocaleString('es-ES', { useGrouping: 'always' })} / 2.000
+            caracteres
+          </p>
+        )}
         <AiNote />
       </form>
     </>

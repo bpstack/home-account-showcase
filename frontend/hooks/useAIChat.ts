@@ -4,6 +4,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { investmentApi, ChatSession } from '../lib/api/investment'
+import { ApiError } from '../lib/apiClient'
 
 interface UseAIChatOptions {
   accountId: string
@@ -182,6 +183,9 @@ export function useAIChat({
           err.message?.includes('rate limit')
         ) {
           console.warn('[AIChat] Rate limit exceeded:', err.message)
+          setError(err.message)
+        } else if (err instanceof ApiError && err.status === 400 && err.message) {
+          // The server says why it refused the message (too long, not allowed): show that reason
           setError(err.message)
         } else {
           console.error('Error sending message:', err)
