@@ -184,9 +184,9 @@ export function useAIChat({
         ) {
           console.warn('[AIChat] Rate limit exceeded:', err.message)
           setError(err.message)
-        } else if (err instanceof ApiError && [400, 502, 503, 504].includes(err.status)) {
-          // The server words these for the user: why it refused the message, or that the AI is
-          // unavailable, busy or slow. Provider details never reach this far.
+        } else if (err instanceof ApiError && [400, 429, 502, 503, 504].includes(err.status)) {
+          // The server words these for the user: why it refused the message, the usage limit, or
+          // that the AI is unavailable, busy or slow. Provider details never reach this far.
           setError(err.message)
         } else {
           console.error('Error sending message:', err)
