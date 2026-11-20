@@ -2,23 +2,7 @@
 
 export const BACKEND_URL = process.env.API_URL || 'http://localhost:3001/api'
 
-// Orígenes permitidos
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://home-account.vercel.app',
-  'https://home-account-showcase-etn9.vercel.app',
-  'https://home-account.stackbp.es',
-]
-
-// Patrones de Vercel preview (incluye cualquier subdomain de home-account-showcase)
-const vercelPreviewPattern = /^https:\/\/home-account-showcase-.*\.vercel\.app$/
-
-export function isAllowedOrigin(origin: string | null): boolean {
-  if (!origin) return true // Requests del mismo origen
-  if (allowedOrigins.includes(origin)) return true
-  if (vercelPreviewPattern.test(origin)) return true
-  return false
-}
+export { isAllowedOrigin } from '@/lib/auth-origins'
 
 // Opciones de cookies para producción/desarrollo
 const isProduction = process.env.NODE_ENV === 'production'
