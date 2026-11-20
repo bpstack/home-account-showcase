@@ -4,13 +4,8 @@
 import type { AIProviderConfig, AIProviderType, IAIProvider, AIStatus } from './types.js'
 import { PROVIDER_DEFAULTS } from './types.js'
 import { createProvider, getProviderConfigFromEnv } from './providers/index.js'
-import {
-  getPersistedProvider,
-  setPersistedProvider,
-  initializeAISettings,
-  hasPersistedSettings,
-} from './ai-settings.js'
 import { AppError } from '../../utils/app-error.js'
+import { AI_UNAVAILABLE_MESSAGE, isRetryableAIError, toClientAIError } from './ai-errors.js'
 import { logger } from '../../utils/logger.js'
 
 /**
@@ -33,9 +28,6 @@ function cleanJSON(jsonStr: string): string {
       .replace(/:\s*None\b/gi, ': null')
   )
 }
-
-// Initialize settings on module load
-initializeAISettings()
 
 /**
  * Check if AI is enabled via environment variable
@@ -67,16 +59,10 @@ export function isProviderEnabled(provider: AIProviderType): boolean {
 }
 
 /**
- * Get the configured provider (from persisted settings or env)
- * Persisted settings have absolute priority (including 'none')
+ * Get the configured provider. It comes only from the server environment: the API cannot change
+ * it (ADR-014).
  */
 export function getConfiguredProvider(): AIProviderType {
-  // If user has made a selection (file exists), use it - even if 'none'
-  if (hasPersistedSettings()) {
-    return getPersistedProvider()
-  }
-
-  // Otherwise use environment variable as default
   const envProvider = process.env.AI_PROVIDER as AIProviderType
   if (
     envProvider &&
@@ -87,14 +73,6 @@ export function getConfiguredProvider(): AIProviderType {
 
   // Default to none
   return 'none'
-}
-
-/**
- * Set the active provider (persists to file)
- */
-export function setActiveProvider(provider: AIProviderType): void {
-  setPersistedProvider(provider)
-  logger.info('AI_CLIENT', 'setActiveProvider', `Active provider changed to: ${provider}`)
 }
 
 /**
@@ -163,7 +141,7 @@ export class AIClient {
    */
   async sendPrompt(prompt: string, retryCount = 0): Promise<string> {
     if (!this.provider || !this.enabled) {
-      throw new AppError('AI provider not available', 503)
+      throw new AppError(AI_UNAVAILABLE_MESSAGE, 503)
     }
 
     const startTime = Date.now()
@@ -185,7 +163,7 @@ export class AIClient {
     } catch (error) {
       logger.error('AI_CLIENT', 'sendPrompt', `Attempt ${retryCount + 1} failed`, error as Error)
 
-      if (retryCount < this.config.maxRetries) {
+      if (retryCount < this.config.maxRetries && isRetryableAIError(error)) {
         logger.info(
           'AI_CLIENT',
           'sendPrompt',
@@ -195,7 +173,8 @@ export class AIClient {
         return this.sendPrompt(prompt, retryCount + 1)
       }
 
-      throw error
+      // The provider's message and status are in the log above; the client gets a generic one
+      throw toClientAIError(error)
     }
   }
 
@@ -259,7 +238,7 @@ export class AIClient {
       'Failed to parse response',
       new Error('No valid JSON found')
     )
-    throw new AppError('No valid JSON found in response', 500)
+    throw new AppError('La IA ha devuelto una respuesta no válida. Inténtalo de nuevo.', 502)
   }
 
   private delay(ms: number): Promise<void> {
@@ -288,73 +267,12 @@ export function getAIStatus(): AIStatus {
     }
   }
 
-  const _configuredProvider = getConfiguredProvider()
   const client = new AIClient()
 
   return {
     enabled: isAIEnabled(),
     activeProvider: client.getProviderName(),
     providers,
-  }
-}
-
-/**
- * Test connection to a specific provider
- */
-export async function testProviderConnection(providerType: AIProviderType): Promise<{
-  success: boolean
-  provider?: string
-  model?: string
-  responseTime?: number
-  error?: string
-}> {
-  if (!isAIEnabled()) {
-    return { success: false, error: 'AI is disabled (AI_ENABLED=false)' }
-  }
-
-  if (!isProviderEnabled(providerType)) {
-    if (providerType === 'ollama') {
-      return {
-        success: false,
-        error:
-          'Ollama is only available in local environment. In production, select another provider (Groq, Claude, or Gemini).',
-      }
-    }
-    return { success: false, error: `Provider ${providerType} is not enabled in this environment` }
-  }
-
-  const config = getProviderConfigFromEnv(providerType)
-  if (providerType !== 'ollama' && !config.apiKey) {
-    return { success: false, error: `No API key configured for ${providerType}` }
-  }
-
-  try {
-    const client = new AIClient(providerType)
-    if (!client.isAvailable()) {
-      return { success: false, error: `Provider ${providerType} not available` }
-    }
-
-    const startTime = Date.now()
-    await client.sendPrompt('Respond with exactly: OK')
-    const responseTime = Date.now() - startTime
-
-    return {
-      success: true,
-      provider: client.getProviderName(),
-      model: client.getConfig().model,
-      responseTime,
-    }
-  } catch (error) {
-    logger.error(
-      'AI_CLIENT',
-      'testProviderConnection',
-      `Error testing ${providerType}`,
-      error as Error
-    )
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
   }
 }
 
@@ -372,37 +290,17 @@ export function createAIClient(
  * Print AI status to console on startup
  */
 export function logAIStatus(): void {
-  const enabled = isAIEnabled()
-  const status = getAIStatus()
+  logger.info('AI_CLIENT', 'logAIStatus', describeAIStatus())
+}
 
-  logger.info('AI_CLIENT', 'logAIStatus', `AI Integration: ${enabled ? 'enabled' : 'disabled'}`)
-
-  if (enabled) {
-    logger.info('AI_CLIENT', 'logAIStatus', `Active: ${status.activeProvider}`)
-
-    const providerTypes: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'huggingface']
-    for (const type of providerTypes) {
-      const config = getProviderConfigFromEnv(type)
-      const providerEnabled = isProviderEnabled(type)
-      const hasApiKey = type === 'ollama' ? true : !!config.apiKey
-      const isConfigured = providerEnabled && hasApiKey
-
-      const model = config.model || PROVIDER_DEFAULTS[type]?.model || 'not set'
-
-      if (type === 'ollama') {
-        const baseUrl = config.baseUrl || 'http://localhost:11434'
-        logger.info(
-          'AI_CLIENT',
-          'logAIStatus',
-          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} @ ${baseUrl} (${isConfigured ? 'configured' : 'not configured'})`
-        )
-      } else {
-        logger.info(
-          'AI_CLIENT',
-          'logAIStatus',
-          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} (${isConfigured ? 'configured' : 'not configured'})`
-        )
-      }
-    }
-  }
+/**
+ * The startup line about AI: the provider the chat runs on and its model, or why there is none.
+ * Only that one provider (ADR-014): the others are not in use, and listing their default models
+ * made old names look like the app's.
+ */
+export function describeAIStatus(): string {
+  if (!isAIEnabled()) return 'AI: disabled'
+  const client = new AIClient()
+  if (!client.isAvailable()) return 'AI: no provider available'
+  return `AI: ${client.getProviderName()} · ${client.getConfig().model}`
 }

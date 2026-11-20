@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type DashboardTab = 'overview' | 'history' | 'stats' | 'investment'
+export type DashboardTab = 'overview' | 'history' | 'investment'
 export type DashboardPeriod = 'month' | 'year' | 'all' | 'custom'
 
 interface DashboardState {
@@ -42,11 +42,15 @@ export const useDashboardStore = create<DashboardState>()(
     }),
     {
       name: 'dashboard-storage',
+      // The period is not kept between visits (see filtersStore)
+      version: 2,
+      // Earlier versions kept the period (dropped) and had a 'stats' tab, now part of 'overview'
+      migrate: (persisted) => {
+        const old = (persisted ?? {}) as Record<string, unknown>
+        return { activeTab: old.activeTab === 'stats' ? 'overview' : old.activeTab }
+      },
       partialize: (state) => ({
         activeTab: state.activeTab,
-        period: state.period,
-        customStartDate: state.customStartDate,
-        customEndDate: state.customEndDate,
       }),
     }
   )

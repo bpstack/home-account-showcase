@@ -1,14 +1,13 @@
 'use client'
 
-import { Card, CardContent, Tabs, PageFilters } from '@/components/ui'
+import { Card, CardContent, Tabs, PeriodSelector } from '@/components/ui'
+import { periodRange, toPeriod, toYearMonth, type Period } from '@/lib/period'
 import { useAuth } from '@/hooks/useAuth'
 import { useTransactionStats, useTransactionSummary } from '@/lib/queries/transactions'
-import { HistoryInfoAlert } from '@/components/dashboard/HistoryInfoAlert'
-import { OverviewInfoAlert } from '@/components/dashboard/OverviewInfoAlert'
 import { EmptyAccountState } from '@/components/dashboard/EmptyAccountState'
 import { useHasAnyTransactions } from '@/lib/queries/transactions'
 import { useTransactionsStore } from '@/stores/transactionsStore'
-import { LayoutDashboard, History, LineChart, Coins } from 'lucide-react'
+import { LayoutDashboard, History, PiggyBank } from 'lucide-react'
 import type {
   StatsResponse,
   SummaryResponse,
@@ -23,7 +22,6 @@ import { Suspense } from 'react'
 
 import { OverviewTab } from './components/OverviewTab'
 import { HistoryTab } from './components/HistoryTab'
-import { StatsTab } from './components/StatsTab'
 import { SavingsTab } from './components/SavingsTab'
 
 // Initial data types from RSC
@@ -86,11 +84,9 @@ function HistorySkeleton() {
 const tabsList = [
   { id: 'overview', label: 'Resumen', icon: <LayoutDashboard className="h-4 w-4" /> },
   { id: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
-  { id: 'stats', label: 'Estadísticas', icon: <LineChart className="h-4 w-4" /> },
-  { id: 'investment', label: 'Inversión', icon: <Coins className="h-4 w-4" /> },
+  // The id stays 'investment': it is the tab remembered in the dashboard store
+  { id: 'investment', label: 'Ahorro', icon: <PiggyBank className="h-4 w-4" /> },
 ]
-
-type Period = 'month' | 'year' | 'all' | 'custom'
 
 interface Stats {
   income: number
@@ -117,100 +113,25 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     account?.id || ''
   )
 
-  const { selectedYear, selectedMonth, setYear, setMonth, reset: resetFilters } = useFiltersStore()
+  const { selectedYear, selectedMonth, setYear, setMonth } = useFiltersStore()
 
-  const now = new Date()
-  const currentMonth = now.getMonth()
-  const currentYear = now.getFullYear()
+  const currentYear = new Date().getFullYear()
 
-  const handleMonthChange = (month: number | null) => {
-    setMonth(month)
-    setPeriod(month === null ? 'year' : 'month')
-    // Exclusión mutua: al activar mes, anulamos periodo custom
-    setCustomDates('', '')
-  }
+  const periodValue = toPeriod(
+    selectedYear,
+    selectedMonth,
+    period === 'custom' ? { start: customStartDate, end: customEndDate } : null
+  )
 
-  const handleYearChange = (year: number | null) => {
+  const handlePeriodChange = (next: Period) => {
+    const { year, month } = toYearMonth(next)
     setYear(year)
-    if (year !== null) {
-      setMonth(null)
-      // Exclusión mutua: al activar año, anulamos periodo custom
-      setCustomDates('', '')
-      setPeriod('year')
-    }
+    setMonth(month)
+    setPeriod(next.kind === 'range' ? 'custom' : next.kind)
+    setCustomDates(next.kind === 'range' ? next.start : '', next.kind === 'range' ? next.end : '')
   }
 
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setCustomDates(startDate, endDate)
-    setPeriod('custom')
-    // Exclusión mutua: al activar periodo, anulamos mes y año
-    setYear(null)
-    setMonth(null)
-  }
-
-  const getDateRange = () => {
-    // Periodo custom tiene prioridad
-    if (period === 'custom' && customStartDate && customEndDate) {
-      return {
-        startDate: customStartDate,
-        endDate: customEndDate,
-      }
-    }
-
-    // Si hay mes seleccionado, calcular el rango del mes
-    if (selectedMonth !== null) {
-      const yearToUse = selectedYear ?? currentYear
-      return {
-        startDate: new Date(yearToUse, selectedMonth, 1).toISOString().split('T')[0],
-        endDate: new Date(yearToUse, selectedMonth + 1, 0).toISOString().split('T')[0],
-      }
-    }
-
-    // Si hay año seleccionado (sin mes), mostrar todo el año
-    if (selectedYear !== null) {
-      return {
-        startDate: `${selectedYear}-01-01`,
-        endDate: `${selectedYear}-12-31`,
-      }
-    }
-
-    // Fallback al period
-    switch (period) {
-      case 'month':
-        return {
-          startDate: new Date(currentYear, currentMonth, 1).toISOString().split('T')[0],
-          endDate: new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0],
-        }
-      case 'year':
-        return {
-          startDate: `${currentYear}-01-01`,
-          endDate: `${currentYear}-12-31`,
-        }
-      case 'all':
-        return {
-          startDate: '2020-01-01',
-          endDate: now.toISOString().split('T')[0],
-        }
-      default:
-        return {
-          startDate: `${currentYear}-01-01`,
-          endDate: `${currentYear}-12-31`,
-        }
-    }
-  }
-
-  const hasActiveFilters =
-    selectedMonth !== null ||
-    (selectedYear !== null && selectedYear !== currentYear) ||
-    period === 'custom'
-
-  const clearFilters = () => {
-    resetFilters() // Esto ya resetea a currentYear y month=null
-    setPeriod('year')
-    setCustomDates('', '')
-  }
-
-  const { startDate, endDate } = getDateRange()
+  const { start: startDate, end: endDate } = periodRange(periodValue)
 
   // Use client-side calculation hooks (work with encrypted data)
   const { data: statsData, isLoading: isLoadingStats } = useTransactionStats(
@@ -238,50 +159,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as any)}
           variant="underline-responsive"
-          rightContent={
-            activeTab === 'history' ? (
-              <PageFilters
-                showYearSelect
-                year={selectedYear}
-                onYearChange={(y) => setYear(y)}
-                showClear={selectedYear !== null && selectedYear !== currentYear}
-                onClear={() => setYear(null)}
-                className="ml-auto"
-              />
-            ) : (
-              <PageFilters
-                showMonthSelect
-                selectedMonth={selectedMonth}
-                onMonthChange={handleMonthChange}
-                showYearSelect
-                year={selectedYear}
-                onYearChange={handleYearChange}
-                showDatePicker
-                startDate={period === 'custom' ? customStartDate : undefined}
-                endDate={period === 'custom' ? customEndDate : undefined}
-                onDatesChange={handleDateRangeChange}
-                showClear={hasActiveFilters}
-                onClear={clearFilters}
-                className="ml-auto"
-              />
-            )
-          }
+          rightContent={<PeriodSelector value={periodValue} onChange={handlePeriodChange} />}
         />
-
-        {/* Mobile secondary filters could go here if needed, but PageFilters handles them in Tabs rightContent */}
       </div>
-
-      {activeTab === 'overview' && (
-        <div className="px-3 sm:px-4 mt-2">
-          <OverviewInfoAlert />
-        </div>
-      )}
-
-      {activeTab === 'history' && (
-        <div className="px-3 sm:px-4 mt-2">
-          <HistoryInfoAlert />
-        </div>
-      )}
 
       {/* Content area */}
       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6">
@@ -301,11 +181,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 {isLoading ? (
                   <DashboardSkeleton />
                 ) : (
-                  <OverviewTab
-                    stats={stats}
-                    summary={summary}
-                    incomeByType={statsData?.stats?.incomeByType}
-                  />
+                  <OverviewTab stats={stats} summary={summary} period={periodValue} />
                 )}
               </Suspense>
             )}
@@ -315,17 +191,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </Suspense>
             )}
 
-            {activeTab === 'stats' && (
-              <Suspense fallback={<DashboardSkeleton />}>
-                {isLoading ? <DashboardSkeleton /> : <StatsTab summary={summary} />}
-              </Suspense>
-            )}
             {activeTab === 'investment' && (
               <Suspense fallback={<DashboardSkeleton />}>
                 {isLoading ? (
                   <DashboardSkeleton />
                 ) : (
-                  <SavingsTab stats={stats} period={period} accountId={account?.id || ''} />
+                  <SavingsTab stats={stats} period={periodValue} />
                 )}
               </Suspense>
             )}

@@ -1,472 +1,287 @@
-// components/investment/AIChat.tsx
-// AI Chat component with conversational context and session management
-
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { History, Plus, Send, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button, Input } from '@/components/ui'
 import { useAIChat, QUICK_QUESTIONS } from '@/hooks/useAIChat'
 import { investmentApi } from '@/lib/api/investment'
-import { DisclaimerAlert } from './DisclaimerAlert'
-import { Send, MessageCircle, Bot, Loader2, Trash2, ChevronDown, History, X } from 'lucide-react'
-import { formatDistanceToNow, cn } from '@/lib/utils'
-import { Skeleton } from '@/components/ui/Skeleton'
-import { toast } from 'sonner'
-import { validateChatMessage } from '@/validators/investment-validators'
+import { cn, formatDistanceToNow } from '@/lib/utils'
+import { CHAT_MESSAGE_MAX_CHARS, validateChatMessage } from '@/validators/investment-validators'
+import { AiNote } from './AiNote'
+import { ChatText } from './ChatText'
 
-const CHAT_MAX_LENGTH = 5000
+/** From here on, the counter shows how much room is left. */
+const CHAT_COUNTER_FROM = CHAT_MESSAGE_MAX_CHARS - 300
 const CHAT_COOLDOWN_MS = 1000
-
-interface AIChatProps {
-  accountId: string
-  sessionId?: string | null
-  className?: string
-}
 
 interface ChatSessionInfo {
   sessionId: string
-  provider: string
   messageCount: number
   createdAt: string
   lastMessageAt?: string
 }
 
-export function AIChat({ accountId, sessionId = null, className = '' }: AIChatProps) {
+interface AIChatProps {
+  accountId: string
+  /** The conversation to open; kept by the page so closing the panel does not lose it */
+  sessionId: string | null
+  onSessionChange: (_sessionId: string | null) => void
+}
+
+/** The AI advisor: past conversations, the current one and the box to write in. Fills a flush Sheet. */
+export function AIChat({ accountId, sessionId, onSessionChange }: AIChatProps) {
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(sessionId)
   const { messages, isLoading, isTyping, error, sendMessage, createSession, clearChat, session } =
-    useAIChat({ accountId, sessionId })
+    useAIChat({ accountId, sessionId: activeSessionId })
 
   const [input, setInput] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
   const [isCooldown, setIsCooldown] = useState(false)
   const [sessions, setSessions] = useState<ChatSessionInfo[]>([])
   const [showSessions, setShowSessions] = useState(false)
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const prevMessagesLength = useRef(messages.length)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
 
-  // Load sessions on mount
+  const loadSessions = async () => {
+    try {
+      setSessions(await investmentApi.getChatSessions(accountId))
+    } catch {
+      setSessions([])
+    }
+  }
+
+  // Report the conversation in use, including one the hook creates on the first message
+  useEffect(() => {
+    // While a saved conversation loads, the one being loaded is still the one in use
+    onSessionChange(session?.sessionId ?? activeSessionId)
+  }, [session?.sessionId, activeSessionId, onSessionChange])
+
   useEffect(() => {
     loadSessions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId])
 
-  // Close dropdown when clicking outside
+  // Keep the newest message in view
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowSessions(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    endRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [messages.length, isTyping])
 
-  const loadSessions = async () => {
-    setIsLoadingSessions(true)
-    try {
-      const data = await investmentApi.getChatSessions(accountId)
-      setSessions(data)
-    } catch (err) {
-      console.error('Error loading sessions:', err)
-    } finally {
-      setIsLoadingSessions(false)
-    }
-  }
-
-  // Auto-scroll to bottom only when a new message is added
-  useEffect(() => {
-    if (messages.length > prevMessagesLength.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
-    prevMessagesLength.current = messages.length
-  }, [messages.length])
-
-  // Keep input focused
-  useEffect(() => {
-    if (!isTyping && inputRef.current) {
-      inputRef.current.focus({ preventScroll: true })
-    }
-  }, [isTyping, messages.length])
-
-  const handleSend = async () => {
-    const validation = validateChatMessage(input)
-    if (!validation.success) {
-      setInputError(validation.error)
+  const send = async (text: string) => {
+    const check = validateChatMessage(text)
+    if (!check.success) {
+      setInputError(check.error)
       return
     }
-
     setInputError(null)
-    const tempInput = validation.data
     setInput('')
-
-    // Activate cooldown
     setIsCooldown(true)
     setTimeout(() => setIsCooldown(false), CHAT_COOLDOWN_MS)
-
+    await sendMessage(check.data)
     inputRef.current?.focus()
-    await sendMessage(tempInput)
     loadSessions()
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
-  const handleDeleteSession = async (sessionIdToDelete: string) => {
-    try {
-      await investmentApi.deleteChatSession(accountId, sessionIdToDelete)
-      await loadSessions()
-      if (session?.sessionId === sessionIdToDelete) {
-        clearChat()
-      }
-      toast.success('Conversación eliminada')
-    } catch (err) {
-      console.error('Error deleting session:', err)
-      toast.error('Error al eliminar la conversación')
-    }
-  }
-
-  const handleSelectSession = (sessionIdToSelect: string) => {
-    router.push(`/investment?sessionId=${sessionIdToSelect}`)
-  }
-
-  const handleNewChat = async () => {
+  const startNew = async () => {
+    setShowSessions(false)
+    setActiveSessionId(null)
     clearChat()
     await createSession()
     loadSessions()
-    setShowSessions(false)
   }
 
+  const remove = async (id: string) => {
+    try {
+      await investmentApi.deleteChatSession(accountId, id)
+      if (session?.sessionId === id) {
+        setActiveSessionId(null)
+        clearChat()
+      }
+      await loadSessions()
+      toast.success('Conversación eliminada')
+    } catch {
+      toast.error('No se pudo eliminar la conversación')
+    }
+  }
+
+  const saved = sessions.filter((s) => s.messageCount > 0)
+  const visible = messages.filter((m) => m.role !== 'system' || messages.length <= 1)
+  const busy = isTyping || isCooldown
+
   return (
-    <Card className={cn('flex flex-col min-h-[400px] sm:h-[600px]', className)}>
-      <CardHeader className="pb-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-lg flex items-center gap-2 font-bold tracking-tight">
-              <div className="p-1.5 bg-primary/10 rounded-lg">
-                <Bot className="h-5 w-5 text-primary" />
-              </div>
-              Asesor IA
-            </CardTitle>
+    <>
+      <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-layer-3 px-2 py-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-pressed={showSessions}
+          onClick={() => setShowSessions(!showSessions)}
+        >
+          <History className="h-4 w-4" aria-hidden="true" />
+          {showSessions ? 'Volver al chat' : 'Conversaciones'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={startNew}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Nueva
+        </Button>
+      </div>
 
-            {/* Session Selector */}
-            <div className="relative" ref={dropdownRef}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSessions(!showSessions)}
-                className="h-8 px-2 gap-1"
+      <div className="min-h-0 flex-1 overflow-y-auto p-4" aria-live="polite">
+        {showSessions ? (
+          saved.length === 0 ? (
+            <p className="text-sm text-text-secondary">Aún no hay conversaciones guardadas.</p>
+          ) : (
+            <ul className="divide-y divide-layer-3">
+              {saved.map((s) => (
+                <li key={s.sessionId} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSessionId(s.sessionId)
+                      setShowSessions(false)
+                    }}
+                    className={cn(
+                      'min-h-11 flex-1 rounded-md px-2 py-2 text-left hover:bg-layer-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      session?.sessionId === s.sessionId && 'bg-layer-2'
+                    )}
+                  >
+                    <span className="block text-sm text-text-primary">
+                      {s.messageCount} mensajes
+                    </span>
+                    <span className="block text-xs text-text-secondary">
+                      {formatDistanceToNow(new Date(s.lastMessageAt || s.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(s.sessionId)}
+                    aria-label="Eliminar conversación"
+                    className="rounded-md p-2 text-text-secondary hover:bg-layer-2 hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : isLoading ? (
+          <p className="text-sm text-text-secondary">Cargando…</p>
+        ) : visible.length === 0 ? (
+          <div>
+            <p className="text-sm text-text-primary">
+              Pregunta sobre conceptos, mercados o cómo repartir tu ahorro.
+            </p>
+            <QuickQuestions onPick={send} disabled={busy} />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {visible.map((m) => (
+              <div
+                key={m.id}
+                className={cn('flex flex-col', m.role === 'user' ? 'items-end' : 'items-start')}
               >
-                <History className="h-4 w-4" />
-                <span className="text-xs"></span>
-                <ChevronDown
-                  className={cn('h-3 w-3 transition-transform', showSessions && 'rotate-180')}
-                />
-              </Button>
-
-              {showSessions && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-background border rounded-lg shadow-xl z-[60] max-h-64 overflow-y-auto">
-                  <div className="p-2 border-b bg-muted/30">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleNewChat}
-                      className="w-full justify-start gap-2"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Nueva conversación
-                    </Button>
-                  </div>
-
-                  {isLoadingSessions ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">Cargando...</div>
-                  ) : sessions.filter((s) => s.messageCount > 0).length === 0 ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      Sin conversaciones guardadas
-                    </div>
+                <div
+                  className={cn(
+                    'max-w-[90%] space-y-2 rounded-xl px-3 py-2 text-sm',
+                    m.role === 'user'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-layer-2 text-text-primary'
+                  )}
+                >
+                  {m.role === 'user' ? (
+                    m.content.split('\n').map((paragraph, i) => <p key={i}>{paragraph}</p>)
                   ) : (
-                    sessions
-                      .filter((s) => s.messageCount > 0)
-                      .map((s) => (
-                        <div
-                          key={s.sessionId}
-                          className={cn(
-                            'flex items-center justify-between p-2 hover:bg-muted cursor-pointer group',
-                            session?.sessionId === s.sessionId && 'bg-muted/60'
-                          )}
-                          onClick={() => handleSelectSession(s.sessionId)}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">
-                              {s.messageCount === 0 ? 'Nueva' : `${s.messageCount} mensajes`}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(s.lastMessageAt || s.createdAt), {
-                                addSuffix: true,
-                              })}
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 ml-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteSession(s.sessionId)
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))
+                    <ChatText text={m.content} />
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-
-          <Button variant="ghost" size="sm" onClick={handleNewChat} className="text-xs">
-            <MessageCircle className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="flex-1 flex flex-col pt-0 overflow-hidden">
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-          {isLoading ? (
-            <div className="space-y-4 p-4">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`flex flex-col max-w-[85%] ${i % 2 === 0 ? 'ml-auto items-end' : 'mr-auto items-start'}`}
-                >
-                  <Skeleton className="h-12 w-full rounded-2xl" />
-                  <Skeleton className="h-3 w-20 mt-1" />
-                </div>
-              ))}
-            </div>
-          ) : messages.length === 0 ? (
-            <EmptyState onStart={createSession} />
-          ) : (
-            messages
-              .filter((m) => m.role !== 'system' || messages.length <= 1)
-              .map((message, index) => (
-                <ChatBubble
-                  key={message.id || index}
-                  role={message.role}
-                  content={message.content}
-                  timestamp={message.timestamp}
-                />
-              ))
-          )}
-
-          {isTyping && <TypingIndicator />}
-
-          {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Quick questions */}
-        {messages.length > 0 && messages.length <= 3 && (
-          <div className="flex flex-wrap gap-2 my-3">
-            {QUICK_QUESTIONS.slice(0, 4).map((question) => (
-              <Button
-                key={question}
-                variant="secondary"
-                size="sm"
-                className="text-xs"
-                onClick={(e) => {
-                  e.preventDefault()
-                  sendMessage(question)
-                }}
-                disabled={isTyping}
-                type="button"
-              >
-                {question}
-              </Button>
+                <span className="mt-1 text-xs text-text-secondary">
+                  {m.role === 'user' ? 'Tú' : 'Asesor'} ·{' '}
+                  {formatDistanceToNow(m.timestamp, { addSuffix: true })}
+                </span>
+              </div>
             ))}
+            {visible.length <= 3 && !isTyping && <QuickQuestions onPick={send} disabled={busy} />}
+            {isTyping && <p className="text-sm text-text-secondary">El asesor está escribiendo…</p>}
           </div>
         )}
-
-        {/* Input area */}
-        <div className="flex-shrink-0 pt-4 pb-2 px-1 border-t border-border/40">
-          <div className="flex gap-2 relative">
-            <Input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => {
-                if (e.target.value.length <= CHAT_MAX_LENGTH) {
-                  setInput(e.target.value)
-                  if (inputError) setInputError(null)
-                }
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="Escribe tu pregunta..."
-              disabled={isTyping || isCooldown}
-              maxLength={CHAT_MAX_LENGTH}
-              className={cn(
-                'flex-1 pr-10 rounded-xl border-border/60 focus-visible:ring-primary/20 bg-background/50',
-                inputError && 'border-red-500 focus-visible:ring-red-500/20'
-              )}
-            />
-            <Button
-              onClick={handleSend}
-              disabled={!input.trim() || isTyping || isCooldown}
-              size="icon"
-              className="absolute right-1 top-1 h-8 w-8 rounded-lg transition-transform active:scale-95"
-            >
-              {isTyping ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <div className="flex items-center justify-between mt-1 px-1">
-            {inputError ? <p className="text-xs text-red-500">{inputError}</p> : <span />}
-            {input.length > 0 && (
-              <span
-                className={cn(
-                  'text-xs',
-                  input.length > CHAT_MAX_LENGTH * 0.9 ? 'text-red-500' : 'text-muted-foreground'
-                )}
-              >
-                {input.length}/{CHAT_MAX_LENGTH}
-              </span>
-            )}
-          </div>
-          <DisclaimerAlert variant="compact" className="mt-2 opacity-80" type="chat" />
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// ========================
-// Subcomponents
-// ========================
-
-function EmptyState({ onStart }: { onStart: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center py-8">
-      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-        <Bot className="h-8 w-8 text-primary" />
-      </div>
-      <h3 className="font-semibold mb-2">Tu asistente de inversión</h3>
-      <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-        Pregúntame sobre conceptos financieros, mercados o estrategias de inversión.
-      </p>
-      <Button onClick={onStart}>
-        <MessageCircle className="h-4 w-4 mr-2" />
-        Empezar chat
-      </Button>
-    </div>
-  )
-}
-
-function ChatBubble({
-  role,
-  content,
-  timestamp,
-}: {
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  timestamp: Date
-}) {
-  const isUser = role === 'user'
-
-  return (
-    <div
-      className={cn(
-        'flex flex-col max-w-[90%] sm:max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300',
-        isUser ? 'ml-auto items-end' : 'mr-auto items-start'
-      )}
-    >
-      <div
-        className={cn(
-          'px-4 py-3 text-sm shadow-sm',
-          isUser
-            ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm'
-            : 'bg-muted/80 backdrop-blur-sm text-foreground rounded-2xl rounded-tl-sm border border-border/50'
-        )}
-      >
-        {content.split('\n').map((paragraph, i) => (
-          <p key={i} className={i > 0 ? 'mt-2' : ''}>
-            {paragraph}
+        {error && (
+          <p role="alert" className="mt-4 text-sm text-danger">
+            {error}
           </p>
-        ))}
+        )}
+        <div ref={endRef} />
       </div>
-      <span className="text-[10px] text-muted-foreground mt-1 px-1 font-medium">
-        {isUser ? 'Tú' : 'Asesor'} • {formatDistanceToNow(timestamp, { addSuffix: true })}
-      </span>
-    </div>
-  )
-}
 
-function TypingIndicator() {
-  return (
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <div className="flex items-center gap-1">
-        <span
-          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
-          style={{ animationDelay: '0ms' }}
-        />
-        <span
-          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
-          style={{ animationDelay: '150ms' }}
-        />
-        <span
-          className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
-          style={{ animationDelay: '300ms' }}
-        />
-      </div>
-      <span className="text-sm">Escribiendo...</span>
-    </div>
-  )
-}
-
-// Compact version for sidebar
-export function AIChatCompact({ accountId, sessionId = null }: AIChatProps) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  if (!isOpen) {
-    return (
-      <Button variant="outline" size="sm" onClick={() => setIsOpen(true)} className="gap-2">
-        <MessageCircle className="h-4 w-4" />
-        Asesor IA
-      </Button>
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-background rounded-xl shadow-2xl overflow-hidden">
-        <div className="flex justify-end p-2 border-b">
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="h-8 w-8">
-            <X className="h-4 w-4" />
+      <form
+        className="flex-shrink-0 space-y-2 border-t border-layer-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        onSubmit={(e) => {
+          e.preventDefault()
+          send(input)
+        }}
+      >
+        <div className="flex gap-2">
+          <Input
+            ref={inputRef}
+            aria-label="Tu pregunta"
+            placeholder="Escribe tu pregunta"
+            value={input}
+            disabled={busy}
+            error={inputError ?? undefined}
+            onChange={(e) => {
+              setInput(e.target.value)
+              setInputError(null)
+            }}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            aria-label="Enviar"
+            disabled={!input.trim() || busy}
+            className="shrink-0"
+          >
+            <Send className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
-        <AIChat
-          accountId={accountId}
-          sessionId={sessionId}
-          className="h-[70vh] border-0 rounded-0"
-        />
-      </div>
+        {input.length >= CHAT_COUNTER_FROM && (
+          <p
+            aria-live="polite"
+            className={`text-right text-xs ${
+              input.trim().length > CHAT_MESSAGE_MAX_CHARS ? 'text-danger' : 'text-text-secondary'
+            }`}
+          >
+            {input.trim().length.toLocaleString('es-ES', { useGrouping: 'always' })} / 2.000
+            caracteres
+          </p>
+        )}
+        <AiNote />
+      </form>
+    </>
+  )
+}
+
+function QuickQuestions({
+  onPick,
+  disabled,
+}: {
+  onPick: (_question: string) => void
+  disabled: boolean
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {QUICK_QUESTIONS.slice(0, 4).map((question) => (
+        <Button
+          key={question}
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => onPick(question)}
+        >
+          {question}
+        </Button>
+      ))}
     </div>
   )
 }

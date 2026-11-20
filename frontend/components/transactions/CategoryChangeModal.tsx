@@ -151,9 +151,9 @@ export function CategoryChangeModal({
             </label>
 
             {applyToAll && (
-              <div className="ml-7 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-                <span className="text-sm text-amber-600 dark:text-amber-400">
+              <div className="ml-7 p-3 border border-border rounded-md flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0" aria-hidden="true" />
+                <span className="text-sm text-muted-foreground">
                   Se actualizarán <strong>{affectedCount}</strong> transacciones
                 </span>
               </div>

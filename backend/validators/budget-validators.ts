@@ -28,9 +28,11 @@ export const updateBudgetSchema = z.object({
     .positive('La cantidad debe ser mayor a 0')
     .max(900000, 'La cantidad no puede exceder 900.000€')
     .optional(),
-  period: z.enum(['weekly', 'monthly', 'yearly'], {
-    message: 'El periodo debe ser semanal, mensual o anual',
-  }).optional(),
+  period: z
+    .enum(['weekly', 'monthly', 'yearly'], {
+      message: 'El periodo debe ser semanal, mensual o anual',
+    })
+    .optional(),
   alert_threshold: z
     .number()
     .int()

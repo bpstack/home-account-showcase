@@ -2,7 +2,7 @@
 
 import * as dotenv from 'dotenv'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 // Verificación crítica
 if (!process.env.SECRET_JWT_KEY) {

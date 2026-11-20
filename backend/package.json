@@ -9,15 +9,17 @@
     "build": "echo 'Using tsx - no build needed'",
     "start": "tsx index.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx",
+    "verify": "pnpm run typecheck && pnpm run lint && pnpm run test",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
+    "test": "vitest run",
     "format": "prettier --write ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.34.1",
   "engines": {
-    "node": "22.x"
+    "node": ">=24.22.3 <25"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -26,20 +28,18 @@
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dompurify": "^3.3.1",
+    "dompurify": "^3.4.17",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
     "jose": "^6.1.3",
     "jsdom": "^27.4.0",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.0.2",
-    "mysql2": "^3.16.0",
+    "mysql2": "^3.24.6",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
-    "xlsx": "^0.18.5",
-    "zod": "^4.3.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -49,19 +49,19 @@
     "@types/express": "^5.0.6",
     "@types/jsdom": "^27.0.0",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/multer": "^2.0.0",
     "@types/node": "^25.0.5",
     "@types/passport": "^1.0.17",
     "@types/passport-github2": "^1.2.9",
     "@types/passport-google-oauth20": "^2.0.17",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/parser": "^8.72.2",
     "cross-env": "^10.1.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "prettier": "^3.6.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3",
+    "vitest": "5.1.0"
   }
 }

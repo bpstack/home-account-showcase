@@ -89,7 +89,7 @@ export interface TransactionFilters {
   account_id: string
   startDate?: string
   endDate?: string
-  subcategory_id?: string
+  subcategory_ids?: string[]
   minAmount?: number
   maxAmount?: number
   search?: string

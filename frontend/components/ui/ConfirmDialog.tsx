@@ -45,9 +45,9 @@ export function ConfirmDialog({
       confirmVariant: 'default' as const,
     },
     info: {
-      icon: 'text-blue-500',
-      bg: 'bg-blue-500/10',
-      border: 'border-blue-500/20',
+      icon: 'text-accent',
+      bg: 'bg-accent/10',
+      border: 'border-accent/20',
       confirmVariant: 'default' as const,
     },
   }

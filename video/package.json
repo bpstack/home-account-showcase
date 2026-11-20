@@ -1,11 +1,12 @@
 {
   "name": "home-account-video",
   "private": true,
+  "packageManager": "pnpm@10.34.1",
   "scripts": {
     "dev": "remotion studio src/index.ts",
     "build": "remotion render src/index.ts HomeAccountPromo out/promo.webm --codec=vp8 --video-bitrate=1M",
     "build:mobile": "remotion render src/index.ts HomeAccountPromoMobile out/promo-mobile.webm --codec=vp8 --video-bitrate=1M",
-    "build:all": "pnpm build && pnpm build:mobile",
+    "build:all": "pnpm run build && pnpm run build:mobile",
     "build:still": "remotion still src/index.ts HomeAccountPromo out/thumbnail.png --frame=210",
     "build:still:mobile": "remotion still src/index.ts HomeAccountPromoMobile out/promo-mobile-poster.png --frame=100"
   },

@@ -34,22 +34,6 @@ export interface AIStatus {
   >
 }
 
-export interface ParsedTransactionAI {
-  date: string
-  description: string
-  amount: number
-  category?: string
-  subcategory?: string
-}
-
-export interface AIParseResult {
-  success: boolean
-  transactions: ParsedTransactionAI[]
-  provider: string
-  responseTime: number
-  error?: string
-}
-
 export const PROVIDER_DEFAULTS: Record<AIProviderType, Partial<AIProviderConfig>> = {
   none: {
     provider: 'none',
@@ -77,7 +61,8 @@ export const PROVIDER_DEFAULTS: Record<AIProviderType, Partial<AIProviderConfig>
   },
   groq: {
     provider: 'groq',
-    model: 'llama-3.3-70b-versatile',
+    // Used when GROQ_MODEL is not set (ADR-010); llama-3.3-70b-versatile was retired by Groq
+    model: 'openai/gpt-oss-120b',
     temperature: 0.1,
     maxTokens: 4000,
     timeout: 60000,

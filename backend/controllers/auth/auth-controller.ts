@@ -495,7 +495,16 @@ export const getResetInfo = asyncHandler(async (req: Request, res: Response) => 
 })
 
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
-  const { email, token, newPassword, newKeySalt, newVerificationBlob, reEncryptedKeys, newRecoveryBlob, clearAccountKeys } = req.body
+  const {
+    email,
+    token,
+    newPassword,
+    newKeySalt,
+    newVerificationBlob,
+    reEncryptedKeys,
+    newRecoveryBlob,
+    clearAccountKeys,
+  } = req.body
 
   if (!email || !token || !newPassword) {
     throw new AppError('Email, token, and new password are required', 400)

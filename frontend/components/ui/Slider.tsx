@@ -1,6 +1,3 @@
-// components/ui/Slider.tsx
-// Simple range slider component
-
 'use client'
 
 import { forwardRef } from 'react'
@@ -14,37 +11,30 @@ export interface SliderProps {
   step?: number
   className?: string
   disabled?: boolean
+  id?: string
+  'aria-label'?: string
+  /** What the value means aloud: "5.000,00 €" instead of "5000" */
+  'aria-valuetext'?: string
 }
 
+/** A range slider in the theme accent (the browser draws the filled track). */
 export const Slider = forwardRef<HTMLInputElement, SliderProps>(
-  ({ value, onValueChange, min = 0, max = 100, step = 1, className, disabled }, ref) => {
-    const percentage = ((value[0] - min) / (max - min)) * 100
-
-    return (
-      <div className={cn('relative', className)}>
-        <input
-          ref={ref}
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value[0]}
-          onChange={(e) => onValueChange([Number(e.target.value)])}
-          disabled={disabled}
-          className="slider-purple w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
-        />
-        {value[0] !== undefined && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 pointer-events-none h-2 bg-purple-500 rounded-full"
-            style={{
-              left: 0,
-              width: `${percentage}%`,
-            }}
-          />
-        )}
-      </div>
-    )
-  }
+  ({ value, onValueChange, min = 0, max = 100, step = 1, className, ...props }, ref) => (
+    <input
+      ref={ref}
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value[0]}
+      onChange={(e) => onValueChange([Number(e.target.value)])}
+      className={cn(
+        'h-6 w-full cursor-pointer accent-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        className
+      )}
+      {...props}
+    />
+  )
 )
 
 Slider.displayName = 'Slider'

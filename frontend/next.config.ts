@@ -1,11 +1,8 @@
 import type { NextConfig } from 'next'
-import withSerwistInit from '@serwist/next'
+import { withSerwist } from '@serwist/turbopack'
 
-const withSerwist = withSerwistInit({
-  swSrc: 'app/sw.ts',
-  swDest: 'public/sw.js',
-  disable: process.env.NODE_ENV === 'development',
-})
+// The service worker is built from `app/sw.ts` and served by the route handler in
+// `app/serwist/[path]/route.ts`, at `/serwist/sw.js`.
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

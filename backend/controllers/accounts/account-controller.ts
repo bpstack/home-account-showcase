@@ -75,7 +75,7 @@ export const updateAccount = asyncHandler(async (req: Request, res: Response) =>
 
   const nameResult = updateAccountNameSchema.safeParse({ name })
   if (!nameResult.success) {
-    const messages = nameResult.error.issues.map(i => i.message).join(', ')
+    const messages = nameResult.error.issues.map((i) => i.message).join(', ')
     throw new AppError(messages, 400)
   }
 

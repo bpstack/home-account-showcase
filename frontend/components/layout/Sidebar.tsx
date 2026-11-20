@@ -2,91 +2,77 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Receipt, Tags, Upload, Settings, Wallet } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
-
-const mainLinks = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Balance', href: '/balance', icon: Wallet },
-  { name: 'Transacciones', href: '/transactions', icon: Receipt },
-  { name: 'Categorías', href: '/categories', icon: Tags },
-]
+import { isActive, mainNav, settingsNav, type NavItem } from './navigation'
 
 type SidebarProps = {
   onNavigate?: () => void
 }
 
+function SidebarLink({
+  item,
+  active,
+  onNavigate,
+}: {
+  item: NavItem
+  active: boolean
+  onNavigate?: () => void
+}) {
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex items-center gap-3 rounded-md border-l-2 px-3 py-2 text-sm transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        active
+          ? 'border-accent bg-layer-2 font-medium text-text-primary'
+          : 'border-transparent text-text-secondary hover:bg-layer-2 hover:text-text-primary'
+      )}
+    >
+      <item.icon
+        aria-hidden="true"
+        className={cn('h-[18px] w-[18px]', active ? 'text-accent' : 'text-text-secondary')}
+      />
+      {item.name}
+    </Link>
+  )
+}
+
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  useAuth()
-  const panel = searchParams.get('panel')
-
-  const renderLink = (item: { name: string; href: string; icon: any }) => {
-    const isActive = pathname === item.href
-
-    return (
-      <Link
-        key={item.name}
-        href={item.href}
-        onClick={onNavigate}
-        className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-          isActive
-            ? 'bg-muted text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground border-l-4 border-transparent'
-        )}
-      >
-        <item.icon
-          className={cn(
-            'h-5 w-5',
-            isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
-          )}
-        />
-        <span>{item.name}</span>
-      </Link>
-    )
-  }
+  const panel = useSearchParams().get('panel')
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      <div className="flex items-center gap-2 px-6 h-16 bg-background border-b border-border">
-        <Wallet className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+    <div className="flex h-full flex-col border-r border-layer-3 bg-layer-1">
+      <div className="flex h-14 items-center gap-2 border-b border-layer-3 px-5">
+        <Wallet aria-hidden="true" className="h-6 w-6 text-accent" />
         <Link
           href="/dashboard"
-          className="text-lg font-semibold text-foreground hover:opacity-80 transition-opacity"
+          onClick={onNavigate}
+          className="text-base font-medium text-text-primary"
         >
           Home Account
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <div className="flex flex-col gap-1">{mainLinks.map((item) => renderLink(item))}</div>
-
-        <div className="border-t border-border my-3" />
-
-        <div className="flex flex-col gap-1">
-          <Link
-            href="/profile?panel=settings"
-            onClick={onNavigate}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-              panel === 'settings'
-                ? 'bg-muted text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground border-l-4 border-transparent'
-            )}
-          >
-            <Settings
-              className={cn(
-                'h-5 w-5',
-                panel === 'settings' ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
-              )}
-            />
-            <span>Configuración</span>
-          </Link>
-          {renderLink({ name: 'Importar', href: '/import', icon: Upload })}
-        </div>
+      <nav aria-label="Principal" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {mainNav.map((item) => (
+          <SidebarLink
+            key={item.href}
+            item={item}
+            active={isActive(item, pathname, panel)}
+            onNavigate={onNavigate}
+          />
+        ))}
+        <div className="my-3 border-t border-layer-3" />
+        <SidebarLink
+          item={settingsNav}
+          active={isActive(settingsNav, pathname, panel)}
+          onNavigate={onNavigate}
+        />
       </nav>
     </div>
   )

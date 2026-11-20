@@ -38,7 +38,6 @@ export function buildEducationPrompt(
   concept: string,
   userLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
   marketData?: {
-    sp500?: number
     btc?: number
     eurUsd?: number
   }
@@ -59,7 +58,6 @@ export function buildEducationPrompt(
   if (marketData) {
     marketContext = `
 # CONTEXTO ACTUAL DE MERCADO
-${marketData.sp500 ? `- S&P 500 actual: ${marketData.sp500.toLocaleString()}` : ''}
 ${marketData.btc ? `- Bitcoin actual: ${marketData.btc.toLocaleString()}€` : ''}
 ${marketData.eurUsd ? `- EUR/USD: ${marketData.eurUsd}` : ''}
 `
@@ -116,20 +114,6 @@ Responde **EXCLUSIVAMENTE** con JSON válido:
 \`\`\`
 
 No incluyas markdown, solo JSON puro.`
-}
-
-export function buildQuickEducationPrompt(
-  question: string,
-  marketData?: { sp500?: number; btc?: number }
-): string {
-  return `Explica esto brevemente:
-
-"${question}"
-
-${marketData?.sp500 ? `Contexto: S&P 500 está en ${marketData.sp500.toLocaleString()}` : ''}
-
-Máximo 80 palabras. JSON:
-{"answer": "...", "relatedConcept": "tema relacionado"}`
 }
 
 export function parseEducationResponse(text: string): EducationResult {

@@ -81,7 +81,7 @@ export async function checkInputSecurity(
       sanitizedInput: '',
       threats: { hasThreat: true, threatLevel: 'critical', patterns: ['user_blocked'], score: 100 },
       blocked: true,
-      blockReason: 'You have made too many suspicious attempts. Please try again later.',
+      blockReason: 'Has hecho demasiados intentos bloqueados. Vuelve a intentarlo más tarde.',
     }
   }
 
@@ -107,7 +107,7 @@ export async function checkInputSecurity(
       threats,
       blocked: true,
       blockReason:
-        'Your message contains patterns that are not allowed. Please rephrase your question.',
+        'Tu mensaje contiene expresiones que no están permitidas. Formula la pregunta de otra manera.',
     }
   }
 

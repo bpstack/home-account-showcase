@@ -1,12 +1,8 @@
-// components/investment/index.ts
-// Export all investment components
-
-export { InvestmentOverview, RiskBadge } from './InvestmentOverview'
-export { MarketPricesWidget } from './MarketPricesWidget'
+export { AIChat } from './AIChat'
+export { AiNote } from './AiNote'
+export { EmergencyFund } from './EmergencyFund'
 export { MarketSummary } from './MarketSummary'
-export { DisclaimerAlert } from './DisclaimerAlert'
-export { AIChat, AIChatCompact } from './AIChat'
-export { ProfileForm } from './ProfileForm'
+export { ProfileTest } from './ProfileTest'
 export { Recommendations } from './Recommendations'
+export { RiskProfile } from './RiskProfile'
 export { Simulator } from './Simulator'
-export { InvestmentWidget } from './InvestmentWidget'

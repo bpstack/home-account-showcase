@@ -8,7 +8,7 @@ import { accounts, auth, users } from '@/lib/apiClient'
 import { useBudgets, useCreateBudget, useUpdateBudget, useDeleteBudget } from '@/lib/queries/budget'
 import { useCategories } from '@/lib/queries/categories'
 import { useTransactions } from '@/lib/queries/transactions'
-import { Button, Input, AccountSwitcher } from '@/components/ui'
+import { Button, Input, AccountSwitcher, Tabs, PeriodSelector } from '@/components/ui'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Modal, ModalFooter } from '@/components/ui/Modal'
 import { AISettings } from './AISettings'
@@ -22,7 +22,7 @@ import {
   encryptAccountKeyForInvitation,
 } from '@/lib/crypto'
 import { toast } from 'sonner'
-import { Loader2, Pencil, UserPlus } from 'lucide-react'
+import { Loader2, Pencil, Plus, UserPlus } from 'lucide-react'
 import { validateBudget, validateUpdateBudget } from '@/validators/budget-validators'
 import { validateUserName, validateAccountName } from '@/validators/settings-validators'
 
@@ -48,7 +48,7 @@ type SettingsTab = 'account' | 'budget' | 'security' | 'ia' | 'user'
 const tabs: { id: SettingsTab; label: string; description: string }[] = [
   { id: 'user', label: 'Usuario', description: 'Gestiona tu email y preferencias' },
   { id: 'account', label: 'Cuenta', description: 'Gestiona tu cuenta y miembros' },
-  { id: 'ia', label: 'IA', description: 'Configura los proveedores de IA para el parsing' },
+  { id: 'ia', label: 'IA', description: 'Proveedores de IA para las recomendaciones de inversión' },
   {
     id: 'budget',
     label: 'Presupuesto',
@@ -62,7 +62,6 @@ export function SettingsPanel() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const activePanel = searchParams.get('panel')
   const activeTab = (searchParams.get('tab') as SettingsTab) || 'user'
 
   const handleTabChange = (tab: SettingsTab) => {
@@ -72,29 +71,13 @@ export function SettingsPanel() {
     router.push(`/profile?${params.toString()}`, { scroll: false })
   }
 
-  if (activePanel !== 'settings') {
-    return null
-  }
-
   return (
-    <div className="h-full max-w-[1400px]">
-      <div className="border-b border-border mb-6">
-        <nav className="flex flex-wrap gap-2 md:gap-4 md:overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={`px-2 md:px-3 py-2 md:py-3 text-xs md:text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+    <div className="space-y-6">
+      <Tabs
+        tabs={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}
+        activeTab={activeTab}
+        onChange={(id) => handleTabChange(id as SettingsTab)}
+      />
 
       <div>
         {activeTab === 'user' && <UserSettings />}
@@ -201,7 +184,7 @@ function UserSettings() {
       {/* Name Section */}
       <div className="bg-card rounded-lg border border-border">
         <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Nombre</h3>
+          <h3 className="text-sm font-medium text-foreground">Nombre</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Cambia tu nombre visible</p>
         </div>
         <div className="p-4">
@@ -265,7 +248,7 @@ function UserSettings() {
       {/* Email Section */}
       <div className="bg-card rounded-lg border border-border">
         <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Correo electrónico</h3>
+          <h3 className="text-sm font-medium text-foreground">Correo electrónico</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Gestiona tu correo electrónico</p>
         </div>
         <div className="p-4">
@@ -291,9 +274,7 @@ function UserSettings() {
               <p className="text-xs text-muted-foreground flex items-center gap-2">
                 {isLocalUser ? 'Cuenta local' : `Vinculado con ${user?.oauth_provider}`}
                 {user?.email_verified && (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                    ✓ Verificado
-                  </span>
+                  <span className="text-success font-medium">✓ Verificado</span>
                 )}
               </p>
             </div>
@@ -316,12 +297,10 @@ function UserSettings() {
 
           {/* Cambio de email pendiente */}
           {isLocalUser && user?.pending_email && (
-            <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                Cambio de email pendiente
-              </p>
-              <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                Confirmación enviada a <span className="font-semibold">{user.pending_email}</span>.
+            <div className="mb-4 p-4 bg-warning/10 border border-warning/30 rounded-lg">
+              <p className="text-sm font-medium text-warning mb-1">Cambio de email pendiente</p>
+              <p className="text-sm text-warning mb-3">
+                Confirmación enviada a <span className="font-medium">{user.pending_email}</span>.
                 Revisa tu bandeja de entrada y haz clic en el enlace para confirmar el cambio.
               </p>
               <Button
@@ -360,7 +339,7 @@ function UserSettings() {
               </div>
 
               {emailChangeMessage && (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-600 dark:text-emerald-400">
+                <div className="p-3 bg-success/10 border border-success/30 rounded-lg text-sm text-success">
                   {emailChangeMessage}
                 </div>
               )}
@@ -451,17 +430,6 @@ function AccountSettings() {
   const isOwner = account?.role === 'owner'
   const canDeleteAccount = isOwner && allAccounts.length > 1
 
-  useEffect(() => {
-    if (account?.id) {
-      loadMembers()
-      loadInvitations()
-      setAccountNameValue(account.name || '')
-      setIsEditingAccountName(false)
-      setRenameError('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.id])
-
   // ─── Data Loading ──────────────────────────────
 
   const loadMembers = async () => {
@@ -489,6 +457,17 @@ function AccountSettings() {
       setIsLoadingInvitations(false)
     }
   }
+
+  useEffect(() => {
+    if (account?.id) {
+      loadMembers()
+      loadInvitations()
+      setAccountNameValue(account.name || '')
+      setIsEditingAccountName(false)
+      setRenameError('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.id])
 
   // ─── Handlers ──────────────────────────────────
 
@@ -692,11 +671,11 @@ function AccountSettings() {
       {/* ─── Header: Cuenta activa + Selector ─── */}
       <div className="bg-card rounded-lg border border-border">
         <div className="px-4 py-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+          <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center text-accent-foreground text-lg font-bold shrink-0">
             {account?.name?.charAt(0).toUpperCase() || '?'}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-lg font-semibold text-foreground truncate">
+            <h3 className="text-lg font-medium text-foreground truncate">
               {account?.name || 'Sin cuenta'}
             </h3>
             <p className="text-sm text-muted-foreground">
@@ -718,7 +697,7 @@ function AccountSettings() {
       {/* ─── Sección 1: Nombre de la cuenta ─── */}
       <div className="bg-card rounded-lg border border-border">
         <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Nombre de la cuenta</h3>
+          <h3 className="text-sm font-medium text-foreground">Nombre de la cuenta</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Cambia el nombre de tu cuenta</p>
         </div>
         <div className="p-4">
@@ -778,7 +757,7 @@ function AccountSettings() {
       {/* ─── Sección 2: Miembros ─── */}
       <div className="bg-card rounded-lg border border-border">
         <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Miembros de la cuenta</h3>
+          <h3 className="text-sm font-medium text-foreground">Miembros de la cuenta</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {members.length} {members.length === 1 ? 'miembro' : 'miembros'}
           </p>
@@ -802,7 +781,7 @@ function AccountSettings() {
                   className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground text-sm font-medium shrink-0">
                       {member.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -814,7 +793,7 @@ function AccountSettings() {
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         member.role === 'owner'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                          ? 'bg-accent/10 text-accent'
                           : 'bg-muted text-muted-foreground'
                       }`}
                     >
@@ -842,7 +821,7 @@ function AccountSettings() {
       {isOwner && (
         <div className="bg-card rounded-lg border border-border">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">Invitar miembro</h3>
+            <h3 className="text-sm font-medium text-foreground">Invitar miembro</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Envía una invitación por email. El usuario recibirá un enlace para unirse.
             </p>
@@ -943,7 +922,7 @@ function AccountSettings() {
       {/* ─── Sección 4: Zona de peligro ─── */}
       <div className="bg-card rounded-lg border border-destructive/30">
         <div className="px-4 py-3 border-b border-destructive/30">
-          <h3 className="text-sm font-semibold text-destructive">Zona de peligro</h3>
+          <h3 className="text-sm font-medium text-destructive">Zona de peligro</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Acciones irreversibles sobre esta cuenta
           </p>
@@ -1304,15 +1283,15 @@ function BudgetSettings() {
   }
 
   const getBarColor = (status: string) => {
-    if (status === 'exceeded') return 'bg-red-500'
-    if (status === 'warning') return 'bg-amber-500'
-    return 'bg-emerald-500'
+    if (status === 'exceeded') return 'bg-danger/100'
+    if (status === 'warning') return 'bg-warning/100'
+    return 'bg-success'
   }
 
   return (
     <div className="bg-card border border-border rounded-xl">
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">Presupuesto</h3>
+        <h3 className="text-sm font-medium text-foreground">Presupuesto</h3>
         <p className="text-xs text-muted-foreground mt-0.5">Límites de gasto por categoría</p>
       </div>
 
@@ -1325,7 +1304,7 @@ function BudgetSettings() {
           </div>
           <div className="flex justify-between text-sm mb-2">
             <span className="text-muted-foreground">Total gastado:</span>
-            <span className={`font-medium ${totalSpent > totalBudget ? 'text-red-500' : ''}`}>
+            <span className={`font-medium ${totalSpent > totalBudget ? 'text-danger' : ''}`}>
               €{(totalSpent || 0).toFixed(2)}
             </span>
           </div>
@@ -1333,10 +1312,10 @@ function BudgetSettings() {
             <div
               className={`h-2 rounded-full transition-all ${
                 totalPercentage > 100
-                  ? 'bg-red-500'
+                  ? 'bg-danger/100'
                   : totalPercentage > 80
-                    ? 'bg-amber-500'
-                    : 'bg-emerald-500'
+                    ? 'bg-warning/100'
+                    : 'bg-success'
               }`}
               style={{ width: `${Math.min(totalPercentage, 100)}%` }}
             />
@@ -1347,37 +1326,27 @@ function BudgetSettings() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="p-3 flex items-center gap-2 border-b border-border">
-        <select
-          value={month}
-          onChange={(e) => setMonth(Number(e.target.value))}
-          className="h-8 text-xs border border-border rounded-lg px-2 bg-background"
-        >
-          {Array.from({ length: 12 }, (_, i) => (
-            <option key={i + 1} value={i + 1}>
-              {new Date(0, i).toLocaleDateString('es', { month: 'long' })}
-            </option>
-          ))}
-        </select>
-        <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          className="h-8 text-xs border border-border rounded-lg px-2 bg-background"
-        >
-          {[2024, 2025, 2026, 2027].map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-        <button
+      {/* Month: budgets are monthly, so the shared selector in months-only mode */}
+      <div className="flex items-center gap-2 border-b border-border p-3">
+        <PeriodSelector
+          monthsOnly
+          value={{ kind: 'month', year, month: month - 1 }}
+          onChange={(next) => {
+            if (next.kind !== 'month') return
+            setYear(next.year)
+            setMonth(next.month + 1)
+          }}
+          className="-ml-2"
+        />
+        <Button
+          size="sm"
           onClick={openNew}
           disabled={unbudgeted.length === 0}
-          className="ml-auto h-8 px-3 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+          className="ml-auto shrink-0"
         >
-          + Añadir
-        </button>
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Añadir presupuesto
+        </Button>
       </div>
 
       {/* List */}
@@ -1424,7 +1393,7 @@ function BudgetSettings() {
                     </button>
                     <button
                       onClick={() => handleDelete(b.id)}
-                      className="p-1 text-muted-foreground hover:text-red-500"
+                      className="p-1 text-muted-foreground hover:text-danger"
                       title="Eliminar"
                     >
                       <svg
@@ -1456,9 +1425,9 @@ function BudgetSettings() {
                   <span
                     className={
                       b.status === 'exceeded'
-                        ? 'text-red-500'
+                        ? 'text-danger'
                         : b.status === 'warning'
-                          ? 'text-amber-500'
+                          ? 'text-warning'
                           : ''
                     }
                   >
@@ -1466,7 +1435,7 @@ function BudgetSettings() {
                   </span>
                 </div>
                 {b.remaining < 0 && (
-                  <p className="text-xs text-red-500 mt-1">
+                  <p className="text-xs text-danger mt-1">
                     €{Math.abs(b.remaining).toFixed(2)} sobre presupuesto
                   </p>
                 )}
@@ -1522,12 +1491,10 @@ function BudgetSettings() {
                   setFieldErrors((prev) => ({ ...prev, amount: '' }))
                 }
               }}
-              className={`mt-1 ${fieldErrors.amount ? 'border-red-500 focus:border-red-500' : ''}`}
+              className={`mt-1 ${fieldErrors.amount ? 'border-danger' : ''}`}
               required
             />
-            {fieldErrors.amount && (
-              <p className="text-xs text-red-500 mt-1">{fieldErrors.amount}</p>
-            )}
+            {fieldErrors.amount && <p className="text-xs text-danger mt-1">{fieldErrors.amount}</p>}
           </div>
           <div>
             <label className="text-sm font-medium">Periodo</label>
@@ -1675,7 +1642,7 @@ function ChangePinSection() {
   return (
     <div className="bg-card rounded-lg border border-border">
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">PIN de cifrado</h3>
+        <h3 className="text-sm font-medium text-foreground">PIN de cifrado</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           El PIN protege tus datos cifrados. Se te pedirá cada vez que inicies sesión o recargues la
           página.
@@ -1686,9 +1653,7 @@ function ChangePinSection() {
         {message && (
           <div
             className={`mb-4 p-3 rounded-lg text-sm ${
-              message.type === 'success'
-                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+              message.type === 'success' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
             }`}
           >
             {message.text}
@@ -1765,8 +1730,8 @@ function ChangePinSection() {
               placeholder="••••••"
             />
 
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
+              <p className="text-xs text-warning">
                 <strong>Importante:</strong> Al cambiar tu PIN, se re-cifrarán todas tus claves de
                 cuenta, se cerrará tu sesión y deberás volver a iniciar sesión con el nuevo PIN.
               </p>
@@ -1911,7 +1876,7 @@ function ChangePasswordSection() {
   return (
     <div className="bg-card rounded-lg border border-border">
       <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">Contraseña de inicio de sesión</h3>
+        <h3 className="text-sm font-medium text-foreground">Contraseña de inicio de sesión</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           Actualiza tu contraseña de login. Si tienes un PIN de cifrado configurado, no se verá
           afectado.
@@ -1922,9 +1887,7 @@ function ChangePasswordSection() {
         {message && (
           <div
             className={`mb-4 p-3 rounded-lg text-sm ${
-              message.type === 'success'
-                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+              message.type === 'success' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
             }`}
           >
             {message.text}
@@ -1980,8 +1943,8 @@ function ChangePasswordSection() {
               autoComplete="new-password"
             />
 
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
+              <p className="text-xs text-warning">
                 <strong>Importante:</strong> Al cambiar tu contraseña, se cerrarán todas tus
                 sesiones y deberás volver a iniciar sesión.
               </p>

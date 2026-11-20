@@ -4,6 +4,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { investmentApi, ChatSession } from '../lib/api/investment'
+import { ApiError } from '../lib/apiClient'
 
 interface UseAIChatOptions {
   accountId: string
@@ -48,14 +49,6 @@ export function useAIChat({
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
-
-  // Load existing session if provided
-  useEffect(() => {
-    if (initialSessionId) {
-      loadChatHistory(initialSessionId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSessionId, accountId])
 
   const loadChatHistory = async (sessionId: string) => {
     try {
@@ -191,6 +184,10 @@ export function useAIChat({
         ) {
           console.warn('[AIChat] Rate limit exceeded:', err.message)
           setError(err.message)
+        } else if (err instanceof ApiError && [400, 429, 502, 503, 504].includes(err.status)) {
+          // The server words these for the user: why it refused the message, the usage limit, or
+          // that the AI is unavailable, busy or slow. Provider details never reach this far.
+          setError(err.message)
         } else {
           console.error('Error sending message:', err)
           setError('Error al enviar el mensaje. Por favor, inténtalo de nuevo.')
@@ -211,6 +208,14 @@ export function useAIChat({
   const clearSessionError = useCallback(() => {
     setError(null)
   }, [])
+
+  // Load existing session if provided
+  useEffect(() => {
+    if (initialSessionId) {
+      loadChatHistory(initialSessionId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSessionId, accountId])
 
   return {
     session,

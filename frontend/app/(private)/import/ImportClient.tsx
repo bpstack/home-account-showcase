@@ -1,82 +1,23 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCategories } from '@/lib/queries/categories'
-import { useImportTransactions } from '@/lib/queries/useImportTransactions'
 import { useCreateTransaction } from '@/lib/queries/transactions'
-import {
-  importApi,
-  ai,
-  type ParseResult,
-  type CategoryMapping,
-  type CreateTransactionData,
-} from '@/lib/apiClient'
+import { type CreateTransactionData } from '@/lib/apiClient'
+import { BulkImport } from './bulk/BulkImport'
 
-import {
-  Tabs,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Input,
-  Select,
-  DatePickerSimple,
-} from '@/components/ui'
-
-import {
-  FileSpreadsheet,
-  User,
-  Layers,
-  Database,
-  Info,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
-  Upload,
-  Loader2,
-  ArrowRight,
-  ArrowLeft,
-  X,
-  Sparkles,
-} from 'lucide-react'
-
-import { toast } from 'sonner'
+import { Tabs, Button, Input, Select, DatePickerSimple } from '@/components/ui'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 
 import { getTodayLocal } from '@/lib/date-utils'
 import { validateTransaction } from '@/validators/transaction-validators'
 
-function getFriendlyErrorMessage(error: string): string {
-  const errorMap: Record<string, string> = {
-    'Solo se permiten archivos Excel (.xls, .xlsx) o CSV (.csv)':
-      'El formato del archivo no es soportado. Usa archivos Excel (.xls, .xlsx) o CSV (.csv)',
-    'El archivo supera el tamaño máximo permitido (5MB)':
-      'El archivo es demasiado grande. El tamaño máximo es 5MB',
-    'Error al procesar el archivo': 'No se pudo leer el archivo. Asegúrate de que no está dañado',
-    'Error al procesar la respuesta del servidor': 'Error de conexión. Intenta de nuevo',
-    NetworkError: 'Error de conexión. Verifica tu conexión a internet',
-    'Failed to fetch': 'Error de conexión. Verifica tu conexión a internet',
-  }
-
-  for (const [key, value] of Object.entries(errorMap)) {
-    if (error.includes(key)) {
-      return value
-    }
-  }
-
-  if (error.includes('is not valid JSON') || error.includes('Unexpected token')) {
-    return 'Error al procesar la respuesta del servidor. Intenta de nuevo'
-  }
-
-  return error || 'Ha ocurrido un error inesperado'
-}
-
+// Importing a statement is what the page is for; adding one by hand stays as the second tab
 const importTabs = [
-  { id: 'individual', label: 'Individual', icon: <User className="h-4 w-4" /> },
-  { id: 'mass', label: 'Masivo', icon: <Database className="h-4 w-4" /> },
+  { id: 'mass', label: 'Importar extracto' },
+  { id: 'individual', label: 'Añadir a mano' },
 ]
 
 interface SingleForm {
@@ -88,18 +29,6 @@ interface SingleForm {
   subcategory_id: string
 }
 
-interface SavedMapping {
-  bank_category: string
-  bank_subcategory: string
-  subcategory_id: string
-}
-
-type Step = 'upload' | 'preview' | 'mapping' | 'result'
-
-interface MappingState {
-  [key: string]: string | null
-}
-
 const emptyForm: SingleForm = {
   description: '',
   date: getTodayLocal(),
@@ -109,277 +38,17 @@ const emptyForm: SingleForm = {
   subcategory_id: '',
 }
 
-// Keyword mappings: bank keywords → app category/subcategory keywords
-const KEYWORD_MAPPINGS: { keywords: string[]; category: string; subcategory?: string }[] = [
-  {
-    keywords: [
-      'supermercado',
-      'alimentacion',
-      'alimentación',
-      'mercadona',
-      'carrefour',
-      'lidl',
-      'aldi',
-      'dia',
-      'experos',
-      'hipercor',
-      'eroski',
-      'consum',
-    ],
-    category: 'supermercado',
-    subcategory: 'alimentacion',
-  },
-  {
-    keywords: [
-      'ropa',
-      'complementos',
-      'vestir',
-      'zara',
-      'hm',
-      'primark',
-      'mango',
-      'pull',
-      'bershka',
-      'stradivarius',
-    ],
-    category: 'supermercado',
-    subcategory: 'ropa',
-  },
-  { keywords: ['limpieza', 'drogueria'], category: 'supermercado', subcategory: 'limpieza' },
-  {
-    keywords: [
-      'restaurante',
-      'cafeteria',
-      'cafe',
-      'comida fuera',
-      'cena',
-      'almuerzo',
-      'barullo',
-      'mcdonalds',
-      'burger',
-      'telepizza',
-      'dominos',
-    ],
-    category: 'ocio',
-    subcategory: 'restaurantes',
-  },
-  { keywords: ['bar', 'cerveza', 'copa', 'pub'], category: 'ocio', subcategory: 'bares' },
-  {
-    keywords: ['juguete', 'jugueteria', 'regalo', 'toys', 'regalos'],
-    category: 'ocio',
-    subcategory: 'regalos',
-  },
-  {
-    keywords: ['vacacion', 'viaje', 'hotel', 'vuelo', 'airbnb', 'booking', 'ocio y viajes'],
-    category: 'ocio',
-    subcategory: 'vacaciones',
-  },
-  {
-    keywords: [
-      'cine',
-      'teatro',
-      'concierto',
-      'espectaculo',
-      'entrada',
-      'netflix',
-      'spotify',
-      'hbo',
-      'disney',
-    ],
-    category: 'ocio',
-    subcategory: 'espectaculos',
-  },
-  {
-    keywords: ['deporte', 'gimnasio', 'fitness', 'padel', 'tenis', 'futbol', 'decathlon'],
-    category: 'ocio',
-    subcategory: 'deporte',
-  },
-  {
-    keywords: [
-      'gasolina',
-      'combustible',
-      'gasolinera',
-      'repsol',
-      'cepsa',
-      'bp',
-      'shell',
-      'galp',
-      'vehiculo',
-      'vehículo',
-    ],
-    category: 'transporte',
-    subcategory: 'combustible',
-  },
-  {
-    keywords: [
-      'taxi',
-      'uber',
-      'cabify',
-      'bus',
-      'tren',
-      'metro',
-      'transporte publico',
-      'renfe',
-      'avanza',
-    ],
-    category: 'transporte',
-    subcategory: 'taxi',
-  },
-  {
-    keywords: ['parking', 'garage', 'aparcamiento'],
-    category: 'transporte',
-    subcategory: 'garage',
-  },
-  {
-    keywords: ['taller', 'mecanico', 'itv', 'mantenimiento auto', 'neumatico', 'norauto', 'midas'],
-    category: 'transporte',
-    subcategory: 'mantenimiento',
-  },
-  {
-    keywords: ['hogar', 'casa', 'vivienda', 'mueble', 'ikea', 'decoracion', 'leroy', 'bricomart'],
-    category: 'vivienda',
-    subcategory: 'muebles',
-  },
-  {
-    keywords: ['electrodomestico', 'media markt', 'worten', 'el corte ingles electronica'],
-    category: 'vivienda',
-    subcategory: 'electrodomesticos',
-  },
-  {
-    keywords: ['reparacion', 'fontanero', 'electricista', 'reforma'],
-    category: 'vivienda',
-    subcategory: 'reparaciones',
-  },
-  {
-    keywords: ['luz', 'electricidad', 'endesa', 'iberdrola', 'naturgy'],
-    category: 'gastos fijos',
-    subcategory: 'luz',
-  },
-  { keywords: ['agua', 'canal', 'emasa', 'aguas'], category: 'gastos fijos', subcategory: 'agua' },
-  {
-    keywords: [
-      'internet',
-      'fibra',
-      'movistar',
-      'vodafone',
-      'orange',
-      'telefono',
-      'digi',
-      'masmovil',
-      'jazztel',
-    ],
-    category: 'gastos fijos',
-    subcategory: 'internet',
-  },
-  {
-    keywords: ['hipoteca', 'prestamo vivienda'],
-    category: 'gastos fijos',
-    subcategory: 'hipoteca',
-  },
-  { keywords: ['comunidad', 'vecinos'], category: 'gastos fijos', subcategory: 'comunidad' },
-  {
-    keywords: [
-      'farmacia',
-      'medicina',
-      'medicamento',
-      'herbolario',
-      'nutricion',
-      'educacion y salud',
-    ],
-    category: 'salud',
-    subcategory: 'farmacia',
-  },
-  {
-    keywords: ['medico', 'hospital', 'clinica', 'dentista', 'oculista'],
-    category: 'salud',
-    subcategory: 'obra social',
-  },
-  {
-    keywords: ['peluqueria', 'estetica', 'belleza', 'cuidado personal'],
-    category: 'salud',
-    subcategory: 'cuidado personal',
-  },
-  {
-    keywords: ['cajero', 'efectivo', 'atm', 'retirada'],
-    category: 'efectivo',
-    subcategory: 'cajero',
-  },
-  { keywords: ['bizum'], category: 'efectivo', subcategory: 'bizum' },
-  {
-    keywords: ['transferencia', 'otros gastos', 'revolut', 'paypal', 'wise'],
-    category: 'efectivo',
-    subcategory: 'transferencias',
-  },
-  {
-    keywords: ['nomina', 'salario', 'sueldo', 'pago empresa'],
-    category: 'ingresos',
-    subcategory: 'nomina',
-  },
-  {
-    keywords: ['ingreso', 'abono', 'devolucion', 'ventajas', 'incentivo', 'bonificacion'],
-    category: 'ingresos',
-    subcategory: 'otros ingresos',
-  },
-  {
-    keywords: ['seguro', 'mapfre', 'axa', 'allianz', 'generali', 'sanitas', 'adeslas'],
-    category: 'seguros',
-  },
-  {
-    keywords: ['colegio', 'escuela', 'instituto', 'universidad', 'educacion'],
-    category: 'formacion',
-    subcategory: 'colegio',
-  },
-  {
-    keywords: ['libro', 'material escolar', 'papeleria'],
-    category: 'formacion',
-    subcategory: 'libros',
-  },
-  {
-    keywords: ['curso', 'formacion', 'academia', 'udemy', 'coursera'],
-    category: 'formacion',
-    subcategory: 'cursos',
-  },
-  { keywords: ['compras'], category: 'supermercado' },
-]
-
 export default function ImportClient() {
-  const router = useRouter()
   const { account } = useAuth()
   const queryClient = useQueryClient()
-  const importMutation = useImportTransactions()
   const createMutation = useCreateTransaction()
-  const [activeTab, setActiveTab] = useState('individual')
+  const [activeTab, setActiveTab] = useState('mass')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   const [form, setForm] = useState<SingleForm>(emptyForm)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-
-  // Estados para Masivo
-  const [step, setStep] = useState<Step>('upload')
-  const [file, setFile] = useState<File | null>(null)
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null)
-  const [mappings, setMappings] = useState<MappingState>({})
-  const [savedMappings, setSavedMappings] = useState<SavedMapping[]>([])
-  const [importResult, setImportResult] = useState<{
-    total: number
-    inserted: number
-    skipped: number
-    errors: string[]
-  } | null>(null)
-  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null)
-  const savedMappingsLoaded = useRef(false)
-
-  // Check if AI provider is available
-  useEffect(() => {
-    ai.getStatus()
-      .then((res) => {
-        const provider = res.activeProvider?.toLowerCase()
-        setAiAvailable(res.enabled && !!provider && provider !== 'none')
-      })
-      .catch(() => setAiAvailable(false))
-  }, [])
 
   const { data: catData } = useCategories(account?.id || '', {
     enabled: !!account?.id,
@@ -452,981 +121,132 @@ export default function ImportClient() {
     }
   }
 
-  // --- LÓGICA DE IMPORTACIÓN MASIVA ---
-
-  useEffect(() => {
-    if (account?.id && !savedMappingsLoaded.current) {
-      savedMappingsLoaded.current = true
-      importApi.getSavedMappings(account.id).then((res) => {
-        if (res.success && res.mappings) {
-          setSavedMappings(res.mappings)
-        }
-      })
-    }
-  }, [account?.id])
-
-  const normalizeText = (text: string): string => {
-    return text
-      .toLowerCase()
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-  }
-
-  const findBestMatch = useCallback(
-    (fileCat: { category: string; subcategory: string }, categoryList: any[]): string | null => {
-      const bankText = normalizeText(`${fileCat.category} ${fileCat.subcategory}`)
-      for (const mapping of KEYWORD_MAPPINGS) {
-        if (mapping.keywords.some((kw) => bankText.includes(normalizeText(kw)))) {
-          const appCat = categoryList.find((c) =>
-            normalizeText(c.name).includes(normalizeText(mapping.category))
-          )
-          if (appCat?.subcategories) {
-            if (mapping.subcategory) {
-              const sub = appCat.subcategories.find((s: any) =>
-                normalizeText(s.name).includes(normalizeText(mapping.subcategory!))
-              )
-              if (sub) return sub.id
-            }
-            if (appCat.subcategories.length > 0) return appCat.subcategories[0].id
-          }
-        }
-      }
-      return null
-    },
-    []
-  )
-
-  const initializeMappings = useCallback(
-    (fileCategories: { category: string; subcategory: string }[]) => {
-      const initialMappings: MappingState = {}
-      const savedMappingsMap = new Map<string, string>()
-      savedMappings.forEach((m) =>
-        savedMappingsMap.set(`${m.bank_category}|${m.bank_subcategory}`, m.subcategory_id)
-      )
-
-      fileCategories.forEach((fileCat) => {
-        const key = `${fileCat.category}|${fileCat.subcategory}`
-        initialMappings[key] = savedMappingsMap.get(key) || findBestMatch(fileCat, categories)
-      })
-      setMappings(initialMappings)
-    },
-    [savedMappings, categories, findBestMatch]
-  )
-
-  useEffect(() => {
-    if (parseResult?.categories && categories.length > 0) {
-      initializeMappings(parseResult.categories)
-    }
-  }, [categories, savedMappings, parseResult?.categories, initializeMappings])
-
-  const readFileAsText = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = (e) => resolve((e.target?.result as string) || '')
-      reader.onerror = () => reject(new Error('Error leyendo archivo'))
-      reader.readAsText(file)
-    })
-  }
-
-  const parseWithAI = async (file: File): Promise<ParseResult | null> => {
-    try {
-      const fileContent = await readFileAsText(file)
-      const result = await ai.parseTransactions(fileContent)
-
-      if (!result.success || !result.transactions || result.transactions.length === 0) {
-        return null
-      }
-
-      const txs = result.transactions.map((tx) => ({
-        date: tx.date || getTodayLocal(),
-        description: tx.description?.trim() || '',
-        amount: tx.amount,
-        bank_category: tx.category?.toLowerCase() || 'otros',
-        bank_subcategory: tx.subcategory?.toLowerCase() || 'varios',
-      }))
-
-      const seen = new Set<string>()
-      const cats: { category: string; subcategory: string }[] = []
-      txs.forEach((tx) => {
-        const key = `${tx.bank_category}|${tx.bank_subcategory}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          cats.push({ category: tx.bank_category, subcategory: tx.bank_subcategory })
-        }
-      })
-
-      return {
-        success: true,
-        file_type: 'ai_parsed' as const,
-        transactions: txs,
-        categories: cats,
-        errors: [],
-        available_sheets: [],
-        sheet_name: 'AI Parsed',
-      }
-    } catch (err) {
-      console.error('AI parse error:', err)
-      return null
-    }
-  }
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (!selectedFile) return
-
-    const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-    if (selectedFile.size > MAX_FILE_SIZE) {
-      setError('El archivo supera el tamaño máximo permitido (5MB)')
-      return
-    }
-
-    setFile(selectedFile)
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const result = await importApi.parse(selectedFile)
-
-      if (!result.success || !result.data.success) {
-        if (aiAvailable) {
-          console.log('Parser normal falló, intentando con AI...')
-          const aiResult = await parseWithAI(selectedFile)
-          if (aiResult && aiResult.transactions.length > 0) {
-            setParseResult(aiResult)
-            initializeMappings(aiResult.categories)
-            setStep('preview')
-            setIsLoading(false)
-            return
-          }
-        }
-        setError(result.data?.errors?.[0] || 'Error al procesar archivo')
-        setIsLoading(false)
-        return
-      }
-
-      const data = result.data
-      setParseResult(data)
-
-      if (data.transactions.length > 0) {
-        setStep('preview')
-      } else {
-        setError('No se encontraron transacciones')
-      }
-    } catch (err: any) {
-      const errorMessage = getFriendlyErrorMessage(err.message)
-      setError(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleConfirmImport = async () => {
-    if (!account || !parseResult) return
-    setIsLoading(true)
-
-    const categoryMappings: CategoryMapping[] = Object.entries(mappings).map(([key, subId]) => {
-      const [bank_category, bank_subcategory] = key.split('|')
-      return { bank_category, bank_subcategory, subcategory_id: subId }
-    })
-
-    importMutation.mutate(
-      {
-        account_id: account.id,
-        transactions: parseResult.transactions,
-        category_mappings: categoryMappings,
-      },
-      {
-        onSuccess: (res: any) => {
-          setImportResult(res)
-          setStep('result')
-          queryClient.invalidateQueries({ queryKey: ['transactions'] })
-          toast.success('¡Importación completada!', {
-            description: `${res.inserted} transacciones guardadas`,
-          })
-          setIsLoading(false)
-        },
-        onError: (err: any) => {
-          const errorMessage = getFriendlyErrorMessage(err.message)
-          setError(errorMessage)
-          toast.error('Error al importar', {
-            description: errorMessage,
-          })
-          setIsLoading(false)
-        },
-      }
-    )
-  }
-
-  const allSubcategoryOptions = useMemo(() => {
-    const options: any[] = [{ value: '', label: 'Sin asignar' }]
-    categories.forEach((cat) => {
-      cat.subcategories?.forEach((sub: any) => {
-        options.push({ value: sub.id, label: `${cat.name} → ${sub.name}` })
-      })
-    })
-    return options
-  }, [categories])
-
-  const mappingStats = useMemo(() => {
-    const values = Object.values(mappings)
-    return { mapped: values.filter((v) => v).length, pending: values.filter((v) => !v).length }
-  }, [mappings])
-
   return (
-    <div className="-mx-4 md:-mx-6 -mt-4 md:-mt-6">
-      {/* Header con Tabs standard UI */}
-      <div className="relative">
-        <Tabs
-          tabs={importTabs}
-          activeTab={activeTab}
-          onChange={(id) => setActiveTab(id)}
-          variant="underline-responsive"
-        />
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <Tabs tabs={importTabs} activeTab={activeTab} onChange={(id) => setActiveTab(id)} />
 
-      <div className="px-4 md:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Columna Izquierda: Funcionalidad (Tab Content) */}
-          <div className="lg:col-span-8 space-y-6">
-            {activeTab === 'individual' ? (
-              <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                <CardHeader className="pb-4 pt-4 sm:pb-6 sm:pt-6">
-                  <div className="flex flex-col items-center text-center sm:flex-row sm:text-left gap-3 sm:gap-4">
-                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-blue-100 dark:bg-accent/20 flex items-center justify-center">
-                      <User className="h-6 w-6 text-blue-600 dark:text-accent" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg sm:text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary">
-                        Nueva Transacción Individual
-                      </CardTitle>
-                      <p className="text-sm text-slate-600 dark:text-text-secondary mt-1">
-                        Añade un gasto o ingreso manualmente de forma rápida.
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6 pb-8 px-4 sm:px-8">
-                  <form onSubmit={handleSubmitIndividual} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
-                          Tipo
-                        </label>
-                        <Select
-                          options={[
-                            { value: 'expense', label: 'Gasto' },
-                            { value: 'income', label: 'Ingreso' },
-                          ]}
-                          value={form.type}
-                          onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
-                          Fecha
-                        </label>
-                        <DatePickerSimple
-                          value={form.date}
-                          onChange={(date) => setForm({ ...form, date })}
-                        />
-                      </div>
-                    </div>
+      {activeTab === 'individual' ? (
+        <form onSubmit={handleSubmitIndividual} className="max-w-xl space-y-5">
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-text-primary">Tipo</legend>
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-layer-2 p-1">
+              {(
+                [
+                  ['expense', 'Gasto'],
+                  ['income', 'Ingreso'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setForm({ ...form, type: value })}
+                  aria-pressed={form.type === value}
+                  className={`h-9 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    form.type === value
+                      ? 'bg-layer-1 font-medium text-text-primary shadow-sm'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-text-primary">Descripción</label>
-                      <Input
-                        placeholder="Ej: Compra semanal Mercadona"
-                        value={form.description}
-                        onChange={(e) => {
-                          setForm({ ...form, description: e.target.value })
-                          if (fieldErrors.description) {
-                            setFieldErrors((prev) => ({ ...prev, description: '' }))
-                          }
-                        }}
-                        error={fieldErrors.description}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-text-primary">Importe</label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={form.amount}
-                          onChange={(e) => {
-                            setForm({ ...form, amount: e.target.value })
-                            if (fieldErrors.amount) {
-                              setFieldErrors((prev) => ({ ...prev, amount: '' }))
-                            }
-                          }}
-                          error={fieldErrors.amount}
-                          className={`pr-10 ${fieldErrors.amount ? 'border-red-500' : ''}`}
-                          required
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">
-                          €
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
-                          Categoría
-                        </label>
-                        <Select
-                          options={categoryOptions}
-                          value={form.category_id}
-                          error={fieldErrors.category_id}
-                          onChange={(e) =>
-                            setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-text-primary">
-                          Subcategoría
-                        </label>
-                        <Select
-                          options={subcategoryOptions}
-                          value={form.subcategory_id}
-                          onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
-                          disabled={!form.category_id}
-                        />
-                      </div>
-                    </div>
-
-                    {error && (
-                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-destructive text-sm">
-                        <AlertCircle className="h-4 w-4" />
-                        {error}
-                      </div>
-                    )}
-
-                    {success && (
-                      <div className="p-3 rounded-lg bg-success/10 border border-success/20 flex items-center gap-2 text-success text-sm">
-                        <CheckCircle2 className="h-4 w-4" />
-                        {success}
-                      </div>
-                    )}
-
-                    <Button
-                      type="submit"
-                      className="w-full h-12 text-base font-semibold shadow-accent/20 transition-all hover:scale-[1.01]"
-                      isLoading={isLoading}
-                    >
-                      Añadir Transacción
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-6">
-                {/* Step Indicator */}
-                {step !== 'result' && (
-                  <div className="flex items-center justify-between px-4 mb-2">
-                    {[
-                      { id: 'upload', label: 'Subir', icon: <Upload className="h-4 w-4" /> },
-                      {
-                        id: 'preview',
-                        label: 'Vista Previa',
-                        icon: <FileSpreadsheet className="h-4 w-4" />,
-                      },
-                      { id: 'mapping', label: 'Mapeo', icon: <Layers className="h-4 w-4" /> },
-                    ].map((s, i, arr) => {
-                      const isActive = step === s.id
-                      const isPast = arr.findIndex((stepObj) => stepObj.id === step) > i
-                      return (
-                        <div key={s.id} className="flex items-center flex-1 last:flex-none group">
-                          <div className="flex flex-col items-center gap-2 relative z-10">
-                            <div
-                              className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                                isActive
-                                  ? 'bg-accent text-white shadow-lg shadow-accent/20 scale-110'
-                                  : isPast
-                                    ? 'bg-emerald-100 dark:bg-success/20 text-emerald-600 dark:text-success'
-                                    : 'bg-slate-100 dark:bg-layer-2 text-slate-500 dark:text-text-secondary border border-slate-200 dark:border-layer-3'
-                              }`}
-                            >
-                              {isPast ? <CheckCircle2 className="h-5 w-5" /> : s.icon}
-                            </div>
-                            <span
-                              className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                                isActive
-                                  ? 'text-accent'
-                                  : isPast
-                                    ? 'text-emerald-600 dark:text-success'
-                                    : 'text-slate-500 dark:text-text-secondary'
-                              }`}
-                            >
-                              {s.label}
-                            </span>
-                          </div>
-                          {i < arr.length - 1 && (
-                            <div className="flex-1 h-[2px] mx-4 -mt-6 bg-slate-200 dark:bg-layer-2 relative overflow-hidden">
-                              <div
-                                className={`absolute inset-0 bg-accent transition-transform duration-500 origin-left ${
-                                  isPast ? 'scale-x-100' : 'scale-x-0'
-                                }`}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {step === 'upload' && (
-                  <Card className="overflow-hidden border border-slate-200 dark:border-transparent shadow-sm dark:shadow-premium bg-white dark:bg-layer-1">
-                    <CardHeader className="pb-4 pt-4 sm:pb-6 sm:pt-6 px-4">
-                      <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-                              <Database className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            <div className="min-w-0">
-                              <CardTitle className="text-base sm:text-xl font-bold tracking-tight text-slate-800 dark:text-text-primary truncate">
-                                Importación Masiva
-                              </CardTitle>
-                              <p className="text-xs sm:text-sm text-slate-600 dark:text-text-secondary mt-0.5 hidden sm:block">
-                                {aiAvailable
-                                  ? 'Sube tus extractos bancarios y deja que nuestra IA haga el trabajo.'
-                                  : 'Sube tus extractos bancarios para importar transacciones.'}
-                              </p>
-                            </div>
-                          </div>
-                          {(file || isLoading) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setStep('upload')
-                                setFile(null)
-                                setParseResult(null)
-                                setMappings({})
-                                setError(null)
-                              }}
-                              className="shrink-0 h-9 w-9 p-0"
-                            >
-                              <X className="h-5 w-5" />
-                            </Button>
-                          )}
-                        </div>
-                        <div className="sm:hidden">
-                          {(file || isLoading) && (
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setStep('upload')
-                                setFile(null)
-                                setParseResult(null)
-                                setMappings({})
-                                setError(null)
-                              }}
-                              className="w-full h-10 font-medium"
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Cancelar
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-8">
-                      <label className="relative group cursor-pointer block">
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept=".xlsx,.csv"
-                          onChange={handleFileSelect}
-                        />
-                        <div className="py-8 sm:py-16 flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 dark:border-emerald-500/20 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/[0.02] group-hover:bg-emerald-100/50 dark:group-hover:bg-emerald-500/[0.05] group-hover:border-emerald-400 dark:group-hover:border-emerald-500/40 transition-all duration-300 ease-out text-center overflow-hidden">
-                          <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-emerald-100 dark:bg-accent/10 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-emerald-200 dark:border-accent/10">
-                            {isLoading ? (
-                              <Loader2 className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 dark:text-accent animate-spin" />
-                            ) : (
-                              <Upload className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-600 dark:text-accent" />
-                            )}
-                          </div>
-
-                          <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-text-primary mb-2">
-                            {isLoading ? 'Analizando tu archivo...' : 'Sube tu extracto de banco'}
-                          </h3>
-
-                          <p className="text-sm text-slate-600 dark:text-text-secondary max-w-sm px-4 mb-4 sm:mb-6 leading-relaxed">
-                            Arrastra tu archivo aquí o haz clic para explorar. Soportamos archivos{' '}
-                            <span className="font-bold text-emerald-700 dark:text-emerald-500">
-                              Excel (.xlsx)
-                            </span>{' '}
-                            y{' '}
-                            <span className="font-bold text-emerald-700 dark:text-emerald-500">
-                              CSV
-                            </span>
-                            .
-                          </p>
-
-                          <div className="flex flex-wrap justify-center items-center gap-2">
-                            <div className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-layer-2 border border-slate-200 dark:border-layer-3 text-xs font-medium text-slate-600 dark:text-text-secondary">
-                              Máx 5MB
-                            </div>
-                            {aiAvailable ? (
-                              <div className="px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-500">
-                                IA categorización activa
-                              </div>
-                            ) : aiAvailable === false ? (
-                              <div className="px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-xs font-bold text-amber-700 dark:text-amber-500">
-                                IA no disponible — categorización manual
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </label>
-
-                      {error && (
-                        <div className="mt-6 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                          <div className="h-8 w-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
-                            <AlertCircle className="h-5 w-5" />
-                          </div>
-                          {error}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {step === 'preview' && parseResult && (
-                  <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent pb-4 pt-4 px-4 sm:px-8">
-                      <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => {
-                                setStep('upload')
-                                setParseResult(null)
-                                setMappings({})
-                              }}
-                              className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors flex items-center justify-center shrink-0"
-                            >
-                              <ArrowLeft className="h-4 w-4" />
-                            </button>
-                            <div>
-                              <CardTitle className="text-base font-bold text-text-primary">
-                                Vista previa del archivo
-                              </CardTitle>
-                              <p className="text-xs text-text-secondary mt-0.5">
-                                {parseResult.transactions.length} transacciones detectadas
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          className="h-11 w-full font-bold shadow-lg shadow-accent/20"
-                          onClick={() => setStep('mapping')}
-                        >
-                          Continuar al Mapeo
-                          <ArrowRight className="h-4 w-4 ml-2" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-0 border-t border-layer-3">
-                      <div className="hidden md:block max-h-[500px] overflow-y-auto custom-scrollbar">
-                        <table className="w-full text-sm border-collapse">
-                          <thead className="bg-layer-2/50 sticky top-0 backdrop-blur-sm z-20">
-                            <tr>
-                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">
-                                Fecha
-                              </th>
-                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">
-                                Descripción
-                              </th>
-                              <th className="p-4 text-left font-bold text-text-secondary uppercase tracking-wider text-[10px]">
-                                Cat. Banco
-                              </th>
-                              <th className="p-4 text-right font-bold text-text-secondary uppercase tracking-wider text-[10px]">
-                                Importe
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-layer-2">
-                            {parseResult.transactions.slice(0, 100).map((tx, i) => (
-                              <tr
-                                key={i}
-                                className="group hover:bg-accent/[0.02] transition-colors"
-                              >
-                                <td className="p-4 whitespace-nowrap text-text-primary font-medium tabular-nums">
-                                  {tx.date}
-                                </td>
-                                <td className="p-4 max-w-[250px] truncate text-text-primary font-medium">
-                                  {tx.description}
-                                </td>
-                                <td className="p-4">
-                                  <span className="inline-flex px-2 py-1 rounded bg-layer-2 text-[10px] font-bold text-text-secondary uppercase">
-                                    {tx.bank_category || 'Sin Categoría'}
-                                  </span>
-                                </td>
-                                <td
-                                  className={`p-4 text-right font-black tabular-nums ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}
-                                >
-                                  {tx.amount > 0 ? '+' : ''}
-                                  {tx.amount.toFixed(2)}€
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div className="md:hidden divide-y divide-layer-2 max-h-[400px] overflow-y-auto">
-                        {parseResult.transactions.slice(0, 100).map((tx, i) => (
-                          <div key={i} className="p-4 hover:bg-layer-2/30 transition-colors">
-                            <div className="flex items-start justify-between mb-2">
-                              <p className="text-sm font-medium text-text-primary flex-1 min-w-0 line-clamp-2 pr-4">
-                                {tx.description}
-                              </p>
-                              <span
-                                className={`text-sm font-bold shrink-0 tabular-nums ${tx.amount > 0 ? 'text-success' : 'text-danger'}`}
-                              >
-                                {tx.amount > 0 ? '+' : ''}
-                                {tx.amount.toFixed(2)}€
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-text-secondary">
-                              <span className="tabular-nums">{tx.date}</span>
-                              <span>·</span>
-                              <span className="inline-flex px-2 py-0.5 rounded bg-layer-2 text-[10px] font-bold text-text-secondary uppercase">
-                                {tx.bank_category || 'Sin Categoría'}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      {parseResult.transactions.length > 100 && (
-                        <div className="p-3 bg-layer-2/50 border-t border-layer-3 text-center">
-                          <p className="text-xs text-text-secondary">
-                            Mostrando <span className="font-bold text-accent">100</span>{' '}
-                            transacciones de ejemplo de las{' '}
-                            <span className="font-bold">{parseResult.transactions.length}</span> que
-                            se procesarán
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {step === 'mapping' && parseResult && (
-                  <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent pb-4 pt-4 px-4 sm:px-8">
-                      <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <button
-                              onClick={() => setStep('preview')}
-                              className="h-8 w-8 rounded-lg bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 transition-colors flex items-center justify-center shrink-0"
-                            >
-                              <ArrowLeft className="h-4 w-4" />
-                            </button>
-                            <div className="min-w-0">
-                              <CardTitle className="text-base font-bold text-text-primary truncate">
-                                Mapeo de Categorías
-                              </CardTitle>
-                              <p className="text-xs text-text-secondary mt-0.5">
-                                Vincula las categorías de tu banco
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="hidden sm:block px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 text-[10px] font-black uppercase tracking-wider">
-                              {mappingStats.pending} Pendientes
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                          <div className="sm:hidden px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 text-xs font-bold uppercase tracking-wider text-center">
-                            {mappingStats.pending} categorías sin asignar
-                          </div>
-                          <Button
-                            className="h-11 w-full font-bold shadow-lg shadow-accent/20"
-                            onClick={handleConfirmImport}
-                            isLoading={isLoading}
-                          >
-                            Finalizar Importación
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => setStep('preview')}
-                            className="hidden sm:flex h-11 px-4 font-medium"
-                          >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Volver
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-8 space-y-4">
-                      <div className="grid grid-cols-1 gap-3">
-                        {parseResult.categories.map((cat, i) => {
-                          const key = `${cat.category}|${cat.subcategory}`
-                          const isMapped = !!mappings[key]
-                          return (
-                            <div
-                              key={i}
-                              className={`group flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-2xl border transition-all duration-300 ${
-                                isMapped
-                                  ? 'border-success/20 bg-success/[0.02] hover:bg-success/[0.04]'
-                                  : 'border-layer-3 bg-layer-2/30 hover:border-accent/30'
-                              }`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1.5">
-                                  <div
-                                    className={`h-2 w-2 rounded-full ${isMapped ? 'bg-success animate-pulse' : 'bg-text-secondary/40'}`}
-                                  />
-                                  <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
-                                    Procedencia del banco
-                                  </span>
-                                </div>
-                                <p className="text-base font-bold text-text-primary truncate uppercase tabular-nums">
-                                  {cat.category}{' '}
-                                  <span className="text-text-secondary font-medium ml-2">
-                                    {cat.subcategory ? `→ ${cat.subcategory}` : ''}
-                                  </span>
-                                </p>
-                              </div>
-
-                              <div className="h-10 w-10 rounded-full bg-layer-3 hidden md:flex items-center justify-center shrink-0">
-                                <ArrowRight
-                                  className={`h-4 w-4 ${isMapped ? 'text-success' : 'text-text-secondary'}`}
-                                />
-                              </div>
-
-                              <div className="w-full md:w-80">
-                                <div className="flex items-center gap-2 mb-1.5 md:hidden">
-                                  <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
-                                    Asignar en App
-                                  </span>
-                                </div>
-                                <Select
-                                  options={allSubcategoryOptions}
-                                  value={mappings[key] || ''}
-                                  onChange={(e) =>
-                                    setMappings({ ...mappings, [key]: e.target.value })
-                                  }
-                                  className={`h-12 font-semibold transition-all ${isMapped ? 'border-success/40 bg-background' : ''}`}
-                                />
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {step === 'result' && importResult && (
-                  <Card className="overflow-hidden border-none shadow-premium bg-layer-1 animate-in zoom-in-95 duration-500">
-                    <div className="h-2 bg-success shrink-0 relative">
-                      <button
-                        onClick={() => {
-                          setStep('upload')
-                          setFile(null)
-                          setParseResult(null)
-                          setMappings({})
-                          setImportResult(null)
-                          setError(null)
-                        }}
-                        className="absolute top-2 right-2 md:hidden p-2 rounded-lg bg-white/10 text-text-secondary hover:bg-white/20 transition-colors"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                    </div>
-                    <CardContent className="py-20 text-center relative px-4 sm:px-8">
-                      {/* Background confetti effect simulation */}
-                      <div className="absolute top-0 left-1/4 -translate-y-1/2 h-32 w-32 bg-success/10 blur-3xl rounded-full" />
-                      <div className="absolute bottom-0 right-1/4 translate-y-1/2 h-32 w-32 bg-accent/10 blur-3xl rounded-full" />
-
-                      <div className="relative mb-8">
-                        <div className="absolute -inset-8 rounded-full bg-success/5 animate-ping duration-[3000ms]" />
-                        <div className="relative h-24 w-24 rounded-[2rem] bg-gradient-to-br from-success/20 to-success/10 flex items-center justify-center mx-auto border border-success/20 shadow-lg shadow-success/10">
-                          <CheckCircle2 className="h-12 w-12 text-success" />
-                        </div>
-                      </div>
-
-                      <h3 className="text-3xl font-black text-text-primary mb-4 tracking-tight">
-                        ¡Importación completada!
-                      </h3>
-
-                      <div className="max-w-md mx-auto p-6 rounded-3xl bg-layer-2/50 border border-layer-3 mb-10">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center p-4">
-                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">
-                              Total Procesado
-                            </p>
-                            <p className="text-3xl font-black text-text-primary">
-                              {importResult.total}
-                            </p>
-                          </div>
-                          <div className="text-center p-4">
-                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">
-                              Guardadas
-                            </p>
-                            <p className="text-3xl font-black text-success tabular-nums">
-                              {importResult.inserted}
-                            </p>
-                          </div>
-                        </div>
-                        {importResult.skipped > 0 && (
-                          <div className="mt-4 pt-4 border-t border-layer-3 flex items-center justify-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-warning" />
-                            <p className="text-xs font-bold text-text-secondary">
-                              {importResult.skipped} transacciones duplicadas fueron omitidas
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col gap-3">
-                        <Button
-                          onClick={() => router.push('/transactions')}
-                          className="h-12 w-full text-base font-bold shadow-lg shadow-accent/20"
-                        >
-                          Ir a Transacciones
-                          <ArrowRight className="h-4 w-4 ml-2" />
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setStep('upload')
-                            setFile(null)
-                            setParseResult(null)
-                            setMappings({})
-                            setImportResult(null)
-                          }}
-                          variant="outline"
-                          className="h-11 w-full text-sm font-medium"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Nueva Importación
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="relative">
+              <Input
+                id="manual-amount"
+                label="Importe"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                value={form.amount}
+                onChange={(e) => {
+                  setForm({ ...form, amount: e.target.value })
+                  if (fieldErrors.amount) setFieldErrors((prev) => ({ ...prev, amount: '' }))
+                }}
+                error={fieldErrors.amount}
+                className="pr-8"
+                required
+              />
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-[2.1rem] text-sm text-text-secondary"
+              >
+                €
+              </span>
+            </div>
+            <div>
+              <p className="mb-1 text-sm font-medium text-text-primary">Fecha</p>
+              <DatePickerSimple value={form.date} onChange={(date) => setForm({ ...form, date })} />
+            </div>
           </div>
 
-          {/* Columna Derecha: Informativa (Sidebar) */}
-          <div className="hidden lg:block lg:col-span-4 space-y-6 lg:sticky lg:top-6 lg:self-start">
-            <Card className="bg-gradient-to-br from-slate-50 dark:from-layer-2 to-white dark:to-layer-1 border-slate-200 dark:border-layer-3">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-                    <Info className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-bold text-slate-800 dark:text-text-primary leading-tight">
-                      Guía de Importación
-                    </CardTitle>
-                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mt-0.5">
-                      Consejos rápidos
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-layer-3">
-                  <div className="flex gap-4 group items-start">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">
-                        Formato estándar
-                      </p>
-                      <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
-                        Busca las columnas Fecha, Descripción e Importe en tu archivo.
-                      </p>
-                    </div>
-                  </div>
+          <Input
+            id="manual-description"
+            label="Concepto"
+            placeholder="Por ejemplo, compra semanal"
+            value={form.description}
+            onChange={(e) => {
+              setForm({ ...form, description: e.target.value })
+              if (fieldErrors.description) {
+                setFieldErrors((prev) => ({ ...prev, description: '' }))
+              }
+            }}
+            error={fieldErrors.description}
+            required
+          />
 
-                  <div className="flex gap-4 group items-start">
-                    <div className="h-10 w-10 rounded-xl bg-violet-100 dark:bg-violet-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                      <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">
-                        Categorización IA
-                      </p>
-                      <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
-                        Analizaremos conceptos para proponerte la mejor categoría automáticamente.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4 group items-start">
-                    <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-text-primary leading-tight mb-1">
-                        Adiós duplicados
-                      </p>
-                      <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed">
-                        Omitimos registros que ya existan en tu historial para evitar errores.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-200 dark:border-layer-3">
-                  <a
-                    href="/templates/import-template.xlsx"
-                    download
-                    className="flex items-center gap-2 text-slate-600 dark:text-text-secondary hover:text-slate-900 dark:hover:text-text-primary hover:bg-slate-100 dark:hover:bg-layer-2 px-3 py-2 rounded-lg transition-colors w-full"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                    Descargar ejemplo de plantilla
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Help Card */}
-            <Card className="overflow-hidden border border-slate-200 dark:border-layer-3 shadow-sm bg-gradient-to-br from-blue-50 dark:from-accent/5 to-white dark:to-transparent">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-2xl bg-blue-100 dark:bg-layer-1 shadow-sm">
-                    <HelpCircle className="h-5 w-5 text-blue-600 dark:text-accent" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-800 dark:text-text-primary mb-1 uppercase tracking-tight">
-                      ¿Tienes dudas?
-                    </h4>
-                    <p className="text-xs text-slate-600 dark:text-text-secondary leading-relaxed mb-4">
-                      Si tu banco tiene un formato extraño, nuestro soporte técnico te ayudará a
-                      importarlo.
-                    </p>
-                    <a
-                      href="mailto:contact.bstack@gmail.com"
-                      className="text-[10px] font-black text-blue-600 dark:text-accent uppercase tracking-widest hover:underline text-left flex items-center gap-1"
-                    >
-                      Hablar con soporte
-                      <ArrowRight className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Select
+              id="manual-category"
+              label="Categoría"
+              options={categoryOptions}
+              value={form.category_id}
+              error={fieldErrors.category_id}
+              onChange={(e) =>
+                setForm({ ...form, category_id: e.target.value, subcategory_id: '' })
+              }
+            />
+            <Select
+              id="manual-subcategory"
+              label="Subcategoría"
+              options={subcategoryOptions}
+              value={form.subcategory_id}
+              onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
+              disabled={!form.category_id}
+            />
           </div>
-        </div>
-      </div>
+
+          {error && (
+            <p
+              role="alert"
+              className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
+            >
+              <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              {error}
+            </p>
+          )}
+          {success && (
+            <p
+              role="status"
+              className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success"
+            >
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              {success}
+            </p>
+          )}
+
+          <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto">
+            Añadir transacción
+          </Button>
+        </form>
+      ) : (
+        account && <BulkImport accountId={account.id} categories={categories} />
+      )}
     </div>
   )
 }

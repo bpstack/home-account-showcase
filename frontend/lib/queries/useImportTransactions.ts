@@ -1,12 +1,10 @@
 // lib/queries/useImportTransactions.ts - Hook con optimistic updates para import masivo
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { importApi, ParsedTransaction, CategoryMapping } from '../apiClient'
+import { importApi } from '../apiClient'
 import { transactionKeys } from './transactions'
 import { useCryptoStore } from '@/stores/cryptoStore'
-import { encrypt, getAmountSign } from '../crypto'
-import { sha256 } from '@noble/hashes/sha2.js'
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js'
+import { buildImportPayload, type CategoryChoice, type ImportMovement } from '../import/confirm'
 
 export interface OptimisticTransaction {
   id: string
@@ -23,8 +21,13 @@ export interface OptimisticTransaction {
 
 interface ImportConfirmData {
   account_id: string
-  transactions: ParsedTransaction[]
-  category_mappings: CategoryMapping[]
+  movements: ImportMovement[]
+  /** The app subcategory chosen for each bank category pair */
+  choices: CategoryChoice[]
+}
+
+function choiceKey(category: string | null, subcategory: string | null): string {
+  return JSON.stringify([category ?? '', subcategory ?? ''])
 }
 
 interface TransactionsCache {
@@ -46,56 +49,26 @@ interface TransactionsCache {
   offset: number
 }
 
-function generateImportHash(tx: ParsedTransaction): string {
-  const normalized = [
-    (tx.date || '').split('T')[0],
-    (tx.description || '').toLowerCase().trim().replace(/\s+/g, ' '),
-    (Math.round(tx.amount * 100) / 100).toFixed(2),
-  ].join('|')
-  return bytesToHex(sha256(utf8ToBytes(normalized)))
-}
-
 export function useImportTransactions() {
   const queryClient = useQueryClient()
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
 
   return useMutation({
     mutationFn: async (data: ImportConfirmData) => {
+      // No unencrypted fallback (ADR-008): a locked account does not import
       const accountKey = getAccountKey(data.account_id)
-
-      // Generate dedup hashes from plaintext before encryption
-      const txsWithHash = data.transactions.map((tx) => ({
-        ...tx,
-        import_hash: generateImportHash(tx),
-      }))
-
-      // If account is unlocked, encrypt all transactions before sending
-      if (accountKey) {
-        const encryptedTransactions = await Promise.all(
-          txsWithHash.map(async (tx) => ({
-            ...tx,
-            description_encrypted: await encrypt(tx.description, accountKey),
-            amount_encrypted: await encrypt(tx.amount.toString(), accountKey),
-            amount_sign: getAmountSign(tx.amount),
-            bank_category_encrypted: tx.bank_category
-              ? await encrypt(tx.bank_category, accountKey)
-              : null,
-            bank_subcategory_encrypted: tx.bank_subcategory
-              ? await encrypt(tx.bank_subcategory, accountKey)
-              : null,
-          }))
-        )
-        return importApi.confirm({
-          ...data,
-          transactions: encryptedTransactions as any,
-        })
+      if (!accountKey) {
+        throw new Error('La cuenta está bloqueada: introduce el PIN para importar')
       }
 
-      // Fallback: send unencrypted (legacy mode)
-      return importApi.confirm({
-        ...data,
-        transactions: txsWithHash as any,
-      })
+      const payload = await buildImportPayload(
+        data.account_id,
+        accountKey,
+        data.movements,
+        data.choices
+      )
+      const res = await importApi.confirm(payload)
+      return res.data
     },
 
     // Optimistic update: mostrar transacciones inmediatamente
@@ -108,30 +81,27 @@ export function useImportTransactions() {
         queryKey: transactionKeys.lists(newData.account_id),
       })
 
-      // Crear mapping de subcategory_id por banco
+      // Subcategoría elegida por cada par de categorías del banco
       const categoryMap = new Map<string, string | null>()
-      newData.category_mappings.forEach((m) => {
-        const key = `${m.bank_category}|${m.bank_subcategory}`
-        categoryMap.set(key, m.subcategory_id)
-      })
+      newData.choices.forEach((c) =>
+        categoryMap.set(choiceKey(c.category, c.subcategory), c.subcategory_id)
+      )
 
-      // Crear transacciones optimistas
-      const optimisticTransactions: OptimisticTransaction[] = newData.transactions.map(
-        (tx, index) => {
-          const key = `${tx.bank_category}|${tx.bank_subcategory}`
-          return {
-            id: `optimistic-${Date.now()}-${index}`,
-            account_id: newData.account_id,
-            date: tx.date,
-            description: tx.description,
-            amount: tx.amount,
-            subcategory_id: categoryMap.get(key) || null,
-            bank_category: tx.bank_category,
-            bank_subcategory: tx.bank_subcategory,
-            created_at: new Date().toISOString(),
-            _optimistic: true as const,
-          }
-        }
+      // Crear transacciones optimistas (solo en la caché de este navegador)
+      const optimisticTransactions: OptimisticTransaction[] = newData.movements.map(
+        (movement, index) => ({
+          id: `optimistic-${Date.now()}-${index}`,
+          account_id: newData.account_id,
+          date: movement.date,
+          description: movement.description,
+          amount: movement.amount,
+          subcategory_id:
+            categoryMap.get(choiceKey(movement.category, movement.subcategory)) || null,
+          bank_category: movement.category,
+          bank_subcategory: movement.subcategory,
+          created_at: new Date().toISOString(),
+          _optimistic: true as const,
+        })
       )
 
       // Actualizar cache de forma optimista

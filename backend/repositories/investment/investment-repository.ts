@@ -3,6 +3,7 @@
 
 import db from '../../config/db.js'
 import crypto from 'crypto'
+import type { RowDataPacket } from 'mysql2'
 import type {
   InvestmentProfile,
   InvestmentProfileRow,
@@ -36,18 +37,30 @@ export class InvestmentRepository {
   }
 
   static async createProfile(data: CreateInvestmentProfileDTO): Promise<InvestmentProfile> {
-    const [_result] = await db.query(
-      `INSERT INTO investment_profiles
-       (account_id, risk_profile, investment_percentage, horizon_years, has_emergency_fund, experience_level)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        data.account_id,
-        data.risk_profile || 'balanced',
-        data.investment_percentage || 20,
-        data.horizon_years || 5,
-        data.has_emergency_fund || false,
-        data.experience_level || 'none',
-      ]
+    // Only the fields given; the table's defaults apply to the rest. Saving the emergency fund
+    // before the test leaves risk_profile empty (null): the test was not taken (ADR-016). Filling
+    // it with a default here is what created profiles nobody chose.
+    const columns: string[] = ['account_id']
+    const values: unknown[] = [data.account_id]
+    for (const column of [
+      'risk_profile',
+      'investment_percentage',
+      'horizon_years',
+      'has_emergency_fund',
+      'experience_level',
+      'monthly_investable',
+      'liquidity_reserve',
+      'emergency_fund_months',
+    ] as const) {
+      if (data[column] !== undefined) {
+        columns.push(column)
+        values.push(data[column])
+      }
+    }
+
+    await db.query(
+      `INSERT INTO investment_profiles (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+      values
     )
 
     return this.getProfileByAccountId(data.account_id) as Promise<InvestmentProfile>
@@ -211,29 +224,55 @@ export class InvestmentRepository {
     return rows[0] || null
   }
 
-  static async getChatSessionsByAccount(accountId: string): Promise<AIChatSession[]> {
+  /**
+   * The session only if it belongs to this account and to this user: each chat is private to the
+   * user who created it, even inside a shared account (ADR-013).
+   */
+  static async getOwnChatSession(
+    sessionId: string,
+    accountId: string,
+    userId: string
+  ): Promise<AIChatSession | null> {
     const [rows] = await db.query<AIChatSessionRow[]>(
       `SELECT id, account_id, user_id, provider, message_count, created_at, last_message_at
        FROM ai_chat_sessions
-       WHERE account_id = ?
+       WHERE id = ? AND account_id = ? AND user_id = ?`,
+      [sessionId, accountId, userId]
+    )
+    return rows[0] || null
+  }
+
+  static async getChatSessionsByUser(accountId: string, userId: string): Promise<AIChatSession[]> {
+    const [rows] = await db.query<AIChatSessionRow[]>(
+      `SELECT id, account_id, user_id, provider, message_count, created_at, last_message_at
+       FROM ai_chat_sessions
+       WHERE account_id = ? AND user_id = ?
        ORDER BY last_message_at DESC
        LIMIT 50`,
-      [accountId]
+      [accountId, userId]
     )
     return rows
   }
 
-  static async updateChatSession(sessionId: string, messageCount: number): Promise<void> {
+  /** Adds `added` messages to the session's count and marks it as just used. */
+  static async updateChatSession(sessionId: string, added: number): Promise<void> {
     await db.query(
       `UPDATE ai_chat_sessions
-       SET message_count = ?, last_message_at = NOW()
+       SET message_count = message_count + ?, last_message_at = NOW()
        WHERE id = ?`,
-      [messageCount, sessionId]
+      [added, sessionId]
     )
   }
 
-  static async deleteChatSession(sessionId: string): Promise<boolean> {
-    const [result] = await db.query(`DELETE FROM ai_chat_sessions WHERE id = ?`, [sessionId])
+  static async deleteChatSession(
+    sessionId: string,
+    accountId: string,
+    userId: string
+  ): Promise<boolean> {
+    const [result] = await db.query(
+      `DELETE FROM ai_chat_sessions WHERE id = ? AND account_id = ? AND user_id = ?`,
+      [sessionId, accountId, userId]
+    )
     return (result as any).affectedRows > 0
   }
 
@@ -267,11 +306,17 @@ export class InvestmentRepository {
     limit: number = 50
   ): Promise<AIChatMessage[]> {
     const [rows] = await db.query<AIChatMessageRow[]>(
+      // The last `limit` messages, oldest first. Ids are random and a question and its answer can
+      // be saved in the same second, so ties put the question before the answer.
       `SELECT id, session_id, role, content, tokens, created_at
-       FROM ai_chat_messages
-       WHERE session_id = ?
-       ORDER BY created_at ASC
-       LIMIT ?`,
+       FROM (
+         SELECT id, session_id, role, content, tokens, created_at
+         FROM ai_chat_messages
+         WHERE session_id = ?
+         ORDER BY created_at DESC, FIELD(role, 'assistant', 'user', 'system')
+         LIMIT ?
+       ) AS latest
+       ORDER BY created_at ASC, FIELD(role, 'system', 'user', 'assistant')`,
       [sessionId, limit]
     )
     return rows
@@ -286,6 +331,74 @@ export class InvestmentRepository {
       role: m.role,
       content: m.content,
     }))
+  }
+
+  /**
+   * Retention (ADR-013): deletes every chat message older than `days`, then every conversation
+   * left empty for over an hour (the hour leaves room between creating one and its first
+   * message), and fixes the message count of the rest. Dates are compared inside MySQL, so the
+   * Node/MySQL time zone offset does not apply.
+   */
+  static async purgeOldChatHistory(days: number): Promise<{ messages: number; sessions: number }> {
+    const conn = await db.getConnection()
+    try {
+      await conn.beginTransaction()
+      const [msgs] = await conn.query(
+        `DELETE FROM ai_chat_messages WHERE created_at < NOW() - INTERVAL ? DAY`,
+        [days]
+      )
+      const [sessions] = await conn.query(
+        `DELETE FROM ai_chat_sessions
+         WHERE created_at < NOW() - INTERVAL 1 HOUR
+           AND NOT EXISTS (SELECT 1 FROM ai_chat_messages m WHERE m.session_id = ai_chat_sessions.id)`
+      )
+      await conn.query(
+        `UPDATE ai_chat_sessions s
+         SET s.message_count = (SELECT COUNT(*) FROM ai_chat_messages m WHERE m.session_id = s.id)
+         WHERE s.message_count <> (SELECT COUNT(*) FROM ai_chat_messages m WHERE m.session_id = s.id)`
+      )
+      await conn.commit()
+      return {
+        messages: (msgs as any).affectedRows,
+        sessions: (sessions as any).affectedRows,
+      }
+    } catch (error) {
+      await conn.rollback()
+      throw error
+    } finally {
+      conn.release()
+    }
+  }
+
+  /**
+   * AI usage from the stored questions: the user's in the last hour (and how old the oldest is)
+   * and everyone's in the last day. Ages are computed inside MySQL, so the Node/MySQL time zone
+   * offset does not apply.
+   */
+  static async getChatUsage(userId: string): Promise<{
+    userLastHour: number
+    oldestUserQuestionAgeSec: number | null
+    allLastDay: number
+  }> {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT
+         (SELECT COUNT(*) FROM ai_chat_messages m JOIN ai_chat_sessions s ON s.id = m.session_id
+          WHERE s.user_id = ? AND m.role = 'user' AND m.created_at > NOW() - INTERVAL 1 HOUR)
+           AS user_last_hour,
+         (SELECT TIMESTAMPDIFF(SECOND, MIN(m.created_at), NOW())
+          FROM ai_chat_messages m JOIN ai_chat_sessions s ON s.id = m.session_id
+          WHERE s.user_id = ? AND m.role = 'user' AND m.created_at > NOW() - INTERVAL 1 HOUR)
+           AS oldest_age_sec,
+         (SELECT COUNT(*) FROM ai_chat_messages
+          WHERE role = 'user' AND created_at > NOW() - INTERVAL 1 DAY) AS all_last_day`,
+      [userId, userId]
+    )
+    const row = rows[0]
+    return {
+      userLastHour: Number(row.user_last_hour),
+      oldestUserQuestionAgeSec: row.oldest_age_sec === null ? null : Number(row.oldest_age_sec),
+      allLastDay: Number(row.all_last_day),
+    }
   }
 
   static async deleteChatMessagesBySession(sessionId: string): Promise<number> {

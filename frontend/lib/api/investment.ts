@@ -2,6 +2,8 @@
 // API client for investment endpoints
 
 // Usar proxy en cliente para evitar problemas de cookies cross-site
+import { ApiError } from '../apiClient'
+
 const isClient = typeof window !== 'undefined'
 const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
 
@@ -20,38 +22,64 @@ async function investmentRequest<T>(
 
   const data = await response.json()
   if (!response.ok) {
-    throw new Error(data.error || 'Error del servidor')
+    throw new ApiError(response.status, data.error || 'Error del servidor')
   }
   return data
 }
 
 // FinancialSummary interface moved to hooks/useFinancialMetrics.ts
 
+/** The result of the profile test; null in the overview until it is taken */
 export interface InvestmentProfile {
   riskProfile: 'conservative' | 'balanced' | 'dynamic'
   horizonYears: number
-  hasEmergencyFund: boolean
-  investmentPercentage: number
-  monthlyInvestable: number
-  liquidityReserve: number
-  emergencyFundMonths: number
 }
 
+/** The emergency fund, test or not: what is saved and how many months of expenses it should cover */
+export interface EmergencyFundSettings {
+  saved: number
+  months: number
+}
+
+/** A price and its daily change; the change is null when the source does not give it */
+export interface Quote {
+  value: number
+  change24h: number | null
+}
+
+/** A percentage published for a period: a month ("2026-10") or a day ("2026-11-19") */
+export interface Indicator {
+  value: number
+  period: string
+}
+
+/** How the economy is doing; each indicator is null when its source did not answer */
+export interface Economy {
+  /** Annual HICP inflation in Spain, % (Eurostat) */
+  inflationSpain: Indicator | null
+  /** 12-month Euribor, monthly average, % (ECB) */
+  euribor12m: Indicator | null
+  /** ECB deposit facility rate, % (ECB) */
+  ecbDepositRate: Indicator | null
+  /** Unemployment rate in Spain, seasonally adjusted, % (Eurostat) */
+  unemploymentSpain: Indicator | null
+}
+
+/** Each figure is null when its source did not answer: there are no fallback figures */
 export interface MarketPrices {
-  sp500: { value: number; change24h: number }
-  msciWorld: { value: number; change24h: number }
-  nasdaq: { value: number; change24h: number }
-  btc: { value: number; change24h: number }
-  eth: { value: number; change24h: number }
-  eurUsd: number
-  eurGbp: number
+  btc: Quote | null
+  eth: Quote | null
+  eurUsd: Quote | null
+  eurGbp: Quote | null
   lastUpdated: string
+  economy: Economy
 }
 
 export interface InvestmentOverview {
   accountId: string
   // Financial summary removed - calculated client-side
   profile: InvestmentProfile | null
+  emergencyFund: EmergencyFundSettings
   marketPrices: MarketPrices
   aiEnabled: boolean
   activeProvider: string
@@ -61,7 +89,6 @@ export interface ProfileAnswers {
   age: number
   monthlyIncome: number
   jobStability: 'high' | 'medium' | 'low'
-  hasEmergencyFund: 'yes' | 'partial' | 'no'
   horizonYears: '<3' | '3-10' | '>10'
   reactionToDrop: 'sell' | 'hold' | 'buy_more'
   experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
@@ -78,11 +105,12 @@ export interface ProfileAnswers {
 
 export interface ProfileAssessmentResult {
   recommendedProfile: 'conservative' | 'balanced' | 'dynamic'
+  /** Risk tolerance points, 0 to maxScore, and the points range of the profile given */
+  score: number
+  maxScore: number
+  scoreRange: { min: number; max: number }
   confidence: number
   reasoning: string
-  investmentPercentage: number
-  monthlyInvestable: number
-  liquidityReserve: number
   historicalInsights: {
     monthsAnalyzed: number
     trend: string
@@ -92,32 +120,6 @@ export interface ProfileAssessmentResult {
   }
   warnings: string[]
   marketContext: string
-}
-
-export interface RecommendationItem {
-  type: 'ETF' | 'BOND_FUND' | 'CRYPTO' | 'STOCK' | 'SAVINGS'
-  symbol: string
-  name: string
-  percentage: number
-  amount: number
-  currentPrice?: number
-  units?: number
-  reason: string
-  risk: 'low' | 'medium' | 'high'
-}
-
-export interface RecommendationResult {
-  recommendations: RecommendationItem[]
-  totalMonthly: number
-  assetAllocation: {
-    stocks: number
-    bonds: number
-    crypto: number
-    cash: number
-  }
-  marketContext: string
-  disclaimer: string
-  error?: string
 }
 
 export interface ChatSession {
@@ -138,27 +140,25 @@ export interface ChatResponse {
   needsDisclaimer: boolean
 }
 
+/** Every row is always there; a figure its source did not give is null */
 export interface MarketDataResponse {
   cryptocurrencies: Array<{
     symbol: string
     name: string
-    price: number
-    change24h: number
+    price: number | null
+    change24h: number | null
   }>
   currencies: Array<{
     pair: string
-    rate: number
-    change24h: number
+    rate: number | null
+    change24h: number | null
   }>
-  indices: Array<{
-    symbol: string
-    name: string
-    value: number
-    change24h: number
-  }>
+  economy: Economy
+  /** When the quotes were fetched; each economic figure carries its own period */
   cachedAt: string
   cacheExpiresIn: number
-  marketTrend?: 'alcista' | 'bajista' | 'neutral'
+  /** null when no change is known */
+  marketTrend: 'alcista' | 'bajista' | 'neutral' | null
 }
 
 // ========================
@@ -200,21 +200,6 @@ export const investmentApi = {
       {
         method: 'POST',
         body: JSON.stringify(answers),
-      }
-    )
-    return data.data
-  },
-
-  // Get recommendations
-  getRecommendations: async (
-    accountId: string,
-    options?: { profile?: string; monthlyAmount?: number; includeExplanation?: boolean }
-  ): Promise<RecommendationResult> => {
-    const data = await investmentRequest<{ data: RecommendationResult }>(
-      `/investment/${accountId}/recommendations`,
-      {
-        method: 'POST',
-        body: JSON.stringify(options || {}),
       }
     )
     return data.data

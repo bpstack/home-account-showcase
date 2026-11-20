@@ -1,89 +1,36 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ai, type AIStatus, type AITestResult } from '@/lib/apiClient'
-import { Card, CardHeader, CardTitle, CardContent, Button, Select } from '@/components/ui'
-import { Bot, CheckCircle, XCircle, Loader2, Zap } from 'lucide-react'
+import { ai, type AIStatus } from '@/lib/apiClient'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import { Bot, Loader2, Zap } from 'lucide-react'
 
-const PROVIDER_OPTIONS = [
-  { value: 'none', label: 'Deshabilitado' },
-  { value: 'claude', label: 'Claude (Anthropic)' },
-  { value: 'gemini', label: 'Gemini (Google)' },
-  { value: 'groq', label: 'Groq' },
-  { value: 'huggingface', label: 'HuggingFace' },
-  { value: 'ollama', label: 'Ollama (Local)' },
-]
-
+/**
+ * Read-only view of the AI in use. The provider is set in the server configuration, not here
+ * (ADR-014): this only says whether any AI is active and, if so, which one.
+ */
 export function AISettings() {
   const [status, setStatus] = useState<AIStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedProvider, setSelectedProvider] = useState<string>('none')
-  const [originalProvider, setOriginalProvider] = useState<string>('none')
-  const [testingProvider, setTestingProvider] = useState(false)
-  const [testResult, setTestResult] = useState<AITestResult | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  const hasChanges = selectedProvider !== originalProvider
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    loadStatus()
-  }, [])
-
-  async function loadStatus() {
-    try {
-      setLoading(true)
-      const data = await ai.getStatus()
-      setStatus(data)
-      const currentProvider = data.activeProvider?.toLowerCase() || 'none'
-      setSelectedProvider(currentProvider)
-      setOriginalProvider(currentProvider)
-    } catch (err) {
-      console.error('Error loading AI status:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function handleProviderChange(newProvider: string) {
-    setSelectedProvider(newProvider)
-    setTestResult(null)
-  }
-
-  async function handleSave() {
-    try {
-      setSaving(true)
-      await ai.setProvider(selectedProvider)
-      setOriginalProvider(selectedProvider)
-      await loadStatus()
-    } catch (err) {
-      console.error('Error changing provider:', err)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function handleCancel() {
-    setSelectedProvider(originalProvider)
-    setTestResult(null)
-  }
-
-  async function handleTestConnection() {
-    if (selectedProvider === 'none') return
-
-    try {
-      setTestingProvider(true)
-      setTestResult(null)
-      const result = await ai.testConnection(selectedProvider)
-      setTestResult(result)
-    } catch (err) {
-      setTestResult({
-        success: false,
-        error: err instanceof Error ? err.message : 'Error de conexión',
+    let cancelled = false
+    ai.getStatus()
+      .then((data) => {
+        if (!cancelled) setStatus(data)
       })
-    } finally {
-      setTestingProvider(false)
+      .catch((err) => {
+        console.error('Error loading AI status:', err)
+        if (!cancelled) setFailed(true)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
-  }
+  }, [])
 
   if (loading) {
     return (
@@ -93,270 +40,91 @@ export function AISettings() {
     )
   }
 
-  const providerInfo = status?.providers?.[selectedProvider]
-  const isActive = selectedProvider !== 'none'
-  const isOllama = selectedProvider === 'ollama'
-  const isConfigured = providerInfo?.configured ?? false
-
-  const getStatusText = () => {
-    if (!isActive) return 'IA deshabilitada'
-    if (isOllama) return 'Requiere Docker/Ollama local'
-    if (isConfigured) return 'API Key configurada'
-    return 'API Key no configurada'
-  }
-
-  const getStatusColor = () => {
-    if (!isActive) return 'bg-gray-400'
-    if (isOllama) return 'bg-blue-500'
-    if (isConfigured) return 'bg-success'
-    return 'bg-warning'
-  }
+  const active = status?.active ?? false
+  const rateLimit = status?.rateLimit
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-medium text-text-primary dark:text-white">
           Inteligencia Artificial
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Configura los proveedores de IA para el parsing de transacciones
+        <p className="text-sm text-text-secondary mt-1">
+          La IA que usa el asistente de Inversión. La elige la configuración del servidor.
         </p>
       </div>
 
-      {/* AI Configuration Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <Bot className="h-6 w-6 text-accent" />
-              <CardTitle>Proveedor de IA</CardTitle>
+              <CardTitle>Estado de la IA</CardTitle>
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                isActive && isConfigured
-                  ? 'bg-success/10 text-success'
-                  : 'bg-layer-2 text-text-secondary'
+                active ? 'bg-success/10 text-success' : 'bg-layer-2 text-text-secondary'
               }`}
             >
               <span
-                className={`w-2 h-2 rounded-full ${
-                  isActive && isConfigured ? 'bg-success animate-pulse' : 'bg-text-secondary'
-                }`}
+                className={`w-2 h-2 rounded-full ${active ? 'bg-success' : 'bg-text-secondary'}`}
               />
-              {isActive && isConfigured ? 'Activa' : 'Inactiva'}
+              {active ? 'Activa' : 'Inactiva'}
             </span>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {/* Provider Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-text-primary mb-2">
-                  Seleccionar proveedor
-                </label>
-                <div className="flex items-center gap-3">
-                  <Select
-                    value={selectedProvider}
-                    onChange={(e) => handleProviderChange(e.target.value)}
-                    options={PROVIDER_OPTIONS}
-                    className="w-full sm:w-72"
-                    disabled={saving}
-                  />
-                  {hasChanges && (
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
-                        Cancelar
-                      </Button>
-                      <Button size="sm" onClick={handleSave} isLoading={saving}>
-                        Guardar
-                      </Button>
-                    </div>
-                  )}
+          {failed ? (
+            <p className="text-sm text-text-secondary">
+              No se ha podido consultar el estado de la IA. Inténtalo más tarde.
+            </p>
+          ) : !active ? (
+            <p className="text-sm text-text-secondary">
+              No hay ninguna IA activa: el asistente de Inversión no está disponible. El test de
+              perfil y el plan del mes funcionan igual, porque no usan IA.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-text-secondary">Proveedor</dt>
+                  <dd className="text-text-primary font-medium">{status?.provider}</dd>
                 </div>
-              </div>
-              {selectedProvider === 'none' && !hasChanges && (
-                <p className="text-xs text-text-secondary sm:mt-6">
-                  Solo se usará el algoritmo base para parsear transacciones
-                </p>
+                {status?.model && (
+                  <div className="min-w-0">
+                    <dt className="text-text-secondary">Modelo</dt>
+                    <dd className="text-text-primary break-all">
+                      <code>{status.model}</code>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              {rateLimit && (
+                <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border bg-accent/10 border-accent/30">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-accent" />
+                    <span className="text-sm font-medium text-text-primary">
+                      {rateLimit.isUnlimited
+                        ? 'Peticiones sin límite'
+                        : `Te quedan ${rateLimit.remaining} de ${rateLimit.maxRequests} peticiones esta hora`}
+                    </span>
+                  </div>
+                  {!rateLimit.isUnlimited &&
+                    rateLimit.resetTime &&
+                    rateLimit.remaining < rateLimit.maxRequests && (
+                      <span className="text-xs text-text-primary">
+                        Se renueva a las{' '}
+                        {new Date(rateLimit.resetTime).toLocaleTimeString('es-ES', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    )}
+                </div>
               )}
             </div>
-
-            {/* Pending changes notice */}
-            {hasChanges && (
-              <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                <p className="text-sm text-warning">
-                  Tienes cambios sin guardar. Pulsa &quot;Guardar&quot; para aplicarlos.
-                </p>
-              </div>
-            )}
-
-            {/* AI Status Panel - Only show when provider is selected */}
-            {isActive && (
-              <div className="bg-layer-2 border border-layer-3 rounded-lg p-4 space-y-4">
-                {/* Status Row */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2.5 h-2.5 rounded-full ${getStatusColor()}`} />
-                    <span className="text-sm text-text-primary">{getStatusText()}</span>
-                  </div>
-                  {providerInfo?.model && (
-                    <span className="text-xs text-text-secondary">
-                      Modelo: <code className="text-text-primary">{providerInfo.model}</code>
-                    </span>
-                  )}
-                </div>
-
-                {/* Provider Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-layer-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    {isConfigured ? (
-                      <CheckCircle className="h-4 w-4 text-success" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-danger" />
-                    )}
-                    <span className="text-text-secondary">
-                      {isConfigured ? 'Configurado en servidor' : 'No configurado'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Zap className="h-4 w-4 text-text-secondary" />
-                    <span className="text-text-secondary">
-                      Proveedor:{' '}
-                      <span className="text-text-primary font-medium capitalize">
-                        {selectedProvider}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Test Result */}
-                {testResult && (
-                  <div
-                    className={`p-3 rounded-lg text-sm ${
-                      testResult.success
-                        ? 'bg-success/10 text-success border border-success/20'
-                        : 'bg-danger/10 text-danger border border-danger/20'
-                    }`}
-                  >
-                    {testResult.success ? (
-                      <div className="flex items-center justify-between">
-                        <span>Conexión exitosa</span>
-                        <span className="text-xs opacity-75">{testResult.responseTime}ms</span>
-                      </div>
-                    ) : (
-                      <span>{testResult.error}</span>
-                    )}
-                  </div>
-                )}
-
-                {/* Rate Limit Info - shows for current provider */}
-                {status?.rateLimit && (
-                  <div
-                    className={`p-3 rounded-lg border ${
-                      status.rateLimit.isUnlimited
-                        ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800'
-                        : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Zap
-                          className={`h-4 w-4 ${
-                            status.rateLimit.isUnlimited
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-blue-600 dark:text-blue-400'
-                          }`}
-                        />
-                        <span
-                          className={`text-sm font-medium ${
-                            status.rateLimit.isUnlimited
-                              ? 'text-green-900 dark:text-green-100'
-                              : 'text-blue-900 dark:text-blue-100'
-                          }`}
-                        >
-                          {status.rateLimit.isUnlimited ? (
-                            'Peticiones ilimitadas (local)'
-                          ) : (
-                            <>
-                              Peticiones restantes: {status.rateLimit.remaining}/
-                              {status.rateLimit.maxRequests} por hora
-                            </>
-                          )}
-                        </span>
-                      </div>
-                      {!status.rateLimit.isUnlimited &&
-                        status.rateLimit.resetTime &&
-                        status.rateLimit.remaining < status.rateLimit.maxRequests && (
-                          <span className="text-xs text-blue-700 dark:text-blue-300">
-                            Resetea a las{' '}
-                            {new Date(status.rateLimit.resetTime).toLocaleTimeString('es-ES', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        )}
-                    </div>
-                    {!status.rateLimit.isUnlimited && status.rateLimit.remaining === 0 && (
-                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                        Has alcanzado el límite. Espera a que se reinicie o cambia a Ollama (local,
-                        ilimitado).
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Test Button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTestConnection}
-                  disabled={!isConfigured || testingProvider}
-                  className="w-full sm:w-auto"
-                >
-                  {testingProvider ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Probando conexión...
-                    </>
-                  ) : (
-                    'Probar conexión'
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Available Providers Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Proveedores Disponibles</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {Object.entries(status?.providers || {}).map(([key, provider]) => (
-              <div
-                key={key}
-                className={`p-3 rounded-lg border transition-all ${
-                  selectedProvider === key
-                    ? 'border-accent bg-accent/5'
-                    : 'border-layer-3 bg-layer-2'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-text-primary capitalize">{key}</span>
-                  {provider.configured ? (
-                    <CheckCircle className="h-4 w-4 text-success" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-text-secondary" />
-                  )}
-                </div>
-                <p className="text-xs text-text-secondary truncate">{provider.model}</p>
-              </div>
-            ))}
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,13 +1,6 @@
 import React from 'react'
-import { ThemeToggle } from '@/components/ui'
 
+// Every public screen draws its own frame with AuthShell (components/auth), theme switch included.
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-      {children}
-    </div>
-  )
+  return <>{children}</>
 }

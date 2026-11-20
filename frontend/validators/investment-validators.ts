@@ -30,11 +30,14 @@ export const monthlyIncomeSchema = z
 
 // ─── Chat message schema ────────────────────────────────────────────
 
+/** Same limit as the backend (ADR-013): longer questions are rejected with a message, not cut. */
+export const CHAT_MESSAGE_MAX_CHARS = 2000
+
 export const chatMessageSchema = z
   .string()
   .trim()
   .min(2, 'El mensaje debe tener al menos 2 caracteres')
-  .max(5000, 'El mensaje no puede superar los 5.000 caracteres')
+  .max(CHAT_MESSAGE_MAX_CHARS, 'El mensaje no puede superar los 2.000 caracteres')
 
 // ─── Validation helpers ─────────────────────────────────────────────
 

@@ -43,9 +43,9 @@ export const getBudget = asyncHandler(async (req: Request, res: Response) => {
 
 export const createBudget = asyncHandler(async (req: Request, res: Response) => {
   const result = createBudgetSchema.safeParse(req.body)
-  
+
   if (!result.success) {
-    const messages = result.error.issues.map(i => i.message).join(', ')
+    const messages = result.error.issues.map((i) => i.message).join(', ')
     throw new AppError(messages, 400)
   }
 
@@ -69,9 +69,9 @@ export const updateBudget = asyncHandler(async (req: Request, res: Response) => 
   const { id } = req.params
 
   const result = updateBudgetSchema.safeParse(req.body)
-  
+
   if (!result.success) {
-    const messages = result.error.issues.map(i => i.message).join(', ')
+    const messages = result.error.issues.map((i) => i.message).join(', ')
     throw new AppError(messages, 400)
   }
 

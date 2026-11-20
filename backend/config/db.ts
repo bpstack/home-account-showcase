@@ -5,7 +5,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -47,6 +47,10 @@ const config = {
   password: process.env.REMOTE_DB_PASSWORD,
   database: process.env.REMOTE_DB_NAME || 'home_account',
   charset: 'utf8mb4',
+  // The database keeps its dates in UTC. Without this, mysql2 reads and writes them in the time
+  // zone of the machine running Node: an hour off on a machine in Spain, and a DATE one day early
+  // once it goes out as JSON.
+  timezone: 'Z',
   ssl: getSSLConfig(),
 }
 
@@ -54,13 +58,11 @@ if (!config.host) throw new Error('❌ Falta REMOTE_DB_HOST')
 if (!config.user) throw new Error('❌ Falta REMOTE_DB_USER')
 if (!config.password) throw new Error('❌ Falta REMOTE_DB_PASSWORD')
 
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-console.log('🗄️  MySQL Environment: REMOTE')
-console.log(`📍 Host: ${config.host}:${config.port}`)
-console.log(`💾 Database: ${config.database}`)
-console.log(`👤 User: ${config.user}`)
-console.log(`🔐 SSL: Enabled`)
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+// Only what tells whether the connection is safe: the host, database and user stay out of the
+// log, which in production is read outside the server.
+console.log(
+  `🗄️  MySQL over TLS, certificate ${config.ssl.rejectUnauthorized ? 'verified' : 'NOT verified'}`
+)
 
 const pool: Pool = mysql.createPool({
   ...config,
@@ -68,6 +70,13 @@ const pool: Pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   connectTimeout: 30000,
+})
+
+// Each connection works in UTC whatever the server's own time zone, so NOW() and TIMESTAMP
+// columns agree with `timezone: 'Z'` above. The event hands over the core (callback) connection,
+// not the promise one its type says: the query runs before any other on that connection.
+pool.on('connection', (connection) => {
+  void connection.query("SET time_zone = '+00:00'")
 })
 
 // Retry connection test for cold starts

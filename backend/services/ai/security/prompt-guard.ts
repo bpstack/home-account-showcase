@@ -47,6 +47,21 @@ const CRITICAL_PATTERNS = [
   /javascript:/i,
   /\{\{\s*.*\s*\}\}/, // Template injection
   /\$\{.*\}/, // Template literal injection
+
+  // A line posing as a turn of the application or of the model (the history is "role: content")
+  /^[^\S\r\n]*(system|assistant|sistema|asistente)[^\S\r\n]*:/im,
+
+  // Spanish, matched without accents (see normalizeForDetection). Imperatives only, so that
+  // "¿puedo ignorar las reglas de…?" is still a question
+  /\bignor(a|e|ad|en)\s+(todas\s+)?(las\s+|tus\s+)?(instrucciones|reglas|indicaciones)\b/i,
+  /\bignor(a|e|ad|en)\s+(todo\s+)?lo\s+(anterior|previo)\b/i,
+  /\bolvid(a|ate|e|ad|en)\s+(de\s+)?(todo\s+lo\s+(anterior|que\s+te\s+han\s+dicho)|(tus|las)\s+(instrucciones|reglas))/i,
+  /\b(muestra|ensena|revela|dime|di|repite|escribe|imprime)\w*\s+(tu|tus)\s+(system\s+)?(prompt|instrucciones)\b/i,
+  /\b(muestra|ensena|revela|dime|di|repite|escribe|imprime)\w*\s+el\s+(system\s+)?prompt\b/i,
+  /\bcuales\s+son\s+tus\s+(instrucciones|reglas\s+internas)\b/i,
+  /\b(ahora|a\s+partir\s+de\s+ahora)\s+eres\s+(un|una)\s+(?!asesor|asistente\s+financiero)/i,
+  /\bfinge\s+(ser|que\s+eres)\b/i,
+  /\bhazte\s+pasar\s+por\b/i,
 ]
 
 // High-risk patterns - strong warning
@@ -77,6 +92,11 @@ const HIGH_RISK_PATTERNS = [
   /testing\s+mode/i,
   /jailbreak/i,
   /DAN\s+mode/i,
+
+  // Spanish, matched without accents
+  /\[(sistema|asistente)\]/i,
+  /\bmodo\s+(desarrollador|depuracion|administrador|admin|mantenimiento|dios)\b/i,
+  /\b(salta\w*|anula\w*|desactiva\w*)\s+(el|los|tus)\s+(filtros?|restricciones|reglas)\b/i,
 ]
 
 // Medium-risk patterns - monitoring
@@ -121,18 +141,26 @@ const LOW_RISK_PATTERNS = [
 // ============================================
 
 /**
+ * The text the patterns are matched against: compatibility forms folded (full-width or styled
+ * letters become plain ones) and accents removed, so "ｉｇｎｏｒｅ" or "muéstrame" still match.
+ * Line breaks are kept: some patterns look at the start of a line.
+ */
+function normalizeForDetection(input: string): string {
+  return input.normalize('NFKC').normalize('NFD').replace(/\p{M}/gu, '')
+}
+
+/**
  * Detect prompt injection attempts
  */
 export function detectPromptInjection(input: string): ThreatAnalysis {
   const patterns: string[] = []
   let score = 0
 
-  // Normalize input for analysis
-  input.toLowerCase().replace(/\s+/g, ' ').trim()
+  const normalized = normalizeForDetection(input)
 
   // Check critical patterns (score: 100 each)
   for (const pattern of CRITICAL_PATTERNS) {
-    if (pattern.test(input)) {
+    if (pattern.test(normalized)) {
       patterns.push(`critical:${pattern.source.substring(0, 30)}`)
       score += 100
     }
@@ -140,7 +168,7 @@ export function detectPromptInjection(input: string): ThreatAnalysis {
 
   // Check high-risk patterns (score: 50 each)
   for (const pattern of HIGH_RISK_PATTERNS) {
-    if (pattern.test(input)) {
+    if (pattern.test(normalized)) {
       patterns.push(`high:${pattern.source.substring(0, 30)}`)
       score += 50
     }
@@ -148,7 +176,7 @@ export function detectPromptInjection(input: string): ThreatAnalysis {
 
   // Check medium-risk patterns (score: 20 each)
   for (const pattern of MEDIUM_RISK_PATTERNS) {
-    if (pattern.test(input)) {
+    if (pattern.test(normalized)) {
       patterns.push(`medium:${pattern.source.substring(0, 30)}`)
       score += 20
     }
@@ -156,7 +184,7 @@ export function detectPromptInjection(input: string): ThreatAnalysis {
 
   // Check low-risk patterns (score: 5 each)
   for (const pattern of LOW_RISK_PATTERNS) {
-    if (pattern.test(input)) {
+    if (pattern.test(normalized)) {
       patterns.push(`low:${pattern.source.substring(0, 30)}`)
       score += 5
     }

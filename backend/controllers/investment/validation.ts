@@ -2,6 +2,7 @@
 // Zod schemas for investment module validation
 
 import { z } from 'zod'
+import { CHAT_MESSAGE_MAX_CHARS } from '../../services/ai/chat-limits.js'
 
 export const FinancialMetricsSchema = z.object({
   avgMonthlyIncome: z.number().min(0),
@@ -24,11 +25,14 @@ export const ProfileAnswersSchema = z.object({
     .int({ message: 'Los ingresos deben ser un número entero, sin decimales' })
     .positive('Los ingresos deben ser mayores a 0')
     .max(999999, 'Los ingresos no pueden superar 999.999€'),
-  jobStability: z.enum(['high', 'medium', 'low'], { error: 'Selecciona una opción de estabilidad' }),
-  hasEmergencyFund: z.enum(['yes', 'partial', 'no'], { error: 'Selecciona una opción' }),
+  jobStability: z.enum(['high', 'medium', 'low'], {
+    error: 'Selecciona una opción de estabilidad',
+  }),
   horizonYears: z.enum(['<3', '3-10', '>10'], { error: 'Selecciona un horizonte temporal' }),
   reactionToDrop: z.enum(['sell', 'hold', 'buy_more'], { error: 'Selecciona una reacción' }),
-  experienceLevel: z.enum(['none', 'basic', 'intermediate', 'advanced'], { error: 'Selecciona tu nivel de experiencia' }),
+  experienceLevel: z.enum(['none', 'basic', 'intermediate', 'advanced'], {
+    error: 'Selecciona tu nivel de experiencia',
+  }),
   financialMetrics: FinancialMetricsSchema.optional(),
 })
 
@@ -43,16 +47,13 @@ export const UpdateLiquidityReserveSchema = z.object({
 export const ChatMessageSchema = z.object({
   message: z
     .string({ error: 'El mensaje es obligatorio' })
-    .min(2, 'El mensaje debe tener al menos 2 caracteres')
-    .max(5000, 'El mensaje no puede superar los 5.000 caracteres')
     .trim()
-    .refine((val) => val.length >= 2, 'El mensaje debe tener al menos 2 caracteres después de eliminar espacios'),
-})
-
-export const RecommendationsRequestSchema = z.object({
-  profile: z.enum(['conservative', 'balanced', 'dynamic']).optional(),
-  monthlyAmount: z.number().positive().optional(),
-  includeExplanation: z.boolean().optional(),
+    .min(2, 'El mensaje debe tener al menos 2 caracteres')
+    .max(CHAT_MESSAGE_MAX_CHARS, 'El mensaje no puede superar los 2.000 caracteres')
+    .refine(
+      (val) => val.length >= 2,
+      'El mensaje debe tener al menos 2 caracteres después de eliminar espacios'
+    ),
 })
 
 export const ExplainConceptSchema = z.object({

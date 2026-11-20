@@ -1,68 +1,71 @@
 // services/market/types.ts
-// Tipos para datos de mercado
+// Market data types. A value a source could not give is null: there are no fallback figures.
 
 export interface CryptoPrice {
   symbol: string
   name: string
-  price: number
-  change24h: number
-  volume24h?: number
-  marketCap?: number
+  price: number | null
+  change24h: number | null
   source: 'coingecko'
 }
 
 export interface CurrencyRate {
   pair: string
-  rate: number
-  change24h?: number
+  rate: number | null
+  change24h: number | null
   source: 'frankfurter'
 }
 
-export interface MarketIndex {
-  symbol: string
-  name: string
+/** A percentage published for a period: a month ("2026-10") or a day ("2026-11-19") */
+export interface Indicator {
   value: number
-  change24h: number
-  source: 'alphavantage' | 'yahoo'
+  period: string
+}
+
+/** How the economy is doing; each indicator is null when its source did not answer */
+export interface Economy {
+  /** Annual HICP inflation in Spain, % (Eurostat) */
+  inflationSpain: Indicator | null
+  /** 12-month Euribor, monthly average, % (ECB) */
+  euribor12m: Indicator | null
+  /** ECB deposit facility rate, % (ECB) */
+  ecbDepositRate: Indicator | null
+  /** Unemployment rate in Spain, seasonally adjusted, % (Eurostat) */
+  unemploymentSpain: Indicator | null
 }
 
 export interface MarketData {
   cryptocurrencies: CryptoPrice[]
   currencies: CurrencyRate[]
-  indices: MarketIndex[]
+  economy: Economy
   cachedAt: string
   cacheExpiresIn: number // segundos
-  marketTrend?: 'alcista' | 'bajista' | 'neutral'
+  /** null when no change is known */
+  marketTrend: 'alcista' | 'bajista' | 'neutral' | null
 }
 
+export interface Quote {
+  value: number
+  change24h: number | null
+}
+
+/** Each figure is null when its source did not answer */
 export interface MarketDataContext {
-  sp500: { value: number; change24h: number }
-  msciWorld: { value: number; change24h: number }
-  nasdaq: { value: number; change24h: number }
-  btc: { value: number; change24h: number }
-  eth: { value: number; change24h: number }
-  eurUsd: number
-  eurGbp: number
+  btc: Quote | null
+  eth: Quote | null
+  /** Dollars per euro */
+  eurUsd: Quote | null
+  /** Pounds per euro */
+  eurGbp: Quote | null
   lastUpdated: string
+  economy: Economy
 }
 
-export interface MarketCacheEntry {
-  id: string
-  symbol: string
-  source: string
-  data: string // JSON stringified
-  cachedAt: Date
-  expiresAt: Date
-}
+/** The quotes alone, as cached for a few minutes; the economy has a cache of its own */
+export type MarketQuotes = Omit<MarketDataContext, 'economy'>
 
 export const CRYPTO_COINS = ['bitcoin', 'ethereum'] as const
-export const CURRENCY_PAIRS = ['USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'] as const
-export const INDEX_SYMBOLS: Record<string, string> = {
-  SP500: 'SPY',
-  MSCI: 'URTH',
-  NASDAQ: 'QQQ',
-} as const
+export const CURRENCY_PAIRS = ['USD', 'GBP'] as const
 
 export type CryptoCoin = (typeof CRYPTO_COINS)[number]
 export type CurrencyPair = (typeof CURRENCY_PAIRS)[number]
-export type IndexSymbol = keyof typeof INDEX_SYMBOLS

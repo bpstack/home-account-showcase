@@ -6,7 +6,8 @@ import { RowDataPacket } from 'mysql2'
 export interface InvestmentProfile {
   id: string
   account_id: string
-  risk_profile: 'conservative' | 'balanced' | 'dynamic'
+  /** null until the profile test is taken: the row can hold only the emergency fund */
+  risk_profile: 'conservative' | 'balanced' | 'dynamic' | null
   investment_percentage: number
   horizon_years: number
   has_emergency_fund: boolean

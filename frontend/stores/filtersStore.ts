@@ -22,64 +22,57 @@
  */
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 interface FiltersState {
   selectedYear: number | null
   selectedMonth: number | null
-  selectedCategory: string
+  /** Subcategory ids; empty means every category */
+  selectedCategories: string[]
   selectedType: 'all' | 'income' | 'expense'
 
   setYear: (_year: number | null) => void
   setMonth: (_month: number | null) => void
-  setCategory: (_category: string) => void
+  setCategories: (_ids: string[]) => void
   setType: (_type: 'all' | 'income' | 'expense') => void
   reset: () => void
 }
 
-const currentYear = new Date().getFullYear()
+const now = new Date()
+const currentYear = now.getFullYear()
+const currentMonth = now.getMonth()
 
 export const useFiltersStore = create<FiltersState>()(
-  persist(
-    (set) => ({
-      selectedYear: null,
-      selectedMonth: null,
-      selectedCategory: '',
-      selectedType: 'all',
+  // In memory only: the app always opens on the current month with no filters. Values kept in
+  // localStorage by earlier versions ('filters-storage') are no longer read.
+  (set) => ({
+    // Pages open on the current month
+    selectedYear: currentYear,
+    selectedMonth: currentMonth,
+    selectedCategories: [],
+    selectedType: 'all',
 
-      setYear: (year) =>
-        set({
-          selectedYear: year,
-          // Al seleccionar un año, si el mes es null (Período previo), lo mantenemos o lo forzamos?
-          // El requisito dice: al elegir año se asigna "Todos" (null)
-        }),
-      setMonth: (month) =>
-        set((state) => ({
-          selectedMonth: month,
-          // Si eliges un mes y no hay año, forzamos el actual
-          selectedYear:
-            month !== null && state.selectedYear === null ? currentYear : state.selectedYear,
-        })),
-      setCategory: (category) => set({ selectedCategory: category }),
-      setType: (type) => set({ selectedType: type }),
-
-      reset: () =>
-        set({
-          selectedYear: currentYear,
-          selectedMonth: null,
-          selectedCategory: '',
-          selectedType: 'all',
-        }),
-    }),
-
-    {
-      name: 'filters-storage',
-      partialize: (state) => ({
-        selectedYear: state.selectedYear,
-        selectedMonth: state.selectedMonth,
-        selectedCategory: state.selectedCategory,
-        selectedType: state.selectedType,
+    setYear: (year) =>
+      set({
+        selectedYear: year,
+        // Al seleccionar un año, si el mes es null (Período previo), lo mantenemos o lo forzamos?
+        // El requisito dice: al elegir año se asigna "Todos" (null)
       }),
-    }
-  )
+    setMonth: (month) =>
+      set((state) => ({
+        selectedMonth: month,
+        // Si eliges un mes y no hay año, forzamos el actual
+        selectedYear:
+          month !== null && state.selectedYear === null ? currentYear : state.selectedYear,
+      })),
+    setCategories: (ids) => set({ selectedCategories: ids }),
+    setType: (type) => set({ selectedType: type }),
+
+    reset: () =>
+      set({
+        selectedYear: currentYear,
+        selectedMonth: currentMonth,
+        selectedCategories: [],
+        selectedType: 'all',
+      }),
+  })
 )

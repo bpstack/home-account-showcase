@@ -35,18 +35,6 @@ export function useMarketPrices(
   })
 }
 
-export function useRecommendations(
-  accountId: string,
-  options?: { profile?: string; monthlyAmount?: number }
-) {
-  return useQuery({
-    queryKey: ['investment', 'recommendations', accountId, options],
-    queryFn: () => investmentApi.getRecommendations(accountId, options),
-    staleTime: 0, // staleTime = 0 for recommendations
-    enabled: !!accountId,
-  })
-}
-
 export function useChatHistory(accountId: string, sessionId: string) {
   return useQuery({
     queryKey: ['investment', 'chat', 'history', sessionId],
@@ -69,9 +57,6 @@ export function useAnalyzeProfile() {
     onSuccess: (_, variables) => {
       // Invalidate overview to reflect new profile
       queryClient.invalidateQueries({ queryKey: ['investment', 'overview', variables.accountId] })
-      queryClient.invalidateQueries({
-        queryKey: ['investment', 'recommendations', variables.accountId],
-      })
     },
   })
 }

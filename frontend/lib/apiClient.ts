@@ -4,6 +4,8 @@
 
 // Usar proxy de Next.js para todas las peticiones desde el cliente
 // Esto evita problemas de cookies cross-site en producción
+import type { HashedCategoryMapping, ImportConfirmPayload } from './import/confirm'
+
 const isClient = typeof window !== 'undefined'
 
 const API_URL = isClient ? '/api/proxy' : process.env.API_URL || 'http://localhost:3001/api'
@@ -896,36 +898,6 @@ export interface CategorySummary {
 }
 
 // Import types
-export interface ParsedTransaction {
-  date: string
-  description: string
-  amount: number
-  bank_category: string
-  bank_subcategory: string
-}
-
-export interface ParseResult {
-  success: boolean
-  file_type:
-    | 'control_gastos'
-    | 'movimientos_cc'
-    | 'csv_revolut'
-    | 'csv_generic'
-    | 'ai_parsed'
-    | 'unknown'
-  sheet_name?: string
-  available_sheets?: string[]
-  transactions: ParsedTransaction[]
-  categories: { category: string; subcategory: string }[]
-  errors: string[]
-}
-
-export interface CategoryMapping {
-  bank_category: string
-  bank_subcategory: string
-  subcategory_id: string | null
-}
-
 export interface ImportResult {
   total: number
   inserted: number
@@ -935,27 +907,8 @@ export interface ImportResult {
 
 // Import API
 export const importApi = {
-  parse: async (
-    file: File,
-    sheetName?: string
-  ): Promise<{ success: boolean; data: ParseResult }> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    if (sheetName) {
-      formData.append('sheet_name', sheetName)
-    }
-
-    return request<{ success: boolean; data: ParseResult }>('/import/parse', {
-      method: 'POST',
-      body: formData,
-    })
-  },
-
-  confirm: (data: {
-    account_id: string
-    transactions: ParsedTransaction[]
-    category_mappings: CategoryMapping[]
-  }) =>
+  // Only ciphertexts and keyed hashes (ADR-008): built by buildImportPayload
+  confirm: (data: ImportConfirmPayload) =>
     request<{ success: boolean; data: ImportResult }>('/import/confirm', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -967,90 +920,34 @@ export const importApi = {
     ),
 
   getSavedMappings: (accountId: string) =>
-    request<{
-      success: boolean
-      mappings: { bank_category: string; bank_subcategory: string; subcategory_id: string }[]
-    }>(`/import/mappings?account_id=${accountId}`),
+    request<{ success: boolean; mappings: HashedCategoryMapping[] }>(
+      `/import/mappings?account_id=${accountId}`
+    ),
+
+  // Keyed hashes of the movements already imported, to mark duplicates in the review
+  getImportHashes: (accountId: string) =>
+    request<{ success: boolean; hashes: string[] }>(`/import/hashes?account_id=${accountId}`),
 }
 
 // AI Types
-export interface AIProviderInfo {
-  configured: boolean
-  enabled: boolean
-  model: string
-  baseUrl?: string
-}
-
+/** Read-only: the provider is set in the server configuration (ADR-014). */
 export interface AIStatus {
   success: boolean
-  enabled: boolean
-  activeProvider: string
-  providers: Record<string, AIProviderInfo>
-  rateLimit?: {
+  active: boolean
+  provider: string | null
+  model: string | null
+  rateLimit: {
     provider: string
     remaining: number
     resetTime: number | null
     maxRequests: number
     isUnlimited: boolean
-  }
-  providerLimits?: Record<string, number | 'unlimited'>
-}
-
-export interface AITestResult {
-  success: boolean
-  provider?: string
-  model?: string
-  responseTime?: number
-  error?: string
-}
-
-export interface ParsedTransactionAI {
-  date: string | null
-  description: string
-  amount: number
-  category?: string
-  subcategory?: string
-}
-
-export interface AIParseResult {
-  success: boolean
-  transactions: ParsedTransactionAI[]
-  provider: string
-  responseTime: number
-  error?: string
+  } | null
 }
 
 // AI API
 export const ai = {
   getStatus: () => request<AIStatus>('/ai/status'),
-
-  setProvider: (provider: string) =>
-    request<{ success: boolean; activeProvider: string }>('/ai/provider', {
-      method: 'PUT',
-      body: JSON.stringify({ provider }),
-    }),
-
-  testConnection: (provider: string) =>
-    request<AITestResult>('/ai/test', {
-      method: 'POST',
-      body: JSON.stringify({ provider }),
-    }),
-
-  parseTransactions: (text: string, provider?: string) =>
-    request<AIParseResult>('/ai/parse', {
-      method: 'POST',
-      body: JSON.stringify({ text, provider }),
-    }),
-
-  categorize: (transactions: Array<{ description: string; date?: string; amount?: number }>) =>
-    request<{
-      success: boolean
-      categories: Array<{ category: string; subcategory: string }>
-      responseTime: number
-    }>('/ai/categorize', {
-      method: 'POST',
-      body: JSON.stringify({ transactions }),
-    }),
 }
 
 export { ApiError }

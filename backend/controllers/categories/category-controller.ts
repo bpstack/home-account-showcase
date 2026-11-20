@@ -36,9 +36,9 @@ export const getCategoryById = asyncHandler(async (req: Request, res: Response) 
 
 export const createCategory = asyncHandler(async (req: Request, res: Response) => {
   const result = createCategorySchema.safeParse(req.body)
-  
+
   if (!result.success) {
-    const messages = result.error.issues.map(i => i.message).join(', ')
+    const messages = result.error.issues.map((i) => i.message).join(', ')
     throw new AppError(messages, 400)
   }
 
@@ -64,9 +64,9 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
   const { id } = req.params
 
   const result = updateCategorySchema.safeParse(req.body)
-  
+
   if (!result.success) {
-    const messages = result.error.issues.map(i => i.message).join(', ')
+    const messages = result.error.issues.map((i) => i.message).join(', ')
     throw new AppError(messages, 400)
   }
 

@@ -3,22 +3,19 @@
 
 import { AIClient, createAIClient } from './ai-client.js'
 import type { AIProviderType } from './types.js'
-import { buildProfileAssessmentPrompt, ProfileAnswers } from './prompts/profile-prompt.js'
-import { buildRecommendationPrompt } from './prompts/recommendation-prompt.js'
 import { buildChatPrompt, buildSystemMessage } from './prompts/chat-prompt.js'
+import { toSafeChatReply } from './chat-reply.js'
+import { logSecurityEvent } from './security/audit-logger.js'
 import { buildEducationPrompt } from './prompts/education-prompt.js'
 import {
   InvestmentContext,
   ChatContext,
-  ProfileAssessmentResult,
-  RecommendationResult,
   ChatResult,
   ChatMessage,
   EducationResult,
 } from './prompts/types.js'
 import { getMarketData } from '../market/index.js'
 import { InvestmentRepository } from '../../repositories/investment/investment-repository.js'
-import { getActiveProvider } from './ai-client.js'
 import { AppError } from '../../utils/app-error.js'
 import { logger } from '../../utils/logger.js'
 
@@ -35,70 +32,6 @@ export class InvestmentAI {
 
   getProviderName(): string {
     return this.client.getProviderName()
-  }
-
-  // ========================
-  // PROFILE ASSESSMENT
-  // ========================
-
-  async assessProfile(
-    answers: ProfileAnswers,
-    context: InvestmentContext
-  ): Promise<ProfileAssessmentResult> {
-    const startTime = Date.now()
-
-    if (!this.isAvailable()) {
-      throw new AppError('AI not available', 503)
-    }
-
-    const marketData = await getMarketData()
-
-    const prompt = buildProfileAssessmentPrompt(answers, context, marketData)
-
-    const response = await this.client.sendPromptJSON<ProfileAssessmentResult>(prompt)
-
-    const responseTime = Date.now() - startTime
-    await this.logInvestmentSession(
-      context.accountId || '',
-      context.userId || '',
-      'profile_assessment',
-      responseTime,
-      response
-    )
-
-    return response
-  }
-
-  // ========================
-  // RECOMMENDATIONS
-  // ========================
-
-  async generateRecommendations(
-    profile: 'conservative' | 'balanced' | 'dynamic',
-    monthlyAmount: number,
-    context: InvestmentContext
-  ): Promise<RecommendationResult> {
-    const startTime = Date.now()
-
-    if (!this.isAvailable()) {
-      throw new AppError('AI not available', 503)
-    }
-
-    const marketData = await getMarketData()
-    const prompt = buildRecommendationPrompt(profile, monthlyAmount, context, marketData)
-
-    const response = await this.client.sendPromptJSON<RecommendationResult>(prompt)
-
-    const responseTime = Date.now() - startTime
-    await this.logInvestmentSession(
-      context.accountId || '',
-      context.userId || '',
-      'recommendation',
-      responseTime,
-      response
-    )
-
-    return response
   }
 
   // ========================
@@ -134,29 +67,18 @@ export class InvestmentAI {
     return response
   }
 
+  /** One message in an existing conversation; the caller has checked it belongs to the account. */
   async chatWithSession(
     message: string,
+    sessionId: string,
     accountId: string,
     userId: string,
     financialContext: InvestmentContext
   ): Promise<ChatResult> {
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Starting')
 
-    let session = (await InvestmentRepository.getChatSessionsByAccount(accountId))[0]
-    logger.info('INVESTMENT_AI', 'chatWithSession', `Existing session: ${session?.id || 'none'}`)
-
-    if (!session || this.isSessionExpired(session.last_message_at)) {
-      logger.info('INVESTMENT_AI', 'chatWithSession', 'Creating new session')
-      session = await InvestmentRepository.createChatSession({
-        account_id: accountId,
-        user_id: userId,
-        provider: getActiveProvider(),
-      })
-      logger.info('INVESTMENT_AI', 'chatWithSession', `New session created: ${session.id}`)
-    }
-
     const history = (await InvestmentRepository.getChatMessagesForContext(
-      session.id,
+      sessionId,
       20
     )) as ChatMessage[]
     logger.info('INVESTMENT_AI', 'chatWithSession', `History messages: ${history.length}`)
@@ -181,7 +103,7 @@ export class InvestmentAI {
         historicalMonths: financialContext.historicalMonths,
         trend: financialContext.trend,
       },
-      investmentProfile: investmentProfile
+      investmentProfile: investmentProfile?.risk_profile
         ? {
             risk_profile: investmentProfile.risk_profile,
           }
@@ -190,32 +112,39 @@ export class InvestmentAI {
     }
 
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Calling chat')
-    const result = await this.chat(message, chatContext, history, accountId, userId)
+    const raw = await this.chat(message, chatContext, history, accountId, userId)
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Chat result received')
 
+    // Filter before storing: the history and the next prompts only ever see the filtered reply
+    const safe = toSafeChatReply(raw)
+    if (!safe) {
+      throw new AppError('La IA ha devuelto una respuesta no válida. Inténtalo de nuevo.', 502)
+    }
+    if (safe.issues.length > 0) {
+      await logSecurityEvent({
+        type: 'unsafe_output_detected',
+        userId,
+        details: `Output issues: ${safe.issues.join(', ')}`,
+      })
+    }
+    const result = safe.result
+
     await InvestmentRepository.addChatMessage({
-      session_id: session.id,
+      session_id: sessionId,
       role: 'user',
       content: message,
     })
 
     await InvestmentRepository.addChatMessage({
-      session_id: session.id,
+      session_id: sessionId,
       role: 'assistant',
       content: result.answer,
     })
 
-    const messageCount = history.length + 2
-    await InvestmentRepository.updateChatSession(session.id, messageCount)
+    await InvestmentRepository.updateChatSession(sessionId, 2)
     logger.info('INVESTMENT_AI', 'chatWithSession', 'Messages saved, done')
 
     return result
-  }
-
-  private isSessionExpired(lastMessageAt?: Date): boolean {
-    if (!lastMessageAt) return true
-    const expiry = 30 * 60 * 1000 // 30 minutes
-    return Date.now() - new Date(lastMessageAt).getTime() > expiry
   }
 
   // ========================
@@ -232,9 +161,8 @@ export class InvestmentAI {
 
     const marketData = await getMarketData()
     const prompt = buildEducationPrompt(concept, userLevel, {
-      sp500: marketData.sp500.value,
-      btc: marketData.btc.value,
-      eurUsd: marketData.eurUsd,
+      btc: marketData.btc?.value,
+      eurUsd: marketData.eurUsd?.value,
     })
 
     return this.client.sendPromptJSON(prompt)

@@ -1,16 +1,8 @@
 'use client'
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts'
-import { useState } from 'react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { formatMoneyCompact } from '@/lib/money'
+import { ChartTooltip, chartColors } from './ChartTooltip'
 
 interface MonthlyData {
   month: string
@@ -23,96 +15,48 @@ interface Props {
   data: MonthlyData[]
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
-
-  const formatValue = (value: number | undefined) => {
-    if (value === undefined) return '-'
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(Math.abs(value))
-  }
-
-  return (
-    <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
-      <p className="font-medium text-foreground mb-1">{label}</p>
-      {payload.map((entry: any) => (
-        <p key={entry.dataKey} className="text-sm text-muted-foreground">
-          {entry.name} : {formatValue(entry.value)}
-        </p>
-      ))}
-    </div>
-  )
-}
-
+/** Income and expenses per month, side by side; the axis in euros. */
 export function MonthlyBarChart({ data }: Props) {
-  const [hoveredBar, setHoveredBar] = useState<{ dataKey: string; index: number } | null>(null)
-
-  const formatYAxis = (value: number | undefined) => {
-    if (value === undefined) return '-'
-    const thousands = Math.abs(value) / 1000
-    return thousands.toFixed(1)
-  }
-
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const minWidth = isMobile ? Math.max(data.length * 60, 600) : '100%'
-
   return (
     <div className="w-full">
-      <div className="w-full overflow-x-auto">
-        <ResponsiveContainer width={minWidth} height={300}>
-          <BarChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-            <XAxis dataKey="month" stroke="#9CA3AF" fontSize={12} />
-            <YAxis tickFormatter={formatYAxis} stroke="#9CA3AF" fontSize={12} width={40} />
-            <Tooltip cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }} content={<CustomTooltip />} />
-            <Bar dataKey="income" name="Ingresos" radius={[4, 4, 0, 0]}>
-              {data.map((_, index) => {
-                const isHovered = hoveredBar?.dataKey === 'income' && hoveredBar?.index === index
-                return (
-                  <Cell
-                    key={`income-${index}`}
-                    fill="#22C55E"
-                    opacity={isHovered ? 0.5 : 1}
-                    style={{ transition: 'opacity 0.2s ease', cursor: 'pointer' }}
-                    onMouseEnter={() => setHoveredBar({ dataKey: 'income', index })}
-                    onMouseLeave={() => setHoveredBar(null)}
-                  />
-                )
-              })}
-            </Bar>
-            <Bar dataKey="expenses" name="Gastos" radius={[4, 4, 0, 0]}>
-              {data.map((_, index) => {
-                const isHovered = hoveredBar?.dataKey === 'expenses' && hoveredBar?.index === index
-                return (
-                  <Cell
-                    key={`expenses-${index}`}
-                    fill="#EF4444"
-                    opacity={isHovered ? 0.5 : 1}
-                    style={{ transition: 'opacity 0.2s ease', cursor: 'pointer' }}
-                    onMouseEnter={() => setHoveredBar({ dataKey: 'expenses', index })}
-                    onMouseLeave={() => setHoveredBar(null)}
-                  />
-                )
-              })}
-            </Bar>
+      <div className="h-[280px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={2}>
+            <CartesianGrid vertical={false} stroke={chartColors.grid} />
+            <XAxis
+              dataKey="month"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: chartColors.axis, fontSize: 12 }}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tickFormatter={formatMoneyCompact}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: chartColors.axis, fontSize: 12 }}
+              width={64}
+            />
+            <Tooltip cursor={{ fill: chartColors.grid, opacity: 0.4 }} content={<ChartTooltip />} />
+            <Bar dataKey="income" name="Ingresos" fill={chartColors.income} radius={[3, 3, 0, 0]} />
+            <Bar
+              dataKey="expenses"
+              name="Gastos"
+              fill={chartColors.expense}
+              radius={[3, 3, 0, 0]}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 flex items-center justify-center gap-4 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="h-3 w-3 rounded" style={{ backgroundColor: '#22C55E' }}></div>
-          <span className="text-muted-foreground">Ingresos</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="h-3 w-3 rounded" style={{ backgroundColor: '#EF4444' }}></div>
-          <span className="text-muted-foreground">Gastos</span>
-        </div>
-        <span className="text-muted-foreground">·</span>
-        <span className="text-muted-foreground">Datos en miles de €</span>
+      <div className="mt-2 flex items-center justify-center gap-4 text-xs text-text-secondary">
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-success" />
+          Ingresos
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-danger" />
+          Gastos
+        </span>
       </div>
     </div>
   )

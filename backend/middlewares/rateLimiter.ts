@@ -53,22 +53,6 @@ export const marketRateLimiter = rateLimit({
 })
 
 /**
- * Rate limiter para importación de archivos
- * Previene uploads masivos de archivos
- * Ventana: 1 minuto, máximo 5 archivos por usuario
- */
-export const importFileRateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minuto
-  max: 5, // Máximo 5 uploads por minuto
-  message: {
-    success: false,
-    error: 'Demasiados archivos subidos. Intenta de nuevo en 1 minuto.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
-
-/**
  * Rate limiter para actualización de claves criptográficas
  * Previene ataques de fuerza bruta en claves
  * Ventana: 1 minuto, máximo 5 cambios por usuario

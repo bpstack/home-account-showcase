@@ -9,7 +9,17 @@ export const getTransactionsSchema = z.object({
   account_id: z.string().uuid('account_id debe ser un UUID válido'),
   start_date: z.string().date('start_date debe ser fecha válida (YYYY-MM-DD)').optional(),
   end_date: z.string().date('end_date debe ser fecha válida (YYYY-MM-DD)').optional(),
-  subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional(),
+  // One subcategory or several, comma-separated (the filter allows choosing many)
+  subcategory_id: z
+    .string()
+    .transform((val) => val.split(',').filter(Boolean))
+    .pipe(
+      z
+        .array(z.uuid('subcategory_id debe ser un UUID válido'))
+        .min(1)
+        .max(200, 'Demasiadas subcategorías en el filtro')
+    )
+    .optional(),
   min_amount: z
     .string()
     .transform((val) => parseFloat(val))
@@ -99,7 +109,11 @@ export const updateTransactionSchema = z
       .min(3, 'La descripción debe tener al menos 3 caracteres')
       .max(60, 'La descripción no puede exceder 60 caracteres')
       .optional(),
-    amount: z.number().positive('El importe debe ser mayor a 0').finite('El importe debe ser un número válido').optional(),
+    amount: z
+      .number()
+      .positive('El importe debe ser mayor a 0')
+      .finite('El importe debe ser un número válido')
+      .optional(),
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -115,9 +129,11 @@ export const updateEncryptedTransactionSchema = z
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
     description_encrypted: z.string().optional(),
     amount_encrypted: z.string().optional(),
-    amount_sign: z.enum(['positive', 'negative'], {
-      message: 'El tipo de importe debe ser positivo o negativo',
-    }).optional(),
+    amount_sign: z
+      .enum(['positive', 'negative'], {
+        message: 'El tipo de importe debe ser positivo o negativo',
+      })
+      .optional(),
     bank_category_encrypted: z.string().optional().nullable(),
     bank_subcategory_encrypted: z.string().optional().nullable(),
   })

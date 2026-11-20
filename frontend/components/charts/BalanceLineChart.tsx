@@ -1,3 +1,5 @@
+'use client'
+
 import {
   LineChart,
   Line,
@@ -7,6 +9,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { formatMoneyCompact } from '@/lib/money'
+import { ChartTooltip, chartColors } from './ChartTooltip'
 
 interface BalanceData {
   date: string
@@ -16,69 +20,41 @@ interface BalanceData {
 
 interface Props {
   data: BalanceData[]
-  year?: number
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
-
-  const formatValue = (value: number | undefined) => {
-    if (value === undefined) return '-'
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(Math.abs(value))
-  }
-
+/** The balance at the end of each month. Straight segments: a curve would draw values that never existed. */
+export function BalanceLineChart({ data }: Props) {
   return (
-    <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
-      <p className="font-medium text-foreground mb-1">{label}</p>
-      {payload.map((entry: any) => (
-        <p key={entry.dataKey} className="text-sm text-muted-foreground">
-          {entry.name} : {formatValue(entry.value)}
-        </p>
-      ))}
-    </div>
-  )
-}
-
-export function BalanceLineChart({ data, year }: Props) {
-  const formatYAxis = (value: number) => {
-    return (value / 1000).toFixed(1)
-  }
-
-  const chartTitle = year ? `Evolución del balance - ${year}` : 'Evolución del balance'
-
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const minWidth = isMobile ? Math.max(data.length * 60, 400) : '100%'
-
-  return (
-    <div className="w-full">
-      <h3 className="text-sm font-medium text-text-secondary mb-4">{chartTitle}</h3>
-      <div className="w-full overflow-x-auto">
-        <ResponsiveContainer width={minWidth} height={300}>
-          <LineChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-            <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} />
-            <YAxis tickFormatter={formatYAxis} stroke="#9CA3AF" fontSize={12} width={40} />
-            <Tooltip cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }} content={<CustomTooltip />} />
-            <Line
-              type="monotone"
-              dataKey="balance"
-              name="Balance"
-              stroke="#3B82F6"
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-2 flex items-center justify-center gap-4 text-xs">
-        <span className="text-muted-foreground">Datos en miles de €</span>
-      </div>
+    <div className="h-[280px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke={chartColors.grid} />
+          <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: chartColors.axis, fontSize: 12 }}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            tickFormatter={formatMoneyCompact}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: chartColors.axis, fontSize: 12 }}
+            width={64}
+          />
+          <Tooltip content={<ChartTooltip />} />
+          <Line
+            type="linear"
+            dataKey="balance"
+            name="Saldo"
+            stroke={chartColors.line}
+            strokeWidth={2}
+            dot={{ r: 3, fill: chartColors.line, strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   )
 }

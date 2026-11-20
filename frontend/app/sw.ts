@@ -10,14 +10,12 @@ import {
 export {}
 
 declare global {
-  // eslint-disable-next-line no-unused-vars
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined
     skipWaiting(): void
   }
 }
 
-// eslint-disable-next-line no-undef
 declare const self: WorkerGlobalScope
 
 const serwist = new Serwist({

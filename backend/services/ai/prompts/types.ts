@@ -1,6 +1,10 @@
 // services/ai/prompts/types.ts
 // Tipos compartidos para todos los prompts de inversión
 
+import type { MarketDataContext } from '../../market/types.js'
+
+export type { MarketDataContext }
+
 // ========================
 // CONTEXTO DE INVERSIÓN
 // ========================
@@ -38,62 +42,9 @@ export interface InvestmentContext {
   }>
 }
 
-export interface MarketDataContext {
-  sp500: { value: number; change24h: number }
-  msciWorld: { value: number; change24h: number }
-  nasdaq: { value: number; change24h: number }
-  btc: { value: number; change24h: number }
-  eth: { value: number; change24h: number }
-  eurUsd: number
-  eurGbp: number
-}
-
 // ========================
 // RESULTADOS DE PROMPTS
 // ========================
-
-export interface ProfileAssessmentResult {
-  recommendedProfile: 'conservative' | 'balanced' | 'dynamic'
-  confidence: number
-  reasoning: string
-  investmentPercentage: number
-  monthlyInvestable: number
-  liquidityReserve: number
-  historicalInsights: {
-    monthsAnalyzed: number
-    trend: string
-    bestMonth: string
-    worstMonth: string
-    savingsConsistency: string
-  }
-  warnings: string[]
-  marketContext: string
-}
-
-export interface RecommendationItem {
-  type: 'ETF' | 'BOND_FUND' | 'CRYPTO' | 'STOCK' | 'SAVINGS'
-  symbol: string
-  name: string
-  percentage: number
-  amount: number
-  currentPrice?: number
-  units?: number
-  reason: string
-  risk: 'low' | 'medium' | 'high'
-}
-
-export interface RecommendationResult {
-  recommendations: RecommendationItem[]
-  totalMonthly: number
-  assetAllocation: {
-    stocks: number
-    bonds: number
-    crypto: number
-    cash: number
-  }
-  marketContext: string
-  disclaimer: string
-}
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -140,16 +91,6 @@ export interface EducationResult {
 // ========================
 // PROFILE ANSWERS
 // ========================
-
-export interface ProfileAnswers {
-  age: number
-  monthlyIncome: number
-  jobStability: 'high' | 'medium' | 'low'
-  hasEmergencyFund: 'yes' | 'partial' | 'no'
-  horizonYears: '<3' | '3-10' | '>10'
-  reactionToDrop: 'sell' | 'hold' | 'buy_more'
-  experienceLevel: 'none' | 'basic' | 'intermediate' | 'advanced'
-}
 
 // ========================
 // SIMULATION

@@ -18,8 +18,6 @@ export function configureOAuth(): void {
   const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'mock_github_client_secret'
   const CALLBACK_BASE = process.env.OAUTH_CALLBACK_URL || 'http://localhost:3001'
 
-  console.log('🔐 OAuth configured with Client ID:', GOOGLE_CLIENT_ID.substring(0, 20) + '...')
-
   passport.use(
     new GoogleStrategy(
       {

@@ -20,13 +20,17 @@ import investmentRoutes from './routes/investment/investment-routes.js'
 import cryptoRoutes from './routes/crypto/crypto-routes.js'
 import budgetRoutes from './routes/budget/budget-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
+import { startChatRetention } from './services/ai/chat-retention.js'
 import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
 import { AppError } from './utils/app-error.js'
 import { logger } from './utils/logger.js'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const app = express()
+
+// Do not announce the framework in every response
+app.disable('x-powered-by')
 
 // 👇 Configuración para proxies como Render
 app.set('trust proxy', 1)
@@ -62,7 +66,8 @@ app.use(
         return callback(null, true)
       }
 
-      return callback(new Error(`Not allowed by CORS: ${origin}`))
+      // AppError so the global handler answers 403 instead of a generic 500
+      return callback(new AppError('Origen no permitido', 403))
     },
     credentials: true,
   })
@@ -112,31 +117,6 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
     })
   }
 
-  // Multer errors (file upload)
-  if (err.name === 'MulterError') {
-    const multerMessages: Record<string, string> = {
-      LIMIT_FILE_SIZE: 'El archivo supera el tamaño máximo permitido (5MB)',
-      LIMIT_FILE_COUNT: 'Demasiados archivos',
-      LIMIT_UNEXPECTED_FILE: 'Campo de archivo inesperado',
-      LIMIT_FIELD_KEY: 'Nombre de campo demasiado largo',
-      LIMIT_FIELD_VALUE: 'Valor de campo demasiado largo',
-      LIMIT_FIELD_COUNT: 'Demasiados campos',
-      LIMIT_PART_COUNT: 'Demasiadas partes en la petición',
-    }
-    return res.status(400).json({
-      success: false,
-      error: multerMessages[err.message] || 'Error al procesar el archivo',
-    })
-  }
-
-  // Custom file type error from multer fileFilter
-  if (err.message && err.message.includes('Solo se permiten archivos')) {
-    return res.status(400).json({
-      success: false,
-      error: err.message,
-    })
-  }
-
   return res.status(500).json({
     success: false,
     error: 'Internal server error',
@@ -146,4 +126,5 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
   logAIStatus()
+  startChatRetention()
 })
