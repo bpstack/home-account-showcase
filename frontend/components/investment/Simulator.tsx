@@ -14,6 +14,7 @@ import { Money } from '@/components/ui'
 import { Slider } from '@/components/ui/Slider'
 import { ChartTooltip, chartColors } from '@/components/charts/ChartTooltip'
 import { formatMoney, formatMoneyCompact } from '@/lib/money'
+import { panelClass, panelTitleClass } from './panel'
 
 type Profile = 'conservative' | 'balanced' | 'dynamic'
 
@@ -50,8 +51,8 @@ export function Simulator({ riskProfile = 'balanced' }: SimulatorProps) {
   ]
 
   return (
-    <section aria-labelledby="simulator">
-      <h2 id="simulator" className="mb-3 text-sm font-medium text-text-primary">
+    <section aria-labelledby="simulator" className={panelClass('simulator')}>
+      <h2 id="simulator" className={`mb-3 ${panelTitleClass('simulator')}`}>
         Simulador
       </h2>
 

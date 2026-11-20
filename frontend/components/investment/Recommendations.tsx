@@ -3,6 +3,7 @@
 import { Button, Money } from '@/components/ui'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useInvestmentOverview } from '@/lib/queries/investment'
+import { panelClass, panelTitleClass } from './panel'
 import {
   buildMonthlyPlan,
   investmentShare,
@@ -56,14 +57,14 @@ export function Recommendations({
   const completingFund = monthlyExpenses > 0 && fund.saved < fund.goalMonths * monthlyExpenses
 
   const header = (
-    <h2 id="investment-plan" className="mb-3 text-sm font-medium text-text-primary">
+    <h2 id="investment-plan" className={`mb-3 ${panelTitleClass('plan')}`}>
       Plan del mes
     </h2>
   )
 
   if (!profile) {
     return (
-      <section aria-labelledby="investment-plan">
+      <section aria-labelledby="investment-plan" className={panelClass('plan')}>
         {header}
         <EmptyState
           title="Falta tu perfil de inversor"
@@ -80,7 +81,7 @@ export function Recommendations({
 
   if (monthly <= 0) {
     return (
-      <section aria-labelledby="investment-plan">
+      <section aria-labelledby="investment-plan" className={panelClass('plan')}>
         {header}
         <p className="text-sm text-text-secondary">
           {share === 0
@@ -95,7 +96,7 @@ export function Recommendations({
   const allocation = ALLOCATION.filter((part) => plan.allocation[part.key] > 0)
 
   return (
-    <section aria-labelledby="investment-plan">
+    <section aria-labelledby="investment-plan" className={panelClass('plan')}>
       {header}
       <p className="text-sm text-text-secondary">
         Inviertes{' '}

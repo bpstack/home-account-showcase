@@ -6,6 +6,7 @@ import { useMarketPrices } from '@/lib/queries/investment'
 import { formatMoney, MISSING } from '@/lib/money'
 import { ECONOMY_ROWS, formatIndicator, formatIndicatorPeriod } from '@/lib/economy'
 import { cn, formatDistanceToNow } from '@/lib/utils'
+import { panelClass, panelTitleClass } from './panel'
 
 const rate = new Intl.NumberFormat('es-ES', {
   minimumFractionDigits: 4,
@@ -61,9 +62,9 @@ export function MarketSummary({ accountId }: { accountId: string }) {
     : []
 
   return (
-    <section aria-labelledby="markets">
+    <section aria-labelledby="markets" className={panelClass('markets')}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="markets" className="text-sm font-medium text-text-primary">
+        <h2 id="markets" className={panelTitleClass('markets')}>
           Mercados
         </h2>
         <div className="flex items-center gap-1 text-xs text-text-secondary">

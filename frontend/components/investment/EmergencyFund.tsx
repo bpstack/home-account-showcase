@@ -4,6 +4,7 @@ import { useCallback, useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Button, Input, Money, Select, Sheet } from '@/components/ui'
 import { useUpdateEmergencyFundMonths, useUpdateLiquidityReserve } from '@/lib/queries/investment'
+import { panelClass, panelTitleClass } from './panel'
 
 const MONTH_OPTIONS = [3, 6, 9, 12, 18, 24, 36, 48, 60].map((n) => ({
   value: String(n),
@@ -28,9 +29,9 @@ export function EmergencyFund({ accountId, saved, months, monthlyExpenses }: Eme
   const progress = goal > 0 ? Math.min(100, (saved / goal) * 100) : 0
 
   return (
-    <section aria-labelledby="emergency-fund">
+    <section aria-labelledby="emergency-fund" className={panelClass('fund')}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="emergency-fund" className="text-sm font-medium text-text-primary">
+        <h2 id="emergency-fund" className={panelTitleClass('fund')}>
           Fondo de emergencia
         </h2>
         <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>

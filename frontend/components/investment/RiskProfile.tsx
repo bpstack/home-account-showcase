@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui'
 import type { InvestmentProfile } from '@/lib/api/investment'
+import { panelClass, panelTitleClass } from './panel'
 
 export const PROFILE_LABELS: Record<InvestmentProfile['riskProfile'], string> = {
   conservative: 'Conservador',
@@ -24,9 +25,9 @@ interface RiskProfileProps {
 /** The investor profile in one line, and the way to (re)take its test. */
 export function RiskProfile({ profile, onTakeTest }: RiskProfileProps) {
   return (
-    <section aria-labelledby="risk-profile">
+    <section aria-labelledby="risk-profile" className={panelClass('profile')}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="risk-profile" className="text-sm font-medium text-text-primary">
+        <h2 id="risk-profile" className={panelTitleClass('profile')}>
           Tu perfil
         </h2>
         {profile && (
