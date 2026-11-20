@@ -1,44 +1,14 @@
 import * as mysql from 'mysql2/promise'
 import type { Pool } from 'mysql2/promise'
 import * as dotenv from 'dotenv'
-import * as fs from 'fs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
+import { getDbSsl } from './db-ssl.js'
 
 dotenv.config({ quiet: true })
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
-const isDevelopment = process.env.NODE_ENV === 'development'
-
-// SSL config: en desarrollo sin verificación, en producción con certificado CA
-const getSSLConfig = () => {
-  if (isDevelopment) {
-    return { rejectUnauthorized: false }
-  }
-
-  // En producción, usar certificado desde variable de entorno
-  if (process.env.REMOTE_DB_CA_CERT) {
-    return {
-      ca: process.env.REMOTE_DB_CA_CERT,
-      rejectUnauthorized: true,
-    }
-  }
-
-  // Fallback: intentar leer archivo local si existe
-  const certPath = path.join(__dirname, 'certs', 'ca.pem')
-  if (fs.existsSync(certPath)) {
-    return {
-      ca: fs.readFileSync(certPath),
-      rejectUnauthorized: true,
-    }
-  }
-
-  // Si no hay certificado, usar modo inseguro con warning
-  console.warn('⚠️  SSL: No CA certificate found, using rejectUnauthorized: false')
-  return { rejectUnauthorized: false }
-}
 
 const config = {
   host: process.env.REMOTE_DB_HOST || '',
@@ -51,7 +21,8 @@ const config = {
   // zone of the machine running Node: an hour off on a machine in Spain, and a DATE one day early
   // once it goes out as JSON.
   timezone: 'Z',
-  ssl: getSSLConfig(),
+  // The CA comes from the environment (production) or from a local file kept out of git
+  ssl: getDbSsl(process.env.REMOTE_DB_CA_CERT, path.join(__dirname, 'certs', 'ca.pem')),
 }
 
 if (!config.host) throw new Error('❌ Falta REMOTE_DB_HOST')
@@ -60,9 +31,7 @@ if (!config.password) throw new Error('❌ Falta REMOTE_DB_PASSWORD')
 
 // Only what tells whether the connection is safe: the host, database and user stay out of the
 // log, which in production is read outside the server.
-console.log(
-  `🗄️  MySQL over TLS, certificate ${config.ssl.rejectUnauthorized ? 'verified' : 'NOT verified'}`
-)
+console.log('🗄️  MySQL over TLS, certificate verified')
 
 const pool: Pool = mysql.createPool({
   ...config,
