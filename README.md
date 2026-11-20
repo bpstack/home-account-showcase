@@ -150,14 +150,14 @@ Two recovery mechanisms to prevent "password lost = data lost":
 
 ### BIP39 Recovery Phrase (24 words)
 
-A mnemonic phrase generated once at `/setup-recovery`. It encrypts a separate copy of the Account Key and is stored in the `recovery_keys` table. If you lose your password, enter the 24 words at `/recovery` to regain access.
+A mnemonic phrase generated once at `/setup-recovery`. It encrypts a separate copy of the User Key, which the server keeps with the user's record only in encrypted form. If you lose your password, enter the 24 words at `/recovery` to regain access.
 
 ```
 Setup:
-  mnemonic -> PBKDF2 -> Recovery Key -> encrypts AK copy -> stored in DB
+  mnemonic -> Argon2id -> Recovery Key -> encrypts UK copy -> stored on the server
 
 Recovery:
-  mnemonic -> PBKDF2 -> Recovery Key -> decrypts AK copy -> re-encrypt with new password
+  mnemonic -> Argon2id -> Recovery Key -> decrypts UK copy -> re-encrypt with new password
 ```
 
 ### Password Reset via Email
