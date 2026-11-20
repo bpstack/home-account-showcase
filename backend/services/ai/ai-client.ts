@@ -290,37 +290,17 @@ export function createAIClient(
  * Print AI status to console on startup
  */
 export function logAIStatus(): void {
-  const enabled = isAIEnabled()
-  const status = getAIStatus()
+  logger.info('AI_CLIENT', 'logAIStatus', describeAIStatus())
+}
 
-  logger.info('AI_CLIENT', 'logAIStatus', `AI Integration: ${enabled ? 'enabled' : 'disabled'}`)
-
-  if (enabled) {
-    logger.info('AI_CLIENT', 'logAIStatus', `Active: ${status.activeProvider}`)
-
-    const providerTypes: AIProviderType[] = ['claude', 'gemini', 'groq', 'ollama', 'huggingface']
-    for (const type of providerTypes) {
-      const config = getProviderConfigFromEnv(type)
-      const providerEnabled = isProviderEnabled(type)
-      const hasApiKey = type === 'ollama' ? true : !!config.apiKey
-      const isConfigured = providerEnabled && hasApiKey
-
-      const model = config.model || PROVIDER_DEFAULTS[type]?.model || 'not set'
-
-      if (type === 'ollama') {
-        const baseUrl = config.baseUrl || 'http://localhost:11434'
-        logger.info(
-          'AI_CLIENT',
-          'logAIStatus',
-          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} @ ${baseUrl} (${isConfigured ? 'configured' : 'not configured'})`
-        )
-      } else {
-        logger.info(
-          'AI_CLIENT',
-          'logAIStatus',
-          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${model} (${isConfigured ? 'configured' : 'not configured'})`
-        )
-      }
-    }
-  }
+/**
+ * The startup line about AI: the provider the chat runs on and its model, or why there is none.
+ * Only that one provider (ADR-014): the others are not in use, and listing their default models
+ * made old names look like the app's.
+ */
+export function describeAIStatus(): string {
+  if (!isAIEnabled()) return 'AI: disabled'
+  const client = new AIClient()
+  if (!client.isAvailable()) return 'AI: no provider available'
+  return `AI: ${client.getProviderName()} · ${client.getConfig().model}`
 }

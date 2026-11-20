@@ -5,7 +5,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -58,13 +58,11 @@ if (!config.host) throw new Error('❌ Falta REMOTE_DB_HOST')
 if (!config.user) throw new Error('❌ Falta REMOTE_DB_USER')
 if (!config.password) throw new Error('❌ Falta REMOTE_DB_PASSWORD')
 
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-console.log('🗄️  MySQL Environment: REMOTE')
-console.log(`📍 Host: ${config.host}:${config.port}`)
-console.log(`💾 Database: ${config.database}`)
-console.log(`👤 User: ${config.user}`)
-console.log(`🔐 SSL: Enabled`)
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+// Only what tells whether the connection is safe: the host, database and user stay out of the
+// log, which in production is read outside the server.
+console.log(
+  `🗄️  MySQL over TLS, certificate ${config.ssl.rejectUnauthorized ? 'verified' : 'NOT verified'}`
+)
 
 const pool: Pool = mysql.createPool({
   ...config,

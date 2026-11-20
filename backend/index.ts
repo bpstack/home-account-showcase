@@ -25,7 +25,7 @@ import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js
 import { AppError } from './utils/app-error.js'
 import { logger } from './utils/logger.js'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const app = express()
 
