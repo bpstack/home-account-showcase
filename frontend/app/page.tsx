@@ -18,6 +18,10 @@ import {
   ArrowLeftRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+// Imported, not linked by path: the build hashes their content into the URL, so a new image is
+// never hidden behind the optimizer's cached copy of the old one
+import heroDesktop from '@/public/hero-desktop.png'
+import heroMobile from '@/public/hero-mobile.png'
 
 export default function HomePage() {
   const [showMobile, setShowMobile] = useState(false)
@@ -394,7 +398,7 @@ export default function HomePage() {
                 >
                   {/* Desktop image */}
                   <Image
-                    src="/hero-desktop.png"
+                    src={heroDesktop}
                     alt="Dashboard de Home Account"
                     fill
                     className={cn(
@@ -406,7 +410,7 @@ export default function HomePage() {
                   />
                   {/* Mobile image */}
                   <Image
-                    src="/hero-mobile.png"
+                    src={heroMobile}
                     alt="App móvil de Home Account"
                     fill
                     className={cn(
