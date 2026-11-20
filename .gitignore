@@ -55,6 +55,7 @@ dist/
 build/
 .cache/
 .next/
+video/out/
 
 # --------------------------------------------
 # Documentation (local only - PRIVATE)
