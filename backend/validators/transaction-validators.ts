@@ -45,29 +45,24 @@ export const getTransactionsSchema = z.object({
 })
 
 /**
- * Schema para crear transacción (legacy - sin encriptar)
+ * A transaction's own data (what it says, how much, the bank's labels) only reaches the server
+ * encrypted (ADR-008). These are the plaintext names of those fields: a request carrying any of
+ * them is refused, never stored.
  */
-export const createTransactionSchema = z.object({
-  account_id: z.string().uuid('account_id debe ser un UUID válido'),
-  date: z
-    .string()
-    .min(1, 'La fecha es obligatoria')
-    .date('La fecha debe ser válida (YYYY-MM-DD)')
-    .refine((date) => date <= new Date().toISOString().split('T')[0], {
-      message: 'La fecha no puede ser futura',
-    }),
-  description: z
-    .string()
-    .min(3, 'La descripción debe tener al menos 3 caracteres')
-    .max(60, 'La descripción no puede exceder 60 caracteres'),
-  amount: z
-    .number()
-    .positive('El importe debe ser mayor a 0')
-    .finite('El importe debe ser un número válido'),
-  subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
-  bank_category: z.string().max(100).optional().nullable(),
-  bank_subcategory: z.string().max(100).optional().nullable(),
-})
+export const PLAINTEXT_TRANSACTION_FIELDS = [
+  'description',
+  'amount',
+  'bank_category',
+  'bank_subcategory',
+] as const
+
+export const PLAINTEXT_REFUSED_MESSAGE =
+  'Los movimientos se guardan cifrados: desbloquea la cuenta e inténtalo de nuevo'
+
+export function plaintextTransactionFields(body: unknown): string[] {
+  if (!body || typeof body !== 'object') return []
+  return PLAINTEXT_TRANSACTION_FIELDS.filter((field) => field in body)
+}
 
 /**
  * Schema para crear transacción encriptada
@@ -92,7 +87,7 @@ export const createEncryptedTransactionSchema = z.object({
 })
 
 /**
- * Schema para actualizar transacción (legacy - sin encriptar)
+ * Schema para actualizar sin cifrar: solo fecha y subcategoría, que no son datos cifrados
  */
 export const updateTransactionSchema = z
   .object({
@@ -103,16 +98,6 @@ export const updateTransactionSchema = z
       .refine((date) => date <= new Date().toISOString().split('T')[0], {
         message: 'La fecha no puede ser futura',
       })
-      .optional(),
-    description: z
-      .string()
-      .min(3, 'La descripción debe tener al menos 3 caracteres')
-      .max(60, 'La descripción no puede exceder 60 caracteres')
-      .optional(),
-    amount: z
-      .number()
-      .positive('El importe debe ser mayor a 0')
-      .finite('El importe debe ser un número válido')
       .optional(),
     subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
   })
@@ -214,7 +199,6 @@ export const bulkUpdateByIdsSchema = z.object({
 
 // Tipos inferidos
 export type GetTransactionsInput = z.infer<typeof getTransactionsSchema>
-export type CreateTransactionInput = z.infer<typeof createTransactionSchema>
 export type CreateEncryptedTransactionInput = z.infer<typeof createEncryptedTransactionSchema>
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>
 export type UpdateEncryptedTransactionInput = z.infer<typeof updateEncryptedTransactionSchema>

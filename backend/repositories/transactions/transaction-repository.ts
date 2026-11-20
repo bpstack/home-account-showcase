@@ -7,7 +7,6 @@ import type {
   Transaction,
   TransactionWithDetails,
   TransactionWithDetailsRow,
-  CreateTransactionDTO,
   CreateEncryptedTransactionDTO,
   UpdateTransactionDTO,
   UpdateEncryptedTransactionDTO,
@@ -15,45 +14,6 @@ import type {
 } from '../../models/transactions/index.js'
 
 export class TransactionRepository {
-  /**
-   * Crear transacción (sin encriptar - legacy)
-   */
-  static async create(userId: string, data: CreateTransactionDTO): Promise<Transaction> {
-    const hasAccess = await AccountRepository.hasAccess(data.account_id, userId)
-    if (!hasAccess) {
-      throw new Error('No tienes acceso a esta cuenta')
-    }
-
-    const id = crypto.randomUUID()
-
-    await db.query(
-      `INSERT INTO transactions (id, account_id, subcategory_id, date, description, amount, bank_category, bank_subcategory)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        data.account_id,
-        data.subcategory_id || null,
-        data.date,
-        data.description,
-        data.amount,
-        data.bank_category || null,
-        data.bank_subcategory || null,
-      ]
-    )
-
-    return {
-      id,
-      account_id: data.account_id,
-      subcategory_id: data.subcategory_id || null,
-      date: new Date(data.date),
-      description: data.description,
-      amount: data.amount,
-      bank_category: data.bank_category || null,
-      bank_subcategory: data.bank_subcategory || null,
-      created_at: new Date(),
-    }
-  }
-
   /**
    * Crear transacción encriptada
    */

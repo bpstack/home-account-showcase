@@ -44,16 +44,6 @@ export interface TransactionWithDetailsRow extends TransactionWithDetails, RowDa
 // DTOs
 // ============================================
 
-export interface CreateTransactionDTO {
-  account_id: string
-  date: string
-  description: string
-  amount: number
-  subcategory_id?: string
-  bank_category?: string
-  bank_subcategory?: string
-}
-
 // DTO for encrypted transactions
 export interface CreateEncryptedTransactionDTO {
   account_id: string

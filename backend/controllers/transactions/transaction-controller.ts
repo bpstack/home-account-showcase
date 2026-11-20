@@ -2,14 +2,14 @@ import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { TransactionRepository } from '../../repositories/transactions/transaction-repository.js'
-import { sanitizeForStorage } from '../../utils/sanitize.js'
 import {
   getTransactionsSchema,
-  createTransactionSchema,
   createEncryptedTransactionSchema,
   updateTransactionSchema,
   updateEncryptedTransactionSchema,
   bulkUpdateByIdsSchema,
+  plaintextTransactionFields,
+  PLAINTEXT_REFUSED_MESSAGE,
 } from '../../validators/transaction-validators.js'
 
 export const getTransactions = asyncHandler(async (req: Request, res: Response) => {
@@ -72,49 +72,22 @@ export const getTransactionById = asyncHandler(async (req: Request, res: Respons
 })
 
 export const createTransaction = asyncHandler(async (req: Request, res: Response) => {
-  const isEncrypted = 'description_encrypted' in req.body
-
-  if (isEncrypted) {
-    const validationResult = createEncryptedTransactionSchema.safeParse(req.body)
-    if (!validationResult.success) {
-      const firstError = validationResult.error.issues[0]
-      throw new AppError(firstError?.message || 'Datos inválidos', 400)
-    }
-
-    const transaction = await TransactionRepository.createEncrypted(
-      req.user!.id,
-      validationResult.data
-    )
-
-    res.status(201).json({
-      success: true,
-      transaction,
-    })
-    return
+  // Only encrypted transactions are stored: plaintext fields, or no encrypted data at all, are
+  // refused instead of being written in the clear
+  if (plaintextTransactionFields(req.body).length > 0 || !('description_encrypted' in req.body)) {
+    throw new AppError(PLAINTEXT_REFUSED_MESSAGE, 400)
   }
 
-  const validationResult = createTransactionSchema.safeParse(req.body)
+  const validationResult = createEncryptedTransactionSchema.safeParse(req.body)
   if (!validationResult.success) {
     const firstError = validationResult.error.issues[0]
     throw new AppError(firstError?.message || 'Datos inválidos', 400)
   }
 
-  const { account_id, date, description, amount, subcategory_id, bank_category, bank_subcategory } =
+  const transaction = await TransactionRepository.createEncrypted(
+    req.user!.id,
     validationResult.data
-
-  const safeDescription = sanitizeForStorage(description)
-  const safeBankCategory = bank_category ? sanitizeForStorage(bank_category) : undefined
-  const safeBankSubcategory = bank_subcategory ? sanitizeForStorage(bank_subcategory) : undefined
-
-  const transaction = await TransactionRepository.create(req.user!.id, {
-    account_id,
-    date,
-    description: safeDescription,
-    amount,
-    subcategory_id: subcategory_id ?? undefined,
-    bank_category: safeBankCategory,
-    bank_subcategory: safeBankSubcategory,
-  })
+  )
 
   res.status(201).json({
     success: true,
@@ -124,6 +97,10 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
 
 export const updateTransaction = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params
+
+  if (plaintextTransactionFields(req.body).length > 0) {
+    throw new AppError(PLAINTEXT_REFUSED_MESSAGE, 400)
+  }
 
   const isEncrypted = 'description_encrypted' in req.body || 'amount_encrypted' in req.body
 
@@ -157,14 +134,10 @@ export const updateTransaction = asyncHandler(async (req: Request, res: Response
     throw new AppError(firstError?.message || 'Datos inválidos', 400)
   }
 
-  const { date, description, amount, subcategory_id } = validationResult.data
-
-  const safeDescription = description ? sanitizeForStorage(description) : undefined
+  const { date, subcategory_id } = validationResult.data
 
   const transaction = await TransactionRepository.update(id, req.user!.id, {
     date,
-    description: safeDescription,
-    amount,
     subcategory_id: subcategory_id ?? undefined,
   })
 
