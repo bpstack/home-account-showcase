@@ -718,13 +718,7 @@ export const transactions = {
   getById: (id: string) =>
     request<{ success: boolean; transaction: Transaction }>(`/transactions/${id}`),
 
-  create: (data: CreateTransactionData) =>
-    request<{ success: boolean; transaction: Transaction }>('/transactions', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  // Encrypted version for new transactions
+  // Transactions are only created encrypted (the server refuses anything else)
   createEncrypted: (data: {
     account_id: string
     date: string

@@ -273,6 +273,9 @@ export function useTransactionById(id: string) {
   })
 }
 
+const LOCKED_ACCOUNT_MESSAGE =
+  'La cuenta está bloqueada: desbloquéala para guardar el movimiento cifrado'
+
 export function useCreateTransaction() {
   const getAccountKey = useCryptoStore((s) => s.getAccountKey)
 
@@ -280,28 +283,25 @@ export function useCreateTransaction() {
     mutationFn: async (data: CreateTransactionData) => {
       const accountKey = getAccountKey(data.account_id)
 
-      // If encryption is enabled (account unlocked), encrypt the data
-      if (accountKey) {
-        const encryptedData = {
-          account_id: data.account_id,
-          date: data.date,
-          subcategory_id: data.subcategory_id,
-          // Encrypted fields
-          description_encrypted: await encrypt(data.description, accountKey),
-          amount_encrypted: await encrypt(data.amount.toString(), accountKey),
-          amount_sign: getAmountSign(data.amount),
-          bank_category_encrypted: data.bank_category
-            ? await encrypt(data.bank_category, accountKey)
-            : null,
-          bank_subcategory_encrypted: data.bank_subcategory
-            ? await encrypt(data.bank_subcategory, accountKey)
-            : null,
-        }
-        return transactionsApi.createEncrypted(encryptedData)
-      }
+      // A transaction is only ever sent encrypted: without the account key it is not sent at all
+      if (!accountKey) throw new Error(LOCKED_ACCOUNT_MESSAGE)
 
-      // Fallback: send unencrypted (for migration period)
-      return transactionsApi.create(data)
+      const encryptedData = {
+        account_id: data.account_id,
+        date: data.date,
+        subcategory_id: data.subcategory_id,
+        // Encrypted fields
+        description_encrypted: await encrypt(data.description, accountKey),
+        amount_encrypted: await encrypt(data.amount.toString(), accountKey),
+        amount_sign: getAmountSign(data.amount),
+        bank_category_encrypted: data.bank_category
+          ? await encrypt(data.bank_category, accountKey)
+          : null,
+        bank_subcategory_encrypted: data.bank_subcategory
+          ? await encrypt(data.bank_subcategory, accountKey)
+          : null,
+      }
+      return transactionsApi.createEncrypted(encryptedData)
     },
   })
 }
@@ -321,8 +321,17 @@ export function useUpdateTransaction() {
     }) => {
       const accountKey = getAccountKey(accountId)
 
-      // If encryption is enabled, encrypt the data
-      if (accountKey && data.description !== undefined) {
+      // Description, amount and the bank's labels only travel encrypted; date and category do not
+      // need it, so a change to only those goes as it is
+      const touchesEncryptedData =
+        data.description !== undefined ||
+        data.amount !== undefined ||
+        data.bank_category !== undefined ||
+        data.bank_subcategory !== undefined
+
+      if (touchesEncryptedData && !accountKey) throw new Error(LOCKED_ACCOUNT_MESSAGE)
+
+      if (touchesEncryptedData && accountKey) {
         const encryptedData: Record<string, unknown> = {
           date: data.date,
           subcategory_id: data.subcategory_id,
@@ -349,8 +358,7 @@ export function useUpdateTransaction() {
         return transactionsApi.updateEncrypted(id, encryptedData)
       }
 
-      // Fallback: send unencrypted
-      return transactionsApi.update(id, data)
+      return transactionsApi.update(id, { date: data.date, subcategory_id: data.subcategory_id })
     },
   })
 }
