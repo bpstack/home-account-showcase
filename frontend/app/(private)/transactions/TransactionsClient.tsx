@@ -547,8 +547,9 @@ function TransactionsContent({
     categories.find((c) => c.id === bulkCategory.categoryId)?.subcategories || []
 
   return (
-    // A ledger reads best in a column: concept and amount stay within reach of each other
-    <div className="mx-auto max-w-5xl space-y-6">
+    // Wide enough for date, concept, category and amount side by side, without stretching on
+    // a large screen so far that a row stops reading as one line
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Period and the one main action */}
       <div className="flex items-center justify-between gap-3">
         <PeriodSelector value={periodValue} onChange={handlePeriodChange} className="-ml-2" />
