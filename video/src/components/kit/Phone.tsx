@@ -24,10 +24,14 @@ export const Phone: React.FC<{
   scale: number
   children: React.ReactNode
   overlay?: React.ReactNode
-}> = ({ title, active, scale, children, overlay }) => {
-  const bezel = 12
+  /** Only the screen: no bezel, status bar or home indicator (the landing draws the phone) */
+  bare?: boolean
+  /** Screen height in virtual px */
+  height?: number
+}> = ({ title, active, scale, children, overlay, bare = false, height = PHONE.height }) => {
+  const bezel = bare ? 0 : 12
   const outerW = PHONE.width + bezel * 2
-  const outerH = PHONE.height + bezel * 2
+  const outerH = height + bezel * 2
   return (
     <div style={{ width: outerW * scale, height: outerH * scale, position: 'relative' }}>
       <div
@@ -39,17 +43,17 @@ export const Phone: React.FC<{
           height: outerH,
           transform: `scale(${scale})`,
           transformOrigin: 'top left',
-          borderRadius: 58,
+          borderRadius: bare ? 0 : 58,
           padding: bezel,
-          background: 'linear-gradient(160deg, #3a414d, #1c2129 40%, #2a313c)',
-          boxShadow: '0 40px 100px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255,255,255,0.06)',
+          background: bare ? 'none' : 'linear-gradient(160deg, #3a414d, #1c2129 40%, #2a313c)',
+          boxShadow: bare ? 'none' : '0 40px 100px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255,255,255,0.06)',
         }}
       >
         <div
           style={{
             width: PHONE.width,
-            height: PHONE.height,
-            borderRadius: 46,
+            height,
+            borderRadius: bare ? 0 : 46,
             overflow: 'hidden',
             backgroundColor: COLORS.bg,
             fontFamily: FONTS.sans,
@@ -60,7 +64,7 @@ export const Phone: React.FC<{
           }}
         >
           {/* Status bar */}
-          <div
+          {!bare && <div
             style={{
               height: 50,
               flexShrink: 0,
@@ -85,7 +89,7 @@ export const Phone: React.FC<{
                 <div style={{ width: '75%', height: '100%', borderRadius: 1.5, backgroundColor: COLORS.text }} />
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* App header */}
           <div
@@ -109,10 +113,10 @@ export const Phone: React.FC<{
           {/* Bottom bar */}
           <div
             style={{
-              height: 82,
+              height: bare ? 60 : 82,
               flexShrink: 0,
               display: 'flex',
-              paddingBottom: 22,
+              paddingBottom: bare ? 0 : 22,
               backgroundColor: COLORS.surface,
               borderTop: `1px solid ${COLORS.line}`,
             }}
@@ -141,7 +145,7 @@ export const Phone: React.FC<{
           </div>
 
           {/* Home indicator */}
-          <div
+          {!bare && <div
             style={{
               position: 'absolute',
               bottom: 8,
@@ -153,7 +157,7 @@ export const Phone: React.FC<{
               backgroundColor: COLORS.text,
               opacity: 0.6,
             }}
-          />
+          />}
           {overlay}
         </div>
       </div>

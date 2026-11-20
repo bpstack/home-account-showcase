@@ -71,22 +71,26 @@ export const AppWindow: React.FC<{
   /** Content that covers the whole app area (the AI sheet) */
   overlay?: React.ReactNode
   padded?: boolean
-}> = ({ url, active, title, scale, children, overlay, padded = true }) => (
-  <div style={{ width: WINDOW.width * scale, height: WINDOW.height * scale, position: 'relative' }}>
+  /** false: only the app, without the browser bar, border or shadow (the landing frames it) */
+  chrome?: boolean
+  /** Height of the whole window in virtual px */
+  height?: number
+}> = ({ url, active, title, scale, children, overlay, padded = true, chrome = true, height = WINDOW.height }) => (
+  <div style={{ width: WINDOW.width * scale, height: height * scale, position: 'relative' }}>
     <div
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
         width: WINDOW.width,
-        height: WINDOW.height,
+        height,
         transform: `scale(${scale})`,
         transformOrigin: 'top left',
-        borderRadius: 12,
+        borderRadius: chrome ? 12 : 0,
         overflow: 'hidden',
-        border: `1px solid ${COLORS.line}`,
+        border: chrome ? `1px solid ${COLORS.line}` : 'none',
         backgroundColor: COLORS.bg,
-        boxShadow: '0 40px 120px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.02)',
+        boxShadow: chrome ? '0 40px 120px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.02)' : 'none',
         fontFamily: FONTS.sans,
         color: COLORS.text,
         display: 'flex',
@@ -94,7 +98,7 @@ export const AppWindow: React.FC<{
       }}
     >
       {/* Browser chrome */}
-      <div
+      {chrome && <div
         style={{
           height: WINDOW.chrome,
           flexShrink: 0,
@@ -131,7 +135,7 @@ export const AppWindow: React.FC<{
           {url}
         </div>
         <div style={{ width: 52 }} />
-      </div>
+      </div>}
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
         {/* Sidebar */}
