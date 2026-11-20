@@ -184,7 +184,8 @@ export function AIChat({ accountId, sessionId, onSessionChange }: AIChatProps) {
               >
                 <div
                   className={cn(
-                    'max-w-[90%] space-y-2 rounded-xl px-3 py-2 text-sm',
+                    // A URL is one unbroken word: without overflow-wrap it spills out of the bubble
+                    'min-w-0 max-w-[90%] space-y-2 rounded-xl px-3 py-2 text-sm [overflow-wrap:anywhere]',
                     m.role === 'user'
                       ? 'bg-accent text-accent-foreground'
                       : 'bg-layer-2 text-text-primary'
