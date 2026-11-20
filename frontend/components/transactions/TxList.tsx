@@ -160,10 +160,18 @@ export function TxList({
               <td className="py-3 pr-3 align-top tabular-nums">
                 <time dateTime={day} title={fullFormat.format(date)}>
                   {firstOfDay ? (
-                    <span className="flex flex-col leading-tight sm:flex-row sm:items-baseline sm:gap-1.5">
-                      <span className="text-text-primary">{dayMonthFormat.format(date)}</span>
-                      <span className="text-xs text-text-secondary sm:text-sm">
-                        {weekdayFormat.format(date)}
+                    // Day, month and weekday on one line, the year under them; on a phone the
+                    // column is narrow, so the weekday moves down beside the year
+                    <span className="flex flex-col leading-tight">
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="text-text-primary">{dayMonthFormat.format(date)}</span>
+                        <span className="hidden text-text-secondary sm:inline">
+                          {weekdayFormat.format(date)}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 text-xs text-text-secondary">
+                        <span className="sm:hidden">{weekdayFormat.format(date)} </span>
+                        {date.getFullYear()}
                       </span>
                     </span>
                   ) : (
