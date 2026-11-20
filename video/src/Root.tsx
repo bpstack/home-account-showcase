@@ -2,6 +2,7 @@ import { Composition } from 'remotion'
 import { Video } from './Video'
 import { VideoMobile } from './VideoMobile'
 import './global.css'
+import './design/fonts'
 
 export const Root: React.FC = () => {
   return (

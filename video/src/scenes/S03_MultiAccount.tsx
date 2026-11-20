@@ -1,97 +1,66 @@
-import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion'
-import { COLORS, FONTS } from '../design/theme'
+import { useCurrentFrame, useVideoConfig } from 'remotion'
+import { enter } from '../design/motion'
+import { Caption } from '../components/kit/Caption'
+import { Cursor } from '../components/kit/Cursor'
+import { Scene } from '../components/kit/Stage'
+import { AccountFigures, AccountSwitcher } from '../components/screens/AccountsPanel'
 
-const ACCOUNTS = [
-  { name: 'Cuenta Individual', icon: '👤', balance: '3.450,00 €', color: '#3b82f6', activeAt: 15 },
-  { name: 'Cuenta Familiar', icon: '👨‍👩‍👧', balance: '8.230,50 €', color: '#10b981', activeAt: 55 },
-  { name: 'Cuenta Inversión', icon: '📈', balance: '15.780,00 €', color: '#a855f7', activeAt: 95 },
-]
+export const ACCOUNT_SWITCHES = [42, 80]
+export const activeAccount = (frame: number) => (frame < ACCOUNT_SWITCHES[0] ? 1 : frame < ACCOUNT_SWITCHES[1] ? 0 : 2)
+
+/** Where each account row sits inside the switcher (virtual px), for the cursor. */
+export const accountRowY = (i: number) => 106 + i * 48
 
 export const S03_MultiAccount: React.FC = () => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
-
-  const sceneOpacity = interpolate(frame, [0, 12, 105, 120], [0, 1, 1, 0], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  })
-
-  const activeIndex = frame < 55 ? 0 : frame < 95 ? 1 : 2
+  const active = activeAccount(frame)
+  const panel = enter(frame, fps, 10)
+  const s = 1.45
 
   return (
-    <AbsoluteFill style={{ opacity: sceneOpacity, backgroundColor: COLORS.bg, fontFamily: FONTS.body }}>
+    <Scene duration={120} glowY="30%">
+      <Caption
+        eyebrow="Multi-cuenta"
+        icon="users"
+        title="Un login, varias cuentas"
+        description="Comparte una cuenta con tu familia y cambia entre ellas al instante."
+        style={{ position: 'absolute', top: 96, left: 0, right: 0 }}
+      />
       <div
         style={{
           position: 'absolute',
-          top: 80,
-          left: 0,
-          right: 0,
-          textAlign: 'center',
+          top: 380,
+          left: '50%',
+          width: 1060,
+          marginLeft: -530 * s,
+          transform: `scale(${s}) translateY(${(1 - panel) * 30}px)`,
+          transformOrigin: 'top left',
+          opacity: panel,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 80,
         }}
       >
-        <span style={{ fontSize: 18, color: COLORS.accent, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
-          Multi-cuenta
-        </span>
-        <h2 style={{ fontSize: 48, fontWeight: 800, color: COLORS.textPrimary, marginTop: 12 }}>
-          Un login, múltiples cuentas
-        </h2>
-        <p style={{ fontSize: 20, color: COLORS.textSecondary, marginTop: 8 }}>
-          Cambia entre perfiles financieros al instante
-        </p>
-      </div>
-
-      <div style={{ position: 'absolute', top: 280, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 32 }}>
-        {ACCOUNTS.map((acc, i) => {
-          const isActive = i === activeIndex
-          const cardSpring = spring({ frame: frame - 20 - i * 8, fps, config: { damping: 14, stiffness: 80, mass: 0.7 } })
-          const activeScale = isActive ? 1.05 : 1
-          const activeBorder = isActive ? acc.color : COLORS.border
-
-          return (
-            <div
-              key={acc.name}
-              style={{
-                width: 300,
-                padding: '32px 28px',
-                borderRadius: 20,
-                backgroundColor: COLORS.bgCard,
-                border: `2px solid ${activeBorder}`,
-                transform: `scale(${cardSpring * activeScale})`,
-                opacity: cardSpring,
-                boxShadow: isActive ? `0 20px 60px ${acc.color}20` : '0 10px 30px rgba(0,0,0,0.3)',
-                transition: 'border-color 0.3s, box-shadow 0.3s',
-                textAlign: 'center',
-              }}
-            >
-              <div style={{ fontSize: 48, marginBottom: 16 }}>{acc.icon}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.textPrimary, marginBottom: 8 }}>
-                {acc.name}
-              </div>
-              <div style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 20 }}>
-                Saldo disponible
-              </div>
-              <div style={{ fontSize: 36, fontWeight: 800, color: isActive ? acc.color : COLORS.textSecondary }}>
-                {acc.balance}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <div style={{ position: 'absolute', bottom: 120, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 12 }}>
-        {ACCOUNTS.map((acc, i) => (
-          <div
-            key={i}
-            style={{
-              width: i === activeIndex ? 32 : 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: i === activeIndex ? acc.color : COLORS.bgMuted,
-              transition: 'all 0.3s',
-            }}
+        <div style={{ position: 'relative' }}>
+          <AccountSwitcher active={active} />
+          <Cursor
+            frame={frame}
+            appear={24}
+            keys={[
+              { frame: 24, x: 300, y: 240 },
+              { frame: 38, x: 150, y: accountRowY(0) },
+              { frame: 66, x: 150, y: accountRowY(0) },
+              { frame: 76, x: 160, y: accountRowY(2) },
+            ]}
+            clicks={[ACCOUNT_SWITCHES[0] - 2, ACCOUNT_SWITCHES[1] - 2]}
+            size={20}
           />
-        ))}
+        </div>
+        <div style={{ flex: 1 }}>
+          <AccountFigures active={active} switches={[0, ...ACCOUNT_SWITCHES]} />
+        </div>
       </div>
-    </AbsoluteFill>
+    </Scene>
   )
 }

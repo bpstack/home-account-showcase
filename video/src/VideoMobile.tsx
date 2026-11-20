@@ -1,5 +1,5 @@
 import { AbsoluteFill, Audio, Sequence, staticFile, interpolate, useCurrentFrame } from 'remotion'
-import { S01_Intro } from './scenes/S01_Intro'
+import { S01_IntroMobile } from './scenes/mobile/S01_IntroMobile'
 import { S02_DashboardMobile } from './scenes/mobile/S02_DashboardMobile'
 import { S03_MultiAccountMobile } from './scenes/mobile/S03_MultiAccountMobile'
 import { S04_TransactionsMobile } from './scenes/mobile/S04_TransactionsMobile'
@@ -8,7 +8,7 @@ import { S06_InvestmentMobile } from './scenes/mobile/S06_InvestmentMobile'
 import { S07_AIChatMobile } from './scenes/mobile/S07_AIChatMobile'
 import { S08_MobileShowcaseMobile } from './scenes/mobile/S08_MobileShowcaseMobile'
 import { S09_EncryptionMobile } from './scenes/mobile/S09_EncryptionMobile'
-import { S10_Closing } from './scenes/S10_Closing'
+import { S10_ClosingMobile } from './scenes/mobile/S10_ClosingMobile'
 
 export const VideoMobile: React.FC = () => {
   const frame = useCurrentFrame()
@@ -19,10 +19,10 @@ export const VideoMobile: React.FC = () => {
   })
 
   return (
-    <AbsoluteFill style={{ backgroundColor: '#09090b' }}>
+    <AbsoluteFill style={{ backgroundColor: '#12161c' }}>
       <Audio src={staticFile('music.mp3')} volume={musicVolume} />
       <Sequence from={0} durationInFrames={90}>
-        <S01_Intro />
+        <S01_IntroMobile />
       </Sequence>
       <Sequence from={90} durationInFrames={195}>
         <S02_DashboardMobile />
@@ -49,7 +49,7 @@ export const VideoMobile: React.FC = () => {
         <S09_EncryptionMobile />
       </Sequence>
       <Sequence from={1425} durationInFrames={90}>
-        <S10_Closing />
+        <S10_ClosingMobile />
       </Sequence>
     </AbsoluteFill>
   )

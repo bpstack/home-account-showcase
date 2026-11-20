@@ -19,7 +19,7 @@ export const Video: React.FC = () => {
   })
 
   return (
-    <AbsoluteFill style={{ backgroundColor: '#09090b' }}>
+    <AbsoluteFill style={{ backgroundColor: '#12161c' }}>
       <Audio src={staticFile('music.mp3')} volume={musicVolume} />
       <Sequence from={0} durationInFrames={90}>
         <S01_Intro />
