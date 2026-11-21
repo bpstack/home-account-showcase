@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/apiClient'
 import { PASSWORD_MIN_LENGTH, validateRegister } from '@/validators/auth-validators'
 import { Button, Input, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert, OAuthButtons } from '@/components/auth'
+import { internalPath } from '@/lib/internalPath'
 
 const HOME = { href: '/', label: 'Inicio' }
 
@@ -16,7 +17,7 @@ const fieldClass = 'h-11 sm:h-10'
 
 function RegisterForm() {
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect')
+  const redirect = internalPath(searchParams.get('redirect'))
   // Si viene de una invitación, no crear cuenta por defecto
   const isFromInvite = redirect?.startsWith('/invite/')
 

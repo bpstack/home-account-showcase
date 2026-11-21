@@ -8,6 +8,7 @@ import { useAuth, PinRequiredError } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
 import { Button, Input, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert, OAuthButtons } from '@/components/auth'
+import { internalPath } from '@/lib/internalPath'
 
 type PinData = {
   redirectTo: string
@@ -26,7 +27,7 @@ const OAUTH_ERRORS: Record<string, string> = {
 function LoginForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const redirect = searchParams.get('redirect')
+  const redirect = internalPath(searchParams.get('redirect'))
 
   const { login, unlockAfterLogin } = useAuth()
   const [isLoading, setIsLoading] = useState(false)

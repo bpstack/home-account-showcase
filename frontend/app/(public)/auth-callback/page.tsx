@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ButtonLink } from '@/components/ui'
 import { AuthShell } from '@/components/auth'
+import { internalPath } from '@/lib/internalPath'
 
 const LOADING_TITLE = 'Iniciando sesión…'
 
@@ -21,7 +22,8 @@ function AuthCallbackHandler() {
       const accessToken = searchParams.get('accessToken')
       const refreshToken = searchParams.get('refreshToken')
       const csrfToken = searchParams.get('csrfToken')
-      let redirect = searchParams.get('redirect') || '/dashboard'
+      // Only paths of this app: a `javascript:` or external target would run or leave the site
+      let redirect = internalPath(searchParams.get('redirect')) ?? '/dashboard'
       const errorParam = searchParams.get('error')
 
       if (errorParam) {
@@ -52,7 +54,7 @@ function AuthCallbackHandler() {
         }
 
         // Recuperar redirect guardado antes del OAuth (ej: /invite/[token])
-        const savedRedirect = sessionStorage.getItem('oauth_redirect')
+        const savedRedirect = internalPath(sessionStorage.getItem('oauth_redirect'))
         sessionStorage.removeItem('oauth_redirect')
 
         // El redirect del backend es /unlock o /setup-pin

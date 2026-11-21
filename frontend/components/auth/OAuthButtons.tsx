@@ -1,5 +1,7 @@
 'use client'
 
+import { internalPath } from '@/lib/internalPath'
+
 // OAuth starts on the backend itself, so the base URL goes without its /api suffix.
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/api$/, '')
 
@@ -10,7 +12,8 @@ const providerClass =
 export function OAuthButtons({ redirect }: { redirect: string | null }) {
   // The OAuth round trip loses the query string: keep where to go back to.
   const rememberRedirect = () => {
-    if (redirect) sessionStorage.setItem('oauth_redirect', redirect)
+    const target = internalPath(redirect)
+    if (target) sessionStorage.setItem('oauth_redirect', target)
   }
 
   return (

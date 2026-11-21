@@ -19,6 +19,7 @@ import {
 } from '@/lib/crypto'
 import { saveUserKey } from '@/lib/keyVault'
 import { setPinForUserKey } from '@/lib/pinV2'
+import { internalPath } from '@/lib/internalPath'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 
@@ -64,7 +65,7 @@ function SetupPinForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const csrfToken = searchParams.get('csrf')
-  const fromParam = searchParams.get('from') || '/dashboard'
+  const fromParam = internalPath(searchParams.get('from')) ?? '/dashboard'
   const { generateAndSaveAccountKey, forceUnlockAfterSetup } = useCryptoStore()
   const { user } = useAuth()
 

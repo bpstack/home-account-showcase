@@ -10,6 +10,7 @@ import { Sidebar, ProfileDropdown, MobileNav } from '@/components/layout'
 import { pageTitle } from '@/components/layout/navigation'
 import { ThemeToggle } from '@/components/ui'
 import { loadUserKey, clearUserKey } from '@/lib/keyVault'
+import { internalPath } from '@/lib/internalPath'
 import { auth } from '@/lib/apiClient'
 import { verifyUserKey } from '@/lib/crypto'
 
@@ -115,7 +116,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
     // Redirect back after unlock
     if (user && isCryptoReady && pathname === UNLOCK_PATH) {
       const params = new URLSearchParams(window.location.search)
-      const redirectTo = params.get('from') || '/dashboard'
+      const redirectTo = internalPath(params.get('from')) ?? '/dashboard'
       router.replace(redirectTo)
       return
     }
