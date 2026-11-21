@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 import { Loader2, Pencil, Plus, UserPlus } from 'lucide-react'
 import { validateBudget, validateUpdateBudget } from '@/validators/budget-validators'
 import { validateUserName, validateAccountName } from '@/validators/settings-validators'
+import { PASSWORD_MIN_LENGTH } from '@/validators/auth-validators'
 
 interface Member {
   id: string
@@ -1796,8 +1797,11 @@ function ChangePasswordSection() {
       return
     }
 
-    if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'La nueva contraseña debe tener al menos 6 caracteres' })
+    if (newPassword.length < PASSWORD_MIN_LENGTH) {
+      setMessage({
+        type: 'error',
+        text: `La nueva contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`,
+      })
       return
     }
 
@@ -1949,7 +1953,7 @@ function ChangePasswordSection() {
               onChange={(e) => setNewPassword(e.target.value)}
               required
               autoComplete="new-password"
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
             />
 
             <Input

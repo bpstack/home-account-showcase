@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError } from '@/lib/apiClient'
-import { validateRegister } from '@/validators/auth-validators'
+import { PASSWORD_MIN_LENGTH, validateRegister } from '@/validators/auth-validators'
 import { Button, Input, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert, OAuthButtons } from '@/components/auth'
 
@@ -137,7 +137,7 @@ function RegisterForm() {
           />
           {!fieldErrors.password && (
             <p id="password-hint" className="mt-1 text-xs text-muted-foreground">
-              Mínimo 6 caracteres, con un número y un símbolo.
+              Mínimo {PASSWORD_MIN_LENGTH} caracteres, con un número y un símbolo.
             </p>
           )}
         </div>

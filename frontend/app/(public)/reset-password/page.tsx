@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, ButtonLink, PasswordInput, Textarea } from '@/components/ui'
 import { AuthShell, FormAlert } from '@/components/auth'
+import { PASSWORD_MIN_LENGTH } from '@/validators/auth-validators'
 import {
   deriveRecoveryKey,
   decryptRecoveryBlob,
@@ -57,8 +58,8 @@ function ResetPasswordForm() {
     e.preventDefault()
     setError('')
 
-    if (newPassword.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres')
+    if (newPassword.length < PASSWORD_MIN_LENGTH) {
+      setError(`La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`)
       return
     }
     if (newPassword !== confirmPassword) {

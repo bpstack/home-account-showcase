@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+/** Minimum length of a new login password; the server enforces the same value. */
+export const PASSWORD_MIN_LENGTH = 8
+
 export const registerSchema = z
   .object({
     name: z
@@ -10,7 +13,10 @@ export const registerSchema = z
     email: z.string().min(1, 'El email es obligatorio').email('Por favor ingresa un email válido'),
     password: z
       .string()
-      .min(6, 'La contraseña debe tener al menos 6 caracteres')
+      .min(
+        PASSWORD_MIN_LENGTH,
+        `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`
+      )
       .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
       .regex(
         /[^A-Za-z0-9]/,
