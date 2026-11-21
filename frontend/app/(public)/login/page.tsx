@@ -17,6 +17,12 @@ const HOME = { href: '/', label: 'Inicio' }
 
 const submitClass = 'h-11 w-full sm:h-10'
 
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth_invalid: 'No se pudo iniciar sesión con ese proveedor. Inténtalo de nuevo.',
+  oauth_email_unverified:
+    'Ese proveedor no confirma que el email sea tuyo. Verifícalo allí o entra con tu email y contraseña.',
+}
+
 function LoginForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -26,7 +32,8 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  // The backend sends a failed OAuth sign-in back here with `?error=`
+  const [error, setError] = useState(() => OAUTH_ERRORS[searchParams.get('error') ?? ''] ?? '')
 
   // PIN step state (shown when login() detects a separate encryption PIN)
   const [pinData, setPinData] = useState<PinData | null>(null)
