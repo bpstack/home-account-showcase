@@ -197,8 +197,7 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
     reEncryptedKeys
   )
 
-  // A new password ends every session, so whoever had the old one is out
-  await SessionRepository.revokeAllForUser(req.user!.id)
+  // Every session ended in the same commit (UserRepository.changePassword)
   clearSessionCookies(res)
 
   res.status(200).json({
@@ -267,6 +266,8 @@ export const setPin = asyncHandler(async (req: Request, res: Response) => {
   const pinVerifier = computeVerifier(req.user!.id, authKeyBytes)
   authKeyBytes.fill(0)
 
+  const wasPinV2 = await UserRepository.isPinV2(req.user!.id)
+
   try {
     const sealedWrappedKey = sealWrappedKey(req.user!.id, wrappedUserKey)
     await UserRepository.setPinV2(req.user!.id, {
@@ -279,8 +280,9 @@ export const setPin = asyncHandler(async (req: Request, res: Response) => {
     pinVerifier.fill(0)
   }
 
-  // A new PIN ends the user's other sessions; this one stays open
-  await SessionRepository.revokeAllForUser(req.user!.id, req.user!.sid)
+  // Changing an existing PIN ends the user's other sessions (this one stays open). The first
+  // PIN, or moving the same PIN to the new scheme, changes nothing for the other devices.
+  if (wasPinV2) await SessionRepository.revokeAllForUser(req.user!.id, req.user!.sid)
 
   res.status(200).json({ success: true })
 })
@@ -305,7 +307,7 @@ export const changePin = asyncHandler(async (req: Request, res: Response) => {
     reEncryptedKeys
   )
 
-  await SessionRepository.revokeAllForUser(req.user!.id)
+  // Every session ended in the same commit (UserRepository.changePin)
   clearSessionCookies(res)
 
   res.status(200).json({
@@ -336,7 +338,16 @@ export const saveVerificationBlob = asyncHandler(async (req: Request, res: Respo
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   const token = req.cookies?.refreshToken
   const payload = token ? await verifyTokenAllowingExpiry(token, 'refresh') : null
-  if (payload?.sid) await SessionRepository.revoke(payload.sid)
+  if (payload?.sid) {
+    try {
+      await SessionRepository.revoke(payload.sid)
+    } catch (error) {
+      // Logging out always succeeds for the browser; the session expires anyway
+      logger.warn('AUTH', 'logout', 'Could not revoke the session', {
+        error: (error as Error).message,
+      })
+    }
+  }
 
   clearSessionCookies(res)
 
@@ -429,10 +440,11 @@ export const recoverWithBip39 = asyncHandler(async (req: Request, res: Response)
       )
     }
 
+    // Every session ends in the same commit: log in again with the new PIN
+    await SessionRepository.revokeAllForUser(req.user!.id, undefined, connection)
+
     await connection.commit()
 
-    // Every session ends: log in again with the new PIN
-    await SessionRepository.revokeAllForUser(req.user!.id)
     clearSessionCookies(res)
 
     res.status(200).json({
@@ -683,6 +695,9 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
       }
     }
 
+    // Whoever had the old password, or a session opened with it, is out: same commit
+    await SessionRepository.revokeAllForUser(user.id, undefined, connection)
+
     await connection.commit()
   } catch (err) {
     await connection.rollback()
@@ -690,9 +705,6 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   } finally {
     connection.release()
   }
-
-  // Whoever had the old password, or a session opened with it, is out
-  await SessionRepository.revokeAllForUser(user.id)
 
   res.status(200).json({
     success: true,

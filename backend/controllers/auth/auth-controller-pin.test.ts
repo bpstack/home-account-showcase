@@ -406,15 +406,11 @@ describe('password minimum length', () => {
   })
 })
 
-// Requirement (session-plan S2): a new password ends every session; a new PIN ends the user's
-// other sessions and keeps the current one open.
+// Requirement (session-plan S2): a new password ends every session, in the same commit; changing
+// an existing PIN ends the user's other sessions and keeps the current one; the first PIN, or the
+// same PIN moved to the new scheme, ends nothing.
 describe('sessions after a credential change', () => {
-  it('change-password ends every session of the user', async () => {
-    await run(changePassword, { currentPassword: 'old', newPassword: 'abcd123!' })
-    expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(USER_ID)
-  })
-
-  it('reset-password ends every session of the user', async () => {
+  it('reset-password ends every session of the user inside its transaction', async () => {
     mocks.db.query.mockResolvedValueOnce([[resetRow(null)]])
     mocks.connection.query.mockResolvedValueOnce([[{ pin_verifier: Buffer.alloc(32) }]])
     mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
@@ -422,10 +418,40 @@ describe('sessions after a credential change', () => {
     const out = await run(resetPassword, resetFields)
 
     expect(out.status).toBe(200)
-    expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(USER_ID)
+    expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(
+      USER_ID,
+      undefined,
+      mocks.connection
+    )
+    expect(mocks.sessions.revokeAllForUser.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.connection.commit.mock.invocationCallOrder[0]
+    )
   })
 
-  it('a new PIN ends the other sessions and keeps this one', async () => {
+  it('recover-bip39 ends every session of the user inside its transaction', async () => {
+    mocks.repo.isPinV2.mockResolvedValue(false)
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
+
+    const out = await run(recoverWithBip39, {
+      newKeySalt: 'ab'.repeat(32),
+      verificationBlob: 'verification',
+      recoveryBlob: 'recovery',
+      reEncryptedKeys: [{ accountId: 'account-a', encryptedKey: 'key' }],
+    })
+
+    expect(out.status).toBe(200)
+    expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(
+      USER_ID,
+      undefined,
+      mocks.connection
+    )
+    expect(mocks.sessions.revokeAllForUser.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.connection.commit.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('changing an existing PIN ends the other sessions and keeps this one', async () => {
+    mocks.repo.isPinV2.mockResolvedValue(true)
     const out = await run(setPin, {
       newKeySalt: 'ab'.repeat(32),
       authKey: GOOD_AUTH_KEY,
@@ -433,5 +459,16 @@ describe('sessions after a credential change', () => {
     })
     expect(out.status).toBe(200)
     expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(USER_ID, 'sid-current')
+  })
+
+  it('the first PIN, or the same PIN moved to the new scheme, ends no session', async () => {
+    mocks.repo.isPinV2.mockResolvedValue(false)
+    const out = await run(setPin, {
+      newKeySalt: 'ab'.repeat(32),
+      authKey: GOOD_AUTH_KEY,
+      wrappedUserKey: WRAPPED,
+    })
+    expect(out.status).toBe(200)
+    expect(mocks.sessions.revokeAllForUser).not.toHaveBeenCalled()
   })
 })

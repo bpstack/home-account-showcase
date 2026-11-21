@@ -123,6 +123,15 @@ export const exchangeOAuthCode = asyncHandler(async (req: Request, res: Response
     return
   }
 
-  const hasEncryption = await AccountKeyRepository.userHasKeys(result.userId)
-  res.status(200).json({ success: true, next: hasEncryption ? 'unlock' : 'setup-pin' })
+  // The code is already spent and the cookies set: a failure here must not lose the sign-in.
+  // Unlock is the safe default (it sends a user without encrypted data on to setup-pin).
+  let next: 'unlock' | 'setup-pin' = 'unlock'
+  try {
+    next = (await AccountKeyRepository.userHasKeys(result.userId)) ? 'unlock' : 'setup-pin'
+  } catch (error) {
+    logger.warn('AUTH', 'exchangeOAuthCode', 'Could not check encryption keys', {
+      error: (error as Error).message,
+    })
+  }
+  res.status(200).json({ success: true, next })
 })

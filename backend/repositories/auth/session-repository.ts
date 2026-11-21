@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'crypto'
 import type { ResultSetHeader, RowDataPacket } from 'mysql2'
+import type { Pool, PoolConnection } from 'mysql2/promise'
 import db from '../../config/db.js'
 
 /**
@@ -85,9 +86,16 @@ export class SessionRepository {
     )
   }
 
-  /** Ends every session of a user, except `keepSid` if given (the one making the change). */
-  static async revokeAllForUser(userId: string, keepSid?: string): Promise<void> {
-    await db.query(
+  /**
+   * Ends every session of a user, except `keepSid` if given (the one making the change). Pass the
+   * transaction's connection so the sessions end in the same commit as the credential change.
+   */
+  static async revokeAllForUser(
+    userId: string,
+    keepSid?: string,
+    executor: Pool | PoolConnection = db
+  ): Promise<void> {
+    await executor.query(
       `UPDATE refresh_sessions SET revoked_at = NOW()
        WHERE user_id = ? AND revoked_at IS NULL AND id <> ?`,
       [userId, keepSid ?? '']

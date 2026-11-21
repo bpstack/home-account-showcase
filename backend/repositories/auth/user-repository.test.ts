@@ -185,11 +185,26 @@ describe('changePassword', () => {
 
     const statements = mocks.connection.query.mock.calls.map(([sql]) => sql as string)
     expect(statements[1]).toContain('FOR UPDATE')
-    expect(statements).toHaveLength(3)
     expect(statements[2]).toContain('password_hash = ?')
     expect(statements[2]).not.toContain('key_salt')
     expect(statements.some((sql) => sql.includes('account_keys'))).toBe(false)
     expect(mocks.connection.commit).toHaveBeenCalledOnce()
+  })
+
+  it('ends every session of the user in the same transaction', async () => {
+    selectRow({ password_hash: await bcrypt.hash('old-password-1!', 4) })
+    selectRow({ pin_verifier: null })
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
+
+    await UserRepository.changePassword(USER_ID, 'old-password-1!', 'new-password-1!')
+
+    const revoke = mocks.connection.query.mock.calls.find(([sql]) =>
+      (sql as string).includes('UPDATE refresh_sessions')
+    )
+    expect(revoke?.[1]).toEqual([USER_ID, ''])
+    expect(mocks.connection.query.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.connection.commit.mock.invocationCallOrder[0]
+    )
   })
 })
 
@@ -227,5 +242,20 @@ describe('isPinV2', () => {
 
     mocks.db.query.mockResolvedValueOnce([[{ pin_verifier: null }]])
     await expect(UserRepository.isPinV2(USER_ID)).resolves.toBe(false)
+  })
+})
+
+describe('changePin (old scheme)', () => {
+  it('ends every session of the user in the same transaction', async () => {
+    selectRow({ id: USER_ID })
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
+
+    await UserRepository.changePin(USER_ID, '', '', 'new-salt', 'verification', [])
+
+    const revoke = mocks.connection.query.mock.calls.find(([sql]) =>
+      (sql as string).includes('UPDATE refresh_sessions')
+    )
+    expect(revoke?.[1]).toEqual([USER_ID, ''])
+    expect(mocks.connection.commit).toHaveBeenCalledOnce()
   })
 })

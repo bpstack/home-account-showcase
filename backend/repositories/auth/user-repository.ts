@@ -5,6 +5,7 @@ import * as crypto from 'crypto'
 import { ResultSetHeader, RowDataPacket } from 'mysql2'
 import { SALT_ROUNDS } from '../../config/config.js'
 import db from '../../config/db.js'
+import { SessionRepository } from './session-repository.js'
 import type {
   User,
   UserRow,
@@ -363,6 +364,9 @@ export class UserRepository {
         }
       }
 
+      // A new password ends every session, in the same commit
+      await SessionRepository.revokeAllForUser(id, undefined, connection)
+
       await connection.commit()
       return true
     } catch (error) {
@@ -419,6 +423,9 @@ export class UserRepository {
           [key.encryptedKey, key.accountId, id]
         )
       }
+
+      // A new PIN (old scheme) ends every session, in the same commit
+      await SessionRepository.revokeAllForUser(id, undefined, connection)
 
       await connection.commit()
       return true

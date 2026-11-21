@@ -43,7 +43,8 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   // Only an access token: a refresh token or an OAuth code is refused here
   verifyToken(token, 'access')
     .then((decoded) => {
-      if (!decoded?.id) {
+      // Every access token belongs to a stored session; one without could revoke all of them
+      if (!decoded?.id || !decoded.sid) {
         res.status(401).json({
           success: false,
           error: 'Token inválido',
