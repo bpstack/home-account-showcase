@@ -17,7 +17,7 @@ import {
   importUserKey,
 } from '@/lib/crypto'
 import { saveUserKey } from '@/lib/keyVault'
-import { isPinFormat, migrateToPinV2, unlockUserKeyWithPin } from '@/lib/pinV2'
+import { isPinFormat, migrateToPinV2, PinFormatError, unlockUserKeyWithPin } from '@/lib/pinV2'
 
 /**
  * Thrown by login() when a user on the old PIN scheme (v1) has a separate encryption PIN.
@@ -258,50 +258,54 @@ export function useAuth() {
     let userKey: CryptoKey
     let keysToUnlock = encrypted_keys
     let onV2 = pin_v2
+    // v1 only: the raw UserKey, kept until the migration wraps it
+    let v1Raw: Uint8Array | null = null
 
-    if (pin_v2) {
-      const unlocked = await unlockUserKeyWithPin(pin, key_salt)
-      unlocked.raw.fill(0)
-      userKey = unlocked.userKey
-      keysToUnlock = unlocked.encryptedKeys
-      cryptoStore.setUserKey(userKey)
-    } else {
-      if (!encrypted_keys || encrypted_keys.length === 0) {
-        throw new Error('No encryption keys found')
-      }
-      // One Argon2id gives both the key for this unlock and the raw bytes the migration wraps
-      const { raw } = await deriveUserKeyExtractable(pin, key_salt)
-      try {
-        const derived = await importUserKey(raw)
+    try {
+      if (pin_v2) {
+        // The login password never opens a v2 user's data: don't spend a server attempt on it
+        if (!isPinFormat(pin)) throw new PinFormatError()
+        const unlocked = await unlockUserKeyWithPin(pin, key_salt)
+        unlocked.raw.fill(0)
+        userKey = unlocked.userKey
+        keysToUnlock = unlocked.encryptedKeys
+        cryptoStore.setUserKey(userKey)
+      } else {
+        if (!encrypted_keys || encrypted_keys.length === 0) {
+          throw new Error('No encryption keys found')
+        }
+        // One Argon2id gives both the key for this unlock and the raw bytes the migration wraps
+        v1Raw = (await deriveUserKeyExtractable(pin, key_salt)).raw
+        const derived = await importUserKey(v1Raw)
         if (verification_blob && !(await verifyUserKey(verification_blob, derived))) {
           throw new Error('Wrong password')
         }
         cryptoStore.setUserKey(derived)
         userKey = derived
-
-        // Migrate only a proven key (a wrong key wrapped would lock the user out) and only when
-        // the secret is the PIN: users whose encryption comes from the login password get their
-        // PIN, already v2, on /setup-pin (§6.6).
-        if (
-          verification_blob &&
-          isPinFormat(pin) &&
-          useAuthStore.getState().hasSeparatePin &&
-          (await migrateToPinV2(pin, raw))
-        ) {
-          onV2 = true
-        }
-      } finally {
-        raw.fill(0)
       }
-    }
 
-    await cryptoStore.unlockAccounts(
-      (keysToUnlock || []).map((k) => ({
-        accountId: k.account_id,
-        encryptedKey: k.encrypted_key,
-        keyVersion: k.key_version,
-      }))
-    )
+      // Throws 'Wrong password' if any account key does not open with this UserKey
+      await cryptoStore.unlockAccounts(
+        (keysToUnlock || []).map((k) => ({
+          accountId: k.account_id,
+          encryptedKey: k.encrypted_key,
+          keyVersion: k.key_version,
+        }))
+      )
+
+      // Migration v1 → v2 (§6.6), only with a key proven above (by the verification blob or by
+      // the account keys; wrapping a wrong key would lock the user out) and only when the secret
+      // is the PIN: users whose encryption comes from the login password get their PIN, already
+      // v2, on /setup-pin. A legacy user without a verification blob gets one now.
+      if (v1Raw && isPinFormat(pin) && useAuthStore.getState().hasSeparatePin) {
+        const newVerificationBlob = verification_blob
+          ? undefined
+          : await generateVerificationBlob(userKey)
+        onV2 = await migrateToPinV2(pin, v1Raw, newVerificationBlob)
+      }
+    } finally {
+      v1Raw?.fill(0)
+    }
 
     // Save the key in the device vault (IndexedDB) so the user doesn't need to enter PIN on reload
     const user = userQuery.data

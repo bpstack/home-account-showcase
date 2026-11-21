@@ -340,19 +340,20 @@ export async function deriveUserKeyExtractable(
   const salt = hexToBytes(saltHex)
   const passwordBytes = utf8ToBytes(password)
 
-  const derivedBytes = argon2id(passwordBytes, salt, {
+  // The caller owns `raw` and zeroes it; no other copy of the key bytes is left behind
+  const raw = argon2id(passwordBytes, salt, {
     ...ARGON2_OPTIONS,
     dkLen: 32,
   })
 
-  const raw = new Uint8Array(derivedBytes)
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    toArrayBuffer(derivedBytes),
-    { name: 'AES-GCM', length: AES_KEY_LENGTH },
-    true, // extractable!
-    ['encrypt', 'decrypt']
+  const key = await withKeyBuffer(raw, (buffer) =>
+    crypto.subtle.importKey(
+      'raw',
+      buffer,
+      { name: 'AES-GCM', length: AES_KEY_LENGTH },
+      true, // extractable!
+      ['encrypt', 'decrypt']
+    )
   )
 
   return { key, raw }
@@ -387,10 +388,9 @@ export interface PinSecrets {
  * against a fixed test vector.
  */
 export async function secretsFromStretched(stretched: Uint8Array): Promise<PinSecrets> {
-  const base = await crypto.subtle.importKey('raw', toArrayBuffer(stretched), 'HKDF', false, [
-    'deriveBits',
-    'deriveKey',
-  ])
+  const base = await withKeyBuffer(stretched, (buffer) =>
+    crypto.subtle.importKey('raw', buffer, 'HKDF', false, ['deriveBits', 'deriveKey'])
+  )
   const hkdfParams = (info: string) => ({
     name: 'HKDF',
     hash: 'SHA-256',
@@ -445,12 +445,14 @@ export async function unwrapUserKeyRaw(wrapped: string, kek: CryptoKey): Promise
 
 /** Import raw UserKey bytes as a non-extractable AES-GCM key. */
 export async function importUserKey(raw: Uint8Array): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    'raw',
-    toArrayBuffer(raw),
-    { name: 'AES-GCM', length: AES_KEY_LENGTH },
-    false, // not extractable
-    ['encrypt', 'decrypt']
+  return withKeyBuffer(raw, (buffer) =>
+    crypto.subtle.importKey(
+      'raw',
+      buffer,
+      { name: 'AES-GCM', length: AES_KEY_LENGTH },
+      false, // not extractable
+      ['encrypt', 'decrypt']
+    )
   )
 }
 
@@ -522,10 +524,28 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
   return buffer
 }
 
+/**
+ * Runs `operation` on a one-off ArrayBuffer copy of secret bytes and zeroes that copy afterwards, so
+ * converting key bytes for Web Crypto never leaves an extra copy in memory.
+ */
+async function withKeyBuffer<T>(
+  bytes: Uint8Array,
+  operation: (buffer: ArrayBuffer) => Promise<T>
+): Promise<T> {
+  const buffer = toArrayBuffer(bytes)
+  try {
+    return await operation(buffer)
+  } finally {
+    new Uint8Array(buffer).fill(0)
+  }
+}
+
 /** iv(12) ‖ AES-256-GCM(key, bytes), as base64. */
 async function sealBytes(bytes: Uint8Array, key: CryptoKey): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, toArrayBuffer(bytes))
+  const encrypted = await withKeyBuffer(bytes, (buffer) =>
+    crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, buffer)
+  )
   const combined = new Uint8Array(iv.length + encrypted.byteLength)
   combined.set(iv)
   combined.set(new Uint8Array(encrypted), iv.length)

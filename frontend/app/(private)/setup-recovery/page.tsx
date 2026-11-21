@@ -63,14 +63,16 @@ function SetupRecoveryForm() {
         userKeyRaw = derived.raw
       }
 
-      // Generate mnemonic and recovery key
+      // Generate mnemonic, recovery key and recovery blob; the raw UserKey is zeroed even on error
       const words = generateBIP39Mnemonic()
       const recoverySalt = generateSalt()
-      const recoveryKey = await deriveRecoveryKey(words, recoverySalt)
-
-      // Generate recovery blob
-      const recoveryBlob = await generateRecoveryBlob(userKeyRaw, recoveryKey)
-      userKeyRaw.fill(0)
+      let recoveryBlob: string
+      try {
+        const recoveryKey = await deriveRecoveryKey(words, recoverySalt)
+        recoveryBlob = await generateRecoveryBlob(userKeyRaw, recoveryKey)
+      } finally {
+        userKeyRaw.fill(0)
+      }
 
       // Save to backend
       const csrfToken = document.cookie

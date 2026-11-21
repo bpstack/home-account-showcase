@@ -10,6 +10,7 @@ import {
   decryptRecoveryBlobRaw,
   importUserKey,
   decryptAccountKey,
+  verifyUserKey,
 } from '@/lib/crypto'
 import { setPinForUserKey } from '@/lib/pinV2'
 import { Button, ButtonLink, PasswordInput, Textarea } from '@/components/ui'
@@ -80,10 +81,20 @@ function RecoveryForm() {
       const keysRes = await fetch('/api/proxy/auth/keys', { credentials: 'include' })
       const keysData = await keysRes.json()
 
-      if (keysData.encrypted_keys?.length > 0) {
+      // The recovery blob may be stale (the old change-pin never updated it): prove the key
+      // against the verification blob and an account key before it becomes the PIN's key
+      if (keysData.verification_blob || keysData.encrypted_keys?.length > 0) {
         try {
           const originalUserKey = await importUserKey(userKeyRaw)
-          await decryptAccountKey(keysData.encrypted_keys[0].encrypted_key, originalUserKey)
+          if (
+            keysData.verification_blob &&
+            !(await verifyUserKey(keysData.verification_blob, originalUserKey))
+          ) {
+            throw new Error('Recovered key does not match the verification blob')
+          }
+          if (keysData.encrypted_keys?.length > 0) {
+            await decryptAccountKey(keysData.encrypted_keys[0].encrypted_key, originalUserKey)
+          }
         } catch {
           userKeyRaw.fill(0)
           await fetch('/api/proxy/auth/record-failed-bip39', {

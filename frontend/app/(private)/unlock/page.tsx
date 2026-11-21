@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError, PinError } from '@/lib/apiClient'
+import { PinFormatError } from '@/lib/pinV2'
 import { useAuthStore } from '@/stores/authStore'
 import { Button, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert } from '@/components/auth'
@@ -41,6 +42,10 @@ export default function UnlockPage() {
       if (err instanceof PinError) {
         setError(err.message)
         setShowRecoveryLink(true)
+      } else if (err instanceof PinFormatError) {
+        setError(err.message)
+      } else if (err instanceof ApiError && err.status === 429) {
+        setError(err.message)
       } else if (err instanceof ApiError && err.status === 401) {
         setError('Sesión expirada. Inicia sesión de nuevo.')
       } else if (err instanceof ApiError && err.status >= 500) {

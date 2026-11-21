@@ -36,25 +36,38 @@ export async function unlockUserKeyWithPin(pin: string, keySalt: string) {
 }
 
 /**
- * A PIN is 6 to 8 digits. A login password always has a non-digit character, so this tells the
- * two apart on the unlock page, where either can be typed.
+ * A PIN is 6 to 8 digits. Registration requires a non-digit character in the login password, but
+ * a later password change does not, so this alone does not prove the secret is the PIN.
  */
 export function isPinFormat(secret: string): boolean {
   return /^\d{6,8}$/.test(secret)
 }
 
+/** A PIN v2 user typed something that cannot be a PIN: it is rejected without spending an attempt. */
+export class PinFormatError extends Error {
+  constructor() {
+    super('Escribe tu PIN: de 6 a 8 números.')
+    this.name = 'PinFormatError'
+  }
+}
+
 /**
  * Lazy migration v1 → v2 (docs/PIN-plan.md §6.6). `userKeyRaw` is the v1 UserKey derived from
- * `pin` and already checked against the verification blob: it becomes the fixed data key, so
- * neither the account keys, nor the verification blob, nor the recovery blob change.
+ * `pin` and already proven (verification blob or account keys): it becomes the fixed data key,
+ * so neither the account keys nor the recovery blob change. `verificationBlob` is only passed
+ * for a legacy user who has none, so that later unlocks can check the key.
  * `setPinForUserKey` always uses a new salt: with the old one, the stretched PIN would be the
  * UserKey itself and authKey would give it away.
  * Never throws: the server writes everything in one statement, so on failure the user simply
  * stays on v1 and the next unlock tries again. Returns whether the user is now on v2.
  */
-export async function migrateToPinV2(pin: string, userKeyRaw: Uint8Array): Promise<boolean> {
+export async function migrateToPinV2(
+  pin: string,
+  userKeyRaw: Uint8Array,
+  verificationBlob?: string
+): Promise<boolean> {
   try {
-    await setPinForUserKey(pin, userKeyRaw)
+    await setPinForUserKey(pin, userKeyRaw, verificationBlob)
     return true
   } catch {
     console.warn('PIN migration failed; the user stays on the old scheme until the next unlock')

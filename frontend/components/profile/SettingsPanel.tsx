@@ -1612,6 +1612,8 @@ function ChangePinSection() {
       }
 
       let userKeyRaw: Uint8Array
+      // Only for a legacy v1 user without one, so later unlocks can check the key
+      let newVerificationBlob: string | undefined
       if (pin_v2) {
         // The server checks the current PIN and counts the attempt
         userKeyRaw = (await unlockUserKeyWithPin(currentPin, currentKeySalt)).raw
@@ -1631,12 +1633,13 @@ function ChangePinSection() {
           return
         }
         userKeyRaw = derived.raw
+        if (!verification_blob) newVerificationBlob = await generateVerificationBlob(derived.key)
       }
 
       // Only the wrapping of the UserKey changes: no account key is re-encrypted and the
       // session stays open
       try {
-        await setPinForUserKey(newPin, userKeyRaw)
+        await setPinForUserKey(newPin, userKeyRaw, newVerificationBlob)
       } finally {
         userKeyRaw.fill(0)
       }

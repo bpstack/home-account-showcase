@@ -45,10 +45,17 @@ describe('migrateToPinV2', () => {
     )
   }, 30_000)
 
+  it('sends a verification blob only when given one, for a legacy user without it', async () => {
+    setPin.mockResolvedValue({ success: true })
+    const callsBefore = setPin.mock.calls.length
+
+    expect(await migrateToPinV2('482916', new Uint8Array(32), 'new-verification')).toBe(true)
+
+    expect(setPin.mock.calls[callsBefore][0].verificationBlob).toBe('new-verification')
+  }, 30_000)
+
   it('returns false without throwing when the server refuses, so the user stays on v1', async () => {
-    setPin.mockImplementation(async () => {
-      throw new Error('429')
-    })
+    setPin.mockRejectedValueOnce(new Error('429'))
     await expect(migrateToPinV2('482916', new Uint8Array(32))).resolves.toBe(false)
   }, 30_000)
 })

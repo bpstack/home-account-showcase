@@ -43,6 +43,8 @@ function SetupPinForm() {
   const [keysData, setKeysData] = useState<KeysData | null>(null)
   // Raw bytes of the UserKey unlocked with the login password, kept until the PIN wraps them
   const userKeyRawRef = useRef<Uint8Array | null>(null)
+  // Fresh setup: the first account is created once, even if a later step fails and the user retries
+  const accountCreatedRef = useRef(false)
 
   // password phase
   const [password, setPassword] = useState('')
@@ -185,8 +187,12 @@ function SetupPinForm() {
           return
         }
       } else {
-        // OAuth / fresh setup: a new random UserKey
-        userKeyRaw = generateUserKeyRaw()
+        // OAuth / fresh setup: a new random UserKey, generated once. A retry after a failed later
+        // step must wrap the same key: a second one would not open the account key of the first.
+        if (!userKeyRaw) {
+          userKeyRaw = generateUserKeyRaw()
+          userKeyRawRef.current = userKeyRaw
+        }
         const newUserKey = await importUserKey(userKeyRaw)
         useCryptoStore.getState().setUserKey(newUserKey)
         verificationBlob = await generateVerificationBlob(newUserKey)
@@ -195,8 +201,9 @@ function SetupPinForm() {
       // Verifier and wrapped UserKey are written together: from here the user is on PIN v2
       await setPinForUserKey(pin, userKeyRaw, verificationBlob)
 
-      if (!hasExistingKeys) {
+      if (!hasExistingKeys && !accountCreatedRef.current) {
         await generateAndSaveAccountKey(effectiveCsrf || undefined)
+        accountCreatedRef.current = true
       }
 
       const userKey = useCryptoStore.getState().userKey
