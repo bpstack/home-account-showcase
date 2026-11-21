@@ -6,7 +6,7 @@ vi.mock('./apiClient', () => ({ auth: { setPin, unlockPin: vi.fn() } }))
 const { isPinFormat, migrateToPinV2 } = await import('./pinV2')
 const { derivePinSecrets, unwrapUserKeyRaw } = await import('./crypto')
 
-// Lazy migration v1 → v2, docs/PIN-plan.md §6.6. The PIN is 6 to 8 digits (setup-pin, pinSchema).
+// Lazy migration v1 → v2 (ADR-021). The PIN is 6 to 8 digits (setup-pin, pinSchema).
 
 describe('isPinFormat', () => {
   it('accepts 6 to 8 digits', () => {
@@ -33,7 +33,7 @@ describe('migrateToPinV2', () => {
 
     expect(setPin.mock.calls.length - callsBefore).toBe(1)
     const body = setPin.mock.calls[callsBefore][0]
-    // The UserKey does not change: no new verification blob (§6.6 step 2)
+    // The UserKey does not change: no new verification blob
     expect(body.verificationBlob).toBeUndefined()
     expect(body.newKeySalt).toMatch(/^[0-9a-f]{64}$/)
     expect(body.authKey).toMatch(/^[0-9a-f]{64}$/)

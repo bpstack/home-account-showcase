@@ -243,7 +243,7 @@ export function useAuth() {
   }
 
   /**
-   * The single entry point to unlock the data with the PIN (docs/PIN-plan.md §6.5).
+   * The single entry point to unlock the data with the PIN (ADR-021).
    * - PIN v2: the server checks the PIN, counts the attempt and releases the wrapped UserKey.
    *   Throws PinError (from apiClient) on a wrong or locked PIN.
    * - v1 (not migrated yet): the UserKey is derived from the PIN, or from the login password for
@@ -293,7 +293,7 @@ export function useAuth() {
         }))
       )
 
-      // Migration v1 → v2 (§6.6), only with a key proven above (by the verification blob or by
+      // Migration v1 → v2, only with a key proven above (by the verification blob or by
       // the account keys; wrapping a wrong key would lock the user out) and only when the secret
       // is the PIN: users whose encryption comes from the login password get their PIN, already
       // v2, on /setup-pin. A legacy user without a verification blob gets one now.

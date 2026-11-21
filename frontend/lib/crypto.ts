@@ -360,7 +360,7 @@ export async function deriveUserKeyExtractable(
 }
 
 // ============================================
-// PIN v2 (docs/PIN-plan.md §6.2)
+// PIN v2 (ADR-021)
 // ============================================
 //
 // The UserKey is a fixed 256-bit data key. The PIN no longer derives it: it only wraps it.

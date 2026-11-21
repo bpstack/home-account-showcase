@@ -1,5 +1,5 @@
 /**
- * PIN v2 steps shared by every flow that unlocks with the PIN or sets one (docs/PIN-plan.md §6.5).
+ * PIN v2 steps shared by every flow that unlocks with the PIN or sets one (ADR-021).
  *
  * The server checks the PIN and counts the attempt; the client never tests a PIN on its own.
  * Raw UserKey bytes returned here must be zeroed by the caller (`raw.fill(0)`) once used.
@@ -52,7 +52,7 @@ export class PinFormatError extends Error {
 }
 
 /**
- * Lazy migration v1 → v2 (docs/PIN-plan.md §6.6). `userKeyRaw` is the v1 UserKey derived from
+ * Lazy migration v1 → v2 (ADR-021). `userKeyRaw` is the v1 UserKey derived from
  * `pin` and already proven (verification blob or account keys): it becomes the fixed data key,
  * so neither the account keys nor the recovery blob change. `verificationBlob` is only passed
  * for a legacy user who has none, so that later unlocks can check the key.

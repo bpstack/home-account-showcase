@@ -7,7 +7,7 @@ import {
   wrapUserKey,
 } from './crypto'
 
-// PIN v2 key schedule, docs/PIN-plan.md §6.2 and §6.9.
+// PIN v2 key schedule (ADR-021).
 
 describe('secretsFromStretched', () => {
   it('derives authKey as HKDF-SHA256(stretched, empty salt, "hac-pin-auth-v2", 32)', async () => {
