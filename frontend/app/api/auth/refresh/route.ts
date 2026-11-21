@@ -14,10 +14,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No refresh token' }, { status: 401 })
     }
 
-    const session = await refreshSession(refreshToken)
+    const result = await refreshSession(refreshToken)
 
-    if (!session) {
-      // Refresh falló - limpiar cookies
+    if (!result.ok) {
+      if (result.status !== 401) {
+        // Passing failure (429, 5xx): the session may still be fine, so its cookies stay
+        return NextResponse.json(
+          { error: 'No se pudo renovar la sesión' },
+          { status: result.status }
+        )
+      }
+      // The session is over - limpiar cookies
       const response = NextResponse.json({ error: 'Token expirado' }, { status: 401 })
       response.cookies.delete('accessToken')
       response.cookies.delete('refreshToken')
@@ -25,9 +32,9 @@ export async function POST(req: NextRequest) {
       return response
     }
 
-    const response = NextResponse.json({ success: true, csrfToken: session.csrfToken })
+    const response = NextResponse.json({ success: true, csrfToken: result.session.csrfToken })
     // Access, CSRF and, when the backend rotates it, the refresh token
-    applySession(response, session)
+    applySession(response, result.session)
     return response
   } catch (error) {
     console.error('Refresh proxy error:', error)

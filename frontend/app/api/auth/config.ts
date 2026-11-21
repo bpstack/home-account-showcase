@@ -61,24 +61,34 @@ export function applySession(response: NextResponse, session: SessionCookies): v
   }
 }
 
+export type RefreshResult =
+  | { ok: true; session: SessionCookies }
+  // `status` 401: the session is over, its cookies go. Anything else (429, 5xx, network: 503)
+  // is passing, and the cookies stay so the next attempt can succeed.
+  | { ok: false; status: number }
+
 /**
  * Asks the backend for a new session with the refresh token. The only refresh path: the proxy,
- * `me` and `refresh` all use it, so a rotated refresh token always reaches the browser. Returns
- * `null` if the backend refuses or hands over no access token.
+ * `me` and `refresh` all use it, so a rotated refresh token always reaches the browser.
  */
-export async function refreshSession(refreshToken: string): Promise<SessionCookies | null> {
+export async function refreshSession(refreshToken: string): Promise<RefreshResult> {
   try {
     const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: `refreshToken=${refreshToken}` },
       cache: 'no-store',
     })
-    if (!res.ok) return null
+    if (!res.ok) return { ok: false, status: res.status === 400 ? 401 : res.status }
     const session = sessionFromBackend(res)
-    return session.accessToken ? session : null
+    return session.accessToken ? { ok: true, session } : { ok: false, status: 401 }
   } catch {
-    return null
+    return { ok: false, status: 503 }
   }
+}
+
+/** Whether a failed refresh means the session is over (and its cookies should be cleared). */
+export function sessionIsOver(result: RefreshResult): boolean {
+  return !result.ok && result.status === 401
 }
 
 // Cookie para cuenta seleccionada (no httpOnly para que JS pueda leerla)

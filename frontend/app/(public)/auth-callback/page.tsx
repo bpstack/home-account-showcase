@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useRef, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ButtonLink } from '@/components/ui'
 import { AuthShell } from '@/components/auth'
@@ -11,8 +11,15 @@ const LOADING_TITLE = 'Iniciando sesión…'
 function AuthCallbackHandler() {
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
+  // Runs once: removing the code from the address bar changes the router state and re-runs the
+  // effect (twice in development), which found no code and showed an error while the first run
+  // was still exchanging it
+  const handled = useRef(false)
 
   useEffect(() => {
+    if (handled.current) return
+    handled.current = true
+
     const handleCallback = async () => {
       // One-time code in the fragment: the browser never sends it to a server, so it stays out
       // of logs and the Referer. It is removed from the address bar at once.

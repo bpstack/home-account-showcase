@@ -48,10 +48,22 @@ async function handleProxy(req: NextRequest, params: { path: string[] }, method:
     // The session from a refresh made here, copied to the browser at the end (with the rotated
     // refresh token, if the backend rotates it)
     let refreshed: SessionCookies | null = null
+    // At most one refresh per request, whether it worked or not
+    let attemptedRefresh = false
 
     // Si no hay accessToken pero sí refreshToken, intentar refresh proactivo
     if (!current.accessToken && current.refreshToken) {
-      refreshed = await refreshSession(current.refreshToken)
+      attemptedRefresh = true
+      const result = await refreshSession(current.refreshToken)
+      if (result.ok) {
+        refreshed = result.session
+      } else if (result.status !== 401) {
+        // Passing failure (429, 5xx): report it instead of calling the backend without a session
+        return NextResponse.json(
+          { success: false, error: 'No se pudo renovar la sesión' },
+          { status: result.status }
+        )
+      }
     }
 
     // Construir headers para el backend
@@ -102,8 +114,10 @@ async function handleProxy(req: NextRequest, params: { path: string[] }, method:
     let data = await backendRes.json()
 
     // Si recibimos 401 y tenemos refreshToken, intentar refresh y retry una vez
-    if (backendRes.status === 401 && current.refreshToken && !refreshed) {
-      refreshed = await refreshSession(current.refreshToken)
+    if (backendRes.status === 401 && current.refreshToken && !attemptedRefresh) {
+      attemptedRefresh = true
+      const result = await refreshSession(current.refreshToken)
+      if (result.ok) refreshed = result.session
 
       if (refreshed) {
         backendRes = await fetch(`${BACKEND_URL}/${path}${queryString}`, {

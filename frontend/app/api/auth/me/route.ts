@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { BACKEND_URL, isAllowedOrigin, applySession, refreshSession } from '../config'
+import {
+  BACKEND_URL,
+  isAllowedOrigin,
+  applySession,
+  refreshSession,
+  sessionIsOver,
+} from '../config'
 import type { SessionCookies } from '@/lib/sessionCookies'
 
 function fetchMe(accessToken: string) {
@@ -21,11 +27,21 @@ export async function GET(req: NextRequest) {
     const refreshToken = req.cookies.get('refreshToken')?.value
     // The session from a refresh made here, copied to the browser at the end
     let refreshed: SessionCookies | null = null
+    let attemptedRefresh = false
+    // Passing refresh failure (429, 5xx): report it and keep the cookies, the session may be fine
+    const passingFailure = (status: number) =>
+      NextResponse.json({ error: 'No se pudo renovar la sesión' }, { status })
 
     // Si no hay accessToken pero sí refreshToken, intentar refresh
     if (!accessToken && refreshToken) {
-      refreshed = await refreshSession(refreshToken)
-      if (refreshed?.accessToken) accessToken = refreshed.accessToken
+      attemptedRefresh = true
+      const result = await refreshSession(refreshToken)
+      if (result.ok) {
+        refreshed = result.session
+        accessToken = result.session.accessToken ?? undefined
+      } else if (!sessionIsOver(result)) {
+        return passingFailure(result.status)
+      }
     }
 
     if (!accessToken) {
@@ -35,9 +51,14 @@ export async function GET(req: NextRequest) {
     let backendRes = await fetchMe(accessToken)
 
     // Si el backend dice que el token expiró, intentar refresh una vez
-    if (backendRes.status === 401 && refreshToken && !refreshed) {
-      refreshed = await refreshSession(refreshToken)
-      if (refreshed?.accessToken) backendRes = await fetchMe(refreshed.accessToken)
+    if (backendRes.status === 401 && refreshToken && !attemptedRefresh) {
+      const result = await refreshSession(refreshToken)
+      if (result.ok && result.session.accessToken) {
+        refreshed = result.session
+        backendRes = await fetchMe(result.session.accessToken)
+      } else if (!result.ok && !sessionIsOver(result)) {
+        return passingFailure(result.status)
+      }
     }
 
     if (backendRes.status === 401) {
