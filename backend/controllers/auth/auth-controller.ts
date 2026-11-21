@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import type { ResultSetHeader } from 'mysql2'
 import * as crypto from 'crypto'
 import * as bcrypt from 'bcrypt'
 import { UserRepository, type PinUnlockResult } from '../../repositories/auth/user-repository.js'
@@ -434,16 +435,20 @@ export const recoverWithBip39 = asyncHandler(async (req: Request, res: Response)
   try {
     await connection.beginTransaction()
 
-    // Update user: new key_salt, verification_blob, recovery_blob, reset attempts
-    await connection.query(
+    // Update user: new key_salt, verification_blob, recovery_blob, reset attempts.
+    // `pin_verifier IS NULL`: if the user moved to PIN v2 after rejectPinV2, nothing is written.
+    const [result] = await connection.query<ResultSetHeader>(
       `UPDATE users
        SET key_salt = ?, verification_blob = ?, recovery_blob = ?,
            pin_attempts = 0, pin_locked_until = NULL,
            bip39_attempts = 0, bip39_locked_until = NULL,
            updated_at = NOW()
-       WHERE id = ?`,
+       WHERE id = ? AND pin_verifier IS NULL`,
       [newKeySalt, verificationBlob, recoveryBlob, req.user!.id]
     )
+    if (result.affectedRows === 0) {
+      throw new AppError('PIN_V2', 409)
+    }
 
     // Update all account keys
     for (const key of reEncryptedKeys) {
@@ -614,7 +619,7 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
   const [rows] = await db.query<UserRow[]>(
-    `SELECT id, reset_token_hash, reset_token_expires, pin_verifier
+    `SELECT id, reset_token_hash, reset_token_expires
      FROM users
      WHERE email = ? AND reset_token_hash IS NOT NULL`,
     [email.trim().toLowerCase()]
@@ -651,7 +656,13 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   try {
     await connection.beginTransaction()
 
-    if (user.pin_verifier != null) {
+    // Decide under the row lock: a PIN set between the read above and this write is seen here
+    const [lockedRows] = await connection.query<UserRow[]>(
+      `SELECT pin_verifier FROM users WHERE id = ? FOR UPDATE`,
+      [user.id]
+    )
+
+    if (lockedRows[0]?.pin_verifier != null) {
       // PIN v2 has a fixed UserKey: password recovery must not touch any encrypted data.
       await connection.query(
         `UPDATE users

@@ -2,7 +2,7 @@
 
 import * as bcrypt from 'bcrypt'
 import * as crypto from 'crypto'
-import { RowDataPacket } from 'mysql2'
+import { ResultSetHeader, RowDataPacket } from 'mysql2'
 import { SALT_ROUNDS } from '../../config/config.js'
 import db from '../../config/db.js'
 import type {
@@ -327,6 +327,17 @@ export class UserRepository {
 
       const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
 
+      // PIN v2 has a fixed UserKey: a password change never touches its encryption, whatever
+      // the client sends. Read under the row lock, so a PIN set meanwhile is seen.
+      const [lockedRows] = await connection.query<UserRow[]>(
+        `SELECT pin_verifier FROM users WHERE id = ? FOR UPDATE`,
+        [id]
+      )
+      if (lockedRows[0]?.pin_verifier != null) {
+        newKeySalt = undefined
+        reEncryptedKeys = undefined
+      }
+
       // Actualizar password y opcionalmente key_salt
       if (newKeySalt) {
         await connection.query(
@@ -387,13 +398,18 @@ export class UserRepository {
 
       await connection.beginTransaction()
 
-      // Solo actualizar key_salt y verification_blob, NO password_hash
-      await connection.query(
-        `UPDATE users 
-         SET key_salt = ?, verification_blob = ?, updated_at = NOW() 
-         WHERE id = ?`,
+      // Solo actualizar key_salt y verification_blob, NO password_hash.
+      // `pin_verifier IS NULL`: if the user moved to PIN v2 after the controller checked, nothing
+      // is written (the account keys below must not be re-encrypted either).
+      const [result] = await connection.query<ResultSetHeader>(
+        `UPDATE users
+         SET key_salt = ?, verification_blob = ?, updated_at = NOW()
+         WHERE id = ? AND pin_verifier IS NULL`,
         [newKeySalt, verificationBlob, id]
       )
+      if (result.affectedRows === 0) {
+        throw new AppError('PIN_V2', 409)
+      }
 
       for (const key of reEncryptedKeys) {
         await connection.query(
@@ -667,9 +683,12 @@ export class UserRepository {
    * Reset PIN attempts on successful unlock.
    */
   static async resetPinAttempts(userId: string): Promise<void> {
-    await db.query(`UPDATE users SET pin_attempts = 0, pin_locked_until = NULL WHERE id = ?`, [
-      userId,
-    ])
+    // v1 only: the counter of a PIN v2 user is reset by a correct unlock, never by the client
+    await db.query(
+      `UPDATE users SET pin_attempts = 0, pin_locked_until = NULL
+       WHERE id = ? AND pin_verifier IS NULL`,
+      [userId]
+    )
   }
 
   // ============================================

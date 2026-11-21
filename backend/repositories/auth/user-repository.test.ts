@@ -1,3 +1,4 @@
+import * as bcrypt from 'bcrypt'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
@@ -161,6 +162,53 @@ describe('setPinV2', () => {
     expect(sql).not.toContain('account_keys')
     expect(sql).not.toContain('recovery_blob')
     expect(params).toEqual(['new-salt', VERIFIER, 'server-sealed', null, USER_ID])
+  })
+})
+
+describe('changePassword', () => {
+  it('never touches the encryption of a PIN v2 user, whatever the client sends', async () => {
+    selectRow({ password_hash: await bcrypt.hash('old-password-1!', 4) })
+    selectRow({ pin_verifier: VERIFIER })
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
+
+    await UserRepository.changePassword(USER_ID, 'old-password-1!', 'new-password-1!', 'new-salt', [
+      { accountId: 'account-a', encryptedKey: 'key' },
+    ])
+
+    const statements = mocks.connection.query.mock.calls.map(([sql]) => sql as string)
+    expect(statements[1]).toContain('FOR UPDATE')
+    expect(statements).toHaveLength(3)
+    expect(statements[2]).toContain('password_hash = ?')
+    expect(statements[2]).not.toContain('key_salt')
+    expect(statements.some((sql) => sql.includes('account_keys'))).toBe(false)
+    expect(mocks.connection.commit).toHaveBeenCalledOnce()
+  })
+})
+
+describe('changePin', () => {
+  it('fails with 409 and re-encrypts nothing if the user moved to PIN v2 after the check', async () => {
+    selectRow({ id: USER_ID })
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 0 }])
+
+    await expect(
+      UserRepository.changePin(USER_ID, '', '', 'new-salt', 'verification', [
+        { accountId: 'account-a', encryptedKey: 'key' },
+      ])
+    ).rejects.toMatchObject({ statusCode: 409 })
+
+    const statements = mocks.connection.query.mock.calls.map(([sql]) => sql as string)
+    expect(statements[1]).toContain('pin_verifier IS NULL')
+    expect(statements.some((sql) => sql.includes('account_keys'))).toBe(false)
+    expect(mocks.connection.commit).not.toHaveBeenCalled()
+    expect(mocks.connection.rollback).toHaveBeenCalledOnce()
+  })
+})
+
+describe('resetPinAttempts', () => {
+  it('only resets the counter of a v1 user', async () => {
+    mocks.db.query.mockResolvedValueOnce([{ affectedRows: 0 }])
+    await UserRepository.resetPinAttempts(USER_ID)
+    expect(mocks.db.query.mock.calls[0][0]).toContain('pin_verifier IS NULL')
   })
 })
 

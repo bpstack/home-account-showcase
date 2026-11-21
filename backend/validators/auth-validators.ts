@@ -110,7 +110,8 @@ export const pinV2Schema = z.object({
   newKeySalt: hex64Schema,
   authKey: hex64Schema,
   wrappedUserKey: wrappedUserKeySchema,
-  verificationBlob: z.string().min(1).optional(),
+  // Today 72 characters (iv + fixed text + tag, base64); the bound only stops oversized bodies
+  verificationBlob: z.string().min(1).max(256).optional(),
 })
 
 /**

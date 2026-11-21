@@ -213,6 +213,17 @@ describe('setPin', () => {
     })
   })
 
+  it('rejects an oversized verification blob', async () => {
+    const out = await run(setPin, {
+      newKeySalt: 'ab'.repeat(32),
+      authKey: GOOD_AUTH_KEY,
+      wrappedUserKey: WRAPPED,
+      verificationBlob: 'A'.repeat(257),
+    })
+    expect(out.error?.statusCode).toBe(400)
+    expect(mocks.repo.setPinV2).not.toHaveBeenCalled()
+  })
+
   it('rejects a wrapping that is not 60 base64-encoded bytes', async () => {
     const out = await run(setPin, {
       newKeySalt: 'ab'.repeat(32),
@@ -238,6 +249,26 @@ describe('v1-only endpoints', () => {
     expect(mocks.repo.recordFailedPinAttempt).not.toHaveBeenCalled()
     expect(mocks.repo.resetPinAttempts).not.toHaveBeenCalled()
     expect(mocks.db.getConnection).not.toHaveBeenCalled()
+  })
+})
+
+describe('recoverWithBip39', () => {
+  it('writes nothing to the account keys if the user moved to PIN v2 after the check', async () => {
+    mocks.repo.isPinV2.mockResolvedValue(false)
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 0 }])
+
+    const out = await run(recoverWithBip39, {
+      newKeySalt: 'ab'.repeat(32),
+      verificationBlob: 'verification',
+      recoveryBlob: 'recovery',
+      reEncryptedKeys: [{ accountId: 'account-a', encryptedKey: 'key' }],
+    })
+
+    expect(out.error?.statusCode).toBe(409)
+    expect(mocks.connection.query).toHaveBeenCalledOnce()
+    expect(mocks.connection.query.mock.calls[0][0]).toContain('pin_verifier IS NULL')
+    expect(mocks.connection.commit).not.toHaveBeenCalled()
+    expect(mocks.connection.rollback).toHaveBeenCalledOnce()
   })
 })
 
@@ -303,15 +334,18 @@ describe('getResetInfo', () => {
 })
 
 describe('resetPassword', () => {
-  it('ignores every cryptographic field for a PIN v2 user', async () => {
-    mocks.db.query.mockResolvedValueOnce([[resetRow(Buffer.alloc(32))]])
+  it('ignores every cryptographic field when the locked row is PIN v2, even if set meanwhile', async () => {
+    // The first read (token check) still sees a v1 user; the PIN is set before the write
+    mocks.db.query.mockResolvedValueOnce([[resetRow(null)]])
+    mocks.connection.query.mockResolvedValueOnce([[{ pin_verifier: Buffer.alloc(32) }]])
     mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
 
     const out = await run(resetPassword, resetFields)
 
     expect(out.status).toBe(200)
-    expect(mocks.connection.query).toHaveBeenCalledOnce()
-    const [sql, params] = mocks.connection.query.mock.calls[0]
+    expect(mocks.connection.query).toHaveBeenCalledTimes(2)
+    expect(mocks.connection.query.mock.calls[0][0]).toContain('FOR UPDATE')
+    const [sql, params] = mocks.connection.query.mock.calls[1]
     expect(sql).toContain('password_hash = ?')
     expect(sql).toContain('reset_token_hash = NULL')
     expect(sql).toContain('reset_token_expires = NULL')
@@ -327,19 +361,21 @@ describe('resetPassword', () => {
 
   it('preserves the v1 re-encryption and cleanup path', async () => {
     mocks.db.query.mockResolvedValueOnce([[resetRow(null)]])
+    mocks.connection.query.mockResolvedValueOnce([[{ pin_verifier: null }]])
     mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
 
     const out = await run(resetPassword, resetFields)
 
     expect(out.status).toBe(200)
-    expect(mocks.connection.query).toHaveBeenCalledTimes(4)
+    expect(mocks.connection.query).toHaveBeenCalledTimes(5)
     const statements = mocks.connection.query.mock.calls.map(([sql]) => sql as string)
-    expect(statements[0]).toContain('key_salt = COALESCE(?, key_salt)')
-    expect(statements[0]).toContain('verification_blob = COALESCE(?, verification_blob)')
-    expect(statements[0]).toContain('recovery_blob = COALESCE(?, recovery_blob)')
-    expect(statements[1]).toContain('UPDATE account_keys')
-    expect(statements[2]).toContain('DELETE FROM account_keys')
-    expect(statements[3]).toContain('UPDATE users SET recovery_blob = NULL')
+    expect(statements[0]).toContain('FOR UPDATE')
+    expect(statements[1]).toContain('key_salt = COALESCE(?, key_salt)')
+    expect(statements[1]).toContain('verification_blob = COALESCE(?, verification_blob)')
+    expect(statements[1]).toContain('recovery_blob = COALESCE(?, recovery_blob)')
+    expect(statements[2]).toContain('UPDATE account_keys')
+    expect(statements[3]).toContain('DELETE FROM account_keys')
+    expect(statements[4]).toContain('UPDATE users SET recovery_blob = NULL')
     expect(mocks.connection.commit).toHaveBeenCalledOnce()
     expect(mocks.connection.release).toHaveBeenCalledOnce()
   })
