@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { NextFunction, Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PinUnlockResult } from '../../repositories/auth/user-repository.js'
@@ -6,24 +7,34 @@ const USER_ID = 'user-a'
 const GOOD_AUTH_KEY = '11'.repeat(32)
 const WRAPPED = Buffer.alloc(60, 0x5a).toString('base64')
 
-const mocks = vi.hoisted(() => ({
-  repo: {
-    attemptPinUnlock: vi.fn(),
-    setPinV2: vi.fn(),
-    isPinV2: vi.fn(),
-    changePin: vi.fn(),
-    recordFailedPinAttempt: vi.fn(),
-    resetPinAttempts: vi.fn(),
-  },
-  accounts: { getByUserId: vi.fn() },
-  pin: {
-    computeVerifier: vi.fn(),
-    verifiersMatch: vi.fn(),
-    sealWrappedKey: vi.fn(),
-    openWrappedKey: vi.fn(),
-  },
-  db: { query: vi.fn(), getConnection: vi.fn() },
-}))
+const mocks = vi.hoisted(() => {
+  const connection = {
+    query: vi.fn(),
+    beginTransaction: vi.fn(async () => undefined),
+    commit: vi.fn(async () => undefined),
+    rollback: vi.fn(async () => undefined),
+    release: vi.fn(),
+  }
+  return {
+    connection,
+    repo: {
+      attemptPinUnlock: vi.fn(),
+      setPinV2: vi.fn(),
+      isPinV2: vi.fn(),
+      changePin: vi.fn(),
+      recordFailedPinAttempt: vi.fn(),
+      resetPinAttempts: vi.fn(),
+    },
+    accounts: { getByUserId: vi.fn() },
+    pin: {
+      computeVerifier: vi.fn(),
+      verifiersMatch: vi.fn(),
+      sealWrappedKey: vi.fn(),
+      openWrappedKey: vi.fn(),
+    },
+    db: { query: vi.fn(), getConnection: vi.fn() },
+  }
+})
 
 vi.mock('../../config/config.js', () => ({
   SALT_ROUNDS: 4,
@@ -42,8 +53,10 @@ vi.mock('./email-verification-controller.js', () => ({ sendVerificationTokenEmai
 import {
   changePin,
   getKeys,
+  getResetInfo,
   recoverWithBip39,
   recordFailedPin,
+  resetPassword,
   resetPinAttempts,
   setPin,
   unlock,
@@ -56,7 +69,7 @@ type Outcome = {
 }
 type Handler = (req: Request, res: Response, next: NextFunction) => void
 
-function run(handler: Handler, body: object = {}): Promise<Outcome> {
+function run(handler: Handler, body: object = {}, query: object = {}): Promise<Outcome> {
   return new Promise((resolve) => {
     let code: number | undefined
     const res = {
@@ -75,7 +88,7 @@ function run(handler: Handler, body: object = {}): Promise<Outcome> {
         return this
       },
     }
-    const req = { body, user: { id: USER_ID }, query: {}, cookies: {} }
+    const req = { body, user: { id: USER_ID }, query, cookies: {} }
     handler(req as unknown as Request, res as unknown as Response, (error?: unknown) =>
       resolve({ error: error as Outcome['error'] })
     )
@@ -90,6 +103,10 @@ const state = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.db.query.mockReset()
+  mocks.db.getConnection.mockReset()
+  mocks.connection.query.mockReset()
+  mocks.db.getConnection.mockResolvedValue(mocks.connection)
   state.pinVerifier = Buffer.from(GOOD_AUTH_KEY, 'hex')
   state.attempts = 0
   state.lockedUntil = null
@@ -243,5 +260,87 @@ describe('getKeys', () => {
     expect(out.body.pin_v2).toBe(true)
     expect(out.body).not.toHaveProperty('pin_verifier')
     expect(out.body).not.toHaveProperty('pin_wrapped_key')
+  })
+})
+
+const RESET_TOKEN = 'reset-token'
+const RESET_HASH = createHash('sha256').update(RESET_TOKEN).digest('hex')
+
+function resetRow(pinVerifier: Buffer | null) {
+  return {
+    id: USER_ID,
+    reset_token_hash: RESET_HASH,
+    reset_token_expires: new Date(Date.now() + 60 * 60 * 1000),
+    key_salt: 'old-salt',
+    recovery_blob: 'old-recovery',
+    recovery_salt: 'old-recovery-salt',
+    pin_verifier: pinVerifier,
+  }
+}
+
+const resetFields = {
+  email: 'user@example.com',
+  token: RESET_TOKEN,
+  newPassword: 'new-password-1',
+  newKeySalt: 'attacker-salt',
+  newVerificationBlob: 'attacker-verification',
+  reEncryptedKeys: [{ accountId: 'account-a', encryptedKey: 'attacker-key' }],
+  newRecoveryBlob: 'attacker-recovery',
+  clearAccountKeys: true,
+}
+
+describe('getResetInfo', () => {
+  it('returns pin_v2 without exposing the verifier or sealed wrapping', async () => {
+    mocks.db.query.mockResolvedValueOnce([[resetRow(Buffer.alloc(32))]])
+
+    const out = await run(getResetInfo, {}, { email: 'user@example.com', token: RESET_TOKEN })
+
+    expect(out.status).toBe(200)
+    expect(out.body.pin_v2).toBe(true)
+    expect(out.body).not.toHaveProperty('pin_verifier')
+    expect(out.body).not.toHaveProperty('pin_wrapped_key')
+  })
+})
+
+describe('resetPassword', () => {
+  it('ignores every cryptographic field for a PIN v2 user', async () => {
+    mocks.db.query.mockResolvedValueOnce([[resetRow(Buffer.alloc(32))]])
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
+
+    const out = await run(resetPassword, resetFields)
+
+    expect(out.status).toBe(200)
+    expect(mocks.connection.query).toHaveBeenCalledOnce()
+    const [sql, params] = mocks.connection.query.mock.calls[0]
+    expect(sql).toContain('password_hash = ?')
+    expect(sql).toContain('reset_token_hash = NULL')
+    expect(sql).toContain('reset_token_expires = NULL')
+    expect(sql).not.toContain('key_salt')
+    expect(sql).not.toContain('verification_blob')
+    expect(sql).not.toContain('recovery_blob')
+    expect(sql).not.toContain('account_keys')
+    expect(params).toEqual([expect.any(String), USER_ID])
+    expect(mocks.connection.commit).toHaveBeenCalledOnce()
+    expect(mocks.connection.rollback).not.toHaveBeenCalled()
+    expect(mocks.connection.release).toHaveBeenCalledOnce()
+  })
+
+  it('preserves the v1 re-encryption and cleanup path', async () => {
+    mocks.db.query.mockResolvedValueOnce([[resetRow(null)]])
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
+
+    const out = await run(resetPassword, resetFields)
+
+    expect(out.status).toBe(200)
+    expect(mocks.connection.query).toHaveBeenCalledTimes(4)
+    const statements = mocks.connection.query.mock.calls.map(([sql]) => sql as string)
+    expect(statements[0]).toContain('key_salt = COALESCE(?, key_salt)')
+    expect(statements[0]).toContain('verification_blob = COALESCE(?, verification_blob)')
+    expect(statements[0]).toContain('recovery_blob = COALESCE(?, recovery_blob)')
+    expect(statements[1]).toContain('UPDATE account_keys')
+    expect(statements[2]).toContain('DELETE FROM account_keys')
+    expect(statements[3]).toContain('UPDATE users SET recovery_blob = NULL')
+    expect(mocks.connection.commit).toHaveBeenCalledOnce()
+    expect(mocks.connection.release).toHaveBeenCalledOnce()
   })
 })

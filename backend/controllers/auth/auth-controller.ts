@@ -560,7 +560,7 @@ export const getResetInfo = asyncHandler(async (req: Request, res: Response) => 
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
   const [rows] = await db.query<UserRow[]>(
-    `SELECT id, reset_token_hash, reset_token_expires, key_salt, recovery_blob, recovery_salt
+    `SELECT id, reset_token_hash, reset_token_expires, key_salt, recovery_blob, recovery_salt, pin_verifier
      FROM users
      WHERE email = ? AND reset_token_hash IS NOT NULL`,
     [email.trim().toLowerCase()]
@@ -586,6 +586,7 @@ export const getResetInfo = asyncHandler(async (req: Request, res: Response) => 
     recovery_blob: user.recovery_blob || null,
     recovery_salt: user.recovery_salt || null,
     encrypted_keys: encryptedKeys,
+    pin_v2: user.pin_verifier != null,
   })
 })
 
@@ -613,7 +614,7 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
   const [rows] = await db.query<UserRow[]>(
-    `SELECT id, reset_token_hash, reset_token_expires
+    `SELECT id, reset_token_hash, reset_token_expires, pin_verifier
      FROM users
      WHERE email = ? AND reset_token_hash IS NOT NULL`,
     [email.trim().toLowerCase()]
@@ -650,44 +651,57 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   try {
     await connection.beginTransaction()
 
-    // COALESCE: only overwrite crypto fields if new values are provided
-    await connection.query(
-      `UPDATE users
-       SET password_hash = ?,
-           key_salt = COALESCE(?, key_salt),
-           verification_blob = COALESCE(?, verification_blob),
-           recovery_blob = COALESCE(?, recovery_blob),
-           reset_token_hash = NULL,
-           reset_token_expires = NULL,
-           updated_at = NOW()
-       WHERE id = ?`,
-      [
-        hashedPassword,
-        newKeySalt || null,
-        newVerificationBlob || null,
-        newRecoveryBlob || null,
-        user.id,
-      ]
-    )
+    if (user.pin_verifier != null) {
+      // PIN v2 has a fixed UserKey: password recovery must not touch any encrypted data.
+      await connection.query(
+        `UPDATE users
+         SET password_hash = ?,
+             reset_token_hash = NULL,
+             reset_token_expires = NULL,
+             updated_at = NOW()
+         WHERE id = ?`,
+        [hashedPassword, user.id]
+      )
+    } else {
+      // COALESCE: only overwrite crypto fields if new values are provided
+      await connection.query(
+        `UPDATE users
+         SET password_hash = ?,
+             key_salt = COALESCE(?, key_salt),
+             verification_blob = COALESCE(?, verification_blob),
+             recovery_blob = COALESCE(?, recovery_blob),
+             reset_token_hash = NULL,
+             reset_token_expires = NULL,
+             updated_at = NOW()
+         WHERE id = ?`,
+        [
+          hashedPassword,
+          newKeySalt || null,
+          newVerificationBlob || null,
+          newRecoveryBlob || null,
+          user.id,
+        ]
+      )
 
-    // Re-encrypt account keys if provided (atomic with password update)
-    if (Array.isArray(reEncryptedKeys) && reEncryptedKeys.length > 0) {
-      for (const key of reEncryptedKeys) {
-        await connection.query(
-          `UPDATE account_keys
-           SET encrypted_key = ?, key_version = key_version + 1
-           WHERE account_id = ? AND user_id = ?`,
-          [key.encryptedKey, key.accountId, user.id]
-        )
+      // Re-encrypt account keys if provided (atomic with password update)
+      if (Array.isArray(reEncryptedKeys) && reEncryptedKeys.length > 0) {
+        for (const key of reEncryptedKeys) {
+          await connection.query(
+            `UPDATE account_keys
+             SET encrypted_key = ?, key_version = key_version + 1
+             WHERE account_id = ? AND user_id = ?`,
+            [key.encryptedKey, key.accountId, user.id]
+          )
+        }
       }
-    }
 
-    // When no BIP39 re-encryption, account keys encrypted with old UserKey are
-    // irrecoverable — delete them so login can create fresh ones via the
-    // complete-crypto-setup fallback path. Also null out recovery_blob.
-    if (clearAccountKeys) {
-      await connection.query(`DELETE FROM account_keys WHERE user_id = ?`, [user.id])
-      await connection.query(`UPDATE users SET recovery_blob = NULL WHERE id = ?`, [user.id])
+      // When no BIP39 re-encryption, account keys encrypted with old UserKey are
+      // irrecoverable — delete them so login can create fresh ones via the
+      // complete-crypto-setup fallback path. Also null out recovery_blob.
+      if (clearAccountKeys) {
+        await connection.query(`DELETE FROM account_keys WHERE user_id = ?`, [user.id])
+        await connection.query(`UPDATE users SET recovery_blob = NULL WHERE id = ?`, [user.id])
+      }
     }
 
     await connection.commit()
