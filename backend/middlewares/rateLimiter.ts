@@ -1,6 +1,6 @@
 // middlewares/rateLimiter.ts
 
-import type { Request } from 'express'
+import type { Request, Response } from 'express'
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 
 /**
@@ -45,6 +45,24 @@ export const pinRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+})
+
+/**
+ * Key of the refresh limiter: the session, read from the refresh token that readRefreshSession
+ * already verified. Not the IP: behind the Next proxy every user has the same one.
+ */
+export function refreshRateLimitKey(_req: Request, res: Response): string {
+  return `session:${res.locals.refreshSid}`
+}
+
+/** Refreshes per session: a normal session rotates every 15 min plus a burst in the grace window. */
+export const refreshRateLimiter = rateLimit({
+  keyGenerator: refreshRateLimitKey,
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, error: 'Demasiadas renovaciones de sesión. Inténtalo más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 })
 
 /**

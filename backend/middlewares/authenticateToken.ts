@@ -8,6 +8,8 @@ declare module 'express' {
     user?: {
       id: string
       email: string
+      /** The stored session of this request's access token. */
+      sid?: string
     }
   }
 }
@@ -38,7 +40,8 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   }
 
   // Verify token async
-  verifyToken(token)
+  // Only an access token: a refresh token or an OAuth code is refused here
+  verifyToken(token, 'access')
     .then((decoded) => {
       if (!decoded?.id) {
         res.status(401).json({
@@ -52,6 +55,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
       req.user = {
         id: decoded.id,
         email: decoded.email,
+        sid: decoded.sid,
       }
 
       next()

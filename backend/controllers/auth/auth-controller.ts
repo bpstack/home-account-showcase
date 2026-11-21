@@ -7,12 +7,13 @@ import { AccountKeyRepository } from '../../repositories/crypto/account-key-repo
 import db from '../../config/db.js'
 import { SALT_ROUNDS } from '../../config/config.js'
 import type { UserRow } from '../../models/auth/index.js'
+import { verifyTokenAllowingExpiry } from '../../services/auth/tokenService.js'
 import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyToken,
-} from '../../services/auth/tokenService.js'
-import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
+  clearSessionCookies,
+  continueSession,
+  startSession,
+} from '../../services/auth/sessionService.js'
+import { SessionRepository } from '../../repositories/auth/session-repository.js'
 import {
   computeVerifier,
   openWrappedKey,
@@ -37,26 +38,6 @@ import {
 } from '../../validators/auth-validators.js'
 import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
-
-const isProduction = process.env.NODE_ENV === 'production'
-
-const accessTokenCookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  maxAge: 15 * 60 * 1000,
-  path: '/',
-}
-
-const refreshTokenCookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  maxAge: 8 * 60 * 60 * 1000,
-  path: '/',
-}
-
-const csrfCookieOptions = createCSRFCookieOptions()
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const validationResult = registerSchema.safeParse(req.body)
@@ -127,16 +108,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   const encryptedKeys = await AccountKeyRepository.getByUserId(userWithSalt.id)
 
-  const accessToken = await generateAccessToken({ id: userWithSalt.id, email: userWithSalt.email })
-  const refreshToken = await generateRefreshToken({
-    id: userWithSalt.id,
-    email: userWithSalt.email,
-  })
-  const csrfToken = generateCSRFToken()
-
-  res.cookie('accessToken', accessToken, accessTokenCookieOptions)
-  res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
-  res.cookie('csrfToken', csrfToken, csrfCookieOptions)
+  const csrfToken = await startSession(res, { id: userWithSalt.id, email: userWithSalt.email })
 
   const user = {
     id: userWithSalt.id,
@@ -166,30 +138,18 @@ export const me = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({ success: true, user })
 })
 
+/**
+ * Rotates the session's refresh token (readRefreshSession and the per-session limiter run first).
+ * A reused, revoked or expired one ends here with 401 and the cookies cleared.
+ */
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
-  const refreshTokenFromBody = req.body?.refreshToken
-  if (refreshTokenFromBody) {
-    throw new AppError('Refresh token must come from httpOnly cookie', 400)
+  const result = await continueSession(res, req.cookies.refreshToken, 'refresh')
+  if (!result.ok) {
+    clearSessionCookies(res)
+    res.status(401).json({ success: false, error: 'Sesión no válida' })
+    return
   }
-
-  const refreshToken = req.cookies?.refreshToken
-  if (!refreshToken) {
-    throw new AppError('Refresh token not provided', 401)
-  }
-
-  const decoded = await verifyToken(refreshToken)
-  const user = await UserRepository.getById(decoded.id)
-  if (!user) {
-    throw new AppError('User not found', 401)
-  }
-
-  const newAccessToken = await generateAccessToken({ id: user.id, email: user.email })
-  const newCSRFToken = generateCSRFToken()
-
-  res.cookie('accessToken', newAccessToken, accessTokenCookieOptions)
-  res.cookie('csrfToken', newCSRFToken, csrfCookieOptions)
-
-  res.status(200).json({ success: true, csrfToken: newCSRFToken })
+  res.status(200).json({ success: true, csrfToken: result.csrfToken })
 })
 
 export const getKeys = asyncHandler(async (req: Request, res: Response) => {
@@ -237,9 +197,9 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
     reEncryptedKeys
   )
 
-  res.clearCookie('accessToken', { path: '/' })
-  res.clearCookie('refreshToken', { path: '/' })
-  res.clearCookie('csrfToken', { path: '/' })
+  // A new password ends every session, so whoever had the old one is out
+  await SessionRepository.revokeAllForUser(req.user!.id)
+  clearSessionCookies(res)
 
   res.status(200).json({
     success: true,
@@ -319,6 +279,9 @@ export const setPin = asyncHandler(async (req: Request, res: Response) => {
     pinVerifier.fill(0)
   }
 
+  // A new PIN ends the user's other sessions; this one stays open
+  await SessionRepository.revokeAllForUser(req.user!.id, req.user!.sid)
+
   res.status(200).json({ success: true })
 })
 
@@ -342,9 +305,8 @@ export const changePin = asyncHandler(async (req: Request, res: Response) => {
     reEncryptedKeys
   )
 
-  res.clearCookie('accessToken', { path: '/' })
-  res.clearCookie('refreshToken', { path: '/' })
-  res.clearCookie('csrfToken', { path: '/' })
+  await SessionRepository.revokeAllForUser(req.user!.id)
+  clearSessionCookies(res)
 
   res.status(200).json({
     success: true,
@@ -367,10 +329,16 @@ export const saveVerificationBlob = asyncHandler(async (req: Request, res: Respo
   res.status(200).json({ success: true })
 })
 
+/**
+ * Ends the session of the refresh token cookie, even if it has expired. No access token or CSRF
+ * check: holding the refresh token is the authorization, and logging out is always allowed.
+ */
 export const logout = asyncHandler(async (req: Request, res: Response) => {
-  res.clearCookie('accessToken', { path: '/' })
-  res.clearCookie('refreshToken', { path: '/' })
-  res.clearCookie('csrfToken', { path: '/' })
+  const token = req.cookies?.refreshToken
+  const payload = token ? await verifyTokenAllowingExpiry(token, 'refresh') : null
+  if (payload?.sid) await SessionRepository.revoke(payload.sid)
+
+  clearSessionCookies(res)
 
   res.status(200).json({ success: true, message: 'Session closed successfully' })
 })
@@ -463,10 +431,9 @@ export const recoverWithBip39 = asyncHandler(async (req: Request, res: Response)
 
     await connection.commit()
 
-    // Clear cookies to force re-login with new PIN
-    res.clearCookie('accessToken', { path: '/' })
-    res.clearCookie('refreshToken', { path: '/' })
-    res.clearCookie('csrfToken', { path: '/' })
+    // Every session ends: log in again with the new PIN
+    await SessionRepository.revokeAllForUser(req.user!.id)
+    clearSessionCookies(res)
 
     res.status(200).json({
       success: true,
@@ -723,6 +690,9 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   } finally {
     connection.release()
   }
+
+  // Whoever had the old password, or a session opened with it, is out
+  await SessionRepository.revokeAllForUser(user.id)
 
   res.status(200).json({
     success: true,

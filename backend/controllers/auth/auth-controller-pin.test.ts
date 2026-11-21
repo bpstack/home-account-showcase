@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => {
       openWrappedKey: vi.fn(),
     },
     db: { query: vi.fn(), getConnection: vi.fn() },
+    sessions: { revoke: vi.fn(), revokeAllForUser: vi.fn() },
   }
 })
 
@@ -48,6 +49,9 @@ vi.mock('../../repositories/crypto/account-key-repository.js', () => ({
   AccountKeyRepository: mocks.accounts,
 }))
 vi.mock('../../services/auth/pinService.js', () => mocks.pin)
+vi.mock('../../repositories/auth/session-repository.js', () => ({
+  SessionRepository: mocks.sessions,
+}))
 vi.mock('../../services/email/email-service.js', () => ({ sendPasswordResetEmail: vi.fn() }))
 vi.mock('./email-verification-controller.js', () => ({ sendVerificationTokenEmail: vi.fn() }))
 
@@ -90,7 +94,7 @@ function run(handler: Handler, body: object = {}, query: object = {}): Promise<O
         return this
       },
     }
-    const req = { body, user: { id: USER_ID }, query, cookies: {} }
+    const req = { body, user: { id: USER_ID, sid: 'sid-current' }, query, cookies: {} }
     handler(req as unknown as Request, res as unknown as Response, (error?: unknown) =>
       resolve({ error: error as Outcome['error'] })
     )
@@ -399,5 +403,35 @@ describe('password minimum length', () => {
     const out = await run(resetPassword, { ...resetFields, newPassword: 'abcd12!' })
     expect(out.error?.statusCode).toBe(400)
     expect(mocks.db.query).not.toHaveBeenCalled()
+  })
+})
+
+// Requirement (session-plan S2): a new password ends every session; a new PIN ends the user's
+// other sessions and keeps the current one open.
+describe('sessions after a credential change', () => {
+  it('change-password ends every session of the user', async () => {
+    await run(changePassword, { currentPassword: 'old', newPassword: 'abcd123!' })
+    expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(USER_ID)
+  })
+
+  it('reset-password ends every session of the user', async () => {
+    mocks.db.query.mockResolvedValueOnce([[resetRow(null)]])
+    mocks.connection.query.mockResolvedValueOnce([[{ pin_verifier: Buffer.alloc(32) }]])
+    mocks.connection.query.mockResolvedValue([{ affectedRows: 1 }])
+
+    const out = await run(resetPassword, resetFields)
+
+    expect(out.status).toBe(200)
+    expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(USER_ID)
+  })
+
+  it('a new PIN ends the other sessions and keeps this one', async () => {
+    const out = await run(setPin, {
+      newKeySalt: 'ab'.repeat(32),
+      authKey: GOOD_AUTH_KEY,
+      wrappedUserKey: WRAPPED,
+    })
+    expect(out.status).toBe(200)
+    expect(mocks.sessions.revokeAllForUser).toHaveBeenCalledWith(USER_ID, 'sid-current')
   })
 })

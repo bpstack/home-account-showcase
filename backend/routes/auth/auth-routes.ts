@@ -33,7 +33,9 @@ import {
   verificationRateLimiter,
   changeEmailRateLimiter,
   emailRateLimiter,
+  refreshRateLimiter,
 } from '../../middlewares/rateLimiter.js'
+import { readRefreshSession } from '../../middlewares/readRefreshSession.js'
 import {
   verifyEmail,
   resendVerificationEmail,
@@ -48,7 +50,8 @@ const router: Router = Router()
 // Rutas públicas
 router.post('/register', registerRateLimiter, emailRateLimiter, register) // Rate limiting en registro
 router.post('/login', loginRateLimiter, login) // Rate limiting en login
-router.post('/refresh', refresh)
+// The refresh token is verified first, so the limiter counts per stored session
+router.post('/refresh', readRefreshSession, refreshRateLimiter, refresh)
 
 // Password reset routes (public)
 router.post('/forgot-password', passwordResetRateLimiter, emailRateLimiter, forgotPassword)
@@ -76,7 +79,8 @@ router.post('/unlock', authenticateToken, checkCSRF, pinRateLimiter, unlock)
 router.post('/pin', authenticateToken, checkCSRF, pinRateLimiter, setPin)
 router.post('/change-pin', authenticateToken, checkCSRF, changePin)
 router.post('/verification-blob', authenticateToken, checkCSRF, saveVerificationBlob)
-router.post('/logout', authenticateToken, checkCSRF, logout)
+// Authorized by the refresh token cookie itself; works with an expired access token too
+router.post('/logout', logout)
 
 // Recovery routes (authenticated but crypto may be locked)
 router.get('/recovery-info', authenticateToken, getRecoveryInfo)

@@ -93,6 +93,10 @@ export interface LinkOAuthDTO {
 export interface TokenPayload {
   id: string
   email: string
+  /** The stored session (refresh_sessions.id) the token belongs to. */
+  sid?: string
+  /** Unique id of a refresh token or OAuth code; only its hash is stored. */
+  jti?: string
   iat?: number
   exp?: number
 }
