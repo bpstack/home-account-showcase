@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const BACKEND_URL = process.env.API_URL || 'http://localhost:3001/api'
-const isProduction = process.env.NODE_ENV === 'production'
-
-// Cookie options for setting tokens
-const accessTokenCookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: 'lax' as const,
-  path: '/',
-  maxAge: 15 * 60, // 15 minutos
-}
-
-const csrfTokenCookieOptions = {
-  httpOnly: false,
-  secure: isProduction,
-  sameSite: 'lax' as const,
-  path: '/',
-  maxAge: 8 * 60 * 60, // 8 horas
-}
+import {
+  BACKEND_URL,
+  applySession,
+  backendCookieHeader,
+  refreshSession,
+  sessionFromBackend,
+} from '@/app/api/auth/config'
+import type { SessionCookies } from '@/lib/sessionCookies'
 
 // Proxy general para todas las peticiones al backend
 // Esto evita problemas de cookies cross-site
@@ -45,43 +33,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pa
   return handleProxy(req, await params, 'PATCH')
 }
 
-// Helper para intentar refresh del token
-async function tryRefresh(
-  refreshToken: string
-): Promise<{ success: boolean; accessToken?: string; csrfToken?: string }> {
-  try {
-    const refreshRes = await fetch(`${BACKEND_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: `refreshToken=${refreshToken}`,
-      },
-      cache: 'no-store',
-    })
-
-    if (!refreshRes.ok) {
-      return { success: false }
-    }
-
-    // Extraer tokens de las cookies de respuesta
-    const setCookieHeader = refreshRes.headers.get('set-cookie')
-    if (setCookieHeader) {
-      const cookies = parseCookies(setCookieHeader)
-      if (cookies.accessToken) {
-        return {
-          success: true,
-          accessToken: cookies.accessToken,
-          csrfToken: cookies.csrfToken,
-        }
-      }
-    }
-
-    return { success: false }
-  } catch {
-    return { success: false }
-  }
-}
-
 async function handleProxy(req: NextRequest, params: { path: string[] }, method: string) {
   try {
     const path = params.path.join('/')
@@ -89,35 +40,24 @@ async function handleProxy(req: NextRequest, params: { path: string[] }, method:
     const queryString = url.search
 
     // Obtener cookies de auth
-    let accessToken = req.cookies.get('accessToken')?.value
-    const refreshToken = req.cookies.get('refreshToken')?.value
-    const csrfToken = req.cookies.get('csrfToken')?.value
+    const current = {
+      accessToken: req.cookies.get('accessToken')?.value,
+      refreshToken: req.cookies.get('refreshToken')?.value,
+      csrfToken: req.cookies.get('csrfToken')?.value,
+    }
+    // The session from a refresh made here, copied to the browser at the end (with the rotated
+    // refresh token, if the backend rotates it)
+    let refreshed: SessionCookies | null = null
 
     // Si no hay accessToken pero sí refreshToken, intentar refresh proactivo
-    let newAccessToken: string | undefined
-    let newCsrfToken: string | undefined
-
-    if (!accessToken && refreshToken) {
-      const refreshResult = await tryRefresh(refreshToken)
-      if (refreshResult.success && refreshResult.accessToken) {
-        accessToken = refreshResult.accessToken
-        newAccessToken = refreshResult.accessToken
-        newCsrfToken = refreshResult.csrfToken
-      }
+    if (!current.accessToken && current.refreshToken) {
+      refreshed = await refreshSession(current.refreshToken)
     }
 
     // Construir headers para el backend
     const headers: Record<string, string> = {}
-
-    // Pasar cookies como Cookie header al backend
-    const cookieParts: string[] = []
-    if (accessToken) cookieParts.push(`accessToken=${accessToken}`)
-    if (refreshToken) cookieParts.push(`refreshToken=${refreshToken}`)
-    if (csrfToken) cookieParts.push(`csrfToken=${csrfToken}`)
-
-    if (cookieParts.length > 0) {
-      headers['Cookie'] = cookieParts.join('; ')
-    }
+    const cookieHeader = backendCookieHeader(current, refreshed ?? {})
+    if (cookieHeader) headers['Cookie'] = cookieHeader
 
     // Pasar CSRF token en header si es mutación
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -161,66 +101,27 @@ async function handleProxy(req: NextRequest, params: { path: string[] }, method:
 
     let data = await backendRes.json()
 
-    // Si recibimos 401 y tenemos refreshToken, intentar refresh y retry
-    if (backendRes.status === 401 && refreshToken && !newAccessToken) {
-      const refreshResult = await tryRefresh(refreshToken)
+    // Si recibimos 401 y tenemos refreshToken, intentar refresh y retry una vez
+    if (backendRes.status === 401 && current.refreshToken && !refreshed) {
+      refreshed = await refreshSession(current.refreshToken)
 
-      if (refreshResult.success && refreshResult.accessToken) {
-        // Actualizar headers con el nuevo token
-        const retryHeaders = { ...headers }
-        const retryCookieParts = [
-          `accessToken=${refreshResult.accessToken}`,
-          `refreshToken=${refreshToken}`,
-        ]
-        if (csrfToken) retryCookieParts.push(`csrfToken=${csrfToken}`)
-        retryHeaders['Cookie'] = retryCookieParts.join('; ')
-
-        // Retry la petición original
+      if (refreshed) {
         backendRes = await fetch(`${BACKEND_URL}/${path}${queryString}`, {
           method,
-          headers: retryHeaders,
+          headers: { ...headers, Cookie: backendCookieHeader(current, refreshed) },
           body,
           cache: 'no-store',
         })
-
         data = await backendRes.json()
-        newAccessToken = refreshResult.accessToken
-        newCsrfToken = refreshResult.csrfToken
       }
     }
 
-    // Crear respuesta
     const response = NextResponse.json(data, { status: backendRes.status })
 
-    // Setear nuevos tokens si hubo refresh
-    if (newAccessToken) {
-      response.cookies.set('accessToken', newAccessToken, accessTokenCookieOptions)
-    }
-    if (newCsrfToken) {
-      response.cookies.set('csrfToken', newCsrfToken, csrfTokenCookieOptions)
-    }
-
-    // Si el backend envía cookies adicionales, re-setearlas
-    const setCookieHeader = backendRes.headers.get('set-cookie')
-    if (setCookieHeader) {
-      const cookies = parseCookies(setCookieHeader)
-
-      if (cookies.accessToken && !newAccessToken) {
-        response.cookies.set('accessToken', cookies.accessToken, accessTokenCookieOptions)
-      }
-      if (cookies.refreshToken) {
-        response.cookies.set('refreshToken', cookies.refreshToken, {
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 8 * 60 * 60, // 8 horas
-        })
-      }
-      if (cookies.csrfToken && !newCsrfToken) {
-        response.cookies.set('csrfToken', cookies.csrfToken, csrfTokenCookieOptions)
-      }
-    }
+    // The refreshed session first, then whatever the backend response itself sets or clears
+    // (e.g. a password change ends the session): the latest word wins
+    if (refreshed) applySession(response, refreshed)
+    applySession(response, sessionFromBackend(backendRes))
 
     return response
   } catch (error) {
@@ -230,20 +131,4 @@ async function handleProxy(req: NextRequest, params: { path: string[] }, method:
       { status: 502 }
     )
   }
-}
-
-function parseCookies(setCookieHeader: string): Record<string, string> {
-  const cookies: Record<string, string> = {}
-  const cookieStrings = setCookieHeader.split(/,(?=[^;]+?=)/)
-
-  for (const cookieStr of cookieStrings) {
-    const [nameValue] = cookieStr.split(';')
-    if (nameValue) {
-      const [name, ...valueParts] = nameValue.trim().split('=')
-      if (name && valueParts.length > 0) {
-        cookies[name.trim()] = valueParts.join('=').trim()
-      }
-    }
-  }
-  return cookies
 }
