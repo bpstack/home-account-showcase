@@ -1,6 +1,7 @@
 // middlewares/rateLimiter.ts
 
-import rateLimit from 'express-rate-limit'
+import type { Request } from 'express'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 
 /**
  * Rate limiter para login
@@ -20,10 +21,21 @@ export const loginRateLimiter = rateLimit({
 })
 
 /**
- * Rate limiter complementario para comprobar o cambiar el PIN.
+ * Key of the PIN rate limiter: the user, not the IP. Every browser request reaches the backend
+ * through the Next proxy, so `req.ip` is the same for everyone and an IP key would let one user's
+ * failures block every other user. The routes run it after `authenticateToken`; the IP fallback
+ * only covers a misconfigured route.
+ */
+export function pinRateLimitKey(req: Request): string {
+  return req.user?.id ? `user:${req.user.id}` : ipKeyGenerator(req.ip ?? '')
+}
+
+/**
+ * Rate limiter complementario para comprobar o cambiar el PIN, por usuario.
  * El límite principal es el contador persistente por usuario.
  */
 export const pinRateLimiter = rateLimit({
+  keyGenerator: pinRateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 7,
   message: {
