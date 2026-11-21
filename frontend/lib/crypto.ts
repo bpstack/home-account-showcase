@@ -300,16 +300,7 @@ export async function generateRecoveryBlob(
   userKeyRaw: Uint8Array,
   recoveryKey: CryptoKey
 ): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    recoveryKey,
-    toArrayBuffer(userKeyRaw)
-  )
-  const combined = new Uint8Array(iv.length + encrypted.byteLength)
-  combined.set(iv)
-  combined.set(new Uint8Array(encrypted), iv.length)
-  return bytesToBase64(combined)
+  return sealBytes(userKeyRaw, recoveryKey)
 }
 
 /**
@@ -319,19 +310,23 @@ export async function decryptRecoveryBlob(
   recoveryBlob: string,
   recoveryKey: CryptoKey
 ): Promise<CryptoKey> {
-  const combined = base64ToBytes(recoveryBlob)
-  const iv = combined.slice(0, IV_LENGTH)
-  const encrypted = combined.slice(IV_LENGTH)
+  const userKeyRaw = await openBytes(recoveryBlob, recoveryKey)
+  try {
+    return await importUserKey(userKeyRaw)
+  } finally {
+    userKeyRaw.fill(0)
+  }
+}
 
-  const userKeyRaw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, recoveryKey, encrypted)
-
-  return crypto.subtle.importKey(
-    'raw',
-    userKeyRaw,
-    { name: 'AES-GCM', length: AES_KEY_LENGTH },
-    false, // non-extractable for normal use
-    ['encrypt', 'decrypt']
-  )
+/**
+ * Decrypt recovery_blob and return the raw UserKey bytes (PIN v2 needs them to wrap the key with
+ * a new PIN). The caller zeroes them with `fill(0)` once used.
+ */
+export async function decryptRecoveryBlobRaw(
+  recoveryBlob: string,
+  recoveryKey: CryptoKey
+): Promise<Uint8Array> {
+  return openBytes(recoveryBlob, recoveryKey)
 }
 
 /**
@@ -361,6 +356,107 @@ export async function deriveUserKeyExtractable(
   )
 
   return { key, raw }
+}
+
+// ============================================
+// PIN v2 (docs/PIN-plan.md §6.2)
+// ============================================
+//
+// The UserKey is a fixed 256-bit data key. The PIN no longer derives it: it only wraps it.
+//   stretched = Argon2id(PIN, key_salt)
+//   authKey   = HKDF-SHA256(stretched, salt = empty, info = "hac-pin-auth-v2", 32 bytes) → server
+//   kek       = HKDF-SHA256(stretched, salt = empty, info = "hac-pin-kek-v2", 32 bytes)  → AES-GCM
+//   wrapped   = iv(12) ‖ AES-256-GCM(kek, UserKey_raw)
+// The server stores `wrapped` sealed with its own key and releases it only after checking authKey
+// and counting the attempt. These values are fixed: changing any of them invalidates every stored
+// verifier and wrapping.
+
+const PIN_AUTH_INFO = 'hac-pin-auth-v2'
+const PIN_KEK_INFO = 'hac-pin-kek-v2'
+const USER_KEY_LENGTH = 32 // bytes
+
+export interface PinSecrets {
+  /** Proof of the PIN for the server, 64 hex characters. Reveals nothing about `kek`. */
+  authKeyHex: string
+  /** Wraps and unwraps the UserKey. Not extractable. */
+  kek: CryptoKey
+}
+
+/**
+ * The two HKDF subkeys of a stretched PIN. Split from the Argon2id step so it can be checked
+ * against a fixed test vector.
+ */
+export async function secretsFromStretched(stretched: Uint8Array): Promise<PinSecrets> {
+  const base = await crypto.subtle.importKey('raw', toArrayBuffer(stretched), 'HKDF', false, [
+    'deriveBits',
+    'deriveKey',
+  ])
+  const hkdfParams = (info: string) => ({
+    name: 'HKDF',
+    hash: 'SHA-256',
+    salt: new Uint8Array(0),
+    info: toArrayBuffer(utf8ToBytes(info)),
+  })
+
+  const authBytes = new Uint8Array(
+    await crypto.subtle.deriveBits(hkdfParams(PIN_AUTH_INFO), base, USER_KEY_LENGTH * 8)
+  )
+  const authKeyHex = bytesToHex(authBytes)
+  authBytes.fill(0)
+
+  const kek = await crypto.subtle.deriveKey(
+    hkdfParams(PIN_KEK_INFO),
+    base,
+    { name: 'AES-GCM', length: AES_KEY_LENGTH },
+    false, // not extractable
+    ['encrypt', 'decrypt']
+  )
+
+  return { authKeyHex, kek }
+}
+
+/** One Argon2id over the PIN, then both HKDF subkeys. */
+export async function derivePinSecrets(pin: string, keySaltHex: string): Promise<PinSecrets> {
+  const stretched = argon2id(utf8ToBytes(pin), hexToBytes(keySaltHex), {
+    ...ARGON2_OPTIONS,
+    dkLen: 32,
+  })
+  try {
+    return await secretsFromStretched(stretched)
+  } finally {
+    stretched.fill(0)
+  }
+}
+
+/** Wrap the raw UserKey with the PIN's kek. Same format as the recovery blob. */
+export async function wrapUserKey(userKeyRaw: Uint8Array, kek: CryptoKey): Promise<string> {
+  return sealBytes(userKeyRaw, kek)
+}
+
+/** Unwrap the raw UserKey. Throws if `kek` is not the one that wrapped it (AES-GCM tag). */
+export async function unwrapUserKeyRaw(wrapped: string, kek: CryptoKey): Promise<Uint8Array> {
+  const raw = await openBytes(wrapped, kek)
+  if (raw.length !== USER_KEY_LENGTH) {
+    raw.fill(0)
+    throw new Error('Wrapped user key has the wrong length')
+  }
+  return raw
+}
+
+/** Import raw UserKey bytes as a non-extractable AES-GCM key. */
+export async function importUserKey(raw: Uint8Array): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(raw),
+    { name: 'AES-GCM', length: AES_KEY_LENGTH },
+    false, // not extractable
+    ['encrypt', 'decrypt']
+  )
+}
+
+/** A new random 256-bit UserKey, as raw bytes. */
+export function generateUserKeyRaw(): Uint8Array {
+  return crypto.getRandomValues(new Uint8Array(USER_KEY_LENGTH))
 }
 
 // ============================================
@@ -424,6 +520,24 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
   const buffer = new ArrayBuffer(data.byteLength)
   new Uint8Array(buffer).set(data)
   return buffer
+}
+
+/** iv(12) ‖ AES-256-GCM(key, bytes), as base64. */
+async function sealBytes(bytes: Uint8Array, key: CryptoKey): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, toArrayBuffer(bytes))
+  const combined = new Uint8Array(iv.length + encrypted.byteLength)
+  combined.set(iv)
+  combined.set(new Uint8Array(encrypted), iv.length)
+  return bytesToBase64(combined)
+}
+
+/** Inverse of sealBytes. Throws if the key is wrong or the data was altered. */
+async function openBytes(sealed: string, key: CryptoKey): Promise<Uint8Array> {
+  const combined = base64ToBytes(sealed)
+  const iv = combined.slice(0, IV_LENGTH)
+  const encrypted = combined.slice(IV_LENGTH)
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encrypted))
 }
 
 function bytesToBase64(bytes: Uint8Array): string {

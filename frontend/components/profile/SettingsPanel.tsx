@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import { accounts, auth, users } from '@/lib/apiClient'
+import { accounts, auth, users, PinError } from '@/lib/apiClient'
 import { useBudgets, useCreateBudget, useUpdateBudget, useDeleteBudget } from '@/lib/queries/budget'
 import { useCategories } from '@/lib/queries/categories'
 import { useTransactions } from '@/lib/queries/transactions'
@@ -15,12 +15,15 @@ import { AISettings } from './AISettings'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import {
   deriveUserKey,
+  deriveUserKeyExtractable,
   encryptAccountKey,
   decryptAccountKey,
   generateKeySalt,
   generateVerificationBlob,
   encryptAccountKeyForInvitation,
+  verifyUserKey,
 } from '@/lib/crypto'
+import { setPinForUserKey, unlockUserKeyWithPin } from '@/lib/pinV2'
 import { toast } from 'sonner'
 import { Loader2, Pencil, Plus, UserPlus } from 'lucide-react'
 import { validateBudget, validateUpdateBudget } from '@/validators/budget-validators'
@@ -637,9 +640,22 @@ function AccountSettings() {
     try {
       // Verificar PIN antes de eliminar
       const keysData = await auth.getKeys()
-      const { key_salt, encrypted_keys } = keysData
+      const { key_salt, encrypted_keys, pin_v2 } = keysData
 
-      if (encrypted_keys && encrypted_keys.length > 0) {
+      if (pin_v2) {
+        // The server checks the PIN and counts the attempt
+        try {
+          const { raw } = await unlockUserKeyWithPin(deletePin, key_salt)
+          raw.fill(0)
+        } catch (error) {
+          if (error instanceof PinError) {
+            setDeletePinError(error.message)
+            setIsDeletingAccount(false)
+            return
+          }
+          throw error
+        }
+      } else if (encrypted_keys && encrypted_keys.length > 0) {
         const userKey = await deriveUserKey(deletePin, key_salt)
         try {
           await decryptAccountKey(encrypted_keys[0].encrypted_key, userKey)
@@ -1587,7 +1603,7 @@ function ChangePinSection() {
 
     try {
       const keysData = await auth.getKeys()
-      const { key_salt: currentKeySalt, encrypted_keys } = keysData
+      const { key_salt: currentKeySalt, encrypted_keys, verification_blob, pin_v2 } = keysData
 
       if (!encrypted_keys || encrypted_keys.length === 0) {
         setMessage({ type: 'error', text: 'No hay claves de cifrado configuradas' })
@@ -1595,42 +1611,41 @@ function ChangePinSection() {
         return
       }
 
-      const currentUK = await deriveUserKey(currentPin, currentKeySalt)
+      let userKeyRaw: Uint8Array
+      if (pin_v2) {
+        // The server checks the current PIN and counts the attempt
+        userKeyRaw = (await unlockUserKeyWithPin(currentPin, currentKeySalt)).raw
+      } else {
+        // v1: the current PIN is checked here; the change moves the user to PIN v2
+        const derived = await deriveUserKeyExtractable(currentPin, currentKeySalt)
+        const isValid = verification_blob
+          ? await verifyUserKey(verification_blob, derived.key)
+          : await decryptAccountKey(encrypted_keys[0].encrypted_key, derived.key).then(
+              () => true,
+              () => false
+            )
+        if (!isValid) {
+          derived.raw.fill(0)
+          setMessage({ type: 'error', text: 'PIN actual incorrecto' })
+          setIsLoading(false)
+          return
+        }
+        userKeyRaw = derived.raw
+      }
 
+      // Only the wrapping of the UserKey changes: no account key is re-encrypted and the
+      // session stays open
       try {
-        await decryptAccountKey(encrypted_keys[0].encrypted_key, currentUK)
-      } catch {
-        setMessage({ type: 'error', text: 'PIN actual incorrecto' })
-        setIsLoading(false)
-        return
+        await setPinForUserKey(newPin, userKeyRaw)
+      } finally {
+        userKeyRaw.fill(0)
       }
 
-      const newKeySalt = generateKeySalt()
-      const newUK = await deriveUserKey(newPin, newKeySalt)
-
-      const verificationBlob = await generateVerificationBlob(newUK)
-
-      const reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }> = []
-
-      for (const key of encrypted_keys) {
-        const decryptedAK = await decryptAccountKey(key.encrypted_key, currentUK)
-        const reEncryptedAK = await encryptAccountKey(decryptedAK, newUK)
-        reEncryptedKeys.push({
-          accountId: key.account_id,
-          encryptedKey: reEncryptedAK,
-        })
-      }
-
-      await auth.changePin(currentPin, newPin, newKeySalt, verificationBlob, reEncryptedKeys)
-
-      useCryptoStore.getState().lock()
-
-      setMessage({
-        type: 'success',
-        text: 'PIN cambiado correctamente. Redirigiendo a login...',
-      })
-
-      setTimeout(() => router.push('/login'), 2000)
+      setCurrentPin('')
+      setNewPin('')
+      setConfirmPin('')
+      setIsEditing(false)
+      setMessage({ type: 'success', text: 'PIN cambiado correctamente.' })
     } catch (error) {
       const err = error as Error
       setMessage({ type: 'error', text: err.message || 'Error al cambiar el PIN' })
@@ -1732,8 +1747,8 @@ function ChangePinSection() {
 
             <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
               <p className="text-xs text-warning">
-                <strong>Importante:</strong> Al cambiar tu PIN, se re-cifrarán todas tus claves de
-                cuenta, se cerrará tu sesión y deberás volver a iniciar sesión con el nuevo PIN.
+                <strong>Importante:</strong> El PIN actual dejará de valer. Tus datos no se vuelven
+                a cifrar y la sesión sigue abierta.
               </p>
             </div>
 
@@ -1787,12 +1802,13 @@ function ChangePasswordSection() {
 
     try {
       const keysData = await auth.getKeys()
-      const { key_salt: currentKeySalt, verification_blob, encrypted_keys } = keysData
+      const { key_salt: currentKeySalt, verification_blob, encrypted_keys, pin_v2 } = keysData
 
-      // Check if the password is the encryption source (no separate PIN set)
+      // Check if the password is the encryption source (no separate PIN set). Never for PIN v2:
+      // there the data key does not depend on the password and key_salt is the PIN's salt
       let passwordIsEncryptionSource = false
 
-      if (encrypted_keys && encrypted_keys.length > 0 && currentKeySalt) {
+      if (!pin_v2 && encrypted_keys && encrypted_keys.length > 0 && currentKeySalt) {
         const currentUK = await deriveUserKey(currentPassword, currentKeySalt)
 
         if (verification_blob) {

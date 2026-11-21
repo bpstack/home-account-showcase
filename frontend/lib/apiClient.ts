@@ -38,6 +38,37 @@ class ApiError extends Error {
   }
 }
 
+/**
+ * The server refused a PIN (`POST /auth/unlock`): 422 wrong PIN, 423 locked. Its message is the
+ * text to show the user. Never a 401: that would make the client refresh the session and retry,
+ * counting the attempt twice.
+ */
+class PinError extends ApiError {
+  constructor(
+    status: number,
+    readonly code: 'PIN_INVALID' | 'PIN_LOCKED',
+    readonly remaining: number,
+    readonly minutes: number
+  ) {
+    super(status, PinError.describe(code, remaining, minutes))
+    this.name = 'PinError'
+  }
+
+  private static describe(code: string, remaining: number, minutes: number): string {
+    if (code === 'PIN_LOCKED') {
+      return `PIN bloqueado durante ${minutes} minutos. Demasiados intentos fallidos.`
+    }
+    if (remaining <= 0) return 'PIN bloqueado durante 30 minutos. Demasiados intentos fallidos.'
+    return `PIN incorrecto. Te quedan ${remaining} ${remaining === 1 ? 'intento' : 'intentos'}.`
+  }
+}
+
+type EncryptedKeyRow = {
+  account_id: string
+  encrypted_key: string
+  key_version: number
+}
+
 // Variable para evitar múltiples refresh simultáneos
 let isRefreshing = false
 let refreshPromise: Promise<boolean> | null = null
@@ -212,11 +243,8 @@ export const auth = {
       }
       key_salt: string
       verification_blob: string | null
-      encrypted_keys: Array<{
-        account_id: string
-        encrypted_key: string
-        key_version: number
-      }>
+      encrypted_keys: EncryptedKeyRow[]
+      pin_v2: boolean
     }
   },
 
@@ -329,45 +357,71 @@ export const auth = {
       success: boolean
       key_salt: string
       verification_blob: string | null
-      encrypted_keys: Array<{
-        account_id: string
-        encrypted_key: string
-        key_version: number
-      }>
+      encrypted_keys: EncryptedKeyRow[]
+      pin_v2: boolean
     }
   },
 
-  changePin: async (
-    currentPassword: string,
-    newPin: string,
-    newKeySalt: string,
-    verificationBlob: string,
-    reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }>
-  ) => {
+  /**
+   * PIN v2: proves the PIN to the server, which counts the attempt and, if it matches, releases
+   * the wrapped UserKey. Throws PinError on a wrong or locked PIN, and ApiError 409 if the user
+   * is still on the old scheme.
+   */
+  unlockPin: async (authKey: string) => {
     const csrfToken = getCSRFToken()
-    const response = await fetch(`${AUTH_PROXY_URL}/change-pin`, {
+    const response = await fetch(`${AUTH_PROXY_URL}/unlock`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
       },
-      body: JSON.stringify({
-        currentPassword,
-        newPin,
-        newKeySalt,
-        verificationBlob,
-        reEncryptedKeys,
-      }),
+      body: JSON.stringify({ authKey }),
+      credentials: 'include',
+    })
+    const data = await response.json()
+    if (response.status === 422 || response.status === 423) {
+      throw new PinError(
+        response.status,
+        data.code === 'PIN_LOCKED' ? 'PIN_LOCKED' : 'PIN_INVALID',
+        Number(data.remaining) || 0,
+        Number(data.minutes) || 30
+      )
+    }
+    if (!response.ok) {
+      throw new ApiError(response.status, data.error || data.code || 'Error al comprobar el PIN')
+    }
+    return data as {
+      wrappedUserKey: string
+      encrypted_keys: EncryptedKeyRow[]
+      verification_blob: string | null
+    }
+  },
+
+  /**
+   * PIN v2: the only way to set a PIN (setup, migration, change and recovery). The server writes
+   * the new salt, the verifier and the wrapped UserKey in one statement.
+   */
+  setPin: async (body: {
+    newKeySalt: string
+    authKey: string
+    wrappedUserKey: string
+    verificationBlob?: string
+  }) => {
+    const csrfToken = getCSRFToken()
+    const response = await fetch(`${AUTH_PROXY_URL}/pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+      body: JSON.stringify(body),
       credentials: 'include',
     })
     const data = await response.json()
     if (!response.ok) {
-      throw new ApiError(response.status, data.error || 'Error al cambiar PIN')
+      throw new ApiError(response.status, data.error || 'Error al guardar el PIN')
     }
-    if (typeof window !== 'undefined') {
-      document.cookie = 'csrfToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-    }
-    return data as { success: boolean; message: string }
+    return data as { success: boolean }
   },
 
   saveVerificationBlob: async (verificationBlob: string) => {
@@ -923,4 +977,4 @@ export const ai = {
   getStatus: () => request<AIStatus>('/ai/status'),
 }
 
-export { ApiError }
+export { ApiError, PinError }

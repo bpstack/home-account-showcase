@@ -10,9 +10,6 @@ import { Button, Input, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert, OAuthButtons } from '@/components/auth'
 
 type PinData = {
-  keySalt: string
-  encryptedKeys: Array<{ account_id: string; encrypted_key: string; key_version: number }>
-  verificationBlob: string
   redirectTo: string
 }
 
@@ -45,12 +42,7 @@ function LoginForm() {
       await login(email, password, redirect || undefined)
     } catch (err) {
       if (err instanceof PinRequiredError) {
-        setPinData({
-          keySalt: err.keySalt,
-          encryptedKeys: err.encryptedKeys,
-          verificationBlob: err.verificationBlob,
-          redirectTo: err.redirectTo,
-        })
+        setPinData({ redirectTo: err.redirectTo })
         return
       }
       if (err instanceof ApiError) {
@@ -76,13 +68,7 @@ function LoginForm() {
     setPinError('')
 
     try {
-      await unlockAfterLogin(
-        pinValue,
-        pinData.keySalt,
-        pinData.encryptedKeys,
-        pinData.verificationBlob,
-        pinData.redirectTo
-      )
+      await unlockAfterLogin(pinValue, pinData.redirectTo)
     } catch (err) {
       setPinError((err as Error).message || 'PIN incorrecto')
     } finally {

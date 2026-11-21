@@ -3,17 +3,15 @@
 import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCryptoStore } from '@/stores/cryptoStore'
+import { useAuthStore } from '@/stores/authStore'
 import {
   validateBIP39Mnemonic,
   deriveRecoveryKey,
-  decryptRecoveryBlob,
-  generateSalt,
-  deriveUserKeyExtractable,
-  generateVerificationBlob,
-  generateRecoveryBlob,
-  encryptAccountKey,
+  decryptRecoveryBlobRaw,
+  importUserKey,
   decryptAccountKey,
 } from '@/lib/crypto'
+import { setPinForUserKey } from '@/lib/pinV2'
 import { Button, ButtonLink, PasswordInput, Textarea } from '@/components/ui'
 import { AuthShell, FormAlert } from '@/components/auth'
 
@@ -31,11 +29,8 @@ function RecoveryForm() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const [recoveryData, setRecoveryData] = useState<{
-    recoveryBlob: string
-    recoverySalt: string
-    originalUserKey: CryptoKey
-  } | null>(null)
+  // The UserKey from the recovery blob. It does not change: the new PIN only wraps it (PIN v2)
+  const [recoveryData, setRecoveryData] = useState<{ userKeyRaw: Uint8Array } | null>(null)
 
   const handleMnemonicSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,9 +64,9 @@ function RecoveryForm() {
 
       const recoveryKey = await deriveRecoveryKey(cleaned, data.recovery_salt)
 
-      let originalUserKey: CryptoKey
+      let userKeyRaw: Uint8Array
       try {
-        originalUserKey = await decryptRecoveryBlob(data.recovery_blob, recoveryKey)
+        userKeyRaw = await decryptRecoveryBlobRaw(data.recovery_blob, recoveryKey)
       } catch {
         await fetch('/api/proxy/auth/record-failed-bip39', {
           method: 'POST',
@@ -87,8 +82,10 @@ function RecoveryForm() {
 
       if (keysData.encrypted_keys?.length > 0) {
         try {
+          const originalUserKey = await importUserKey(userKeyRaw)
           await decryptAccountKey(keysData.encrypted_keys[0].encrypted_key, originalUserKey)
         } catch {
+          userKeyRaw.fill(0)
           await fetch('/api/proxy/auth/record-failed-bip39', {
             method: 'POST',
             credentials: 'include',
@@ -98,11 +95,7 @@ function RecoveryForm() {
         }
       }
 
-      setRecoveryData({
-        recoveryBlob: data.recovery_blob,
-        recoverySalt: data.recovery_salt,
-        originalUserKey,
-      })
+      setRecoveryData({ userKeyRaw })
       setStep('newpin')
     } catch (err: any) {
       setError(err.message || 'Error en recuperación')
@@ -132,68 +125,18 @@ function RecoveryForm() {
     setLoading(true)
 
     try {
-      const { originalUserKey, recoverySalt } = recoveryData
+      // Same UserKey, new PIN: one statement on the server sets the salt, the verifier and the
+      // wrapping. The account keys and the recovery blob do not change.
+      await setPinForUserKey(newPin, recoveryData.userKeyRaw)
+      recoveryData.userKeyRaw.fill(0)
+      setRecoveryData(null)
 
-      const keysRes = await fetch('/api/proxy/auth/keys', { credentials: 'include' })
-      const keysData = await keysRes.json()
-
-      const decryptedAccountKeys: Array<{
-        accountId: string
-        accountKey: CryptoKey
-      }> = []
-
-      for (const ek of keysData.encrypted_keys || []) {
-        const ak = await decryptAccountKey(ek.encrypted_key, originalUserKey)
-        decryptedAccountKeys.push({ accountId: ek.account_id, accountKey: ak })
-      }
-
-      const newSalt = generateSalt()
-      const { key: newUserKey, raw: newUserKeyRaw } = await deriveUserKeyExtractable(
-        newPin,
-        newSalt
-      )
-
-      const reEncryptedKeys: Array<{ accountId: string; encryptedKey: string }> = []
-      for (const { accountId, accountKey } of decryptedAccountKeys) {
-        const encryptedKey = await encryptAccountKey(accountKey, newUserKey)
-        reEncryptedKeys.push({ accountId, encryptedKey })
-      }
-
-      const verificationBlob = await generateVerificationBlob(newUserKey)
-
-      const cleaned = mnemonic.trim().toLowerCase().replace(/\s+/g, ' ')
-      const recoveryKey = await deriveRecoveryKey(cleaned, recoverySalt)
-      const newRecoveryBlob = await generateRecoveryBlob(newUserKeyRaw, recoveryKey)
-
-      const csrfToken = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('csrfToken='))
-        ?.split('=')[1]
-
-      const recoveryRes = await fetch('/api/proxy/auth/recover-bip39', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
-        },
-        body: JSON.stringify({
-          newKeySalt: newSalt,
-          verificationBlob,
-          recoveryBlob: newRecoveryBlob,
-          reEncryptedKeys,
-        }),
-        credentials: 'include',
-      })
-
-      if (!recoveryRes.ok) {
-        const err = await recoveryRes.json()
-        throw new Error(err.error || 'Error en recuperación')
-      }
-
+      // The session stays open (POST /auth/pin does not end it): unlock with the new PIN
       useCryptoStore.getState().lock()
+      useAuthStore.getState().setHasSeparatePin(true)
       setStep('done')
 
-      setTimeout(() => router.push('/login'), 2000)
+      setTimeout(() => router.push('/unlock'), 2000)
     } catch (err: any) {
       setError(err.message || 'Error en el proceso de recuperación')
       setStep('newpin')
@@ -204,9 +147,12 @@ function RecoveryForm() {
 
   if (step === 'done') {
     return (
-      <AuthShell title="Cuenta recuperada" description="Te llevamos a iniciar sesión…">
-        <ButtonLink href="/login" className={FULL_CLASS}>
-          Iniciar sesión
+      <AuthShell
+        title="Cuenta recuperada"
+        description="Te llevamos a desbloquear con tu PIN nuevo…"
+      >
+        <ButtonLink href="/unlock" className={FULL_CLASS}>
+          Desbloquear
         </ButtonLink>
       </AuthShell>
     )

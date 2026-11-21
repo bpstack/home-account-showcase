@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { ApiError } from '@/lib/apiClient'
+import { ApiError, PinError } from '@/lib/apiClient'
 import { useAuthStore } from '@/stores/authStore'
 import { Button, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert } from '@/components/auth'
@@ -32,40 +32,16 @@ export default function UnlockPage() {
     setIsSubmitting(true)
 
     try {
+      // The server counts the attempts (PIN v2): the response says how many are left
       await unlock(password)
-
-      // Reset PIN attempts on successful unlock
-      await fetch('/api/proxy/auth/reset-pin-attempts', {
-        method: 'POST',
-        credentials: 'include',
-      })
       // Stays "submitting" until the layout navigates away.
     } catch (err) {
       setIsSubmitting(false)
 
-      // Record failed PIN attempt
-      try {
-        const res = await fetch('/api/proxy/auth/record-failed-pin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-        })
-        const data = await res.json()
-
-        if (data.locked) {
-          setError('PIN bloqueado por 30 minutos. Demasiados intentos fallidos.')
-          setShowRecoveryLink(true)
-          return
-        } else if (data.remaining <= 2) {
-          setError(`PIN incorrecto. Te quedan ${data.remaining} intentos.`)
-          setShowRecoveryLink(true)
-          return
-        }
-      } catch {
-        // Ignore tracking errors
-      }
-
-      if (err instanceof ApiError && err.status === 401) {
+      if (err instanceof PinError) {
+        setError(err.message)
+        setShowRecoveryLink(true)
+      } else if (err instanceof ApiError && err.status === 401) {
         setError('Sesión expirada. Inicia sesión de nuevo.')
       } else if (err instanceof ApiError && err.status >= 500) {
         setError('Error del servidor. Inténtalo de nuevo en unos minutos.')

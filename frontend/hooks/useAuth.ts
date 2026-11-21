@@ -12,29 +12,18 @@ import { toast } from 'sonner'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { verifyUserKey, generateVerificationBlob } from '@/lib/crypto'
 import { saveUserKey } from '@/lib/keyVault'
+import { unlockUserKeyWithPin } from '@/lib/pinV2'
 
 /**
- * Thrown by login() when the user has a separate encryption PIN.
- * The login page catches this and shows a PIN input step instead of
- * redirecting to /unlock.
+ * Thrown by login() when a user on the old PIN scheme (v1) has a separate encryption PIN.
+ * The login page catches this and shows a PIN input step instead of redirecting to /unlock.
  */
 export class PinRequiredError extends Error {
-  readonly keySalt: string
-  readonly encryptedKeys: Array<{ account_id: string; encrypted_key: string; key_version: number }>
-  readonly verificationBlob: string
   readonly redirectTo: string
 
-  constructor(
-    keySalt: string,
-    encryptedKeys: Array<{ account_id: string; encrypted_key: string; key_version: number }>,
-    verificationBlob: string,
-    redirectTo: string
-  ) {
+  constructor(redirectTo: string) {
     super('PIN requerido para descifrar')
     this.name = 'PinRequiredError'
-    this.keySalt = keySalt
-    this.encryptedKeys = encryptedKeys
-    this.verificationBlob = verificationBlob
     this.redirectTo = redirectTo
   }
 }
@@ -149,7 +138,7 @@ export function useAuth() {
 
     try {
       // El servidor establece las cookies httpOnly automáticamente
-      const { user, key_salt, verification_blob, encrypted_keys } = await auth.login(
+      const { user, key_salt, verification_blob, encrypted_keys, pin_v2 } = await auth.login(
         email,
         password
       )
@@ -166,8 +155,13 @@ export function useAuth() {
       queryClient.setQueryData(AUTH_QUERY_KEYS.account, activeAccount)
       if (activeAccount) setSelectedAccountId(activeAccount.id)
 
-      // 🔐 ENCRYPTION: Try to unlock with login password
-      if (key_salt && encrypted_keys && encrypted_keys.length > 0) {
+      // 🔐 ENCRYPTION
+      if (pin_v2) {
+        // PIN v2: the login password never opens the data. The PIN goes through the server, on
+        // /unlock, where the PrivateLayout sends a locked user.
+        useAuthStore.getState().setHasSeparatePin(true)
+      } else if (key_salt && encrypted_keys && encrypted_keys.length > 0) {
+        // v1: try to unlock with the login password
         const cryptoStore = useCryptoStore.getState()
 
         try {
@@ -181,12 +175,7 @@ export function useAuth() {
                 // Password ≠ PIN → throw so login page shows PIN step
                 cryptoStore.lock()
                 useAuthStore.getState().setHasSeparatePin(true)
-                throw new PinRequiredError(
-                  key_salt,
-                  encrypted_keys,
-                  verification_blob,
-                  redirectTo || '/dashboard'
-                )
+                throw new PinRequiredError(redirectTo || '/dashboard')
               } else {
                 // Password IS the encryption source → no separate PIN
                 useAuthStore.getState().setHasSeparatePin(false)
@@ -249,30 +238,43 @@ export function useAuth() {
   }
 
   /**
-   * Called from the login page PIN step after login() throws PinRequiredError.
-   * Unlocks crypto with the user's PIN and navigates to the destination.
+   * The single entry point to unlock the data with the PIN (docs/PIN-plan.md §6.5).
+   * - PIN v2: the server checks the PIN, counts the attempt and releases the wrapped UserKey.
+   *   Throws PinError (from apiClient) on a wrong or locked PIN.
+   * - v1 (not migrated yet): the UserKey is derived from the PIN, or from the login password for
+   *   users without a separate PIN, and checked locally against the verification blob.
    */
-  const unlockAfterLogin = async (
-    pin: string,
-    keySalt: string,
-    encryptedKeys: Array<{ account_id: string; encrypted_key: string; key_version: number }>,
-    verificationBlob: string,
-    redirectTo: string
-  ) => {
+  const unlockWithPin = async (pin: string) => {
     const cryptoStore = useCryptoStore.getState()
-    await cryptoStore.deriveAndSetUserKey(pin, keySalt)
+    const { key_salt, verification_blob, encrypted_keys, pin_v2 } = await auth.getKeys()
 
-    const userKey = useCryptoStore.getState().userKey
-    if (!userKey) throw new Error('No se pudo derivar la clave')
+    if (!key_salt) throw new Error('No encryption keys found')
 
-    const isValid = await verifyUserKey(verificationBlob, userKey)
-    if (!isValid) {
-      cryptoStore.lock()
-      throw new Error('PIN incorrecto')
+    let userKey: CryptoKey
+    let keysToUnlock = encrypted_keys
+
+    if (pin_v2) {
+      const unlocked = await unlockUserKeyWithPin(pin, key_salt)
+      unlocked.raw.fill(0)
+      userKey = unlocked.userKey
+      keysToUnlock = unlocked.encryptedKeys
+      cryptoStore.setUserKey(userKey)
+    } else {
+      if (!encrypted_keys || encrypted_keys.length === 0) {
+        throw new Error('No encryption keys found')
+      }
+      await cryptoStore.deriveAndSetUserKey(pin, key_salt)
+      const derived = useCryptoStore.getState().userKey
+      if (!derived) throw new Error('User key not available')
+      if (verification_blob && !(await verifyUserKey(verification_blob, derived))) {
+        cryptoStore.lock()
+        throw new Error('Wrong password')
+      }
+      userKey = derived
     }
 
     await cryptoStore.unlockAccounts(
-      encryptedKeys.map((k) => ({
+      (keysToUnlock || []).map((k) => ({
         accountId: k.account_id,
         encryptedKey: k.encrypted_key,
         keyVersion: k.key_version,
@@ -285,47 +287,27 @@ export function useAuth() {
       await saveUserKey(user.id, userKey)
     }
 
+    if (pin_v2) useAuthStore.getState().setHasSeparatePin(true)
+  }
+
+  /**
+   * Called from the login page PIN step after login() throws PinRequiredError.
+   * Unlocks crypto with the user's PIN and navigates to the destination.
+   */
+  const unlockAfterLogin = async (pin: string, redirectTo: string) => {
+    try {
+      await unlockWithPin(pin)
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Wrong password') {
+        throw new Error('PIN incorrecto')
+      }
+      throw error
+    }
     useAuthStore.getState().setHasSeparatePin(true)
     router.replace(redirectTo)
   }
 
-  const unlock = async (password: string) => {
-    const cryptoStore = useCryptoStore.getState()
-
-    const { key_salt, verification_blob, encrypted_keys } = await auth.getKeys()
-
-    if (!key_salt || !encrypted_keys || encrypted_keys.length === 0) {
-      throw new Error('No encryption keys found')
-    }
-
-    await cryptoStore.deriveAndSetUserKey(password, key_salt)
-
-    if (verification_blob) {
-      const userKey = useCryptoStore.getState().userKey
-      if (!userKey) throw new Error('User key not available')
-
-      const isValid = await verifyUserKey(verification_blob, userKey)
-      if (!isValid) {
-        cryptoStore.lock()
-        throw new Error('Wrong password')
-      }
-    }
-
-    await cryptoStore.unlockAccounts(
-      encrypted_keys.map((k) => ({
-        accountId: k.account_id,
-        encryptedKey: k.encrypted_key,
-        keyVersion: k.key_version,
-      }))
-    )
-
-    // Save the key in the device vault (IndexedDB) so the user doesn't need to enter PIN on reload
-    const user = userQuery.data
-    const userKey = useCryptoStore.getState().userKey
-    if (user && userKey) {
-      await saveUserKey(user.id, userKey)
-    }
-  }
+  const unlock = (pin: string) => unlockWithPin(pin)
 
   const register = async (
     email: string,

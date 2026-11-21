@@ -79,6 +79,13 @@ function ResetPasswordForm() {
         throw new Error(infoData.error || 'Token inválido o expirado')
       }
 
+      // PIN v2: the data key does not depend on the login password, so only the password changes
+      // (the server also ignores any encryption field for these users)
+      if (infoData.pin_v2) {
+        await doPasswordReset({})
+        return
+      }
+
       const ci: CryptoInfo = {
         key_salt: infoData.key_salt,
         recovery_blob: infoData.recovery_blob,

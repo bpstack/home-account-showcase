@@ -8,7 +8,9 @@ import {
   deriveRecoveryKey,
   deriveUserKeyExtractable,
   generateRecoveryBlob,
+  verifyUserKey,
 } from '@/lib/crypto'
+import { unlockUserKeyWithPin } from '@/lib/pinV2'
 import { toast } from 'sonner'
 import { Button, PasswordInput } from '@/components/ui'
 import { FormAlert, RecoveryPhrase } from '@/components/auth'
@@ -45,8 +47,21 @@ function SetupRecoveryForm() {
         throw new Error('No se pudo obtener la clave de cifrado')
       }
 
-      // Derive extractable UserKey from current PIN
-      const { raw: userKeyRaw } = await deriveUserKeyExtractable(currentPin, keysData.key_salt)
+      // Raw UserKey: PIN v2 asks the server (it counts the attempt); v1 derives it from the PIN
+      let userKeyRaw: Uint8Array
+      if (keysData.pin_v2) {
+        userKeyRaw = (await unlockUserKeyWithPin(currentPin, keysData.key_salt)).raw
+      } else {
+        const derived = await deriveUserKeyExtractable(currentPin, keysData.key_salt)
+        if (
+          keysData.verification_blob &&
+          !(await verifyUserKey(keysData.verification_blob, derived.key))
+        ) {
+          derived.raw.fill(0)
+          throw new Error('PIN incorrecto')
+        }
+        userKeyRaw = derived.raw
+      }
 
       // Generate mnemonic and recovery key
       const words = generateBIP39Mnemonic()
@@ -55,6 +70,7 @@ function SetupRecoveryForm() {
 
       // Generate recovery blob
       const recoveryBlob = await generateRecoveryBlob(userKeyRaw, recoveryKey)
+      userKeyRaw.fill(0)
 
       // Save to backend
       const csrfToken = document.cookie

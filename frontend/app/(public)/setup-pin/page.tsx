@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, PasswordInput } from '@/components/ui'
 import { AuthShell, FormAlert, RecoveryPhrase } from '@/components/auth'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { useAuthStore } from '@/stores/authStore'
-import { accounts, auth } from '@/lib/apiClient'
 import {
   generateVerificationBlob,
   generateBIP39Mnemonic,
@@ -14,10 +13,12 @@ import {
   deriveRecoveryKey,
   deriveUserKeyExtractable,
   generateRecoveryBlob,
-  encryptAccountKey,
+  generateUserKeyRaw,
+  importUserKey,
   verifyUserKey,
 } from '@/lib/crypto'
 import { saveUserKey } from '@/lib/keyVault'
+import { setPinForUserKey } from '@/lib/pinV2'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 
@@ -29,16 +30,19 @@ interface KeysData {
   key_salt: string
   encrypted_keys?: Array<{ account_id: string; encrypted_key: string; key_version: number }>
   verification_blob?: string | null
+  pin_v2?: boolean
 }
 
 function SetupPinForm() {
   // Phases:
   //  'loading'  → fetching keys from server to determine next step
-  //  'password' → user must enter login password to unlock (no separate PIN yet, keys lost on F5)
+  //  'password' → user must enter login password: its UserKey becomes the fixed data key (PIN v2)
   //  'pin'      → create the new numeric PIN
   //  'bip39'    → show recovery mnemonic
   const [phase, setPhase] = useState<'loading' | 'password' | 'pin' | 'bip39'>('loading')
   const [keysData, setKeysData] = useState<KeysData | null>(null)
+  // Raw bytes of the UserKey unlocked with the login password, kept until the PIN wraps them
+  const userKeyRawRef = useRef<Uint8Array | null>(null)
 
   // password phase
   const [password, setPassword] = useState('')
@@ -59,7 +63,7 @@ function SetupPinForm() {
   const searchParams = useSearchParams()
   const csrfToken = searchParams.get('csrf')
   const fromParam = searchParams.get('from') || '/dashboard'
-  const { deriveAndSetUserKey, generateAndSaveAccountKey, forceUnlockAfterSetup } = useCryptoStore()
+  const { generateAndSaveAccountKey, forceUnlockAfterSetup } = useCryptoStore()
   const { user } = useAuth()
 
   // On mount: fetch keys and decide initial phase
@@ -71,15 +75,16 @@ function SetupPinForm() {
         if (!data.success) throw new Error(data.error || 'Error al obtener claves')
         setKeysData(data)
 
-        const { accountKeys } = useCryptoStore.getState()
-        const hasKeysInMemory = accountKeys.size > 0
-        const hasKeysInDB = data.encrypted_keys?.length > 0
+        if (data.pin_v2) {
+          // Already has a PIN (v2): nothing to set up; the private layout unlocks if needed
+          useAuthStore.getState().setHasSeparatePin(true)
+          router.replace(fromParam)
+          return
+        }
 
-        if (hasKeysInMemory) {
-          // Already unlocked (e.g. came here via /unlock fallback) → go straight to PIN
-          setPhase('pin')
-        } else if (hasKeysInDB) {
-          // Keys exist in DB but not in memory (F5 scenario) → need password first
+        if (data.encrypted_keys?.length > 0) {
+          // Existing data: the PIN will wrap the UserKey of the login password, so it is needed
+          // even if the keys are already in memory (that key cannot be exported)
           setPhase('password')
         } else {
           // OAuth / fresh setup — no keys anywhere → create new account
@@ -90,7 +95,7 @@ function SetupPinForm() {
       }
     }
     init()
-  }, [])
+  }, [router, fromParam])
 
   // Step 1: unlock with login password
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -100,18 +105,21 @@ function SetupPinForm() {
     setPasswordLoading(true)
     try {
       const cryptoStore = useCryptoStore.getState()
-      await cryptoStore.deriveAndSetUserKey(password, keysData.key_salt)
-      const userKey = useCryptoStore.getState().userKey
-      if (!userKey) throw new Error('No se pudo derivar la clave')
+      const { raw } = await deriveUserKeyExtractable(password, keysData.key_salt)
+      const userKey = await importUserKey(raw)
 
       if (keysData.verification_blob) {
         const isValid = await verifyUserKey(keysData.verification_blob, userKey)
         if (!isValid) {
-          cryptoStore.lock()
+          raw.fill(0)
           setPasswordError('Contraseña incorrecta')
           return
         }
       }
+
+      userKeyRawRef.current?.fill(0)
+      userKeyRawRef.current = raw
+      cryptoStore.setUserKey(userKey)
 
       if (keysData.encrypted_keys?.length) {
         await cryptoStore.unlockAccounts(
@@ -165,27 +173,34 @@ function SetupPinForm() {
       }
       if (!kd) throw new Error('No se pudieron obtener las claves')
 
-      await deriveAndSetUserKey(pin, kd.key_salt)
-
-      const cryptoState = useCryptoStore.getState()
-      const hasExistingKeys = cryptoState.accountKeys.size > 0
+      const hasExistingKeys = (kd.encrypted_keys?.length ?? 0) > 0
+      let userKeyRaw = userKeyRawRef.current
+      let verificationBlob: string | undefined
 
       if (hasExistingKeys) {
-        // Re-encrypt existing account keys with the new PIN-derived UserKey
-        const newUserKey = cryptoState.userKey!
-        for (const [accountId, { key }] of cryptoState.accountKeys) {
-          const newEncryptedKey = await encryptAccountKey(key, newUserKey)
-          await accounts.saveAccountKey(accountId, newEncryptedKey)
+        // The UserKey unlocked with the password becomes the fixed data key: the account keys,
+        // the verification blob and the recovery blob stay as they are
+        if (!userKeyRaw) {
+          setPhase('password')
+          return
         }
       } else {
-        // OAuth / fresh setup → create a new account
+        // OAuth / fresh setup: a new random UserKey
+        userKeyRaw = generateUserKeyRaw()
+        const newUserKey = await importUserKey(userKeyRaw)
+        useCryptoStore.getState().setUserKey(newUserKey)
+        verificationBlob = await generateVerificationBlob(newUserKey)
+      }
+
+      // Verifier and wrapped UserKey are written together: from here the user is on PIN v2
+      await setPinForUserKey(pin, userKeyRaw, verificationBlob)
+
+      if (!hasExistingKeys) {
         await generateAndSaveAccountKey(effectiveCsrf || undefined)
       }
 
       const userKey = useCryptoStore.getState().userKey
       if (userKey) {
-        await auth.saveVerificationBlob(await generateVerificationBlob(userKey))
-
         // Mark separate PIN as configured
         useAuthStore.getState().setHasSeparatePin(true)
 
@@ -198,7 +213,6 @@ function SetupPinForm() {
         const words = generateBIP39Mnemonic()
         const recoverySalt = generateSalt()
         const recoveryKey = await deriveRecoveryKey(words, recoverySalt)
-        const { raw: userKeyRaw } = await deriveUserKeyExtractable(pin, kd.key_salt)
         const recoveryBlob = await generateRecoveryBlob(userKeyRaw, recoveryKey)
 
         await fetch('/api/proxy/auth/recovery-blob', {
@@ -210,6 +224,9 @@ function SetupPinForm() {
           body: JSON.stringify({ recoveryBlob, recoverySalt }),
           credentials: 'include',
         })
+
+        userKeyRaw.fill(0)
+        userKeyRawRef.current = null
 
         setMnemonic(words)
         setPhase('bip39')
