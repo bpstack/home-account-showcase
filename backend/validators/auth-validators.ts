@@ -89,7 +89,34 @@ export type RefreshInput = z.infer<typeof refreshSchema>
  */
 export type PinInput = z.infer<typeof pinSchema>
 
+const hex64Schema = z.string().regex(/^[0-9a-fA-F]{64}$/, 'Must be exactly 64 hex characters')
+
+const wrappedUserKeySchema = z
+  .string()
+  .length(80, 'Wrapped user key must encode exactly 60 bytes')
+  .regex(/^[A-Za-z0-9+/]+$/, 'Wrapped user key must be base64')
+  .refine((value) => Buffer.from(value, 'base64').length === 60, {
+    message: 'Wrapped user key must encode exactly 60 bytes',
+  })
+
+/**
+ * Schemas del PIN v2: el servidor verifica authKey y guarda la envoltura sellada.
+ */
+export const unlockPinSchema = z.object({
+  authKey: hex64Schema,
+})
+
+export const pinV2Schema = z.object({
+  newKeySalt: hex64Schema,
+  authKey: hex64Schema,
+  wrappedUserKey: wrappedUserKeySchema,
+  verificationBlob: z.string().min(1).optional(),
+})
+
 /**
  * Tipo inferido para cambio de PIN
  */
 export type ChangePinInput = z.infer<typeof changePinSchema>
+
+export type UnlockPinInput = z.infer<typeof unlockPinSchema>
+export type PinV2Input = z.infer<typeof pinV2Schema>

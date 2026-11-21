@@ -159,7 +159,7 @@ causar daño grave a terceros.
 **Areas:**
 
 - Authentication, Session, JWT tokens → `backend/controllers/auth/`, `backend/services/auth/`,
-  `backend/middlewares/authenticateToken.ts`, `frontend/app/api/auth/`
+  `backend/middlewares/authenticateToken.ts`, `backend/models/auth/`, `frontend/app/api/auth/`
 - OAuth/OIDC → `backend/config/oauth.ts`, `frontend/app/(public)/auth-callback/`
 - Authorization → `backend/repositories/`
 - API → `backend/routes/`, `backend/middlewares/`, `frontend/app/api/proxy/`
@@ -167,9 +167,10 @@ causar daño grave a terceros.
   `backend/utils/`
 - File upload → `backend/routes/import/`, `backend/services/import/`
 - Cryptography → `frontend/lib/crypto.ts`, `frontend/stores/cryptoStore.ts`,
-  `frontend/hooks/useEncryption.ts`, `backend/controllers/crypto/`
+  `frontend/hooks/useEncryption.ts`, `backend/controllers/crypto/`, `backend/services/auth/pinService.ts`
 - Communication → `backend/config/db.ts`
-- Configuration / DevOps → `backend/index.ts`, `frontend/next.config.ts`
+- Configuration / DevOps → `backend/index.ts`, `frontend/next.config.ts`, `backend/config/config.ts`,
+  `backend/.env.example`
 - Data protection / privacy → `backend/controllers/ai/`, `backend/services/ai/`
 
 🔴 **Este repositorio es PÚBLICO: cuidado con lo que se expone.** Ni en los `AGENTS.md` ni en ningún

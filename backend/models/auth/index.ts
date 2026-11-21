@@ -24,6 +24,8 @@ export interface UserRow extends User, RowDataPacket {
   password_hash?: string
   key_salt: string
   verification_blob?: string | null
+  pin_verifier?: Buffer | null
+  pin_wrapped_key?: string | null
   recovery_blob?: string | null // UserKey encrypted with RecoveryKey
   recovery_salt?: string | null // Salt for BIP39 key derivation
   bip39_verified?: boolean // User confirmed they saved their phrase

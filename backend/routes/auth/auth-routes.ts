@@ -10,6 +10,8 @@ import {
   getKeys,
   changePassword,
   changePin,
+  unlock,
+  setPin,
   saveVerificationBlob,
   saveRecoveryBlob,
   getRecoveryInfo,
@@ -25,6 +27,7 @@ import { authenticateToken } from '../../middlewares/authenticateToken.js'
 import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
 import {
   loginRateLimiter,
+  pinRateLimiter,
   registerRateLimiter,
   passwordResetRateLimiter,
   verificationRateLimiter,
@@ -69,6 +72,8 @@ router.get('/confirm-email-change', confirmEmailChange)
 router.get('/me', authenticateToken, me)
 router.get('/keys', authenticateToken, getKeys)
 router.post('/change-password', authenticateToken, checkCSRF, changePassword)
+router.post('/unlock', authenticateToken, checkCSRF, pinRateLimiter, unlock)
+router.post('/pin', authenticateToken, checkCSRF, pinRateLimiter, setPin)
 router.post('/change-pin', authenticateToken, checkCSRF, changePin)
 router.post('/verification-blob', authenticateToken, checkCSRF, saveVerificationBlob)
 router.post('/logout', authenticateToken, checkCSRF, logout)

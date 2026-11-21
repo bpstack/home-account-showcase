@@ -20,6 +20,22 @@ export const loginRateLimiter = rateLimit({
 })
 
 /**
+ * Rate limiter complementario para comprobar o cambiar el PIN.
+ * El límite principal es el contador persistente por usuario.
+ */
+export const pinRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 7,
+  message: {
+    success: false,
+    error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+})
+
+/**
  * Rate limiter para registro de usuarios
  * Previene enumeración de cuentas y creación masiva
  * Ventana: 1 hora (se resetea tras ese tiempo)

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import * as crypto from 'crypto'
 import * as bcrypt from 'bcrypt'
-import { UserRepository } from '../../repositories/auth/user-repository.js'
+import { UserRepository, type PinUnlockResult } from '../../repositories/auth/user-repository.js'
 import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
 import db from '../../config/db.js'
 import { SALT_ROUNDS } from '../../config/config.js'
@@ -12,6 +12,12 @@ import {
   verifyToken,
 } from '../../services/auth/tokenService.js'
 import { generateCSRFToken, createCSRFCookieOptions } from '../../services/auth/csrfService.js'
+import {
+  computeVerifier,
+  openWrappedKey,
+  sealWrappedKey,
+  verifiersMatch,
+} from '../../services/auth/pinService.js'
 import { sendPasswordResetEmail } from '../../services/email/email-service.js'
 import { sendVerificationTokenEmail } from './email-verification-controller.js'
 import { logger } from '../../utils/logger.js'
@@ -19,9 +25,13 @@ import {
   registerSchema,
   loginSchema,
   changePinSchema,
+  unlockPinSchema,
+  pinV2Schema,
   type RegisterInput,
   type LoginInput,
   type ChangePinInput,
+  type UnlockPinInput,
+  type PinV2Input,
 } from '../../validators/auth-validators.js'
 import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
@@ -141,6 +151,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     key_salt: userWithSalt.key_salt,
     verification_blob: userWithSalt.verification_blob || null,
     encrypted_keys: encryptedKeys,
+    pin_v2: userWithSalt.pin_v2,
     csrfToken,
   })
 })
@@ -181,7 +192,7 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 
 export const getKeys = asyncHandler(async (req: Request, res: Response) => {
   const [rows] = await db.query<UserRow[]>(
-    `SELECT key_salt, verification_blob, bip39_verified FROM users WHERE id = ?`,
+    `SELECT key_salt, verification_blob, bip39_verified, pin_verifier FROM users WHERE id = ?`,
     [req.user!.id]
   )
   const user = rows[0]
@@ -197,6 +208,7 @@ export const getKeys = asyncHandler(async (req: Request, res: Response) => {
     verification_blob: user.verification_blob || null,
     bip39_verified: user.bip39_verified || false,
     encrypted_keys: encryptedKeys,
+    pin_v2: user.pin_verifier != null,
   })
 })
 
@@ -233,7 +245,84 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
   })
 })
 
+async function rejectPinV2(userId: string, res: Response): Promise<boolean> {
+  if (!(await UserRepository.isPinV2(userId))) return false
+  res.status(409).json({ code: 'PIN_V2' })
+  return true
+}
+
+export const unlock = asyncHandler(async (req: Request, res: Response) => {
+  const validationResult = unlockPinSchema.safeParse(req.body)
+  if (!validationResult.success) {
+    throw new AppError(validationResult.error.issues[0]?.message || 'Invalid data', 400)
+  }
+
+  const { authKey } = validationResult.data as UnlockPinInput
+  const authKeyBytes = Buffer.from(authKey, 'hex')
+  const candidate = computeVerifier(req.user!.id, authKeyBytes)
+  authKeyBytes.fill(0)
+
+  let result: PinUnlockResult
+  try {
+    result = await UserRepository.attemptPinUnlock(req.user!.id, (storedVerifier) =>
+      verifiersMatch(storedVerifier, candidate)
+    )
+  } finally {
+    candidate.fill(0)
+  }
+
+  if (result.status === 'not-v2') {
+    res.status(409).json({ code: 'PIN_NOT_V2' })
+    return
+  }
+  if (result.status === 'locked') {
+    res.status(423).json({ code: 'PIN_LOCKED', minutes: result.minutes })
+    return
+  }
+  if (result.status === 'invalid') {
+    res.status(422).json({ code: 'PIN_INVALID', remaining: result.remaining })
+    return
+  }
+
+  const wrappedUserKey = openWrappedKey(req.user!.id, result.sealedWrappedKey)
+  const encryptedKeys = await AccountKeyRepository.getByUserId(req.user!.id)
+  res.status(200).json({
+    wrappedUserKey,
+    encrypted_keys: encryptedKeys,
+    verification_blob: result.verificationBlob,
+  })
+})
+
+export const setPin = asyncHandler(async (req: Request, res: Response) => {
+  const validationResult = pinV2Schema.safeParse(req.body)
+  if (!validationResult.success) {
+    throw new AppError(validationResult.error.issues[0]?.message || 'Invalid data', 400)
+  }
+
+  const { newKeySalt, authKey, wrappedUserKey, verificationBlob } =
+    validationResult.data as PinV2Input
+  const authKeyBytes = Buffer.from(authKey, 'hex')
+  const pinVerifier = computeVerifier(req.user!.id, authKeyBytes)
+  authKeyBytes.fill(0)
+
+  try {
+    const sealedWrappedKey = sealWrappedKey(req.user!.id, wrappedUserKey)
+    await UserRepository.setPinV2(req.user!.id, {
+      keySalt: newKeySalt,
+      pinVerifier,
+      sealedWrappedKey,
+      verificationBlob,
+    })
+  } finally {
+    pinVerifier.fill(0)
+  }
+
+  res.status(200).json({ success: true })
+})
+
 export const changePin = asyncHandler(async (req: Request, res: Response) => {
+  if (await rejectPinV2(req.user!.id, res)) return
+
   const validationResult = changePinSchema.safeParse(req.body)
   if (!validationResult.success) {
     throw new AppError(validationResult.error.issues[0]?.message || 'Invalid data', 400)
@@ -332,6 +421,8 @@ export const getRecoveryInfo = asyncHandler(async (req: Request, res: Response) 
 })
 
 export const recoverWithBip39 = asyncHandler(async (req: Request, res: Response) => {
+  if (await rejectPinV2(req.user!.id, res)) return
+
   const { newKeySalt, verificationBlob, recoveryBlob, reEncryptedKeys } = req.body
 
   if (!newKeySalt || !verificationBlob || !recoveryBlob || !reEncryptedKeys?.length) {
@@ -389,11 +480,15 @@ export const recordFailedBip39 = asyncHandler(async (req: Request, res: Response
 })
 
 export const recordFailedPin = asyncHandler(async (req: Request, res: Response) => {
+  if (await rejectPinV2(req.user!.id, res)) return
+
   const result = await UserRepository.recordFailedPinAttempt(req.user!.id)
   res.status(200).json({ success: true, ...result })
 })
 
 export const resetPinAttempts = asyncHandler(async (req: Request, res: Response) => {
+  if (await rejectPinV2(req.user!.id, res)) return
+
   await UserRepository.resetPinAttempts(req.user!.id)
   res.status(200).json({ success: true })
 })

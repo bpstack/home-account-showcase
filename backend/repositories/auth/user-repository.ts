@@ -17,6 +17,16 @@ import type {
 import { AppError } from '../../utils/app-error.js'
 import { logger } from '../../utils/logger.js'
 
+export type PinUnlockResult =
+  | { status: 'not-v2' }
+  | { status: 'locked'; minutes: number }
+  | { status: 'invalid'; remaining: number }
+  | {
+      status: 'success'
+      sealedWrappedKey: string
+      verificationBlob: string | null
+    }
+
 export class UserRepository {
   /**
    * Crear nuevo usuario + account automática (opcional)
@@ -104,14 +114,16 @@ export class UserRepository {
    * Login con email y password
    * Devuelve key_salt para que el cliente derive la User Key
    */
-  static async login({
-    email,
-    password,
-  }: LoginDTO): Promise<
-    User & { key_salt: string; verification_blob: string | null; email_verified: boolean }
+  static async login({ email, password }: LoginDTO): Promise<
+    User & {
+      key_salt: string
+      verification_blob: string | null
+      email_verified: boolean
+      pin_v2: boolean
+    }
   > {
     const [rows] = await db.query<UserRow[]>(
-      `SELECT id, email, name, password_hash, key_salt, verification_blob, email_verified, created_at, updated_at
+      `SELECT id, email, name, password_hash, key_salt, verification_blob, pin_verifier, email_verified, created_at, updated_at
        FROM users
        WHERE email = ?`,
       [email]
@@ -139,6 +151,7 @@ export class UserRepository {
       key_salt: user.key_salt,
       verification_blob: user.verification_blob ?? null,
       email_verified: user.email_verified === true || (user.email_verified as unknown) === 1,
+      pin_v2: user.pin_verifier != null,
       created_at: user.created_at,
       updated_at: user.updated_at,
     }
@@ -489,6 +502,114 @@ export class UserRepository {
       userId,
     ])
     return rows[0]?.password_hash !== null
+  }
+
+  // ============================================
+  // PIN V2 METHODS
+  // ============================================
+
+  /**
+   * Evaluate one PIN v2 attempt while holding the user's row lock. The comparison callback is
+   * synchronous and runs inside the transaction, so concurrent requests cannot pass the lock check
+   * together before one of them records its result.
+   */
+  static async attemptPinUnlock(
+    userId: string,
+    matches: (storedVerifier: Buffer) => boolean
+  ): Promise<PinUnlockResult> {
+    const connection = await db.getConnection()
+
+    try {
+      await connection.beginTransaction()
+      const [rows] = await connection.query<UserRow[]>(
+        `SELECT pin_verifier, pin_wrapped_key, pin_attempts, pin_locked_until, verification_blob
+         FROM users
+         WHERE id = ?
+         FOR UPDATE`,
+        [userId]
+      )
+      const user = rows[0]
+      if (!user) throw new AppError('User not found', 404)
+
+      if (!user.pin_verifier) {
+        await connection.commit()
+        return { status: 'not-v2' }
+      }
+
+      if (user.pin_locked_until && new Date(user.pin_locked_until) > new Date()) {
+        const minutes = Math.max(
+          1,
+          Math.ceil((new Date(user.pin_locked_until).getTime() - Date.now()) / 60000)
+        )
+        await connection.commit()
+        return { status: 'locked', minutes }
+      }
+
+      if (!matches(user.pin_verifier)) {
+        const attempts = (user.pin_attempts || 0) + 1
+        await connection.query(
+          `UPDATE users
+           SET pin_attempts = pin_attempts + 1,
+               pin_locked_until = IF(pin_attempts >= 5, DATE_ADD(NOW(), INTERVAL 30 MINUTE), pin_locked_until)
+           WHERE id = ?`,
+          [userId]
+        )
+        await connection.commit()
+        return { status: 'invalid', remaining: Math.max(0, 5 - attempts) }
+      }
+
+      if (!user.pin_wrapped_key) {
+        throw new Error('PIN v2 data is incomplete')
+      }
+
+      await connection.query(
+        `UPDATE users SET pin_attempts = 0, pin_locked_until = NULL WHERE id = ?`,
+        [userId]
+      )
+      await connection.commit()
+
+      return {
+        status: 'success',
+        sealedWrappedKey: user.pin_wrapped_key,
+        verificationBlob: user.verification_blob ?? null,
+      }
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
+  /** Write the verifier and the wrapping it releases together (the PIN v2 golden rule). */
+  static async setPinV2(
+    userId: string,
+    data: {
+      keySalt: string
+      pinVerifier: Buffer
+      sealedWrappedKey: string
+      verificationBlob?: string
+    }
+  ): Promise<void> {
+    const [result] = await db.query(
+      `UPDATE users
+       SET key_salt = ?, pin_verifier = ?, pin_wrapped_key = ?,
+           verification_blob = COALESCE(?, verification_blob),
+           pin_attempts = 0, pin_locked_until = NULL
+       WHERE id = ?`,
+      [data.keySalt, data.pinVerifier, data.sealedWrappedKey, data.verificationBlob ?? null, userId]
+    )
+
+    if ((result as any).affectedRows === 0) {
+      throw new AppError('User not found', 404)
+    }
+  }
+
+  static async isPinV2(userId: string): Promise<boolean> {
+    const [rows] = await db.query<UserRow[]>(`SELECT pin_verifier FROM users WHERE id = ?`, [
+      userId,
+    ])
+    return rows[0]?.pin_verifier != null
   }
 
   // ============================================
