@@ -13,10 +13,15 @@ function AuthCallbackHandler() {
 
   useEffect(() => {
     const handleCallback = async () => {
+      // One-time code in the fragment: the browser never sends it to a server, so it stays out
+      // of logs and the Referer. It is removed from the address bar at once.
+      const code = new URLSearchParams(window.location.hash.slice(1)).get('code')
+      if (code) window.history.replaceState(null, '', window.location.pathname)
+
       const accessToken = searchParams.get('accessToken')
       const refreshToken = searchParams.get('refreshToken')
       const csrfToken = searchParams.get('csrfToken')
-      const redirect = searchParams.get('redirect') || '/dashboard'
+      let redirect = searchParams.get('redirect') || '/dashboard'
       const errorParam = searchParams.get('error')
 
       if (errorParam) {
@@ -24,7 +29,7 @@ function AuthCallbackHandler() {
         return
       }
 
-      if (!accessToken || !refreshToken || !csrfToken) {
+      if (!code && (!accessToken || !refreshToken || !csrfToken)) {
         setError('Tokens de autenticación no encontrados')
         return
       }
@@ -33,11 +38,17 @@ function AuthCallbackHandler() {
         const res = await fetch('/api/auth/oauth-callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accessToken, refreshToken, csrfToken }),
+          // Old format (tokens in the URL) only until the backend hands over a code
+          body: JSON.stringify(code ? { code } : { accessToken, refreshToken, csrfToken }),
         })
 
         if (!res.ok) {
           throw new Error('Error al establecer sesión')
+        }
+
+        if (code) {
+          const { next } = (await res.json()) as { next?: string }
+          redirect = next === 'setup-pin' ? '/setup-pin' : '/unlock'
         }
 
         // Recuperar redirect guardado antes del OAuth (ej: /invite/[token])
