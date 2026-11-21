@@ -28,6 +28,7 @@ import {
   changePinSchema,
   unlockPinSchema,
   pinV2Schema,
+  PASSWORD_MIN_LENGTH,
   type RegisterInput,
   type LoginInput,
   type ChangePinInput,
@@ -220,8 +221,8 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
     throw new AppError('Current and new password are required', 400)
   }
 
-  if (newPassword.length < 6) {
-    throw new AppError('New password must be at least 6 characters', 400)
+  if (typeof newPassword !== 'string' || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new AppError(`New password must be at least ${PASSWORD_MIN_LENGTH} characters`, 400)
   }
 
   if (newKeySalt && (!reEncryptedKeys || reEncryptedKeys.length === 0)) {
@@ -611,8 +612,8 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError('Email, token, and new password are required', 400)
   }
 
-  if (newPassword.length < 6) {
-    throw new AppError('La contraseña debe tener al menos 6 caracteres', 400)
+  if (typeof newPassword !== 'string' || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new AppError(`La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`, 400)
   }
 
   // Hash the incoming token to compare with DB

@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => {
       setPinV2: vi.fn(),
       isPinV2: vi.fn(),
       changePin: vi.fn(),
+      changePassword: vi.fn(),
       recordFailedPinAttempt: vi.fn(),
       resetPinAttempts: vi.fn(),
     },
@@ -51,6 +52,7 @@ vi.mock('../../services/email/email-service.js', () => ({ sendPasswordResetEmail
 vi.mock('./email-verification-controller.js', () => ({ sendVerificationTokenEmail: vi.fn() }))
 
 import {
+  changePassword,
   changePin,
   getKeys,
   getResetInfo,
@@ -378,5 +380,24 @@ describe('resetPassword', () => {
     expect(statements[4]).toContain('UPDATE users SET recovery_blob = NULL')
     expect(mocks.connection.commit).toHaveBeenCalledOnce()
     expect(mocks.connection.release).toHaveBeenCalledOnce()
+  })
+})
+
+// Requirement: a new login password has at least 8 characters, enforced by the server.
+describe('password minimum length', () => {
+  it('change-password rejects 7 characters and accepts 8', async () => {
+    const short = await run(changePassword, { currentPassword: 'old', newPassword: 'abcd12!' })
+    expect(short.error?.statusCode).toBe(400)
+    expect(mocks.repo.changePassword).not.toHaveBeenCalled()
+
+    const ok = await run(changePassword, { currentPassword: 'old', newPassword: 'abcd123!' })
+    expect(ok.status).toBe(200)
+    expect(mocks.repo.changePassword).toHaveBeenCalledOnce()
+  })
+
+  it('reset-password rejects 7 characters before looking up the token', async () => {
+    const out = await run(resetPassword, { ...resetFields, newPassword: 'abcd12!' })
+    expect(out.error?.statusCode).toBe(400)
+    expect(mocks.db.query).not.toHaveBeenCalled()
   })
 })

@@ -2,6 +2,9 @@
 
 import { z } from 'zod'
 
+/** Minimum length of a new login password: register, change and reset (ASVS 5, 6.2.1). */
+export const PASSWORD_MIN_LENGTH = 8
+
 /**
  * Schema de validación para registro
  */
@@ -9,7 +12,7 @@ export const registerSchema = z.object({
   email: z.string().min(1, 'El email es requerido').email('Por favor ingresa un email válido'),
   password: z
     .string()
-    .min(6, 'La contraseña debe tener al menos 6 caracteres')
+    .min(PASSWORD_MIN_LENGTH, `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`)
     .regex(/[0-9]/, 'La contraseña debe contener al menos un número')
     .regex(/[^A-Za-z0-9]/, 'La contraseña debe contener al menos un carácter especial'),
   name: z
