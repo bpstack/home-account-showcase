@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner'
 import { useCryptoStore } from '@/stores/cryptoStore'
 import { verifyUserKey, generateVerificationBlob } from '@/lib/crypto'
+import { saveUserKey } from '@/lib/keyVault'
 
 /**
  * Thrown by login() when the user has a separate encryption PIN.
@@ -278,6 +279,12 @@ export function useAuth() {
       }))
     )
 
+    // Save the key in the device vault (IndexedDB) so the user doesn't need to enter PIN on reload
+    const user = userQuery.data
+    if (user) {
+      await saveUserKey(user.id, userKey)
+    }
+
     useAuthStore.getState().setHasSeparatePin(true)
     router.replace(redirectTo)
   }
@@ -311,6 +318,13 @@ export function useAuth() {
         keyVersion: k.key_version,
       }))
     )
+
+    // Save the key in the device vault (IndexedDB) so the user doesn't need to enter PIN on reload
+    const user = userQuery.data
+    const userKey = useCryptoStore.getState().userKey
+    if (user && userKey) {
+      await saveUserKey(user.id, userKey)
+    }
   }
 
   const register = async (

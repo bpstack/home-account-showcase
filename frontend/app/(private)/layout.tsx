@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -9,6 +9,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { Sidebar, ProfileDropdown, MobileNav } from '@/components/layout'
 import { pageTitle } from '@/components/layout/navigation'
 import { ThemeToggle } from '@/components/ui'
+import { loadUserKey, clearUserKey } from '@/lib/keyVault'
+import { auth } from '@/lib/apiClient'
+import { verifyUserKey } from '@/lib/crypto'
 
 const UNLOCK_PATH = '/unlock'
 const SETUP_PIN_PATH = '/setup-pin'
@@ -19,10 +22,61 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [redirected, setRedirected] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const restoreAttempted = useRef(false)
 
   // Subscribe to crypto store to react to unlock changes
   const isUnlocked = useCryptoStore((s) => s.isUnlocked)
   const hasSeparatePin = useAuthStore((s) => s.hasSeparatePin)
+
+  // Try to restore the UserKey from IndexedDB on app startup
+  useEffect(() => {
+    if (!user || isUnlocked || restoreAttempted.current) return
+    restoreAttempted.current = true
+
+    const restoreKey = async () => {
+      setRestoring(true)
+      try {
+        // Load the key from IndexedDB
+        const key = await loadUserKey(user.id)
+        if (!key) {
+          return
+        }
+
+        // Fetch the encrypted keys and verification blob from the server
+        const { verification_blob, encrypted_keys } = await auth.getKeys()
+        if (!verification_blob || !encrypted_keys || encrypted_keys.length === 0) {
+          await clearUserKey()
+          return
+        }
+
+        // Verify the key matches the verification blob
+        const isValid = await verifyUserKey(verification_blob, key)
+        if (!isValid) {
+          await clearUserKey()
+          return
+        }
+
+        // Key is valid: set it in the store and unlock accounts
+        const cryptoStore = useCryptoStore.getState()
+        cryptoStore.setUserKey(key)
+        await cryptoStore.unlockAccounts(
+          encrypted_keys.map((k) => ({
+            accountId: k.account_id,
+            encryptedKey: k.encrypted_key,
+            keyVersion: k.key_version,
+          }))
+        )
+      } catch {
+        // Any error: clear the key and fall through to normal flow
+        await clearUserKey()
+      } finally {
+        setRestoring(false)
+      }
+    }
+
+    restoreKey()
+  }, [user, isUnlocked])
 
   // A user with a session but locked crypto is sent to /unlock by the effect below before this
   // runs, so this only has to handle the case with no session at all.
@@ -32,6 +86,9 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   }, [isLoading, isAuthenticated, pathname, redirected])
 
   useEffect(() => {
+    // Don't redirect while trying to restore the key from IndexedDB
+    if (restoring) return
+
     // isUnlocked = User Key derived in memory (password was entered)
     // accountKeysSize > 0 is expected for normal users, but users with no accounts
     // would have 0 keys even after unlock — so we only require isUnlocked
@@ -63,14 +120,14 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
       setRedirected(true)
       router.push('/login')
     }
-  }, [user, router, pathname, shouldRedirectToLogin, isUnlocked, hasSeparatePin])
+  }, [user, router, pathname, shouldRedirectToLogin, isUnlocked, hasSeparatePin, restoring])
 
   // Don't show private layout on unlock page
   if (pathname === UNLOCK_PATH) {
     return <>{children}</>
   }
 
-  if (isLoading) {
+  if (isLoading || restoring) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent"></div>

@@ -111,8 +111,7 @@ export default function UnlockPage() {
       </form>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Tus claves de cifrado viven solo en memoria: al recargar o cerrar la pestaña hay que volver
-        a introducirla.
+        Este dispositivo recordará tu PIN hasta que cierres sesión.
       </p>
 
       <p className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-muted-foreground">

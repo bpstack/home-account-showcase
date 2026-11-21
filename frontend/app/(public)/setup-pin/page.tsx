@@ -17,6 +17,8 @@ import {
   encryptAccountKey,
   verifyUserKey,
 } from '@/lib/crypto'
+import { saveUserKey } from '@/lib/keyVault'
+import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 
 const PIN_TITLE = 'Crea tu PIN de cifrado'
@@ -58,6 +60,7 @@ function SetupPinForm() {
   const csrfToken = searchParams.get('csrf')
   const fromParam = searchParams.get('from') || '/dashboard'
   const { deriveAndSetUserKey, generateAndSaveAccountKey, forceUnlockAfterSetup } = useCryptoStore()
+  const { user } = useAuth()
 
   // On mount: fetch keys and decide initial phase
   useEffect(() => {
@@ -185,6 +188,11 @@ function SetupPinForm() {
 
         // Mark separate PIN as configured
         useAuthStore.getState().setHasSeparatePin(true)
+
+        // Save the key in the device vault (IndexedDB) so the user doesn't need to enter PIN on reload
+        if (user) {
+          await saveUserKey(user.id, userKey)
+        }
 
         // Generate BIP39 recovery phrase
         const words = generateBIP39Mnemonic()

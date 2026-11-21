@@ -1,15 +1,16 @@
 /**
- * Crypto Store - In-memory cryptographic key management
+ * Crypto Store - In-memory cryptographic key management with device persistence
  *
- * SECURITY MODEL (v2 - Memory Only):
- * - All CryptoKeys live exclusively in memory (Zustand store)
- * - User password is NEVER persisted
- * - Password must be re-entered after runtime restart (F5, tab close, crash)
+ * SECURITY MODEL (v3 - Memory + Device Vault):
+ * - UserKey lives in memory (Zustand store) AND in IndexedDB (non-extractable CryptoKey)
+ * - The device remembers the key until logout, max 30 days
+ * - Account keys are NEVER persisted (re-decrypted from server on restore)
+ * - User password/PIN is NEVER persisted
  * - Authentication (cookie) is independent from cryptographic unlock
  *
  * STATE MODEL:
  * - Authenticated + Locked  → valid session, no UserKey
- * - Authenticated + Unlocked → UserKey in memory
+ * - Authenticated + Unlocked → UserKey in memory (and in IndexedDB)
  *
  * NOTE:
  * isUnlocked === UserKey present (does NOT imply account data is available)
@@ -27,6 +28,7 @@ import {
   type EncryptedTransaction,
   decryptTransactions,
 } from '@/lib/crypto'
+import { clearUserKey } from '@/lib/keyVault'
 
 interface AccountKeyInfo {
   key: CryptoKey
@@ -43,6 +45,7 @@ interface CryptoState {
 
 interface CryptoActions {
   deriveAndSetUserKey: (_password: string, _salt: string) => Promise<void>
+  setUserKey: (_key: CryptoKey) => void
   forceUnlockAfterSetup: () => void
   generateAndSaveAccountKey: (_csrfToken?: string) => Promise<void>
   unlockAccount: (_accountId: string, _encryptedKey: string, _keyVersion: number) => Promise<void>
@@ -84,6 +87,11 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
       set({ error: 'Error al derivar clave de usuario', isUnlocking: false })
       throw error
     }
+  },
+
+  setUserKey: (key: CryptoKey) => {
+    // Only sets the key. Call unlockAccounts() to set isUnlocked.
+    set({ userKey: key, error: null })
   },
 
   forceUnlockAfterSetup: () => {
@@ -203,6 +211,9 @@ export const useCryptoStore = create<CryptoStore>((set, get) => ({
     const { accountKeys } = get()
     accountKeys.clear()
     set({ userKey: null, accountKeys: new Map(), isUnlocked: false, error: null })
+    // Clear the persisted key. Fire-and-forget: lock() stays synchronous.
+    // The logout flow clears the user query, preventing restore attempts.
+    clearUserKey()
   },
   isAccountUnlocked: (accountId) => get().accountKeys.has(accountId),
 }))
