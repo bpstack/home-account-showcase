@@ -64,7 +64,6 @@ function SetupPinForm() {
 
   const router = useRouter()
   const searchParams = useSearchParams()
-  const csrfToken = searchParams.get('csrf')
   const fromParam = internalPath(searchParams.get('from')) ?? '/dashboard'
   const { generateAndSaveAccountKey, forceUnlockAfterSetup } = useCryptoStore()
   const { user } = useAuth()
@@ -150,7 +149,7 @@ function SetupPinForm() {
     e.preventDefault()
     setPinError('')
 
-    const effectiveCsrf = csrfToken || document.cookie.match(/csrfToken=([^;]+)/)?.[1]
+    const effectiveCsrf = document.cookie.match(/csrfToken=([^;]+)/)?.[1]
 
     if (pin.length < 6 || pin.length > 8) {
       setPinError('El PIN debe tener entre 6 y 8 dígitos')

@@ -8,28 +8,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Obtener cookies actuales para enviar al backend
-    const accessToken = req.cookies.get('accessToken')?.value
+    // The backend ends the session of the refresh token; nothing else is needed
     const refreshToken = req.cookies.get('refreshToken')?.value
-    const csrfToken = req.cookies.get('csrfToken')?.value
 
-    // Notificar al backend (opcional, pero buena práctica)
-    await fetch(`${BACKEND_URL}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken || '',
-        Cookie: [
-          accessToken ? `accessToken=${accessToken}` : '',
-          refreshToken ? `refreshToken=${refreshToken}` : '',
-        ]
-          .filter(Boolean)
-          .join('; '),
-      },
-      cache: 'no-store',
-    }).catch(() => {
-      // Ignorar errores del backend en logout
-    })
+    if (refreshToken) {
+      await fetch(`${BACKEND_URL}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: `refreshToken=${refreshToken}` },
+        cache: 'no-store',
+      }).catch(() => {
+        // The cookies are cleared anyway; the session ends on its own at its expiry
+      })
+    }
 
     // Crear respuesta limpiando cookies
     const response = NextResponse.json({

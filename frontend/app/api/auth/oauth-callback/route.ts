@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  BACKEND_URL,
-  isAllowedOrigin,
-  applySession,
-  sessionFromBackend,
-  accessTokenCookieOptions,
-  refreshTokenCookieOptions,
-  csrfTokenCookieOptions,
-} from '../config'
+import { BACKEND_URL, isAllowedOrigin, applySession, sessionFromBackend } from '../config'
 
 const NEXT_STEPS = ['unlock', 'setup-pin'] as const
 
@@ -40,20 +32,7 @@ export async function POST(req: NextRequest) {
       return response
     }
 
-    // Old format, tokens in the URL: only until the backend hands over a code
-    const { accessToken, refreshToken, csrfToken } = body
-
-    if (!accessToken || !refreshToken || !csrfToken) {
-      return NextResponse.json({ error: 'Tokens missing' }, { status: 400 })
-    }
-
-    const response = NextResponse.json({ success: true })
-
-    response.cookies.set('accessToken', accessToken, accessTokenCookieOptions)
-    response.cookies.set('refreshToken', refreshToken, refreshTokenCookieOptions)
-    response.cookies.set('csrfToken', csrfToken, csrfTokenCookieOptions)
-
-    return response
+    return NextResponse.json({ error: 'Falta el código de inicio de sesión' }, { status: 400 })
   } catch (error) {
     console.error('OAuth callback error:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })

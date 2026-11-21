@@ -26,61 +26,40 @@ function AuthCallbackHandler() {
       const code = new URLSearchParams(window.location.hash.slice(1)).get('code')
       if (code) window.history.replaceState(null, '', window.location.pathname)
 
-      const accessToken = searchParams.get('accessToken')
-      const refreshToken = searchParams.get('refreshToken')
-      const csrfToken = searchParams.get('csrfToken')
-      // Only paths of this app: a `javascript:` or external target would run or leave the site
-      let redirect = internalPath(searchParams.get('redirect')) ?? '/dashboard'
-      const errorParam = searchParams.get('error')
-
-      if (errorParam) {
-        setError(errorParam === 'oauth_invalid' ? 'Error de autenticación OAuth' : errorParam)
+      // A fixed text: what comes in the URL is never shown as is
+      if (searchParams.get('error')) {
+        setError('Error de autenticación OAuth')
         return
       }
 
-      if (!code && (!accessToken || !refreshToken || !csrfToken)) {
-        setError('Tokens de autenticación no encontrados')
+      if (!code) {
+        setError('Falta el código de inicio de sesión. Vuelve a intentarlo.')
         return
       }
 
       try {
+        // The route exchanges the code with the backend, once, and sets the session cookies
         const res = await fetch('/api/auth/oauth-callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          // Old format (tokens in the URL) only until the backend hands over a code
-          body: JSON.stringify(code ? { code } : { accessToken, refreshToken, csrfToken }),
+          body: JSON.stringify({ code }),
         })
 
         if (!res.ok) {
           throw new Error('Error al establecer sesión')
         }
 
-        if (code) {
-          const { next } = (await res.json()) as { next?: string }
-          redirect = next === 'setup-pin' ? '/setup-pin' : '/unlock'
-        }
+        const { next } = (await res.json()) as { next?: string }
+        const step = next === 'setup-pin' ? '/setup-pin' : '/unlock'
 
-        // Recuperar redirect guardado antes del OAuth (ej: /invite/[token])
+        // Destination saved before the OAuth (e.g. /invite/[token]): reached after the PIN step
         const savedRedirect = internalPath(sessionStorage.getItem('oauth_redirect'))
         sessionStorage.removeItem('oauth_redirect')
 
-        // El redirect del backend es /unlock o /setup-pin
-        // Añadir el savedRedirect como parámetro 'from' para que después del unlock
-        // el usuario vaya al destino original
-        let finalRedirect = redirect
-        if (
-          savedRedirect &&
-          (redirect.startsWith('/unlock') || redirect.startsWith('/setup-pin'))
-        ) {
-          const separator = redirect.includes('?') ? '&' : '?'
-          finalRedirect = `${redirect}${separator}from=${encodeURIComponent(savedRedirect)}`
-        } else if (savedRedirect) {
-          // Si el redirect no es unlock/setup-pin, usar el savedRedirect directamente
-          finalRedirect = savedRedirect
-        }
-
         // Full page navigation to ensure cookies are applied
-        window.location.href = finalRedirect
+        window.location.href = savedRedirect
+          ? `${step}?from=${encodeURIComponent(savedRedirect)}`
+          : step
       } catch (err) {
         console.error('Auth callback error:', err)
         setError('Error al establecer la sesión')
