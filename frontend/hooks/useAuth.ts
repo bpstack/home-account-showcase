@@ -10,9 +10,14 @@ import {
 } from '@/stores/authStore'
 import { toast } from 'sonner'
 import { useCryptoStore } from '@/stores/cryptoStore'
-import { verifyUserKey, generateVerificationBlob } from '@/lib/crypto'
+import {
+  verifyUserKey,
+  generateVerificationBlob,
+  deriveUserKeyExtractable,
+  importUserKey,
+} from '@/lib/crypto'
 import { saveUserKey } from '@/lib/keyVault'
-import { unlockUserKeyWithPin } from '@/lib/pinV2'
+import { isPinFormat, migrateToPinV2, unlockUserKeyWithPin } from '@/lib/pinV2'
 
 /**
  * Thrown by login() when a user on the old PIN scheme (v1) has a separate encryption PIN.
@@ -252,6 +257,7 @@ export function useAuth() {
 
     let userKey: CryptoKey
     let keysToUnlock = encrypted_keys
+    let onV2 = pin_v2
 
     if (pin_v2) {
       const unlocked = await unlockUserKeyWithPin(pin, key_salt)
@@ -263,14 +269,30 @@ export function useAuth() {
       if (!encrypted_keys || encrypted_keys.length === 0) {
         throw new Error('No encryption keys found')
       }
-      await cryptoStore.deriveAndSetUserKey(pin, key_salt)
-      const derived = useCryptoStore.getState().userKey
-      if (!derived) throw new Error('User key not available')
-      if (verification_blob && !(await verifyUserKey(verification_blob, derived))) {
-        cryptoStore.lock()
-        throw new Error('Wrong password')
+      // One Argon2id gives both the key for this unlock and the raw bytes the migration wraps
+      const { raw } = await deriveUserKeyExtractable(pin, key_salt)
+      try {
+        const derived = await importUserKey(raw)
+        if (verification_blob && !(await verifyUserKey(verification_blob, derived))) {
+          throw new Error('Wrong password')
+        }
+        cryptoStore.setUserKey(derived)
+        userKey = derived
+
+        // Migrate only a proven key (a wrong key wrapped would lock the user out) and only when
+        // the secret is the PIN: users whose encryption comes from the login password get their
+        // PIN, already v2, on /setup-pin (§6.6).
+        if (
+          verification_blob &&
+          isPinFormat(pin) &&
+          useAuthStore.getState().hasSeparatePin &&
+          (await migrateToPinV2(pin, raw))
+        ) {
+          onV2 = true
+        }
+      } finally {
+        raw.fill(0)
       }
-      userKey = derived
     }
 
     await cryptoStore.unlockAccounts(
@@ -287,7 +309,7 @@ export function useAuth() {
       await saveUserKey(user.id, userKey)
     }
 
-    if (pin_v2) useAuthStore.getState().setHasSeparatePin(true)
+    if (onV2) useAuthStore.getState().setHasSeparatePin(true)
   }
 
   /**
