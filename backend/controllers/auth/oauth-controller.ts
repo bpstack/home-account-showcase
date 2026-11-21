@@ -1,8 +1,7 @@
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
 import { AccountKeyRepository } from '../../repositories/crypto/account-key-repository.js'
-import { generateAccessToken, generateRefreshToken } from '../../services/auth/tokenService.js'
-import { generateCSRFToken } from '../../services/auth/csrfService.js'
+import { continueSession, startOAuthSession } from '../../services/auth/sessionService.js'
 import { asyncHandler } from '../../utils/async-handler.js'
 import { logger } from '../../utils/logger.js'
 import type { OAuthProfile } from '../../config/oauth.js'
@@ -94,35 +93,36 @@ export const oauthCallback = asyncHandler(async (req: Request, res: Response) =>
     }
   }
 
-  const accessToken = await generateAccessToken({ id: user.id, email: user.email })
-  const refreshToken = await generateRefreshToken({ id: user.id, email: user.email })
-  const csrfToken = generateCSRFToken()
+  // A stored session whose first credential is a one-time code. It travels in the fragment, which
+  // the browser never sends to a server, and the frontend exchanges it at POST /auth/oauth/exchange.
+  const code = await startOAuthSession({ id: user.id, email: user.email })
 
-  logger.info('AUTH', 'oauthCallback', 'OAuth session established', {
+  logger.info('AUTH', 'oauthCallback', 'OAuth session started', {
     userId: user.id,
     isNewUser,
-    hasKeySalt: !!user.key_salt,
   })
 
-  // Build token params for cross-domain transfer via auth-callback page
-  const tokenParams = new URLSearchParams({
-    accessToken,
-    refreshToken,
-    csrfToken,
-  })
+  res.redirect(`${FRONTEND_URL}/auth-callback#code=${encodeURIComponent(code)}`)
+})
 
-  let finalRedirect: string
-  if (isNewUser) {
-    finalRedirect = `/setup-pin?csrf=${csrfToken}`
-  } else {
-    const hasEncryption = await AccountKeyRepository.userHasKeys(user.id)
-    if (hasEncryption) {
-      finalRedirect = `/unlock?csrf=${csrfToken}`
-    } else {
-      finalRedirect = `/setup-pin?csrf=${csrfToken}`
-    }
+/**
+ * Exchanges a one-time OAuth code for the session cookies. Called server to server by the Next
+ * route handler, which copies the cookies to the browser. A second exchange of the same code ends
+ * the session. Says where to go next: unlock if the user has encrypted data, setup-pin if not.
+ */
+export const exchangeOAuthCode = asyncHandler(async (req: Request, res: Response) => {
+  const code = req.body?.code
+  if (typeof code !== 'string' || !code) {
+    res.status(400).json({ success: false, error: 'Code is required' })
+    return
   }
 
-  tokenParams.set('redirect', finalRedirect)
-  res.redirect(`${FRONTEND_URL}/auth-callback?${tokenParams.toString()}`)
+  const result = await continueSession(res, code, 'oauth-code')
+  if (!result.ok) {
+    res.status(401).json({ success: false, error: 'Código no válido' })
+    return
+  }
+
+  const hasEncryption = await AccountKeyRepository.userHasKeys(result.userId)
+  res.status(200).json({ success: true, next: hasEncryption ? 'unlock' : 'setup-pin' })
 })

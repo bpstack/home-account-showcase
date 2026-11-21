@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import passport from 'passport'
-import { oauthCallback } from '../../controllers/auth/oauth-controller.js'
+import { exchangeOAuthCode, oauthCallback } from '../../controllers/auth/oauth-controller.js'
 
 const router: Router = Router()
 
@@ -42,5 +42,8 @@ router.get(
   }),
   passportCallback
 )
+
+// One-time code from the OAuth callback → session cookies (server to server, from Next)
+router.post('/oauth/exchange', exchangeOAuthCode)
 
 export default router
