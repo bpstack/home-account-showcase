@@ -562,13 +562,16 @@ export class UserRepository {
       }
 
       if (!matches(user.pin_verifier)) {
+        // Computed here from the locked row (§6.4.3): the value is exact, and a NULL counter
+        // still counts (in SQL, NULL + 1 stays NULL and would never lock)
         const attempts = (user.pin_attempts || 0) + 1
+        const lock = attempts >= 5
         await connection.query(
           `UPDATE users
-           SET pin_attempts = pin_attempts + 1,
-               pin_locked_until = IF(pin_attempts >= 5, DATE_ADD(NOW(), INTERVAL 30 MINUTE), pin_locked_until)
+           SET pin_attempts = ?,
+               pin_locked_until = IF(?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), pin_locked_until)
            WHERE id = ?`,
-          [userId]
+          [attempts, lock, userId]
         )
         await connection.commit()
         return { status: 'invalid', remaining: Math.max(0, 5 - attempts) }

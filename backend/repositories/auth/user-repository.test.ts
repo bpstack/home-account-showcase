@@ -83,12 +83,22 @@ describe('attemptPinUnlock', () => {
 
       expect(result).toEqual({ status: 'invalid', remaining: 4 - previousAttempts })
       expect(mocks.connection.query).toHaveBeenCalledTimes(2)
-      const update = mocks.connection.query.mock.calls[1][0] as string
-      expect(update).toContain('pin_attempts = pin_attempts + 1')
-      expect(update).toContain('IF(pin_attempts >= 5')
-      expect(update).not.toContain('IF(pin_attempts + 1 >= 5')
+      const [update, params] = mocks.connection.query.mock.calls[1]
       expect(update).toContain('INTERVAL 30 MINUTE')
+      // Requirement: failures 1 to 4 do not lock; the 5th does (§6.4.3)
+      const failure = previousAttempts + 1
+      expect(params).toEqual([failure, failure === 5, USER_ID])
     }
+  })
+
+  it('counts a NULL counter as zero previous failures', async () => {
+    selectRow({ pin_verifier: VERIFIER, pin_attempts: null, pin_locked_until: null })
+
+    await expect(UserRepository.attemptPinUnlock(USER_ID, () => false)).resolves.toEqual({
+      status: 'invalid',
+      remaining: 4,
+    })
+    expect(mocks.connection.query.mock.calls[1][1]).toEqual([1, false, USER_ID])
   })
 
   it('locks again after an expired lock without resetting the counter first', async () => {
@@ -103,10 +113,8 @@ describe('attemptPinUnlock', () => {
       remaining: 0,
     })
 
-    const update = mocks.connection.query.mock.calls[1][0] as string
-    expect(update).toContain('pin_attempts = pin_attempts + 1')
-    expect(update).toContain('IF(pin_attempts >= 5')
-    expect(update).not.toContain('pin_attempts = 0')
+    // Requirement: after an expired lock the counter is not reset, so the next failure locks again
+    expect(mocks.connection.query.mock.calls[1][1]).toEqual([6, true, USER_ID])
   })
 
   it('resets attempts after a success and returns the sealed data', async () => {
