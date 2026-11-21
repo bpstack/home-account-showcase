@@ -119,7 +119,7 @@ function makeIndexedDBStore(): KeyVaultStore | null {
     async get() {
       try {
         const db = await openDB()
-        return new Promise((resolve, reject) => {
+        return await new Promise<VaultEntry | undefined>((resolve, reject) => {
           const tx = db.transaction(STORE_NAME, 'readonly')
           const store = tx.objectStore(STORE_NAME)
           const request = store.get(ENTRY_KEY)

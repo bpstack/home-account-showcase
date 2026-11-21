@@ -24,6 +24,9 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   const [redirected, setRedirected] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const restoreAttempted = useRef(false)
+  // The redirect effect runs in the same commit as the restore effect, before `restoring` is set:
+  // a ref is visible to it at once, so /unlock never flashes while the key is being restored.
+  const restoreInFlight = useRef(false)
 
   // Subscribe to crypto store to react to unlock changes
   const isUnlocked = useCryptoStore((s) => s.isUnlocked)
@@ -33,6 +36,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (!user || isUnlocked || restoreAttempted.current) return
     restoreAttempted.current = true
+    restoreInFlight.current = true
 
     const restoreKey = async () => {
       setRestoring(true)
@@ -71,6 +75,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
         // Any error: clear the key and fall through to normal flow
         await clearUserKey()
       } finally {
+        restoreInFlight.current = false
         setRestoring(false)
       }
     }
@@ -87,7 +92,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     // Don't redirect while trying to restore the key from IndexedDB
-    if (restoring) return
+    if (restoring || restoreInFlight.current) return
 
     // isUnlocked = User Key derived in memory (password was entered)
     // accountKeysSize > 0 is expected for normal users, but users with no accounts
