@@ -24,6 +24,17 @@ export const oauthCallback = asyncHandler(async (req: Request, res: Response) =>
   let isNewUser = false
 
   if (!user) {
+    // Linking or creating an account by email trusts that the email is this person's. Without the
+    // provider's verification, anyone could register someone else's address there and get their
+    // session here.
+    if (!profile.emailVerified) {
+      logger.warn('AUTH', 'oauthCallback', 'OAuth email not verified by the provider', {
+        provider: profile.provider,
+      })
+      res.redirect(`${FRONTEND_URL}/login?error=oauth_email_unverified`)
+      return
+    }
+
     const existingByEmail = await UserRepository.getByEmailForOAuth(profile.email)
 
     if (existingByEmail) {

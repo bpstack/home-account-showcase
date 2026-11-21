@@ -6,8 +6,33 @@ export interface OAuthProfile {
   provider: 'google' | 'github'
   id: string
   email: string
+  /** Whether the provider says the user proved they own `email`. Only then is it trusted. */
+  emailVerified: boolean
   name: string
   avatar?: string
+}
+
+/** Google's userinfo (OpenID) profile carries `email_verified` as `verified` on the first email. */
+export function googleEmail(profile: any): { email: string; emailVerified: boolean } {
+  const first = profile?.emails?.[0]
+  const verified = first?.verified
+  return { email: first?.value || '', emailVerified: verified === true || verified === 'true' }
+}
+
+/**
+ * GitHub with `allRawEmails`: every address of the account with its `primary` and `verified`
+ * flags. The primary one if verified, otherwise any verified one; none means not trusted.
+ */
+export function githubEmail(profile: any): { email: string; emailVerified: boolean } {
+  const emails: Array<{ value?: string; primary?: boolean; verified?: boolean }> =
+    profile?.emails || []
+  const chosen =
+    emails.find((e) => e.primary && e.verified === true && e.value) ||
+    emails.find((e) => e.verified === true && e.value)
+  if (chosen?.value) return { email: chosen.value, emailVerified: true }
+  // Never trusted; a placeholder keeps an already linked account able to sign in by its GitHub id
+  const fallback = emails.find((e) => e.primary)?.value || `${profile?.username}@github.local`
+  return { email: fallback, emailVerified: false }
 }
 
 export function configureOAuth(): void {
@@ -35,7 +60,7 @@ export function configureOAuth(): void {
         const oauthProfile: OAuthProfile = {
           provider: 'google',
           id: profile.id,
-          email: profile.emails?.[0]?.value || '',
+          ...googleEmail(profile),
           name: profile.displayName,
           avatar: profile.photos?.[0]?.value,
         }
@@ -51,6 +76,8 @@ export function configureOAuth(): void {
         clientSecret: GITHUB_CLIENT_SECRET,
         callbackURL: `${CALLBACK_BASE}/api/auth/github/callback`,
         scope: ['user:email'],
+        // Every address with its `verified` flag; by default only the primary one, unflagged
+        allRawEmails: true,
       },
       (
         _accessToken: string,
@@ -61,7 +88,7 @@ export function configureOAuth(): void {
         const oauthProfile: OAuthProfile = {
           provider: 'github',
           id: profile.id,
-          email: profile.emails?.[0]?.value || `${profile.username}@github.local`,
+          ...githubEmail(profile),
           name: profile.displayName || profile.username,
           avatar: profile.photos?.[0]?.value,
         }
