@@ -1,27 +1,13 @@
 // routes/auth/user-routes.ts
 
 import { Router } from 'express'
-import {
-  getAllUsers,
-  getUserById,
-  updateUser,
-  deleteUser,
-  resetUserPassword,
-  changeUserPassword,
-} from '../../controllers/auth/user-controllers.js'
+import { updateCurrentUser } from '../../controllers/auth/user-controllers.js'
 import { authenticateToken } from '../../middlewares/authenticateToken.js'
+import { checkCSRF } from '../../middlewares/csrfMiddleware.js'
 
 const router: Router = Router()
 
-// Todas las rutas requieren autenticación
-router.use(authenticateToken)
-
-// Rutas de usuarios
-router.get('/', getAllUsers)
-router.get('/:id', getUserById)
-router.put('/:id', updateUser)
-router.delete('/:id', deleteUser)
-router.post('/:id/reset-password', resetUserPassword)
-router.post('/:id/change-password', changeUserPassword)
+// Only the signed-in user, identified by the session, never by the URL
+router.put('/me', authenticateToken, checkCSRF, updateCurrentUser)
 
 export default router

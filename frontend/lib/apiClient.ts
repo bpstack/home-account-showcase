@@ -456,31 +456,10 @@ export const auth = {
 
 // Users
 export const users = {
-  getAll: () => request<{ success: boolean; users: User[] }>('/users'),
-
-  getById: (id: string) => request<{ success: boolean; user: User }>(`/users/${id}`),
-
-  update: (id: string, data: { name?: string; email?: string }) =>
-    request<{ success: boolean; user: User }>(`/users/${id}`, {
+  updateName: (name: string) =>
+    request<{ success: boolean; user: User }>('/users/me', {
       method: 'PUT',
-      body: JSON.stringify(data),
-    }),
-
-  delete: (id: string) =>
-    request<{ success: boolean; message: string }>(`/users/${id}`, {
-      method: 'DELETE',
-    }),
-
-  resetPassword: (id: string, newPassword: string) =>
-    request<{ success: boolean; message: string }>(`/users/${id}/reset-password`, {
-      method: 'POST',
-      body: JSON.stringify({ newPassword }),
-    }),
-
-  changePassword: (id: string, currentPassword: string, newPassword: string) =>
-    request<{ success: boolean; message: string }>(`/users/${id}/change-password`, {
-      method: 'POST',
-      body: JSON.stringify({ currentPassword, newPassword }),
+      body: JSON.stringify({ name }),
     }),
 }
 

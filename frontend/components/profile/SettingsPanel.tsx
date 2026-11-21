@@ -130,7 +130,7 @@ function UserSettings() {
     setNameError('')
     setIsSavingName(true)
     try {
-      await users.update(user.id, { name: newName.trim() })
+      await users.updateName(newName.trim())
       toast.success('Nombre actualizado correctamente')
       queryClient.invalidateQueries({ queryKey: ['auth', 'user'] })
       setIsEditingName(false)

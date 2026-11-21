@@ -2,97 +2,21 @@ import { asyncHandler } from '../../utils/async-handler.js'
 import { AppError } from '../../utils/app-error.js'
 import { Request, Response } from 'express'
 import { UserRepository } from '../../repositories/auth/user-repository.js'
-import type { UpdateUserDTO } from '../../models/auth/index.js'
-import {
-  updateUserNameSchema,
-  updateUserEmailSchema,
-} from '../../validators/settings-validators.js'
+import { updateUserNameSchema } from '../../validators/settings-validators.js'
 
-export const getAllUsers = asyncHandler(async (_req: Request, res: Response) => {
-  const users = await UserRepository.getAll()
-  res.status(200).json({ success: true, users })
-})
-
-export const getUserById = asyncHandler(async (req: Request, res: Response) => {
-  const user = await UserRepository.getById(req.params.id)
-
-  if (!user) {
-    throw new AppError('Usuario no encontrado', 404)
+// Only the name: the email changes through the verified email-change flow
+export const updateCurrentUser = asyncHandler(async (req: Request, res: Response) => {
+  const nameResult = updateUserNameSchema.safeParse({ name: req.body?.name })
+  if (!nameResult.success) {
+    const messages = nameResult.error.issues.map((i) => i.message).join(', ')
+    throw new AppError(messages, 400)
   }
 
-  res.status(200).json({ success: true, user })
-})
-
-export const updateUser = asyncHandler(async (req: Request, res: Response) => {
-  const { name, email } = req.body as UpdateUserDTO
-
-  if (name) {
-    const nameResult = updateUserNameSchema.safeParse({ name })
-    if (!nameResult.success) {
-      const messages = nameResult.error.issues.map((i) => i.message).join(', ')
-      throw new AppError(messages, 400)
-    }
-  }
-
-  if (email) {
-    const emailResult = updateUserEmailSchema.safeParse({ email })
-    if (!emailResult.success) {
-      const messages = emailResult.error.issues.map((i) => i.message).join(', ')
-      throw new AppError(messages, 400)
-    }
-  }
-
-  const updatedUser = await UserRepository.update(req.params.id, { name, email })
+  const updatedUser = await UserRepository.update(req.user!.id, { name: nameResult.data.name })
 
   if (!updatedUser) {
     throw new AppError('Usuario no encontrado', 404)
   }
 
   res.status(200).json({ success: true, user: updatedUser })
-})
-
-export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
-  const deleted = await UserRepository.delete(req.params.id)
-
-  if (!deleted) {
-    throw new AppError('Usuario no encontrado', 404)
-  }
-
-  res.status(200).json({ success: true, message: 'Usuario eliminado correctamente' })
-})
-
-export const resetUserPassword = asyncHandler(async (req: Request, res: Response) => {
-  const { newPassword } = req.body
-
-  if (!newPassword || newPassword.length < 6) {
-    throw new AppError('La contraseña debe tener al menos 6 caracteres', 400)
-  }
-
-  const success = await UserRepository.resetPassword(req.params.id, newPassword)
-
-  if (!success) {
-    throw new AppError('Usuario no encontrado', 404)
-  }
-
-  res.status(200).json({ success: true, message: 'Contraseña actualizada correctamente' })
-})
-
-export const changeUserPassword = asyncHandler(async (req: Request, res: Response) => {
-  const { currentPassword, newPassword } = req.body
-
-  if (!currentPassword || !newPassword) {
-    throw new AppError('Se requiere contraseña actual y nueva', 400)
-  }
-
-  if (newPassword.length < 6) {
-    throw new AppError('La nueva contraseña debe tener al menos 6 caracteres', 400)
-  }
-
-  const success = await UserRepository.changePassword(req.params.id, currentPassword, newPassword)
-
-  if (!success) {
-    throw new AppError('Usuario no encontrado', 404)
-  }
-
-  res.status(200).json({ success: true, message: 'Contraseña actualizada correctamente' })
 })
