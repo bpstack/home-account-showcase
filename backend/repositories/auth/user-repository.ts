@@ -17,6 +17,7 @@ import type {
 } from '../../models/auth/index.js'
 import { AppError } from '../../utils/app-error.js'
 import { logger } from '../../utils/logger.js'
+import { comparePassword } from '../../utils/password-compare.js'
 
 export type PinUnlockResult =
   | { status: 'not-v2' }
@@ -134,7 +135,7 @@ export class UserRepository {
 
     const DUMMY_HASH = '$2b$10$dummyhashfortimingatttacksprevent'
     const passwordToCompare = user?.password_hash || DUMMY_HASH
-    const isPasswordValid = await bcrypt.compare(password, passwordToCompare)
+    const isPasswordValid = await comparePassword(password, passwordToCompare)
 
     if (!user) {
       throw new AppError('Invalid credentials', 401)
@@ -319,7 +320,7 @@ export class UserRepository {
         throw new AppError('User not found', 404)
       }
 
-      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash!)
+      const isCurrentPasswordValid = await comparePassword(currentPassword, user.password_hash!)
       if (!isCurrentPasswordValid) {
         throw new AppError('Current password is incorrect', 401)
       }
