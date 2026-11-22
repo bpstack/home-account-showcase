@@ -121,40 +121,39 @@ _Global skills in `~/.claude/skills/` are the machine's, not the project's._
 
 <!-- layer1:end -->
 
-Guía para cualquier agente de código (Claude Code, OpenCode, Codex…) que trabaje en este repositorio.
+Guide for any coding agent (Claude Code, OpenCode, Codex…) working in this repository.
 
-## Cómo está organizado
+## How it is organized
 
-Monorepo de tres paquetes **independientes**: **`backend/`** (Express + MySQL), **`frontend/`**
-(Next.js) y **`video/`** (Remotion). No hay workspace de pnpm: **cada paquete se instala y se
-ejecuta por separado**, con su propio `node_modules`, su propio `package.json` y su propio
-lockfile.
+Monorepo of three **independent** packages: **`backend/`** (Express + MySQL), **`frontend/`**
+(Next.js) and **`video/`** (Remotion). There is no pnpm workspace: **each package is installed and
+run on its own**, with its own `node_modules`, its own `package.json` and its own lockfile.
 
-Este archivo tiene lo común. Lo específico de cada paquete está en el suyo, que **se lee además de
-este, no en su lugar**:
+This file holds what is common. What is specific to each package lives in its own file, which **is
+read in addition to this one, not instead of it**:
 
-| Ámbito       | Instrucciones        | Documentación (fuera de git) |
-| ------------ | -------------------- | ---------------------------- |
-| todo el repo | este archivo         | `docs/`                      |
-| `backend/`   | `backend/AGENTS.md`  | `backend/docs/`              |
-| `frontend/`  | `frontend/AGENTS.md` | `frontend/docs/`             |
-| `video/`     | este archivo         | —                            |
+| Scope       | Instructions         | Documentation (outside git) |
+| ----------- | -------------------- | --------------------------- |
+| whole repo  | this file            | `docs/`                     |
+| `backend/`  | `backend/AGENTS.md`  | `backend/docs/`             |
+| `frontend/` | `frontend/AGENTS.md` | `frontend/docs/`            |
+| `video/`    | this file            | —                           |
 
-Las tres `docs/` tienen la misma forma: `README.md` (arquitectura de su ámbito), `DECISIONS.md`,
-`TODO.md` y `_archive/` (documentos retirados, solo de consulta). Lo que afecta a más de un paquete
-va en las de la raíz; lo de un solo paquete, en las suyas. **Nunca en los dos sitios.** El orden
-del trabajo pendiente está en `docs/ROADMAP.md`, y dónde se quedó, en `docs/SESSION.md`; los dos
-solo en la raíz.
+The three `docs/` have the same shape: `README.md` (architecture of their scope), `DECISIONS.md`,
+`TODO.md` and `_archive/` (retired documents, for reference only). What affects more than one
+package goes in the root ones; what concerns a single package, in its own. **Never in both
+places.** The order of the pending work is in `docs/ROADMAP.md`, and where we left off, in
+`docs/SESSION.md`; both only at the root.
 
-**Excepción declarada (regla 14):** las tres `docs/` están ignoradas por git, así que las reglas 12
-y 13 se cumplen **solo en esta máquina**. Motivo: el repositorio es público y esa documentación no.
-Alcance: las tres `docs/`, de forma temporal, por decisión del propietario (2026-11-17).
+**Declared exception (rule 14):** the three `docs/` are ignored by git, so rules 12 and 13 are met
+**only on this machine**. Reason: the repository is public and that documentation is not. Scope:
+the three `docs/`, temporarily, by the owner's decision (2026-11-17).
 
 ## Security
 
-**L3** — estimated on 2026-11-17: login con cuentas de usuario (local y OAuth), datos personales y
-dinero, backend propio; si la seguridad no es la adecuada, una fuga de datos personales puede
-causar daño grave a terceros.
+**L3** — estimated on 2026-11-17: login with user accounts (local and OAuth), personal data and
+money, own backend; if security is not adequate, a leak of personal data can cause serious harm to
+third parties.
 
 **Areas:**
 
@@ -173,104 +172,105 @@ causar daño grave a terceros.
   `backend/.env.example`
 - Data protection / privacy → `backend/controllers/ai/`, `backend/services/ai/`
 
-🔴 **Este repositorio es PÚBLICO: cuidado con lo que se expone.** Ni en los `AGENTS.md` ni en ningún
-otro archivo versionado van detalles de arquitectura de seguridad, nombres de variables de entorno,
-esquemas de base de datos ni rutas locales. Ese contexto está en las `docs/`.
+🔴 **This repository is PUBLIC: be careful about what is exposed.** Neither the `AGENTS.md` files
+nor any other versioned file may contain security architecture details, environment variable
+names, database schemas or local paths. That context lives in the `docs/`.
 
 ## Where the model goes wrong
 
-- **Un prompt con muchas tareas a la vez** → la ejecución se dispersa → trabajar con **tareas
-  concisas e individuales**, una cada vez.
+- **A prompt with many tasks at once** → execution scatters → work with **concise, individual
+  tasks**, one at a time.
 
-## Documentación actualizada (MCP context7)
+## Up-to-date documentation (context7 MCP)
 
-Antes de proponer código para una dependencia de cualquiera de los paquetes, consulta en context7
-la documentación de la **versión exacta instalada** en ese paquete — no la última publicada, no la
-que recuerdes.
+Before proposing code for a dependency of any of the packages, look up in context7 the
+documentation for the **exact version installed** in that package — not the latest published, not
+the one you remember.
 
-Este repo es, con diferencia, **el que más se aleja de los defaults del modelo**, y en direcciones
-opuestas dentro del mismo árbol: el backend va en **Express 5** (por delante) y en **ESLint 8 con
-`.eslintrc.json`** (por detrás), y el frontend en **Tailwind 3** (por detrás) y **ESLint 9 con
+This repo is, by far, **the one that strays furthest from the model's defaults**, and in opposite
+directions within the same tree: the backend runs **Express 5** (ahead) and **ESLint 8 with
+`.eslintrc.json`** (behind), and the frontend **Tailwind 3** (behind) and **ESLint 9 with
 `eslint.config.mjs`**.
 
-### Flujo
+### Flow
 
-1. `resolve-library-id` con el nombre de la librería.
-2. `query-docs` con el ID resuelto, la versión de la tabla y el tema concreto.
-3. Si la versión exacta no está indexada, usa la minor más cercana **por debajo** y di
-   explícitamente en la respuesta qué versión consultaste.
+1. `resolve-library-id` with the library name.
+2. `query-docs` with the resolved ID, the version from the table and the specific topic.
+3. If the exact version is not indexed, use the closest minor **below** it and state explicitly in
+   the answer which version you consulted.
 
-Comprobar que está disponible antes de confiar en él: `claude mcp list` (o `opencode mcp list` en
-OpenCode) → `context7` Connected. Si no lo está, **dilo en la respuesta** y sigue con conocimiento
-propio; no finjas haberlo consultado.
+Check that it is available before relying on it: `claude mcp list` (or `opencode mcp list` in
+OpenCode) → `context7` Connected. If it is not, **say so in the answer** and continue from your own
+knowledge; do not pretend you consulted it.
 
-⚠️ **El pin de versión no siempre filtra.** Verificado en otro repo con Express: consultando el ID
-de la v4 seguían apareciendo snippets de la v5. **Si un resultado de context7 contradice una tabla
-de trampas, manda la tabla.**
+⚠️ **The version pin does not always filter.** Verified in another repo with Express: querying the
+v4 ID still returned v5 snippets. **If a context7 result contradicts a pitfalls table, the table
+wins.**
 
-⚠️ **Los snippets no están escritos para `strict`.** La API que describen suele ser correcta, pero
-omiten las guardas de null y fallan el typecheck. El síntoma engaña: parece un problema de versión y
-no lo es.
+⚠️ **Snippets are not written for `strict`.** The API they describe is usually right, but they omit
+null guards and fail the typecheck. The symptom is misleading: it looks like a version problem and
+it is not.
 
-### ⚠️ Tres paquetes, tres entornos distintos
+### ⚠️ Three packages, three different environments
 
-- **`engines.node`: backend y frontend `>=24.22.3 <25`, video sin declarar.** Con `engineStrict`
-  activo, usar el Node equivocado hace fallar el install. El mínimo es el parche de seguridad más
-  reciente de la 24: se sube a mano con cada boletín de seguridad de Node.
-- **React no coincide entre paquetes** (frontend 19.2.3, video 19.2.4): no des por hecho que lo que
-  compila en uno compila en otro.
+- **`engines.node`: backend and frontend `>=24.22.3 <25`, video undeclared.** With `engineStrict`
+  on, using the wrong Node makes the install fail. The minimum is the most recent security patch of
+  24: it is raised by hand with each Node security bulletin.
+- **React differs between packages** (frontend 19.2.3, video 19.2.4): do not assume that what
+  compiles in one compiles in the other.
 
-### Compartido por backend y frontend (fuente de verdad: `node_modules`, no los rangos `^`)
+### Shared by backend and frontend (source of truth: `node_modules`, not the `^` ranges)
 
-| Paquete         | Versión     | Nota                              |
-| --------------- | ----------- | --------------------------------- |
-| `typescript`    | **6.0.3**   | ⚠️ No la 7: ver abajo             |
-| `eslint`        | ⚠️ distinta | 🔴 8.57.1 back · 9.39.5 front     |
-| `zod`           | **4.6.7**   | ⚠️ v4, la misma en los dos        |
-| `@noble/hashes` | **2.0.1**   | ⚠️ v2                             |
-| `@types/node`   | **25.0.5**  | ⚠️ Por delante del Node que corre |
+| Package         | Version      | Note                           |
+| --------------- | ------------ | ------------------------------ |
+| `typescript`    | **6.0.3**    | ⚠️ Not 7: see below            |
+| `eslint`        | ⚠️ different | 🔴 8.57.1 back · 9.39.5 front  |
+| `zod`           | **4.6.7**    | ⚠️ v4, the same in both        |
+| `@noble/hashes` | **2.0.1**    | ⚠️ v2                          |
+| `@types/node`   | **25.0.5**   | ⚠️ Ahead of the Node that runs |
 
-- **`eslint`: dos versiones y dos formatos.** El backend va en **8 con `.eslintrc.json`**: no lo
-  conviertas a flat config. El frontend va en **9 con `eslint.config.mjs`** (flat, `defineConfig()`)
-  desde la fase 3; no a la 10, porque `eslint-plugin-react`, `-import` y `-jsx-a11y` aún no la
-  admiten.
-- **`typescript` 6, no 7**: TypeScript 7 no trae todavía la API de JavaScript del compilador y
-  `typescript-eslint` solo admite `<6.1.0`; con la 7, el lint de `verify` se rompe. La 6 da error con
-  cualquier opción que la 7 quita (`TS5107`): **no la silencies con `ignoreDeprecations`**, cambia
-  la opción. `@typescript-eslint` va en 8.x en los dos paquetes.
-- **`zod` 4**: `z.email()` de nivel superior, no `z.string().email()` (deprecado). Nada de la API
-  v3.
-- **`@noble/hashes` 2**: los subpaths y la API cambiaron respecto a v1.
-- **`@types/node` 25 con Node 24 en backend y frontend**: si `tsc` acepta algo del runtime de
-  Node, verifícalo contra la doc de **Node 24**, no contra lo que permita el autocompletado. **No lo
-  "arregles" por iniciativa propia**: es decisión del propietario.
+- **`eslint`: two versions and two formats.** The backend runs **8 with `.eslintrc.json`**: do not
+  convert it to flat config. The frontend runs **9 with `eslint.config.mjs`** (flat,
+  `defineConfig()`) since phase 3; not 10, because `eslint-plugin-react`, `-import` and
+  `-jsx-a11y` do not support it yet.
+- **`typescript` 6, not 7**: TypeScript 7 does not yet ship the compiler's JavaScript API and
+  `typescript-eslint` only supports `<6.1.0`; with 7, the lint in `verify` breaks. 6 errors on any
+  option that 7 removes (`TS5107`): **do not silence it with `ignoreDeprecations`**, change the
+  option. `@typescript-eslint` is on 8.x in both packages.
+- **`zod` 4**: top-level `z.email()`, not `z.string().email()` (deprecated). Nothing from the v3
+  API.
+- **`@noble/hashes` 2**: the subpaths and the API changed from v1.
+- **`@types/node` 25 with Node 24 in backend and frontend**: if `tsc` accepts something from the
+  Node runtime, verify it against the **Node 24** docs, not against what autocomplete allows. **Do
+  not "fix" it on your own initiative**: it is the owner's decision.
 
 ### `video/`
 
-| Paquete    | Versión     | Nota                                                                                                 |
-| ---------- | ----------- | ---------------------------------------------------------------------------------------------------- |
-| `remotion` | **4.0.242** | Con `@remotion/cli` en la misma versión. El manifest declara un rango más bajo; lo instalado es esto |
-| `react`    | **19.2.4**  | ⚠️ Distinta del frontend (19.2.3)                                                                    |
+| Package    | Version     | Note                                                                                                     |
+| ---------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| `remotion` | **4.0.242** | With `@remotion/cli` at the same version. The manifest declares a lower range; what is installed is this |
+| `react`    | **19.2.4**  | ⚠️ Different from the frontend (19.2.3)                                                                  |
 
-## Comprobaciones antes de dar algo por bueno
+## Checks before calling something good
 
-**Backend y frontend corren Vitest dentro de `pnpm run verify`**, junto con el lint y el
-typecheck o el build. La cobertura es parcial: no hay tests de integración contra una base real, y
-las consultas SQL se prueban a mano. Cada paquete define en su `verify` lo que se comprueba, y sus
-excepciones están en su `AGENTS.md`. El CI (`.github/workflows/ci.yml`) ejecuta ese `verify` en
-`backend/` y `frontend/`, cada uno con su Node y su pnpm. `video/` no tiene `verify` ni tests.
+**Backend and frontend run Vitest inside `pnpm run verify`**, together with the lint and the
+typecheck or the build. Coverage is partial: there are no integration tests against a real
+database, and the SQL queries are checked by hand. Each package defines in its `verify` what is
+checked, and its exceptions are in its `AGENTS.md`. The CI (`.github/workflows/ci.yml`) runs that
+`verify` in `backend/` and `frontend/`, each with its own Node and its own pnpm. `video/` has
+neither a `verify` nor tests.
 
-## Límites de context7
+## context7 limits
 
-- Sirve para **verificar**, no para migrar. No apliques cambios de versión ni "modernices" código
-  que funciona sin que se pida explícitamente. En concreto: **no propongas subir a Tailwind 4 ni
-  migrar el ESLint del backend a flat config.**
-- Si la doc actual recomienda un patrón distinto al que ya usa el repo, **no reescribas**:
-  señálalo y sigue la convención existente salvo que el propietario decida lo contrario.
-- Activación **reactiva y acotada**: solo código nuevo o modificado en la tarea en curso.
-  Nunca como barrido ("revisa todo el proyecto contra la doc actual").
-- No lo uses para lógica de negocio, refactors o debugging propio — solo para la API de la librería.
+- It is for **verifying**, not for migrating. Do not apply version changes or "modernize" code that
+  works unless explicitly asked. In particular: **do not propose upgrading to Tailwind 4 or
+  migrating the backend's ESLint to flat config.**
+- If the current docs recommend a different pattern from the one the repo already uses, **do not
+  rewrite**: point it out and follow the existing convention unless the owner decides otherwise.
+- **Reactive and bounded** use: only new or modified code in the task at hand. Never as a sweep
+  ("review the whole project against the current docs").
+- Do not use it for business logic, refactors or your own debugging — only for the library's API.
 
-## Convenciones
+## Conventions
 
-- Formato de Markdown: Prettier por defecto. Tablas estilo GitHub-flavored.
+- Markdown format: Prettier defaults. GitHub-flavored table style.
