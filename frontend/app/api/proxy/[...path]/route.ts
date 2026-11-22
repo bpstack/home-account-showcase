@@ -3,6 +3,7 @@ import {
   BACKEND_URL,
   applySession,
   backendCookieHeader,
+  isAllowedOrigin,
   refreshSession,
   sessionFromBackend,
 } from '@/app/api/auth/config'
@@ -34,6 +35,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pa
 }
 
 async function handleProxy(req: NextRequest, params: { path: string[] }, method: string) {
+  // The same check as the /api/auth routes. Without it, a form on another site could post here
+  // (the body is passed on as JSON whatever its type) and the browser would keep the cookies the
+  // backend sets: signing the visitor in to an account of the other site's choosing.
+  if (!isAllowedOrigin(req.headers.get('origin'))) {
+    return NextResponse.json({ error: 'Origen no permitido' }, { status: 403 })
+  }
+
   try {
     const path = params.path.join('/')
     const url = new URL(req.url)
