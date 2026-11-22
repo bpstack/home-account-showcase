@@ -8,13 +8,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // The backend ends the session of the refresh token; nothing else is needed
+    // The backend ends the session of the refresh token, or of the access token if that is the
+    // only one left; nothing else is needed
     const refreshToken = req.cookies.get('refreshToken')?.value
+    const accessToken = req.cookies.get('accessToken')?.value
+    const cookie = [
+      refreshToken && `refreshToken=${refreshToken}`,
+      accessToken && `accessToken=${accessToken}`,
+    ]
+      .filter(Boolean)
+      .join('; ')
 
-    if (refreshToken) {
+    if (cookie) {
       await fetch(`${BACKEND_URL}/auth/logout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Cookie: `refreshToken=${refreshToken}` },
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
         cache: 'no-store',
       }).catch(() => {
         // The cookies are cleared anyway; the session ends on its own at its expiry
