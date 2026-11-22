@@ -159,7 +159,18 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as any)}
           variant="underline-responsive"
-          rightContent={<PeriodSelector value={periodValue} onChange={handlePeriodChange} />}
+          rightContent={
+            activeTab === 'history' ? (
+              // The history is yearly: it shows the year of the period, whatever the period is
+              <PeriodSelector
+                yearsOnly
+                value={{ kind: 'year', year: selectedYear ?? currentYear }}
+                onChange={handlePeriodChange}
+              />
+            ) : (
+              <PeriodSelector value={periodValue} onChange={handlePeriodChange} />
+            )
+          }
         />
       </div>
 

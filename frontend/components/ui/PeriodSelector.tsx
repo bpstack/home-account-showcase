@@ -11,6 +11,8 @@ interface PeriodSelectorProps {
   onChange: (_period: Period) => void
   /** Only months can be chosen (a monthly budget): no whole year, everything or dates */
   monthsOnly?: boolean
+  /** Only the arrows move the year back and forward: no panel (a view that is yearly) */
+  yearsOnly?: boolean
   className?: string
 }
 
@@ -28,6 +30,7 @@ export function PeriodSelector({
   value,
   onChange,
   monthsOnly = false,
+  yearsOnly = false,
   className,
 }: PeriodSelectorProps) {
   const [open, setOpen] = useState(false)
@@ -87,16 +90,22 @@ export function PeriodSelector({
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       </button>
 
-      <button
-        type="button"
-        onClick={toggle}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        className="flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-text-primary hover:bg-layer-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {periodLabel(value)}
-        <ChevronDown className="h-4 w-4 text-text-secondary" aria-hidden="true" />
-      </button>
+      {yearsOnly ? (
+        <span className="flex h-9 items-center px-2 text-sm font-medium text-text-primary">
+          {periodLabel(value)}
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className="flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-text-primary hover:bg-layer-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {periodLabel(value)}
+          <ChevronDown className="h-4 w-4 text-text-secondary" aria-hidden="true" />
+        </button>
+      )}
 
       <button
         type="button"
