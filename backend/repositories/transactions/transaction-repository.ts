@@ -3,6 +3,7 @@
 import crypto from 'crypto'
 import db from '../../config/db.js'
 import { AccountRepository } from '../accounts/account-repository.js'
+import { AppError } from '../../utils/app-error.js'
 import type {
   Transaction,
   TransactionWithDetails,
@@ -15,6 +16,28 @@ import type {
 
 export class TransactionRepository {
   /**
+   * A subcategory may only be assigned to a transaction of its own account.
+   * Null clears the category and is always allowed.
+   */
+  private static async assertSubcategoryInAccount(
+    subcategoryId: string | null | undefined,
+    accountId: string
+  ): Promise<void> {
+    if (!subcategoryId) return
+
+    const [rows] = await db.query<any[]>(
+      `SELECT 1 FROM subcategories s
+       INNER JOIN categories c ON c.id = s.category_id
+       WHERE s.id = ? AND c.account_id = ?`,
+      [subcategoryId, accountId]
+    )
+
+    if (rows.length === 0) {
+      throw new AppError('Subcategoría no encontrada', 404)
+    }
+  }
+
+  /**
    * Crear transacción encriptada
    */
   static async createEncrypted(
@@ -25,6 +48,8 @@ export class TransactionRepository {
     if (!hasAccess) {
       throw new Error('No tienes acceso a esta cuenta')
     }
+
+    await this.assertSubcategoryInAccount(data.subcategory_id, data.account_id)
 
     const id = crypto.randomUUID()
 
@@ -263,6 +288,8 @@ export class TransactionRepository {
       return null
     }
 
+    await this.assertSubcategoryInAccount(data.subcategory_id, transaction.account_id)
+
     const updates: string[] = []
     const values: any[] = []
 
@@ -309,6 +336,8 @@ export class TransactionRepository {
     if (!transaction) {
       return null
     }
+
+    await this.assertSubcategoryInAccount(data.subcategory_id, transaction.account_id)
 
     const updates: string[] = []
     const values: any[] = []
@@ -491,6 +520,8 @@ export class TransactionRepository {
       throw new Error('No tienes acceso a esta cuenta')
     }
 
+    await this.assertSubcategoryInAccount(subcategoryId, accountId)
+
     const [result] = await db.query<any>(
       `UPDATE transactions
        SET subcategory_id = ?
@@ -519,6 +550,8 @@ export class TransactionRepository {
     if (!hasAccess) {
       throw new Error('No tienes acceso a esta cuenta')
     }
+
+    await this.assertSubcategoryInAccount(subcategoryId, accountId)
 
     // Create placeholders for the IN clause
     const placeholders = transactionIds.map(() => '?').join(',')
