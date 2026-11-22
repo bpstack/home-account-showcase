@@ -142,8 +142,15 @@ describe('logout', () => {
     expect(mocks.sessions.revoke).toHaveBeenCalledWith(SID)
   })
 
-  it('always succeeds and clears the cookies, revoking nothing without a valid refresh token', async () => {
-    for (const cookies of [{}, { refreshToken: 'not-a-token' }]) {
+  // Requirement (review finding 21): losing the refresh cookie must not leave the session alive
+  it('without the refresh cookie, ends the session of the access token, expired or not', async () => {
+    const live = await generateAccessToken(USER, 'sid-access')
+    await run(logout, { accessToken: live })
+    expect(mocks.sessions.revoke).toHaveBeenCalledWith('sid-access')
+  })
+
+  it('always succeeds and clears the cookies, revoking nothing without a valid token', async () => {
+    for (const cookies of [{}, { refreshToken: 'not-a-token' }, { accessToken: 'not-a-token' }]) {
       const out = await run(logout, cookies)
       expect(out.status).toBe(200)
       expect(out.cleared).toEqual(expect.arrayContaining(['accessToken', 'refreshToken']))

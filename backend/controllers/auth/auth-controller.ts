@@ -332,12 +332,17 @@ export const saveVerificationBlob = asyncHandler(async (req: Request, res: Respo
 })
 
 /**
- * Ends the session of the refresh token cookie, even if it has expired. No access token or CSRF
- * check: holding the refresh token is the authorization, and logging out is always allowed.
+ * Ends the session of the refresh token cookie, even if it has expired; without that cookie, the
+ * session of the access token (both carry its id). No CSRF check: holding a token of the session
+ * is the authorization, and logging out is always allowed. Before, losing the refresh cookie left
+ * the session alive, refreshing for hours wherever else its refresh token was.
  */
 export const logout = asyncHandler(async (req: Request, res: Response) => {
-  const token = req.cookies?.refreshToken
-  const payload = token ? await verifyTokenAllowingExpiry(token, 'refresh') : null
+  const refreshToken = req.cookies?.refreshToken
+  const accessToken = req.cookies?.accessToken
+  const payload =
+    (refreshToken ? await verifyTokenAllowingExpiry(refreshToken, 'refresh') : null) ??
+    (accessToken ? await verifyTokenAllowingExpiry(accessToken, 'access') : null)
   if (payload?.sid) {
     try {
       await SessionRepository.revoke(payload.sid)
