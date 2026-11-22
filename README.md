@@ -1,43 +1,43 @@
 # Home Account
 
-Personal finance tracker I built because every app I tried was either too complex or didn't fit my needs.
+A personal finance tracker I built because every app I tried was either too complex or didn't fit
+my needs. The interface is in Spanish.
 
-> **Live demo**: [home-account.stackbp.es](https://home-account.stackbp.es/)
+> **Live demo:** [home-account.stackbp.es](https://home-account.stackbp.es/)
 >
-> Still a work in progress — features land as I need them, so expect rough edges.
+> It is a work in progress: features land as I need them, so expect rough edges.
 
-## What I Built
+## What it does
 
-A clean dashboard to track income, expenses, and balances with:
+- **Summary and history.** Income, expenses and balance for a month, a year, everything or a date
+  range, with spending by category. The history view shows a year month by month, with the
+  balance carried over from earlier years.
+- **Transactions.** Filters, pagination and bulk edits (change category, delete).
+- **Categories and subcategories**, with colors.
+- **Budgets.** A limit per category (weekly, monthly or yearly) with an alert threshold.
+- **Statement import.** Read a bank export (`.xls`, `.xlsx` or `.csv`) in the browser, map the
+  bank's categories to yours and review before saving. The file never leaves your device.
+- **Investment section.** A short risk-profile test and a monthly plan, both by fixed rules (no AI);
+  a long-term simulator; market data (Bitcoin and Ethereum from CoinGecko, euro exchange rates from
+  the ECB through Frankfurter, economic indicators from the ECB and Eurostat); and a finance chat
+  assistant.
+- **Several accounts and sharing.** Keep personal and shared accounts side by side and invite
+  family members with a link that expires in 24 hours.
+- **Installable** on phone and desktop as a PWA.
 
-- **Transaction Management**: Pagination, filters, category colors
-- **Balance Overview**: Monthly/yearly views with income/expense breakdown
-- **Category Organization**: Custom categories with color coding
-- **Excel Import**: Bulk upload from bank exports (main feature)
-- **Investment Module**: AI-powered portfolio recommendations, chat assistant, market data
-- **Budget System**: Per-category spending limits with visual progress tracking
-- **PWA**: Installable as a standalone app on mobile and desktop
+## Privacy
 
-## The Import Flow
+Transaction descriptions and amounts are encrypted **in your browser** (AES-256-GCM) before they
+reach the server. The key is derived from your password with Argon2id and is not sent anywhere. The
+server rejects transactions sent in plain text.
 
-This is the core feature I wanted to get right:
+Because the server cannot read them, totals, filters, charts and budget progress are calculated in
+the browser, after decrypting.
 
-1. Export transactions from your bank to Excel
-2. Upload the file to Home Account
-3. AI parses descriptions and suggests categories automatically
-4. You review, edit, or confirm the suggested mappings
-5. Transactions appear instantly (optimistic UI)
-6. Server validates, syncs, and updates all stats
+### E2E encryption model
 
-## End-to-End Encryption
-
-**Why E2E?** Your financial data is yours, not mine. Even if someone hacks my server, they get encrypted blobs, not your transactions.
-
-### The Problem
-
-Traditional apps store data in plain text. If I get hacked, your transaction history is exposed. I didn't want that.
-
-### The Solution: Envelope Encryption
+Two layers of keys: your password (or PIN) opens a **User Key**, and that key opens the **Account
+Key** of each account you belong to. The Account Key is the one that encrypts the data.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -45,7 +45,7 @@ Traditional apps store data in plain text. If I get hacked, your transaction his
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │   ┌─────────────────┐                                           │
-│   │   User Password │  <- You type this on login                │
+│   │ Password / PIN  │  <- You type this on login                │
 │   └────────┬────────┘                                           │
 │            │ Argon2id                                           │
 │            v                                                    │
@@ -56,18 +56,18 @@ Traditional apps store data in plain text. If I get hacked, your transaction his
 │            v                                                    │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │              account_keys table (database)              │   │
-│   │  account_id | user_id | encrypted_account_key           │   │
-│   │  acc-001    | user-A  | [UK_A(AK) - encrypted blob]    │   │
+│   │  account_id | user_id | encrypted_key                   │   │
+│   │  acc-001    | user-A  | [UK_A(AK) - encrypted blob]     │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │            │                                                    │
 │            v                                                    │
 │   ┌─────────────────┐                                           │
-│   │ Account Key (AK)│  <- Shared key for all account members   │
+│   │ Account Key (AK)│  <- Shared by all members of an account   │
 │   └────────┬────────┘                                           │
-│            │ Encrypts/Decrypts                                  │
+│            │ Encrypts / decrypts                                │
 │            v                                                    │
 │   ┌─────────────────────────────────────────────────────────┐   │
-│   │         ENCRYPTED DATA (AES-256-GCM)                    │   │
+│   │              ENCRYPTED DATA (AES-256-GCM)               │   │
 │   │  transactions.description_encrypted                     │   │
 │   │  transactions.amount_encrypted                          │   │
 │   │  categories.name_encrypted                              │   │
@@ -76,278 +76,65 @@ Traditional apps store data in plain text. If I get hacked, your transaction his
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### What Gets Encrypted
+The server only ever stores the encrypted blobs. Each member has their own copy of the Account Key,
+encrypted with their own User Key, so adding someone never exposes it.
 
-| Field | Why |
-|-------|-----|
-| `transactions.description` | Reveals spending habits |
-| `transactions.amount` | Your exact financial position |
-| `categories.name` | Personal category structure |
+- **Sign in** with email and password, or with Google or GitHub plus a 6 to 8 digit PIN that
+  protects the encryption key. Wrong PIN attempts are counted on the server and lock the PIN.
+- **Recovery.** A 24-word recovery phrase you save once, or a password reset by email.
+- **Sharing.** Members of an account share its key, and an owner decides who gets in.
 
-### What Stays Plain
+### Known limitations
 
-| Field | Why |
-|-------|-----|
-| `transactions.date` | Needed for filtering by date |
-| `transactions.amount_sign` | + or - (income/expense) |
-| `categories.color` | UI only, not sensitive |
-| `category_budgets.amount` | Budget limits, not actual spending |
+- **Dates, the sign of an amount (income or expense) and category colors** are stored in clear so
+  the server can filter by date.
+- **The AI chat and the investment profile are not end-to-end encrypted.** Chat messages go to the
+  AI provider and are kept for 7 days at most.
+- There is no automated test against a real database: the SQL is checked by hand.
 
-### The Unlock Flow
+## Stack
 
-```
-LOGIN
-  |
-  |-> Email + password
-  |
-  |-> Backend: bcrypt validate -> returns { user, key_salt, encrypted_keys[] }
-  |
-  |-> Frontend: UK = Argon2id(password, key_salt)
-  |
-  |-> Frontend: AK = decrypt(encrypted_key, UK)
-  |
-  `-> Dashboard loads encrypted data -> decrypts client-side
+| Part     | What it uses                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 3, TanStack Query, Zustand, Recharts |
+| Backend  | Express 5, MySQL 8.4 with `mysql2` (plain SQL, no ORM), TypeScript run with `tsx`                |
+| Auth     | Email and password, Google and GitHub; JWT in httpOnly cookies; CSRF protection                  |
+| Crypto   | Web Crypto (AES-256-GCM) and Argon2id from `@noble/hashes`                                       |
+| AI       | Groq for the chat; the code can also use Ollama, Claude, Gemini or Hugging Face                  |
+| Tests    | Vitest in both packages (about 250 in the backend and 130 in the frontend)                       |
+| Hosting  | Vercel (frontend), Render (backend), a self-hosted MySQL on a VPS                                |
 
-REFRESH (F5)
-  |
-  |-> Cookies persist (session valid)
-  |-> Crypto store cleared (keys lost)
-  |
-  `-> Redirect to /unlock (PIN configured) OR /setup-pin (password = encryption source)
-       |
-       |-> Re-enter password or PIN
-       |-> GET /auth/keys -> get key_salt, encrypted_keys
-       |-> Re-derive UK, decrypt AKs
-       `-> Back to dashboard
+## Repository
 
-LOGOUT
-  |
-  |-> Clear cookies
-  `-> Clear crypto store (keys gone forever)
-```
+Three independent packages. There is no workspace: each one is installed and run on its own.
 
-**Key insight:** The server never sees your password after login, never sees your decrypted keys, and never sees your plain text data. It's just a dumb storage layer for encrypted blobs.
+| Folder      | What it is                          |
+| ----------- | ----------------------------------- |
+| `frontend/` | The Next.js app                     |
+| `backend/`  | The Express API                     |
+| `video/`    | The promo video, made with Remotion |
 
-### Performance Trade-offs
+## Running it yourself
 
-With E2E encryption, all data processing happens client-side because the server can't read encrypted blobs.
+You need Node 24, pnpm 10 and a MySQL 8.4 database.
 
-| Operation | Traditional | This App |
-|-----------|-------------|----------|
-| SUM(amount) | SQL on server | JS reduce on decrypted data |
-| Filter by amount | SQL WHERE | JS filter |
-| Search text | SQL LIKE | JS filter after decrypt |
-| Monthly stats | SQL GROUP BY | JS reduce |
-| Budget spending | SQL aggregate | JS reduce on decrypted transactions |
+```bash
+# backend
+cd backend
+cp .env.example .env     # then fill it in
+pnpm install
+pnpm run dev
 
-**Numbers:** 5000 transactions take ~5-50ms to decrypt and ~5ms to calculate totals. That's imperceptible for personal use.
-
-**Scaling decision:** For a family accounting app, we'll never hit limits that justify complex optimizations (Web Workers, virtualization, etc.). These were evaluated and rejected - the trade-offs are accepted for this scope.
-
-## Password Recovery
-
-Two recovery mechanisms to prevent "password lost = data lost":
-
-### BIP39 Recovery Phrase (24 words)
-
-A mnemonic phrase generated once at `/setup-recovery`. It encrypts a separate copy of the User Key, which the server keeps with the user's record only in encrypted form. If you lose your password, enter the 24 words at `/recovery` to regain access.
-
-```
-Setup:
-  mnemonic -> Argon2id -> Recovery Key -> encrypts UK copy -> stored on the server
-
-Recovery:
-  mnemonic -> Argon2id -> Recovery Key -> decrypts UK copy -> re-encrypt with new password
+# frontend, in another terminal
+cd frontend
+cp .env.example .env.local
+pnpm install
+pnpm run dev
 ```
 
-### Password Reset via Email
-
-Standard email-based password reset using EmailJS (server-side SDK):
-
-```
-/forgot-password -> enter email -> EmailJS sends reset link
-/reset-password?token=...&email=... -> enter new password -> re-encrypts all keys
-```
-
-The reset flow re-derives the User Key with the new password and re-encrypts all Account Keys. The server never sees the plain text keys.
-
-## Budget System
-
-Per-category spending limits with visual tracking:
-
-- Set monthly/weekly/yearly budget limits per category
-- Spending calculated client-side from decrypted transactions (not SQL aggregation)
-- Visual progress bars: green (normal), amber (>= alert threshold), red (exceeded)
-- Configurable alert threshold per budget (default 80%)
-- Data stored in `category_budgets` table (CRUD only, no spending in backend)
-
-## Account Sharing & Invitations
-
-Invite family members to share an account. The system uses an `invitation_secret` transferred via URL (one-time use, expires in 24h) to securely share the Account Key between users.
-
-## OAuth + PIN
-
-Login with Google or GitHub is supported, but there's a catch: OAuth proves identity, not secrecy. For E2E encryption, you need something only you know.
-
-**The solution:** A 6-8 digit PIN that replaces your password for the encryption layer.
-
-```
-OAuth (Google/GitHub) -> JWT session (authentication)
-PIN (6-8 digits)      -> User Key derivation (encryption)
-
-Flow:
-  1. Continue with Google -> Authenticated via OAuth
-  2. Redirect to /unlock -> Enter PIN
-  3. PIN -> Argon2id -> User Key -> Decrypt account keys
-  4. Access your data
-```
-
-**Why 6-8 digits?**
-- UX: Faster to type than a password
-- Argon2id parameters compensate for lower entropy (t=3, m=64MB, p=4)
-- Mobile-friendly numeric keyboard
-- Rate limited to prevent brute force
-
-## Investment Module
-
-AI-powered investment features integrated into the dashboard:
-
-- **Risk Profile Questionnaire**: 7-step assessment via AI
-- **Personalized Recommendations**: Investment suggestions based on your savings capacity
-- **AI Chat Assistant**: Conversational finance Q&A with context
-- **Market Data**: Real-time prices (BTC, ETH, EUR/USD, S&P 500, MSCI)
-- **Simulator**: Long-term projection scenarios
-
-### AI Providers
-
-| Provider | Type | Use Case |
-|----------|------|----------|
-| **Groq** | Cloud | Recommended - free, fast, 15 req/hour |
-| **Ollama** | Local | Private, no limits, runs on your machine (dev/testing only) |
-| **Claude** | Cloud | Best reasoning, paid (planned for future payment system) |
-| **Gemini** | Cloud | Good free tier, limited req/hour |
-
-### Known Limitation
-
-**AI chats and investment profiles are NOT encrypted yet.** Only transactions and categories are currently E2E encrypted. AI chat content isn't end-to-end encrypted and is visible to the provider, so adding extra protection here wouldn't meaningfully increase privacy.
-
-## Architecture
-
-```
-Frontend: Next.js 16 (App Router) + TypeScript + React Query + Zustand + Tailwind
-Backend:  Express 5 + MySQL 8.4 (self-hosted)
-Auth:     JWT httpOnly cookies (15min access + 8h refresh) + CSRF protection
-Charts:   Recharts (lazy loaded)
-Crypto:   AES-256-GCM + Argon2id (@noble/hashes)
-AI:       Multi-provider (Groq, Ollama, Claude, Gemini)
-Email:    @emailjs/nodejs (server-side, password reset)
-PWA:      Serwist (static/navigation caching, no API caching)
-```
-
-### Server Components (RSC)
-
-```tsx
-// page.tsx - Server Component (initial load)
-export default async function DashboardPage({ searchParams }) {
-  const [stats, summary] = await Promise.all([
-    getTransactionStats(accountId, startDate, endDate),
-    getTransactionSummary(accountId, startDate, endDate),
-  ])
-  return <DashboardClient initialStats={stats} initialSummary={summary} />
-}
-
-// DashboardClient.tsx - Client Component (interactivity)
-'use client'
-export function DashboardClient({ initialStats, initialSummary }) {
-  const { data: stats } = useQuery({
-    queryKey: ['transactions', 'stats', accountId, startDate, endDate],
-    queryFn: () => transactions.getStats(accountId, startDate, endDate),
-    initialData: { stats: initialStats },
-  })
-}
-```
-
-**Why RSC + Client?** Server pre-loads initial data, client handles all interactivity. With E2E encryption, RSCs can't access encrypted data anyway - the server is just a proxy/storage layer.
-
-### Why This Setup
-
-| What | Why |
-|------|-----|
-| httpOnly cookies | No XSS risk, RSC can read auth |
-| React Query | Server state caching, optimistic updates |
-| Zustand | UI state only (modals, filters) |
-| Dynamic imports | Recharts ~300KB lazy loaded |
-| Promise.all | Fetches run in parallel, not sequential |
-| Client-side math | E2E encryption - server can't read data |
-| Rate limiting | 7 login attempts/15min, AI varies by provider |
-| CSRF protection | Double Submit Cookie pattern |
-| Security headers | CSP, X-Frame-Options, X-Content-Type-Options |
-| XSS sanitization | DOMPurify on frontend, regex sanitization on backend |
-
-## Import System
-
-Optimistic updates for instant feedback:
-
-```typescript
-// onMutate - show immediately
-queryClient.setQueryData(['transactions'], (old) => ({
-  ...old,
-  transactions: [
-    ...newTransactions.map(t => ({ ...t, _optimistic: true })),
-    ...(old?.transactions || []),
-  ],
-}))
-
-// onError - rollback
-queryClient.setQueryData(['transactions'], context.previousTransactions)
-
-// onSettled - sync with server
-queryClient.invalidateQueries({ queryKey: ['transactions'] })
-```
-
-## Deploy Ready
-
-Production configuration included for:
-- **Vercel**: Frontend (Next.js App Router)
-- **Render**: Backend (Express)
-- **Self-hosted MySQL 8.4**: database, run with Dokploy on a VPS (TLS required)
-
-### Environment Variables (Backend)
-
-Required for full functionality in production:
-- DB: `REMOTE_DB_HOST`, `REMOTE_DB_PORT`, `REMOTE_DB_USER`, `REMOTE_DB_PASSWORD`, `REMOTE_DB_NAME`, `REMOTE_DB_CA_CERT`
-- JWT: `JWT_SECRET`
-- OAuth: `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET`, `OAUTH_CALLBACK_URL`
-- Email (password reset): `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY`
-- Email (verification + change): `EMAILJS_SERVICE_ID_V2`, `EMAILJS_TEMPLATE_ID_V2`, `EMAILJS_TEMPLATE_ID_V3`, `EMAILJS_PUBLIC_KEY_V2`, `EMAILJS_PRIVATE_KEY_V2`
-- App: `FRONTEND_URL` (for reset email links)
-
-## PWA
-
-Installable as a standalone app on mobile and desktop. Serwist caches navigation, images, static assets, and fonts. API calls are NOT cached (encrypted data + auth tokens; React Query handles client-side caching).
-
-## Multiple Accounts
-
-Users can manage multiple accounts (e.g., personal, shared household, savings goals) from the same session.
-
-## What I Learned
-
-- E2E encryption means the server is just a dumb storage layer - it can't search, filter, or aggregate your data because it's all encrypted blobs
-- RSC + Client Component separation isn't about "async" - it's about when data loads
-- Cookie-based auth enables Server Components to fetch authenticated data
-- OAuth doesn't provide a secret, so I needed a separate PIN for the encryption layer
-- For a family accounting app, complex performance optimizations aren't justified - we're not at scale
-- Optimistic UI transforms "submit -> loading -> done" into "instant -> background sync"
-- Lazy loading charts makes a real difference in bundle size
-- AI chat for finance needs sanitization - users will try prompt injection
-- MySQL DECIMAL fields return strings in JS - always convert before arithmetic
-- BIP39 recovery provides a safety net without compromising E2E encryption
-- Trade-offs are design decisions - accepting client-side math, no server-side search, and separate recovery mechanisms for true privacy
+Each package has a `pnpm run verify` that runs the same checks as the CI: lint, tests and, in the
+frontend, the build (the backend runs a typecheck instead).
 
 ## License
 
 [MIT](LICENSE) © 2026 [bpstack](https://stackbp.es)
-
----
-
-**Built because the tools I needed didn't exist.**
