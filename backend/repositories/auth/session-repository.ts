@@ -78,6 +78,20 @@ export class SessionRepository {
     return { status: 'reuse', userId: row.user_id }
   }
 
+  /**
+   * Whether the session `sid` of `userId` is still live: not revoked (logout, password change,
+   * reuse) and not expired. Every authenticated request asks, so ending a session also ends its
+   * access tokens at once instead of when they expire.
+   */
+  static async isLive(sid: string, userId: string): Promise<boolean> {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT 1 FROM refresh_sessions
+       WHERE id = ? AND user_id = ? AND revoked_at IS NULL AND expires_at > NOW()`,
+      [sid, userId]
+    )
+    return rows.length > 0
+  }
+
   /** Ends one session (logout, or a reused credential). */
   static async revoke(sid: string): Promise<void> {
     await db.query(

@@ -2,6 +2,7 @@
 
 import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '../services/auth/tokenService.js'
+import { SessionRepository } from '../repositories/auth/session-repository.js'
 
 declare module 'express' {
   interface Request {
@@ -20,7 +21,11 @@ declare module 'express' {
  * - Desarrollo local: header Authorization: Bearer <token>
  * - Producción: cookie accessToken (futuro)
  */
-export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
+export async function authenticateToken(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   // Intentar obtener token del header Authorization (desarrollo local)
   const authHeader = req.headers['authorization']
   const tokenFromHeader =
@@ -39,39 +44,43 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     return
   }
 
-  // Verify token async
   // Only an access token: a refresh token or an OAuth code is refused here
-  verifyToken(token, 'access')
-    .then((decoded) => {
-      // Every access token belongs to a stored session; one without could revoke all of them
-      if (!decoded?.id || !decoded.sid) {
-        res.status(401).json({
-          success: false,
-          error: 'Token inválido',
-        })
-        return
-      }
+  let decoded: Awaited<ReturnType<typeof verifyToken>>
+  try {
+    decoded = await verifyToken(token, 'access')
+  } catch (error) {
+    const message =
+      (error as Error).message === 'Token expirado' ? 'Token expirado' : 'Token inválido'
+    res.status(401).json({ success: false, error: message })
+    return
+  }
 
-      // Agregar usuario al request
-      req.user = {
-        id: decoded.id,
-        email: decoded.email,
-        sid: decoded.sid,
-      }
+  // Every access token belongs to a stored session; one without could revoke all of them
+  if (!decoded?.id || !decoded.sid) {
+    res.status(401).json({ success: false, error: 'Token inválido' })
+    return
+  }
 
-      next()
-    })
-    .catch((error) => {
-      const err = error as Error
-      let message = 'Token inválido'
+  // The session must still be live: after a logout or a password change its access tokens stop
+  // working now, not when they expire. A database failure is not an answer: it goes on as a 500,
+  // so that it does not sign anyone out.
+  let live: boolean
+  try {
+    live = await SessionRepository.isLive(decoded.sid, decoded.id)
+  } catch (error) {
+    next(error)
+    return
+  }
+  if (!live) {
+    res.status(401).json({ success: false, error: 'Sesión terminada' })
+    return
+  }
 
-      if (err.message === 'Token expirado') {
-        message = 'Token expirado'
-      }
+  req.user = {
+    id: decoded.id,
+    email: decoded.email,
+    sid: decoded.sid,
+  }
 
-      res.status(401).json({
-        success: false,
-        error: message,
-      })
-    })
+  next()
 }
