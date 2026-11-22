@@ -3,6 +3,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { InvitationRepository } from '../../repositories/invitations/invitation-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
+import type { Invitation } from '../../models/invitations/index.js'
 
 export class InvitationController {
   /**
@@ -54,12 +55,26 @@ export class InvitationController {
       const userId = req.user!.id
 
       // Verificar acceso a la cuenta
-      const hasAccess = await AccountRepository.hasAccess(accountId, userId)
-      if (!hasAccess) {
+      const role = await AccountRepository.getUserRole(accountId, userId)
+      if (!role) {
         return res.status(403).json({ error: 'No tienes acceso a esta cuenta' })
       }
 
       const invitations = await InvitationRepository.getByAccountId(accountId)
+
+      // Only the owner may see the credentials of a pending invitation
+      if (role !== 'owner') {
+        return res.json({
+          // The row carries encrypted_key at runtime (SELECT *) though the type omits it
+          invitations: invitations.map(
+            ({
+              token: _token,
+              encrypted_key: _key,
+              ...safe
+            }: Invitation & { encrypted_key?: string | null }) => safe
+          ),
+        })
+      }
 
       res.json({ invitations })
     } catch (error) {
