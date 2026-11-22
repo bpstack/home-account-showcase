@@ -78,8 +78,8 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     message: 'Cuenta creada. Revisa tu email para verificar tu cuenta.',
     emailVerified: false,
     user,
-    // Include key_salt and accountId so frontend can complete encryption setup
-    // before redirecting to verify-sent (no session tokens, just crypto setup)
+    // No session yet, so no encryption setup either: the first login after verifying does it,
+    // through the authenticated routes (a public setup route let anyone write it)
     key_salt: result.key_salt,
     accountId: result.accountId,
   })
@@ -687,8 +687,8 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
       }
 
       // When no BIP39 re-encryption, account keys encrypted with old UserKey are
-      // irrecoverable — delete them so login can create fresh ones via the
-      // complete-crypto-setup fallback path. Also null out recovery_blob.
+      // irrecoverable — delete them so the next login creates fresh ones (the
+      // same path as a new user's first login). Also null out recovery_blob.
       if (clearAccountKeys) {
         await connection.query(`DELETE FROM account_keys WHERE user_id = ?`, [user.id])
         await connection.query(`UPDATE users SET recovery_blob = NULL WHERE id = ?`, [user.id])

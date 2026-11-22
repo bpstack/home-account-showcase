@@ -130,55 +130,6 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
   })
 }
 
-/**
- * POST /api/auth/complete-crypto-setup
- * Body: { email, verificationBlob, encryptedAccountKey, accountId }
- *
- * Completes encryption setup for users who haven't verified their email yet.
- * This is PUBLIC (no auth required) but only works for unverified users.
- * Security: Only allows setup once (cannot overwrite existing data).
- */
-export const completeCryptoSetup = async (req: Request, res: Response): Promise<void> => {
-  const { email, verificationBlob, encryptedAccountKey, accountId } = req.body
-
-  if (!email || typeof email !== 'string') {
-    throw new AppError('Email es requerido', 400)
-  }
-
-  if (!verificationBlob || typeof verificationBlob !== 'string') {
-    throw new AppError('verificationBlob es requerido', 400)
-  }
-
-  const normalizedEmail = email.toLowerCase().trim()
-  const user = await UserRepository.findByEmail(normalizedEmail)
-
-  if (!user) {
-    // Don't reveal if user exists
-    res.status(200).json({ success: true })
-    return
-  }
-
-  // Security: Only allow for unverified users
-  if (user.email_verified) {
-    throw new AppError('Setup already completed', 400)
-  }
-
-  // Save verification blob
-  await UserRepository.saveVerificationBlob(user.id, verificationBlob)
-
-  // Save encrypted account key if provided
-  if (encryptedAccountKey && accountId) {
-    await UserRepository.saveAccountKeyForSetup(user.id, accountId, encryptedAccountKey)
-  }
-
-  logger.info('EMAIL_VERIFY', 'completeCryptoSetup', 'Crypto setup completed', {
-    userId: user.id,
-    email: normalizedEmail,
-  })
-
-  res.status(200).json({ success: true })
-}
-
 export async function sendVerificationTokenEmail(
   userId: string,
   email: string,

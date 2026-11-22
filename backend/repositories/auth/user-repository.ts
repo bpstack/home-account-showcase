@@ -835,49 +835,6 @@ export class UserRepository {
     return rows[0]?.email_verified === true || rows[0]?.email_verified === 1
   }
 
-  /**
-   * Save verification blob for a user (used during crypto setup)
-   */
-  static async saveVerificationBlob(userId: string, verificationBlob: string): Promise<void> {
-    await db.query(`UPDATE users SET verification_blob = ? WHERE id = ?`, [
-      verificationBlob,
-      userId,
-    ])
-    logger.info('USER_REPO', 'saveVerificationBlob', 'Verification blob saved', { userId })
-  }
-
-  /**
-   * Save encrypted account key during initial setup (before email verification)
-   */
-  static async saveAccountKeyForSetup(
-    userId: string,
-    accountId: string,
-    encryptedKey: string
-  ): Promise<void> {
-    // Check if key already exists
-    const [existing] = await db.query<RowDataPacket[]>(
-      `SELECT id FROM account_keys WHERE account_id = ? AND user_id = ?`,
-      [accountId, userId]
-    )
-
-    if (existing.length > 0) {
-      // Update existing key
-      await db.query(
-        `UPDATE account_keys SET encrypted_key = ? WHERE account_id = ? AND user_id = ?`,
-        [encryptedKey, accountId, userId]
-      )
-    } else {
-      // Insert new key
-      const keyId = crypto.randomUUID()
-      await db.query(
-        `INSERT INTO account_keys (id, account_id, user_id, encrypted_key, key_version)
-         VALUES (?, ?, ?, ?, 1)`,
-        [keyId, accountId, userId, encryptedKey]
-      )
-    }
-    logger.info('USER_REPO', 'saveAccountKeyForSetup', 'Account key saved', { userId, accountId })
-  }
-
   // ============================================
   // EMAIL CHANGE
   // ============================================

@@ -39,7 +39,6 @@ import { readRefreshSession } from '../../middlewares/readRefreshSession.js'
 import {
   verifyEmail,
   resendVerificationEmail,
-  completeCryptoSetup,
   requestEmailChange,
   confirmEmailChange,
   cancelEmailChange,
@@ -66,7 +65,6 @@ router.post(
   emailRateLimiter,
   resendVerificationEmail
 )
-router.post('/complete-crypto-setup', completeCryptoSetup)
 
 // Email change routes (public - confirmation)
 router.get('/confirm-email-change', confirmEmailChange)
