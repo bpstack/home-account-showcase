@@ -540,19 +540,25 @@ function calculateBalanceHistoryFromTransactions(
   // Sort transactions by date
   const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date))
 
-  // Group transactions by month
+  // Group transactions by month; what came before the year is the opening balance
   const transactionsByMonth: Record<number, number> = {}
+  let openingBalance = 0
   for (const tx of sortedTxs) {
-    if (Number(tx.date.slice(0, 4)) !== year) continue
+    const txYear = Number(tx.date.slice(0, 4))
+    if (txYear < year) {
+      openingBalance += Number(tx.amount)
+      continue
+    }
+    if (txYear !== year) continue
 
     const month = Number(tx.date.slice(5, 7)) - 1
     transactionsByMonth[month] = (transactionsByMonth[month] || 0) + Number(tx.amount)
   }
 
-  // Generate monthly balance history
+  // Generate monthly balance history, carrying over the balance of earlier years
   const monthsToShow = year === currentYear ? currentMonth + 1 : 12
   const result: BalanceHistoryItem[] = []
-  let cumulative = 0
+  let cumulative = openingBalance
 
   for (let m = 0; m < monthsToShow; m++) {
     cumulative += transactionsByMonth[m] || 0
@@ -570,14 +576,14 @@ function calculateBalanceHistoryFromTransactions(
  * Get balance history - calculates client-side from decrypted transactions
  */
 export function useBalanceHistory(accountId: string, year: number) {
-  // Fetch all transactions for the year
+  // From the start of the account: earlier years give the opening balance
   const {
     data: txData,
     isLoading,
     error,
   } = useTransactions({
     account_id: accountId,
-    start_date: `${year}-01-01`,
+    start_date: '2000-01-01',
     end_date: `${year}-12-31`,
     limit: 10000,
   })
