@@ -91,12 +91,13 @@ router.post('/record-failed-pin', authenticateToken, checkCSRF, recordFailedPin)
 router.post('/reset-pin-attempts', authenticateToken, checkCSRF, resetPinAttempts)
 
 // Email change routes (authenticated)
+// Authenticated first: the limiter counts per user
 router.post(
   '/change-email',
-  changeEmailRateLimiter,
-  emailRateLimiter,
   authenticateToken,
   checkCSRF,
+  changeEmailRateLimiter,
+  emailRateLimiter,
   requestEmailChange
 )
 router.post('/cancel-email-change', authenticateToken, checkCSRF, cancelEmailChange)
