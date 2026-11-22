@@ -78,6 +78,11 @@ app.use(
 //   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
 //   credentials: true,
 // }))
+// Auth bodies are a few small fields and keys: 100 kb holds hundreds of accounts. Parsed here
+// first, so the 50 mb parsers below find the body already read and skip it; without this, a
+// public route such as reset-password took 50 mb of keys into a transaction.
+app.use('/api/auth', express.json({ limit: '100kb' }))
+app.use('/api/auth', express.urlencoded({ limit: '100kb', extended: true }))
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
 app.use(cookieParser())
