@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { githubEmail, googleEmail } from './oauth.js'
+import passport from 'passport'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { configureOAuth, githubEmail, googleEmail } from './oauth.js'
 
 // Requirement: an OAuth email is trusted only if the provider says it is verified.
 describe('googleEmail', () => {
@@ -49,5 +50,38 @@ describe('githubEmail', () => {
       email: 'u@github.local',
       emailVerified: false,
     })
+  })
+})
+
+type WithStrategies = { _strategy(name: string): { _oauth2?: { _clientId: string } } | undefined }
+const strategy = (name: string) => (passport as unknown as WithStrategies)._strategy(name)
+
+// Requirement (review finding 20): a provider without credentials is not offered with made-up
+// ones; with its credentials, it is offered with exactly those.
+describe('configureOAuth', () => {
+  afterEach(() => {
+    passport.unuse('google')
+    passport.unuse('github')
+    vi.unstubAllEnvs()
+  })
+
+  it('leaves out a provider whose credentials are missing', () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', '')
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', '')
+    vi.stubEnv('GITHUB_CLIENT_ID', 'gh-id')
+    vi.stubEnv('GITHUB_CLIENT_SECRET', '')
+    configureOAuth()
+    expect(strategy('google')).toBeUndefined()
+    expect(strategy('github')).toBeUndefined()
+  })
+
+  it('offers a provider with its own credentials', () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'google-id')
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'google-secret')
+    vi.stubEnv('GITHUB_CLIENT_ID', 'gh-id')
+    vi.stubEnv('GITHUB_CLIENT_SECRET', 'gh-secret')
+    configureOAuth()
+    expect(strategy('google')?._oauth2?._clientId).toBe('google-id')
+    expect(strategy('github')?._oauth2?._clientId).toBe('gh-id')
   })
 })
