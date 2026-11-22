@@ -209,9 +209,9 @@ export function useAuth() {
           useCryptoStore.getState().lock()
         }
       } else if (key_salt) {
-        // No encrypted keys → complete-crypto-setup failed during registration.
-        // The user already has accounts — do NOT redirect to /setup-pin (it creates
-        // a new account). Instead, re-run the setup inline now that we're authenticated.
+        // No encrypted keys → first login after registering (the setup waits for a session),
+        // or a reset that cleared them. The user already has accounts — do NOT redirect to
+        // /setup-pin (it creates a new account). Instead, run the setup inline now.
         try {
           const cryptoStore = useCryptoStore.getState()
           await cryptoStore.deriveAndSetUserKey(password, key_salt)
@@ -367,64 +367,33 @@ export function useAuth() {
 
       const { user, key_salt, accountId } = data
 
-      // 🔐 ENCRYPTION: Set up crypto store after registration
-      // This must happen BEFORE redirecting (even for email verification flow)
+      // New users have no separate PIN yet (password = encryption source)
+      useAuthStore.getState().setHasSeparatePin(false)
+
+      // Email not verified yet: no session, so no encryption setup either. The first login after
+      // verifying does it through the authenticated routes (see login, "No encrypted keys").
+      if (data.emailVerified === false) {
+        router.replace('/verify-sent')
+        return
+      }
+
+      // 🔐 ENCRYPTION: with a session, set up the keys now
       if (key_salt) {
         const cryptoStore = useCryptoStore.getState()
 
         // Derive UK from password with the salt backend generated
         await cryptoStore.deriveAndSetUserKey(password, key_salt)
 
-        let encryptedAccountKey: string | undefined
-        let verificationBlob: string | undefined
-
-        // If account was created, generate AK
+        // If account was created, generate and save its AK
         if (accountId && !options?.skipDefaultAccount) {
-          encryptedAccountKey = await cryptoStore.createAccountKey(accountId)
+          const encryptedAccountKey = await cryptoStore.createAccountKey(accountId)
+          await accounts.saveAccountKey(accountId, encryptedAccountKey)
         }
 
-        // Generate verification blob
         const userKey = useCryptoStore.getState().userKey
         if (userKey) {
-          verificationBlob = await generateVerificationBlob(userKey)
+          await auth.saveVerificationBlob(await generateVerificationBlob(userKey))
         }
-
-        // Save crypto data - use public endpoint if email not verified
-        if (data.emailVerified === false) {
-          // User not authenticated yet, use public endpoint
-          const setupRes = await fetch('/api/proxy/auth/complete-crypto-setup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email,
-              verificationBlob,
-              encryptedAccountKey,
-              accountId,
-            }),
-          })
-          if (!setupRes.ok) {
-            console.error('[register] complete-crypto-setup failed:', setupRes.status)
-          }
-        } else {
-          // User authenticated, use normal endpoints
-          if (encryptedAccountKey && accountId) {
-            await accounts.saveAccountKey(accountId, encryptedAccountKey)
-          }
-          if (verificationBlob) {
-            await auth.saveVerificationBlob(verificationBlob)
-          }
-        }
-      }
-
-      // New users have no separate PIN yet (password = encryption source)
-      useAuthStore.getState().setHasSeparatePin(false)
-
-      // Check if email verification is required
-      if (data.emailVerified === false) {
-        // Encryption is set up, now redirect to verification page
-        // User must verify email before they can login
-        router.replace('/verify-sent')
-        return
       }
 
       // Email already verified (shouldn't happen on new registration, but handle it)
