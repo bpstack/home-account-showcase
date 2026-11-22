@@ -254,10 +254,11 @@ no lo es.
 
 ## Comprobaciones antes de dar algo por bueno
 
-**No hay suite de tests automatizada.** Cada paquete define en `pnpm run verify` lo que se
-comprueba, y sus excepciones están en su `AGENTS.md`. El CI (`.github/workflows/ci.yml`) ejecuta
-ese `verify` en `backend/` y `frontend/`, cada uno con su Node y su pnpm. `video/` no tiene
-`verify`.
+**Backend y frontend corren Vitest dentro de `pnpm run verify`**, junto con el lint y el
+typecheck o el build. La cobertura es parcial: no hay tests de integración contra una base real, y
+las consultas SQL se prueban a mano. Cada paquete define en su `verify` lo que se comprueba, y sus
+excepciones están en su `AGENTS.md`. El CI (`.github/workflows/ci.yml`) ejecuta ese `verify` en
+`backend/` y `frontend/`, cada uno con su Node y su pnpm. `video/` no tiene `verify` ni tests.
 
 ## Límites de context7
 

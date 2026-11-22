@@ -17,6 +17,7 @@ compartidas con el backend y límites. Aquí solo va lo propio de `frontend/`.
 | `@tanstack/react-query` | **5.90.16** |                                  |
 | `zod`                   | **4.6.7**   | ⚠️ v4 — trampa en la raíz        |
 | `serwist`               | **9.5.13**  | Con `@serwist/turbopack` 9.5.13  |
+| `vitest`                | **5.1.0**   | Tests dentro de `verify`         |
 
 ### Trampas de versión (aquí el modelo suele asumir mal)
 
@@ -33,9 +34,10 @@ compartidas con el backend y límites. Aquí solo va lo propio de `frontend/`.
 
 ## Comprobaciones
 
-`pnpm run verify` = `pnpm run lint` (`eslint . --max-warnings=0`) y después `pnpm run build`
-(`next build`, que es lo que detecta los errores de tipos). Es lo que ejecuta el CI: **un aviso de
-lint ya lo pone en rojo**.
+`pnpm run verify` = `pnpm run lint` (`eslint . --max-warnings=0`), después `pnpm run test`
+(`vitest run`) y después `pnpm run build` (`next build`, que es lo que detecta los errores de
+tipos). Es lo que ejecuta el CI: **un aviso de lint o un test en rojo ya lo ponen en rojo**. Los
+tests cubren sobre todo `lib/`; los componentes y las pantallas se prueban a mano en el navegador.
 
 **Excepción declarada (regla 14): `react-hooks/set-state-in-effect` y
 `react-hooks/preserve-manual-memoization` están desactivadas** en `eslint.config.mjs`. Motivo: son

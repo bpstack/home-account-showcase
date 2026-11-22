@@ -20,6 +20,7 @@ API en **Express 5** con **mysql2** (SQL en crudo, sin ORM). Se ejecuta TypeScri
 | `express-rate-limit` | **8.7.4**  | v8, sobre Express 5          |
 | `passport`           | **0.7.0**  | Pre-1.0                      |
 | `tsx`                | **4.21.0** | Ejecuta TS sin paso de build |
+| `vitest`             | **5.1.0**  | Tests dentro de `verify`     |
 
 ### Trampas de versión (aquí el modelo suele asumir mal)
 
@@ -54,7 +55,11 @@ Ningún ejemplo publicado de Express trae esa anotación. **Si copias un router 
 
 ## Comprobaciones
 
-`pnpm run verify` = `pnpm run typecheck` (`tsc --noEmit`) y después `pnpm run lint` (`eslint .
---ext .ts,.tsx --max-warnings=0`). Es lo que ejecuta el CI: **un aviso de lint ya lo pone en rojo**.
+`pnpm run verify` = `pnpm run typecheck` (`tsc --noEmit`), después `pnpm run lint` (`eslint .
+--ext .ts,.tsx --max-warnings=0`) y después `pnpm run test` (`vitest run`). Es lo que ejecuta el CI:
+**un aviso de lint o un test en rojo ya lo ponen en rojo**.
+
+Los tests sustituyen los repositorios con `vi.mock`: no tocan la base de datos. Un test nuevo debe
+poder fallar: se comprueba restaurando el código anterior y viendo que se pone en rojo.
 
 El backend usa **estilo sin punto y coma**. Si escribes con `;`, el lint te marcará cada línea.
