@@ -62,9 +62,25 @@ export async function sendPasswordResetEmail({
     )
     return true
   } catch (error) {
-    logger.error('EMAIL', 'sendPasswordResetEmail', 'Failed to send email', String(error))
+    logger.error(
+      'EMAIL',
+      'sendPasswordResetEmail',
+      'Failed to send email',
+      describeEmailError(error)
+    )
     return false
   }
+}
+
+/**
+ * EmailJS rejects with a plain { status, text } object, which String() turns into
+ * "[object Object]": the log then hides why a send failed (quota, template, service).
+ */
+export function describeEmailError(error: unknown): string {
+  if (error && typeof error === 'object' && 'status' in error && 'text' in error) {
+    return `EmailJS ${String(error.status)}: ${String(error.text)}`
+  }
+  return String(error)
 }
 
 export async function sendVerificationEmail({
@@ -105,7 +121,12 @@ export async function sendVerificationEmail({
     logger.info('EMAIL', 'sendVerificationEmail', `Email sent: ${response.status} ${response.text}`)
     return true
   } catch (error) {
-    logger.error('EMAIL', 'sendVerificationEmail', 'Failed to send email', String(error))
+    logger.error(
+      'EMAIL',
+      'sendVerificationEmail',
+      'Failed to send email',
+      describeEmailError(error)
+    )
     return false
   }
 }
