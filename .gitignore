@@ -104,3 +104,8 @@ frontend/scripts/
 # Project documentation (private)
 ROADMAP.md
 TODO.md
+
+# --------------------------------------------
+# Security audit output (PRIVATE)
+# --------------------------------------------
+.audit/
