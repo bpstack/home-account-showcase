@@ -1,16 +1,12 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import TransactionsClient from './TransactionsClient'
 import { getTransactions } from '@/lib/api'
 import { getCategories } from '@/lib/api/categories'
 import { createLocalDate, formatLocalDate } from '@/lib/date-utils'
-import { getValidAccountId } from '@/lib/serverApi'
+import { getValidAccountId, hasSession } from '@/lib/serverApi'
 
 export default async function TransactionsPage() {
-  const cookieStore = await cookies()
-  const accessToken = cookieStore.get('accessToken')?.value
-
-  if (!accessToken) {
+  if (!(await hasSession())) {
     redirect('/login')
   }
 

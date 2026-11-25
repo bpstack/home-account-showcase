@@ -1,6 +1,6 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
+import { hasSession } from '@/lib/serverApi'
 type Period = 'month' | 'year' | 'all'
 
 interface DashboardPageProps {
@@ -15,11 +15,7 @@ interface DashboardPageProps {
 }
 
 export default async function DashboardPage({ searchParams: _searchParams }: DashboardPageProps) {
-  const cookieStore = await cookies()
-  const accessToken = cookieStore.get('accessToken')?.value
-
-  // Si no hay token, el middleware ya redirige, pero verificamos por si acaso
-  if (!accessToken) {
+  if (!(await hasSession())) {
     redirect('/login')
   }
 

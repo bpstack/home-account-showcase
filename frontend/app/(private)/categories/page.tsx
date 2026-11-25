@@ -1,14 +1,10 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import CategoriesClient from './CategoriesClient'
 import { getCategories } from '@/lib/api'
-import { getValidAccountId } from '@/lib/serverApi'
+import { getValidAccountId, hasSession } from '@/lib/serverApi'
 
 export default async function CategoriesPage() {
-  const cookieStore = await cookies()
-  const accessToken = cookieStore.get('accessToken')?.value
-
-  if (!accessToken) {
+  if (!(await hasSession())) {
     redirect('/login')
   }
 

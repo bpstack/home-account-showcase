@@ -50,12 +50,14 @@ export async function serverFetch<T>(
 }
 
 /**
- * Verificar si el usuario está autenticado (para RSC)
- * No lanza error, solo retorna boolean
+ * Whether the browser still holds a session, for the private server pages. The access cookie
+ * lives 15 minutes and the refresh one 8 hours: with only the refresh one left, the page must
+ * render, because the client renews the access cookie through the proxy on its first request.
+ * Sending that user to /login logged out someone whose session was alive.
  */
-export async function isAuthenticated(): Promise<boolean> {
+export async function hasSession(): Promise<boolean> {
   const cookieStore = await cookies()
-  return !!cookieStore.get('accessToken')?.value
+  return !!(cookieStore.get('accessToken')?.value || cookieStore.get('refreshToken')?.value)
 }
 
 /**
