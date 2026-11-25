@@ -6,6 +6,7 @@ import { CategoryRepository } from '../../repositories/categories/category-repos
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
 import { importConfirmSchema, importHashesQuerySchema } from '../../validators/import-validators.js'
 import db from '../../config/db.js'
+import { logger } from '../../utils/logger.js'
 
 const HMAC_HEX = '^[0-9a-f]{64}$'
 
@@ -100,10 +101,16 @@ export const confirmImport = asyncHandler(async (req: Request, res: Response) =>
       inserted += placeholders.length
       batchHashes.forEach((h) => knownHashes.add(h))
     } catch (err) {
+      // The database's own message names tables and columns: it goes to the log, not to the user.
+      // Nor do these rows count as skipped, which the screen shows as "already there".
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1
+      logger.error('IMPORT', 'confirmImport', `Batch ${batchNumber} failed`, err as Error, {
+        accountId: account_id,
+        rows: placeholders.length,
+      })
       errors.push(
-        `Error insertando lote ${Math.floor(i / BATCH_SIZE) + 1}: ${(err as Error).message}`
+        `No se pudieron guardar ${placeholders.length} movimientos (lote ${batchNumber}). Vuelve a importar el archivo: los ya guardados no se duplican.`
       )
-      skipped += placeholders.length
     }
   }
 
