@@ -981,8 +981,14 @@ function TransactionsContent({
                 <label className="text-sm font-medium">Fecha</label>
                 <DatePickerSimple
                   value={form.date}
-                  onChange={(date) => setForm({ ...form, date })}
+                  onChange={(date) => {
+                    setForm({ ...form, date })
+                    if (fieldErrors.date) {
+                      setFieldErrors((prev) => ({ ...prev, date: '' }))
+                    }
+                  }}
                 />
+                {fieldErrors.date && <p className="text-xs text-danger">{fieldErrors.date}</p>}
               </div>
             </div>
 

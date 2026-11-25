@@ -1,8 +1,7 @@
 import { z } from 'zod'
+import { getTodayLocal } from '@/lib/date-utils'
 
 const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/
-
-const today = new Date().toISOString().split('T')[0]
 
 export const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], {
@@ -14,7 +13,9 @@ export const transactionSchema = z.object({
     .refine((val) => isoDateRegex.test(val), {
       message: 'La fecha debe tener formato YYYY-MM-DD',
     })
-    .refine((val) => val <= today, {
+    // Today on the user's clock, read on every check: a UTC date, or one taken when the page
+    // loaded, turns today into the future after midnight
+    .refine((val) => val <= getTodayLocal(), {
       message: 'La fecha no puede ser futura',
     }),
   description: z
