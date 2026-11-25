@@ -21,7 +21,7 @@ import cryptoRoutes from './routes/crypto/crypto-routes.js'
 import budgetRoutes from './routes/budget/budget-routes.js'
 import { logAIStatus } from './services/ai/ai-client.js'
 import { startChatRetention } from './services/ai/chat-retention.js'
-import { sanitizeBody, sanitizeQuery } from './middlewares/sanitizeMiddleware.js'
+import { sanitizeBody } from './middlewares/sanitizeMiddleware.js'
 import { AppError } from './utils/app-error.js'
 import { logger } from './utils/logger.js'
 
@@ -87,9 +87,9 @@ app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
 app.use(cookieParser())
 
-// Sanitization middleware (after body parsing)
+// Sanitization middleware (after body parsing). Only the body: in Express 5 req.query is
+// recomputed on every read, so a query sanitizer would change nothing
 app.use(sanitizeBody)
-app.use(sanitizeQuery)
 
 // Routes
 app.use('/api/auth', authRoutes)
