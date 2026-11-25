@@ -3,6 +3,15 @@
 import { z } from 'zod'
 
 /**
+ * The latest date that is already today somewhere: the server runs in UTC and does not know the
+ * user's time zone, and a UTC "today" refuses a Spanish user's today from midnight until 01:00
+ * (02:00 in summer). UTC+14 is the time zone furthest ahead.
+ */
+function latestTodayOnEarth(now: Date = new Date()): string {
+  return new Date(now.getTime() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+/**
  * Schema para query params de getTransactions
  */
 export const getTransactionsSchema = z.object({
@@ -73,7 +82,7 @@ export const createEncryptedTransactionSchema = z.object({
     .string()
     .min(1, 'La fecha es obligatoria')
     .date('La fecha debe ser válida (YYYY-MM-DD)')
-    .refine((date) => date <= new Date().toISOString().split('T')[0], {
+    .refine((date) => date <= latestTodayOnEarth(), {
       message: 'La fecha no puede ser futura',
     }),
   subcategory_id: z.string().uuid('subcategory_id debe ser un UUID válido').optional().nullable(),
@@ -95,7 +104,7 @@ export const updateTransactionSchema = z
       .string()
       .min(1, 'La fecha es obligatoria')
       .date('La fecha debe ser válida (YYYY-MM-DD)')
-      .refine((date) => date <= new Date().toISOString().split('T')[0], {
+      .refine((date) => date <= latestTodayOnEarth(), {
         message: 'La fecha no puede ser futura',
       })
       .optional(),
