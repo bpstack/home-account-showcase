@@ -2,10 +2,11 @@ import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
 import {
   Serwist,
   CacheFirst,
-  NetworkFirst,
+  NetworkOnly,
   CacheableResponsePlugin,
   ExpirationPlugin,
 } from 'serwist'
+import { PAGES_CACHE } from '../lib/pageCache'
 
 export {}
 
@@ -24,22 +25,12 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
-    // Navigation requests (HTML pages)
+    // Pages are never stored: private ones carry account data and some addresses carry a token
+    // (/invite/<token>, reset links). Offline, the app cannot work anyway. NetworkOnly still uses
+    // the navigation preload response
     {
       matcher: ({ request }) => request.mode === 'navigate',
-      handler: new NetworkFirst({
-        cacheName: 'home-account-v1-pages',
-        plugins: [
-          new CacheableResponsePlugin({
-            statuses: [0, 200],
-          }),
-          new ExpirationPlugin({
-            maxEntries: 50,
-            maxAgeSeconds: 24 * 60 * 60,
-            purgeOnQuotaError: true,
-          }),
-        ],
-      }),
+      handler: new NetworkOnly(),
     },
     {
       matcher: ({ request }) =>
@@ -96,8 +87,17 @@ const serwist = new Serwist({
 })
 
 serwist.addEventListeners()
-;(
-  self as unknown as { addEventListener(_type: string, _listener: (_event: Event) => void): void }
-).addEventListener('message', (_event: Event) => {
+
+type ExtendableEventLike = Event & { waitUntil(_promise: Promise<unknown>): void }
+const sw = self as unknown as {
+  addEventListener(_type: string, _listener: (_event: Event) => void): void
+}
+
+// Removes the page copies that earlier versions of this worker stored
+sw.addEventListener('activate', (event: Event) => {
+  ;(event as ExtendableEventLike).waitUntil(caches.delete(PAGES_CACHE))
+})
+
+sw.addEventListener('message', (_event: Event) => {
   self.skipWaiting()
 })

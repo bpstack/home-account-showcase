@@ -17,6 +17,7 @@ import {
   importUserKey,
 } from '@/lib/crypto'
 import { saveUserKey } from '@/lib/keyVault'
+import { clearPageCache } from '@/lib/pageCache'
 import { isPinFormat, migrateToPinV2, PinFormatError, unlockUserKeyWithPin } from '@/lib/pinV2'
 
 /**
@@ -437,6 +438,8 @@ export function useAuth() {
 
       // Limpiar estado local
       clearLastAccountId()
+      // Page copies an older service worker may have stored, until the new one replaces it
+      await clearPageCache()
 
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.user })
       queryClient.removeQueries({ queryKey: AUTH_QUERY_KEYS.account })
