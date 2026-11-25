@@ -160,7 +160,9 @@ export class CategoryRepository {
   }
 
   /**
-   * Obtener conteo de transacciones huérfanas al borrar categoría
+   * How many transactions would lose their category if this one is deleted: those whose
+   * subcategory belongs to it. A transaction only ever points at a subcategory, never at a
+   * category, so the count goes through `subcategories`.
    */
   static async getOrphanedTransactionsCount(categoryId: string, userId: string): Promise<number> {
     const category = await this.getById(categoryId, userId)
@@ -169,19 +171,23 @@ export class CategoryRepository {
     }
 
     const [rows] = await db.query<any[]>(
-      `SELECT COUNT(*) as count FROM transactions WHERE subcategory_id = ?`,
-      [categoryId]
+      `SELECT COUNT(*) as count
+       FROM transactions t
+       INNER JOIN subcategories s ON s.id = t.subcategory_id
+       WHERE s.category_id = ? AND t.account_id = ?`,
+      [categoryId, category.account_id]
     )
 
-    return rows[0]?.count || 0
+    return Number(rows[0]?.count) || 0
   }
 
   /**
-   * Reasignar transacciones a otra subcategoría antes de borrar
+   * Before deleting a category, move its transactions to a subcategory of another category of
+   * the same account.
    */
   static async reassignTransactions(
     fromCategoryId: string,
-    toCategoryId: string,
+    toSubcategoryId: string,
     userId: string
   ): Promise<number> {
     const fromCategory = await this.getById(fromCategoryId, userId)
@@ -189,18 +195,27 @@ export class CategoryRepository {
       throw new AppError('Source category not found', 404)
     }
 
-    const toCategory = await this.getById(toCategoryId, userId)
-    if (!toCategory) {
-      throw new AppError('Destination category not found', 404)
+    const [targets] = await db.query<any[]>(
+      `SELECT s.category_id
+       FROM subcategories s
+       INNER JOIN categories c ON c.id = s.category_id
+       WHERE s.id = ? AND c.account_id = ?`,
+      [toSubcategoryId, fromCategory.account_id]
+    )
+    if (targets.length === 0) {
+      throw new AppError('Destination subcategory not found', 404)
     }
-
-    if (fromCategory.account_id !== toCategory.account_id) {
-      throw new AppError('Categories must belong to the same account', 400)
+    // Its own subcategories go away with it: moving there would leave them without one anyway
+    if (targets[0].category_id === fromCategoryId) {
+      throw new AppError('The destination must belong to another category', 400)
     }
 
     const [result] = await db.query<any>(
-      `UPDATE transactions SET subcategory_id = ? WHERE subcategory_id = ?`,
-      [toCategoryId, fromCategoryId]
+      `UPDATE transactions t
+       INNER JOIN subcategories s ON s.id = t.subcategory_id
+       SET t.subcategory_id = ?
+       WHERE s.category_id = ? AND t.account_id = ?`,
+      [toSubcategoryId, fromCategoryId, fromCategory.account_id]
     )
 
     return result.affectedRows

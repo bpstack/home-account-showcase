@@ -118,15 +118,15 @@ export const getOrphanedCount = asyncHandler(async (req: Request, res: Response)
 
 export const reassignTransactions = asyncHandler(async (req: Request, res: Response) => {
   const { id: fromCategoryId } = req.params
-  const { to_category_id } = req.body
+  const { to_subcategory_id } = req.body
 
-  if (!to_category_id) {
-    throw new AppError('to_category_id es requerido', 400)
+  if (!to_subcategory_id || typeof to_subcategory_id !== 'string') {
+    throw new AppError('to_subcategory_id es requerido', 400)
   }
 
   const count = await CategoryRepository.reassignTransactions(
     fromCategoryId,
-    to_category_id,
+    to_subcategory_id,
     req.user!.id
   )
 
