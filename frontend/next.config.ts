@@ -10,17 +10,20 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts', '@tanstack/react-query'],
   },
-  // Disable caching in development
   headers: async () => {
-    if (process.env.NODE_ENV === 'development') {
-      return [
-        {
-          source: '/:path*',
-          headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
-        },
-      ]
-    }
-    return []
+    // Only this site may show its pages inside a frame: another site could otherwise lay the app,
+    // invisible, over its own buttons (clickjacking). `frame-ancestors` is the current form;
+    // `X-Frame-Options` covers browsers that do not read it.
+    const frameHeaders = [
+      { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+    ]
+    // Disable caching in development
+    const devHeaders =
+      process.env.NODE_ENV === 'development'
+        ? [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }]
+        : []
+    return [{ source: '/:path*', headers: [...frameHeaders, ...devHeaders] }]
   },
 }
 
