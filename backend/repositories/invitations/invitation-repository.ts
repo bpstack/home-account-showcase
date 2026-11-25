@@ -87,7 +87,15 @@ export class InvitationRepository {
         i.*,
         a.name as account_name,
         u.name as invited_by_name,
-        u.email as invited_by_email
+        u.email as invited_by_email,
+        EXISTS (
+          SELECT 1 FROM account_users au
+          WHERE au.account_id = i.account_id AND au.user_id = i.invited_user_id
+        ) AS invitee_is_member,
+        EXISTS (
+          SELECT 1 FROM account_keys ak
+          WHERE ak.account_id = i.account_id AND ak.user_id = i.invited_user_id
+        ) AS invitee_has_key
        FROM invitations i
        JOIN accounts a ON a.id = i.account_id
        JOIN users u ON u.id = i.invited_by

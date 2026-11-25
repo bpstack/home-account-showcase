@@ -32,6 +32,10 @@ export interface InvitationWithDetails extends Invitation {
   invited_by_name: string
   invited_by_email: string
   encrypted_key: string | null // Account Key cifrada para transferir al invitado
+  // Whether the accepting user is still in the account, and whether they already saved their own
+  // copy of the key (MySQL returns EXISTS as 0/1)
+  invitee_is_member: number
+  invitee_has_key: number
 }
 
 export interface InvitationWithDetailsRow extends InvitationWithDetails, RowDataPacket {}

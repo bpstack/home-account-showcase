@@ -3,7 +3,28 @@
 import type { Request, Response, NextFunction } from 'express'
 import { InvitationRepository } from '../../repositories/invitations/invitation-repository.js'
 import { AccountRepository } from '../../repositories/accounts/account-repository.js'
-import type { Invitation } from '../../models/invitations/index.js'
+import type { Invitation, InvitationWithDetails } from '../../models/invitations/index.js'
+
+/**
+ * The link's token decrypts encrypted_key, so whoever holds the link holds the ledger's key. Hand
+ * it out only while the invitation can still be used: pending, or accepted by someone who is still
+ * a member and has not saved their own copy yet (the invite page finishes that step on return).
+ */
+export function releasableInvitationKey(
+  invitation: InvitationWithDetails,
+  isExpired: boolean
+): string | null {
+  if (isExpired) return null
+  if (invitation.status === 'pending') return invitation.encrypted_key
+  if (
+    invitation.status === 'accepted' &&
+    Boolean(invitation.invitee_is_member) &&
+    !invitation.invitee_has_key
+  ) {
+    return invitation.encrypted_key
+  }
+  return null
+}
 
 export class InvitationController {
   /**
@@ -107,7 +128,7 @@ export class InvitationController {
           account_name: invitation.account_name,
           invited_by_name: invitation.invited_by_name,
           expires_at: invitation.expires_at,
-          encrypted_key: invitation.encrypted_key,
+          encrypted_key: releasableInvitationKey(invitation, isExpired),
         },
         isExpired,
       })
