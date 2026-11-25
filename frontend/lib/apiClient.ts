@@ -675,12 +675,12 @@ export const categories = {
   getOrphanedCount: (id: string) =>
     request<{ success: boolean; count: number }>(`/categories/${id}/orphaned-count`),
 
-  reassignTransactions: (fromId: string, toId: string) =>
+  reassignTransactions: (fromId: string, toSubcategoryId: string) =>
     request<{ success: boolean; message: string; reassignedCount: number }>(
       `/categories/${fromId}/reassign`,
       {
         method: 'POST',
-        body: JSON.stringify({ to_category_id: toId }),
+        body: JSON.stringify({ to_subcategory_id: toSubcategoryId }),
       }
     ),
 }

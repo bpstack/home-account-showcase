@@ -96,7 +96,7 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
 
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
   const [subcategoryToDelete, setSubcategoryToDelete] = useState<Subcategory | null>(null)
-  const [reassignCategoryId, setReassignCategoryId] = useState('')
+  const [reassignSubcategoryId, setReassignSubcategoryId] = useState('')
 
   const {
     data: categoriesData,
@@ -129,9 +129,12 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
   }
 
   const hasCategories = categoryList.length > 0
+  // A transaction always sits in a subcategory, so the destination is one: «Hogar › Luz»
   const reassignOptions = categoryList
     .filter((c) => c.id !== categoryToDelete?.id)
-    .map((c) => ({ value: c.id, label: c.name }))
+    .flatMap((c) =>
+      getSubcategories(c).map((sub) => ({ value: sub.id, label: `${c.name} › ${sub.name}` }))
+    )
 
   function openCreateCategoryModal() {
     setEditingCategory(null)
@@ -258,15 +261,15 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
 
   function handleDeleteClick(category: Category) {
     setCategoryToDelete(category)
-    setReassignCategoryId('')
+    setReassignSubcategoryId('')
   }
 
   function handleConfirmDelete() {
     if (!categoryToDelete) return
     const category = categoryToDelete
     const reassign =
-      orphanedQuery.data?.count && orphanedQuery.data.count > 0 && reassignCategoryId
-        ? reassignMutation.mutateAsync({ fromId: category.id, toId: reassignCategoryId })
+      orphanedQuery.data?.count && orphanedQuery.data.count > 0 && reassignSubcategoryId
+        ? reassignMutation.mutateAsync({ fromId: category.id, toId: reassignSubcategoryId })
         : Promise.resolve()
     // The transactions move first; deleting at the same time could leave them uncategorized
     const work = reassign.then(() => deleteCategoryMutation.mutateAsync(category.id))
@@ -274,6 +277,8 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
       loading: 'Eliminando categoría...',
       success: () => {
         queryClient.invalidateQueries({ queryKey: ['categories'] })
+        // Its transactions moved or lost their category
+        queryClient.invalidateQueries({ queryKey: ['transactions'] })
         setCategoryToDelete(null)
         return 'Categoría eliminada correctamente'
       },
@@ -614,8 +619,8 @@ function CategoriesContent({ initialCategories }: CategoriesClientProps) {
                     { value: '', label: 'Ninguna: dejarlas sin categoría' },
                     ...reassignOptions,
                   ]}
-                  value={reassignCategoryId}
-                  onChange={(e) => setReassignCategoryId(e.target.value)}
+                  value={reassignSubcategoryId}
+                  onChange={(e) => setReassignSubcategoryId(e.target.value)}
                   className="w-full"
                 />
               </div>
