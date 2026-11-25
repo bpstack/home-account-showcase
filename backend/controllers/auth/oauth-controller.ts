@@ -8,12 +8,15 @@ import type { OAuthProfile } from '../../config/oauth.js'
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
 
+/** Where a failed provider sign-in lands: the app's login page, with a message it knows. */
+export const OAUTH_FAILURE_REDIRECT = `${FRONTEND_URL}/login?error=oauth_invalid`
+
 export const oauthCallback = asyncHandler(async (req: Request, res: Response) => {
   const profile = req.user as OAuthProfile
 
   if (!profile || !profile.email) {
     logger.warn('AUTH', 'oauthCallback', 'OAuth callback without valid profile', { profile })
-    res.redirect(`${FRONTEND_URL}/login?error=oauth_invalid`)
+    res.redirect(OAUTH_FAILURE_REDIRECT)
     return
   }
 

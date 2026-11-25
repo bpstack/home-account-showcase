@@ -1,6 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import passport from 'passport'
-import { exchangeOAuthCode, oauthCallback } from '../../controllers/auth/oauth-controller.js'
+import {
+  exchangeOAuthCode,
+  OAUTH_FAILURE_REDIRECT,
+  oauthCallback,
+} from '../../controllers/auth/oauth-controller.js'
 
 const router: Router = Router()
 
@@ -21,7 +25,7 @@ router.get(
   '/google/callback',
   passport.authenticate('google', {
     session: false,
-    failureRedirect: '/login?error=oauth_failed',
+    failureRedirect: OAUTH_FAILURE_REDIRECT,
   }),
   passportCallback
 )
@@ -38,7 +42,7 @@ router.get(
   '/github/callback',
   passport.authenticate('github', {
     session: false,
-    failureRedirect: '/login?error=oauth_failed',
+    failureRedirect: OAUTH_FAILURE_REDIRECT,
   }),
   passportCallback
 )
