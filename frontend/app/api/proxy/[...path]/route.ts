@@ -7,6 +7,7 @@ import {
   refreshSession,
   sessionFromBackend,
 } from '@/app/api/auth/config'
+import { readBackendBody } from '@/lib/backendBody'
 import type { SessionCookies } from '@/lib/sessionCookies'
 
 // Proxy general para todas las peticiones al backend
@@ -119,7 +120,7 @@ async function handleProxy(req: NextRequest, params: { path: string[] }, method:
       cache: 'no-store',
     })
 
-    let data = await backendRes.json()
+    let data = await readBackendBody(backendRes)
 
     // Si recibimos 401 y tenemos refreshToken, intentar refresh y retry una vez
     if (backendRes.status === 401 && current.refreshToken && !attemptedRefresh) {
@@ -134,7 +135,7 @@ async function handleProxy(req: NextRequest, params: { path: string[] }, method:
           body,
           cache: 'no-store',
         })
-        data = await backendRes.json()
+        data = await readBackendBody(backendRes)
       }
     }
 
