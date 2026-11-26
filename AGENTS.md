@@ -132,22 +132,22 @@ run on its own**, with its own `node_modules`, its own `package.json` and its ow
 This file holds what is common. What is specific to each package lives in its own file, which **is
 read in addition to this one, not instead of it**:
 
-| Scope       | Instructions         | Documentation (outside git) |
-| ----------- | -------------------- | --------------------------- |
-| whole repo  | this file            | `docs/`                     |
-| `backend/`  | `backend/AGENTS.md`  | `backend/docs/`             |
-| `frontend/` | `frontend/AGENTS.md` | `frontend/docs/`            |
-| `video/`    | this file            | —                           |
+| Scope       | Instructions         | Documentation (outside git)  |
+| ----------- | -------------------- | ---------------------------- |
+| whole repo  | this file            | `docs/`                      |
+| `backend/`  | `backend/AGENTS.md`  | `docs/`, «Backend» sections  |
+| `frontend/` | `frontend/AGENTS.md` | `docs/`, «Frontend» sections |
+| `video/`    | this file            | —                            |
 
-The three `docs/` have the same shape: `README.md` (architecture of their scope), `DECISIONS.md`,
-`TODO.md` and `_archive/` (retired documents, for reference only). What affects more than one
-package goes in the root ones; what concerns a single package, in its own. **Never in both
-places.** The order of the pending work is in `docs/ROADMAP.md`, and where we left off, in
-`docs/SESSION.md`; both only at the root.
+All the documentation lives in the root `docs/` (since 2026-11-26): `README.md` (architecture),
+`DECISIONS.md` (one ADR series, with an index on top) and `TODO.md`, each with a general part and
+«Backend» and «Frontend» sections; plus `ROADMAP.md` (the order of the pending work),
+`SESSION.md` (where we left off) and `_archive/` (retired documents, for reference only). **The
+same thing is never written in two sections.**
 
-**Declared exception (rule 14):** the three `docs/` are ignored by git, so rules 12 and 13 are met
-**only on this machine**. Reason: the repository is public and that documentation is not. Scope:
-the three `docs/`, temporarily, by the owner's decision (2026-11-17).
+**Declared exception (rule 14):** `docs/` is ignored by git, so rules 12 and 13 are met **only on
+this machine**. Reason: the repository is public and that documentation is not. Scope: `docs/`,
+temporarily, by the owner's decision (2026-11-17).
 
 ## Security
 
