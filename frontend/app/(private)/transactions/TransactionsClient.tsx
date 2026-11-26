@@ -412,15 +412,36 @@ function TransactionsContent({
     )
   }
 
+  // One way to close the form and one to open it empty: closing only hid it, so the next
+  // «Nueva transacción» opened the last edit and saved over that transaction
+  const closeForm = () => {
+    setCreateModalOpen(false)
+    setEditingId(null)
+    setForm(emptyForm)
+    setFieldErrors({})
+  }
+
+  const openNewForm = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setFieldErrors({})
+    setCreateModalOpen(true)
+  }
+
   const handleEdit = (tx: Transaction) => {
+    // A transaction only stores its subcategory: its category is the one that holds it
+    const categoryId =
+      categories.find((c) => c.subcategories?.some((s: Subcategory) => s.id === tx.subcategory_id))
+        ?.id || ''
     setEditingId(tx.id)
+    setFieldErrors({})
     setForm({
       description: tx.description,
       date: tx.date.split('T')[0],
       amount: Math.abs(tx.amount).toString(),
       type: tx.amount < 0 ? 'expense' : 'income',
-      category_id: '', // Need to find category from subcategory
-      subcategory_id: tx.subcategory_id || '',
+      category_id: categoryId,
+      subcategory_id: categoryId ? tx.subcategory_id || '' : '',
     })
     setCreateModalOpen(true)
   }
@@ -553,7 +574,7 @@ function TransactionsContent({
       {/* Period and the one main action */}
       <div className="flex items-center justify-between gap-3">
         <PeriodSelector value={periodValue} onChange={handlePeriodChange} className="-ml-2" />
-        <Button onClick={() => setCreateModalOpen(true)} className="shrink-0">
+        <Button onClick={openNewForm} className="shrink-0">
           <Plus className="h-4 w-4" aria-hidden="true" />
           <span className="sm:hidden">Nueva</span>
           <span className="hidden sm:inline">Nueva transacción</span>
@@ -910,12 +931,7 @@ function TransactionsContent({
 
         <Modal
           isOpen={isCreateModalOpen}
-          onClose={() => {
-            setCreateModalOpen(false)
-            setEditingId(null)
-            setForm(emptyForm)
-            setFieldErrors({})
-          }}
+          onClose={closeForm}
           title={editingId ? 'Editar transacción' : 'Nueva transacción'}
         >
           <form onSubmit={editingId ? handleUpdate : handleCreate} className="space-y-5">
@@ -1047,7 +1063,7 @@ function TransactionsContent({
             </div>
 
             <ModalFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)}>
+              <Button type="button" variant="outline" onClick={closeForm}>
                 Cancelar
               </Button>
               <Button
